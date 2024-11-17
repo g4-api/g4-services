@@ -47,6 +47,9 @@ jobs:
         run: |
           docker run -d -p 9999:9999 --name flask-container flask-service
 
+      - name: Checkout Workflow Repository
+        uses: actions/checkout@v3
+
       - name: Set Up Node.js Environment
         uses: actions/setup-node@v3
         with:
@@ -54,3 +57,32 @@ jobs:
 
       - name: Install Newman
         run: npm install -g newman
+
+      - name: Replace Tokens in Collection
+        shell: pwsh
+        env:
+          G4_ENDPOINT: http://localhost:9944
+          G4_EXTERNAL_ENDPOINT: http://localhost:9999
+          G4_USERNAME: ${{ secrets.G4_API_KEY }}
+          GRID_ENDPOINT: ${{ secrets.GRID_ENDPOINT }}
+        run: |
+          # Define the collection file path
+          $collectionFile = "./postman/collection.json"
+
+          # Read the file content
+          $content = Get-Content $collectionFile
+
+          # Replace placeholders with secrets
+          $content = $content -replace '\$\(\G4\.Endpoint\)', "$env:G4_ENDPOINT"
+          $content = $content -replace '\$\(\G4\.Username\)', "$env:G4_USERNAME"
+          $content = $content -replace '\$\(\G4\.ExternalEndpoint\)', "$env:G4_EXTERNAL_ENDPOINT"
+          $content = $content -replace '\$\(\Grid\.Endpoint\)', "$env:GRID_ENDPOINT"
+
+          # Write the updated content back to the file
+          Set-Content -Path $collectionFile -Value $content
+
+      - name: Run Postman Collection
+        run: |
+          newman run ./postman/G4.Services.json \
+            --delay-request 500 \
+            --reporters cli
