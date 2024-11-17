@@ -1,0 +1,15 @@
+# Workflow to build and release OcrInspector for production
+name: Build, Test & Release
+
+# Permissions for the workflow
+permissions:
+  contents: write
+  checks: write
+  pull-requests: write
+  statuses: write
+
+# Trigger workflow on push to the main branch
+on:
+  push:
+    branches:
+      - development

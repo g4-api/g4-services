@@ -1,0 +1,6 @@
+@G4.Services.Worker_HostAddress = http://localhost:5286
+
+GET {{G4.Services.Worker_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

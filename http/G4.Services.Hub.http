@@ -1,0 +1,395 @@
+@HubHostAddress   = http://localhost:9944/api/v4/g4
+@DriverBinaries   = E:\\Binaries\\Automation\\WebDrivers
+@ExternalEndpoint = http://localhost:9999
+@Username         = G4Username
+
+### Automation
+
+POST {{HubHostAddress}}/automation/invoke HTTP/1.1
+Content-Type: application/json
+Accept: application/json
+
+{
+    "authentication": {
+        "username": "{{Username}}"
+    },
+    "driverParameters": {
+        "driver": "MicrosoftEdgeDriver",
+        "driverBinaries": "{{DriverBinaries}}",
+        "capabilities": {
+            "alwaysMatch": {
+                "browserName": "MicrosoftEdge"
+            },
+            "firstMatch": [
+                {}
+            ]
+        }
+    },
+    "stages": [
+        {
+            "description": "Main stage for invoking integration tests.",
+            "jobs": [
+                {
+                    "reference": {
+                        "description": "Job responsible for invoking integration a single integration test.",
+                        "name": "Invoking Test G4.IntegrationTests.Plugins.Common.WriteLog.C0001"
+                    },
+                    "rules": [
+                        {
+                            "$type": "Action",
+                            "argument": "about:blank",
+                            "pluginName": "GoToUrl",
+                            "regularExpression": "(?s).*"
+                        },
+                        {
+                            "$type": "Action",
+                            "argument": "The first 8 alphanumeric characters of the GUID are \u007B{$New-Guid --Pattern:^\\w{8}\u007D\u007D",
+                            "pluginName": "WriteLog"
+                        },
+                        {
+                            "$type": "Action",
+                            "pluginName": "CloseBrowser"
+                        }
+                    ],
+                    "stopOnError": false
+                }
+            ],
+            "name": "Integration Tests"
+        }
+    ]
+}
+
+### Environments
+
+PUT {{HubHostAddress}}/environments/TempEnvironment HTTP/1.1
+Content-Type: application/json
+Accept: application/json
+
+{
+    "Parameter1": "Foo Bar",
+    "Parameter2": "1",
+    "Parameter3": "false"
+}
+
+###
+
+PUT {{HubHostAddress}}/environments/DecodedTempEnvironment?encode=false HTTP/1.1
+Content-Type: application/json
+Accept: application/json
+
+{
+    "Parameter1": "Foo Bar",
+    "Parameter2": "1",
+    "Parameter3": "false"
+}
+
+###
+
+PUT {{HubHostAddress}}/environments/parameter/DocumentationParameter1
+Content-Type: text/plain
+
+ParameterValue
+
+###
+
+PUT {{HubHostAddress}}/environments/DocumentationEnvironment/parameter/DocumentationParameter1
+Content-Type: text/plain
+
+ParameterValue
+
+###
+
+PUT {{HubHostAddress}}/environments/parameter/SystemParameter1?encode=false
+Content-Type: text/plain
+
+ParameterValue
+
+###
+
+GET {{HubHostAddress}}/environments HTTP/1.1
+
+###
+
+GET {{HubHostAddress}}/environments/TempEnvironment?decode=true HTTP/1.1
+
+###
+
+GET {{HubHostAddress}}/environments/TempEnvironment  HTTP/1.1
+
+###
+
+GET {{HubHostAddress}}/environments/TempEnvironment/parameter/Parameter1  HTTP/1.1
+
+###
+
+GET {{HubHostAddress}}/environments/TempEnvironment/parameter/Parameter1?decode=true  HTTP/1.1
+
+###
+
+DELETE {{HubHostAddress}}/environments/TempEnvironment  HTTP/1.1
+
+###
+
+DELETE {{HubHostAddress}}/environments/DocumentationEnvironment/parameter/DocumentationParameter1  HTTP/1.1
+
+###
+
+DELETE {{HubHostAddress}}/environments  HTTP/1.1
+
+### Integration
+
+GET {{HubHostAddress}}/integration/cache  HTTP/1.1
+
+###
+
+POST {{HubHostAddress}}/integration/cache  HTTP/1.1
+Content-Type: application/json
+
+[
+    {
+        "name": "ExternalRepository",
+        "url": "{{ExternalEndpoint}}",
+        "version": 4
+    }
+]
+
+###
+
+GET {{HubHostAddress}}/integration/documents/key/InvokeClick  HTTP/1.1
+
+###
+
+POST {{HubHostAddress}}/integration/documents/key/InvokePythonClick  HTTP/1.1
+Content-Type: application/json
+
+{
+    "capabilities": {
+        "supportsSSL": true,
+        "maxConnections": 10
+    },
+    "credentials": {
+        "username": "admin_user",
+        "password": "Str0ngP@ssw0rd!"
+    },
+    "headers": {
+        "Accept": "application/json"
+    },
+    "name": "MainAPIService",
+    "timeout": 300.0,
+    "url": "http://localhost:9999",
+    "version": 4
+}
+
+###
+
+POST {{HubHostAddress}}/integration/documents/type/action/key/InvokePythonClick  HTTP/1.1
+Content-Type: application/json
+
+{
+    "capabilities": {
+        "supportsSSL": true,
+        "maxConnections": 10
+    },
+    "credentials": {
+        "username": "admin_user",
+        "password": "Str0ngP@ssw0rd!"
+    },
+    "headers": {
+        "Accept": "application/json"
+    },
+    "name": "MainAPIService",
+    "timeout": 300.0,
+    "url": "http://localhost:9999",
+    "version": 4
+}
+
+###
+
+GET {{HubHostAddress}}/integration/manifests/key/InvokeClick  HTTP/1.1
+
+###
+
+POST {{HubHostAddress}}/integration/manifests/key/InvokePythonClick  HTTP/1.1
+Content-Type: application/json
+
+{
+    "capabilities": {
+        "supportsSSL": true,
+        "maxConnections": 10
+    },
+    "credentials": {
+        "username": "admin_user",
+        "password": "Str0ngP@ssw0rd!"
+    },
+    "headers": {
+        "Accept": "application/json"
+    },
+    "name": "MainAPIService",
+    "timeout": 300.0,
+    "url": "http://localhost:9999",
+    "version": 4
+}
+
+###
+
+GET {{HubHostAddress}}/integration/manifests/type/action/key/InvokeClick  HTTP/1.1
+
+###
+
+POST {{HubHostAddress}}/integration/manifests/type/action/key/InvokePythonClick  HTTP/1.1
+Content-Type: application/json
+
+{
+    "name": "ExternalRepository",
+    "url": "{{ExternalEndpoint}}",
+    "version": 4
+}
+
+###
+
+GET {{HubHostAddress}}/integration/manifests  HTTP/1.1
+
+###
+
+POST {{HubHostAddress}}/integration/manifests  HTTP/1.1
+Content-Type: application/json
+
+[
+    {
+        "name": "ExternalRepository",
+        "url": "{{ExternalEndpoint}}",
+        "version": 4
+    }
+]
+
+###
+
+GET {{HubHostAddress}}/integration/documents/type/action/key/InvokeClick  HTTP/1.1
+
+###
+
+GET {{HubHostAddress}}/integration/cache/sync  HTTP/1.1
+
+###
+
+POST {{HubHostAddress}}/integration/cache/sync  HTTP/1.1
+Content-Type: application/json
+
+[
+    {
+        "name": "ExternalRepository",
+        "url": "{{ExternalEndpoint}}",
+        "version": 4
+    }
+]
+
+### Templates
+
+PUT {{HubHostAddress}}/templates  HTTP/1.1
+Content-Type: application/json
+
+{
+    "aliases": [
+        "ConnectDemoApp"
+    ],
+    "author": {
+        "link": "https://www.linkedin.com/in/roei-sabag-247aa18/",
+        "name": "Roei Sabag"
+    },
+    "categories": [
+        "UserInterface",
+        "Authentication"
+    ],
+    "source": "Template",
+    "description": [
+      "Foo"
+    ],
+    "examples": [
+        {
+            "description": [
+                "Perform a login action by sending the username and password to the respective input fields and clicking the login button."
+            ],
+            "rule": {
+                "$type": "Action",
+                "pluginName": "Login",
+                "argument": "\u007B{$ --Username:Foo --Password:bar}\u007D"
+            }
+        }
+    ],
+    "key": "Login",
+    "manifestVersion": 4,
+    "parameters": [
+        {
+            "description": [
+                "Specifies the username that should be entered into the username input field during the login process."
+            ],
+            "mandatory": true,
+            "name": "Username",
+            "type": "String"
+        },
+        {
+            "description": [
+                "Specifies the password that should be entered into the password input field during the login process."
+            ],
+            "mandatory": true,
+            "name": "Password",
+            "type": "String"
+        }
+    ],
+    "pluginType": "Action",
+    "properties": [
+        {
+            "description": [
+                "Specifies the credentials used for logging in. The argument accepts both the username and password in the format '@Username' and '@Password'."
+            ],
+            "mandatory": true,
+            "name": "Argument",
+            "type": "String|Expression"
+        }
+    ],
+    "rules": [
+        {
+            "$type": "Action",
+            "locator": "CssSelector",
+            "onElement": "#usernameField",
+            "pluginName": "SendKeys",
+            "argument": "@Username"
+        },
+        {
+            "$type": "Action",
+            "locator": "CssSelector",
+            "onElement": "#passwordField",
+            "pluginName": "SendKeys",
+            "argument": "@Password"
+        },
+        {
+            "$type": "Action",
+            "locator": "CssSelector",
+            "onElement": "#loginButton",
+            "pluginName": "Click"
+        }
+    ],
+    "scope": [
+        "Web",
+        "MobileWeb"
+    ],
+    "summary": [
+        "The `Login` plugin automates the process of logging into a web application by filling in username and password fields and clicking the login button."
+    ]
+}
+
+###
+
+GET {{HubHostAddress}}/templates/Login  HTTP/1.1
+
+###
+
+GET {{HubHostAddress}}/templates  HTTP/1.1
+
+###
+
+DELETE {{HubHostAddress}}/templates/Login  HTTP/1.1
+
+###
+
+DELETE {{HubHostAddress}}/templates  HTTP/1.1
