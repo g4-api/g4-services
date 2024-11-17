@@ -31,21 +31,21 @@ jobs:
           docker run -d -p 9944:9944 --name g4-container g4-services-hub
 
       - name: Verify GET Request
-        shell: pwsh
+        shell: bash
         run: |
           # Define the endpoint
-          $url = "http://localhost:9999/api/v4/g4/ping"
+          url="http://localhost:9944/api/v4/g4/ping"
 
-          # Send the GET request
-          $response = Invoke-WebRequest -Uri $url -UseBasicParsing
+          # Send the GET request and capture the HTTP status code
+          status_code=$(curl -o /dev/null -s -w "%{http_code}" $url)
 
           # Check if the status code is 200
-          if ($response.StatusCode -ne 200) {
-            Write-Error "Expected status code 200 but got $($response.StatusCode)"
+          if [ "$status_code" -ne 200 ]; then
+            echo "Expected status code 200 but got $status_code"
             exit 1
-          } else {
-            Write-Host "Status code is 200. Test passed!"
-          }
+          else
+            echo "Status code is 200. Test passed!"
+          fi
 
       - name: Checkout Target Repository
         uses: actions/checkout@v3
