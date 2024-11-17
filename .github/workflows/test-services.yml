@@ -67,7 +67,7 @@ jobs:
           GRID_ENDPOINT: ${{ secrets.GRID_ENDPOINT }}
         run: |
           # Define the collection file path
-          $collectionFile = "./postman/collection.json"
+          $collectionFile = "./postman/G4.Services.json"
 
           # Read the file content
           $content = Get-Content $collectionFile
