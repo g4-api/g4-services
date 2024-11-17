@@ -1,15 +1,53 @@
-# Workflow to build and release OcrInspector for production
-name: Build, Test & Release
+# Workflow to build, test, and release OcrInspector for production
+name: Build, Test, & Release
 
-# Permissions for the workflow
+# Define permissions for the workflow
 permissions:
   contents: write
   checks: write
   pull-requests: write
   statuses: write
 
-# Trigger workflow on push to the main branch
+# Trigger the workflow on push to the development branch
 on:
   push:
     branches:
       - development
+
+jobs:
+  run-api-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Workflow Repository
+        uses: actions/checkout@v3
+
+      - name: Checkout Target Repository
+        uses: actions/checkout@v3
+        with:
+          repository: g4-api/g4-external-python
+          ref: main
+
+      - name: Build Flask API Docker Image
+        run: |
+          docker build -t flask-service ./src
+
+      - name: Run Flask API Docker Container
+        run: |
+          docker run -d -p 9999:9999 --name flask-container flask-service
+
+      - name: Build G4 Services Hub Docker Image
+        run: |
+          docker build -f docker/G4.Services.Hub.Dockerfile -t g4-services-hub .
+
+      - name: Run G4 Services Hub Docker Container
+        run: |
+          docker run -d -p 9944:9944 --name g4-container g4-services-hub
+
+      - name: Set Up Node.js Environment
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+
+      - name: Install Newman
+        run: npm install -g newman
