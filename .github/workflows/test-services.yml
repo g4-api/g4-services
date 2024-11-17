@@ -36,6 +36,9 @@ jobs:
         run: |
           docker run -d -p 9999:9999 --name flask-container flask-service
 
+      - name: List Current Directory
+        run: ls -la
+
       - name: Build G4 Services Hub Docker Image
         run: |
           docker build -f ./docker/G4.Services.Hub.Dockerfile -t g4-services-hub .
