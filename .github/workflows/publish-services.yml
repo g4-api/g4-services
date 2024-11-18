@@ -1,11 +1,19 @@
 # Workflow to build and release OcrInspector for production
 name: Build, Test & Release
 
-# Permissions for the workflow
-permissions:
-  contents: write
-  checks: write
-  pull-requests: write
-  statuses: write
+on:
+  workflow_run:
+    workflows:
+      - Test Services
+    types:
+      - completed
 
-# Trigger workflow on push to the main branch
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4

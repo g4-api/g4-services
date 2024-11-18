@@ -1,5 +1,5 @@
 # Workflow to build, test, and release OcrInspector for production
-name: Build, Test, & Release
+name: Test Services
 
 # Define permissions for the workflow
 permissions:
