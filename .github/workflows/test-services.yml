@@ -16,6 +16,7 @@ on:
 
 jobs:
   run-api-tests:
+    name: G4™ API - Docker Deployment & Integration Tests
     runs-on: ubuntu-latest
 
     steps:
@@ -162,6 +163,6 @@ jobs:
         uses: EnricoMi/publish-unit-test-result-action@v2
         if: always()
         with:
-          check_name: G4™ API - Integration Tests
+          check_name: G4™ API - Integration Tests Results
           files: |
             test-results.xml
