@@ -23,12 +23,10 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Build G4 Services Hub Docker Image
-        run: |
-          docker build -f ./docker/G4.Services.Hub.Dockerfile -t g4-services-hub .
+        run: docker build -f ./docker/G4.Services.Hub.Dockerfile -t g4-services-hub .
 
       - name: Run G4 Services Hub Docker Container
-        run: |
-          docker run --rm --network=host -d -p 9944:9944 --name g4-container g4-services-hub
+        run: docker run --rm --network=host -d -p 9944:9944 --name g4-container g4-services-hub
 
       - name: Verify Service Readiness
         shell: pwsh
@@ -69,9 +67,6 @@ jobs:
         with:
           repository: g4-api/g4-external-python
           ref: main
-
-      - name: List Current Directory
-        run: ls -la
 
       - name: Build Flask API Docker Image
         run: |
@@ -133,6 +128,7 @@ jobs:
           G4_EXTERNAL_ENDPOINT: http://localhost:9999
           G4_USERNAME: ${{ secrets.G4_API_KEY }}
           GRID_ENDPOINT: ${{ secrets.GRID_ENDPOINT }}
+
         run: |
           # Define the collection file path
           $collectionFile = "./postman/G4.Services.json"
@@ -153,4 +149,11 @@ jobs:
         run: |
           newman run ./postman/G4.Services.json \
             --delay-request 500 \
-            --reporters cli
+            --reporters cli,junit \
+            --reporter-junit-export ./test-results.xml
+
+      - name: Upload a Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: postman-test-results
+          path: "./test-results.xml"
