@@ -157,8 +157,8 @@ jobs:
           Write-Host "Collection File: $collectionFile"
           Write-Host "Content: $content"
 
-      # - name: Run Postman Collection
-      #   run: |
-      #     newman run ./postman/G4.Services.json \
-      #       --delay-request 500 \
-      #       --reporters cli
+      - name: Run Postman Collection
+        run: |
+          newman run ./postman/G4.Services.json \
+            --delay-request 500 \
+            --reporters cli
