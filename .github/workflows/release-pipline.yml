@@ -275,3 +275,33 @@ jobs:
           name: g4-hub
           path: ${{ env.artifactStagingDirectory }}/*.zip
   
+  new-release:
+    name: New GitHub Release Version ${{ needs.new-version.outputs.buildVersion }}
+    runs-on: ubuntu-latest
+    if: ${{ needs.new-version.result == 'success' && needs.new-version.outputs.validVersion == 'True' && needs.invoke-api-tests.result == 'success' }}
+    needs:
+      - invoke-api-tests
+      - new-version
+
+    env:
+      buildVersion: ${{ needs.new-version.outputs.buildVersion }}
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Download Build Artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: g4-hub
+
+    - name: Create GitHub Release & Tag v${{ env.buildVersion }}
+      uses: softprops/action-gh-release@v2
+      with:
+        files: ./*.zip
+        tag_name: v${{ env.buildVersion }}
+        name: ${{ env.artifactType }} v${{ env.buildVersion }}
+        generate_release_notes: true
+
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
