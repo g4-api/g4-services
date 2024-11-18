@@ -149,14 +149,6 @@ jobs:
           # Write the updated content back to the file
           Set-Content -Path $collectionFile -Value $content
 
-          Write-Host "Tokens replaced successfully!"
-          Write-Host "G4 Endpoint: $env:G4_ENDPOINT"
-          Write-Host "G4 External Endpoint: $env:G4_EXTERNAL_ENDPOINT"
-          Write-Host "G4 Username: $env:G4_USERNAME"
-          Write-Host "Grid Endpoint: $env:GRID_ENDPOINT"
-          Write-Host "Collection File: $collectionFile"
-          Write-Host "Content: $content"
-
       - name: Run Postman Collection
         run: |
           newman run ./postman/G4.Services.json \
