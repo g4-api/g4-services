@@ -24,7 +24,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <ProjectReference Include="..\G4.Services.Hub.Api.V4\G4.Services.Hub.Api.V4.csproj" />
+	  <ProjectReference Include="..\G4.Services.Domain.V4\G4.Services.Domain.V4.csproj" />
 	</ItemGroup>
 
 </Project>
