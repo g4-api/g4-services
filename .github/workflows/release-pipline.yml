@@ -12,7 +12,7 @@ permissions:
 on:
   push:
     branches:
-      - development
+      - main
 
 # Set environment variables
 env:
@@ -267,7 +267,7 @@ jobs:
           New-Item -Path "${{ env.artifactStagingDirectory }}" -ItemType Directory
           Compress-Archive `
               -Path ${{ env.artifactPublishDirectory }}/* `
-              -DestinationPath ${{ env.artifactStagingDirectory }}/g4-services-hub.v${{ env.buildVersion }}-win-linux-osx-x64.zip
+              -DestinationPath ${{ env.artifactStagingDirectory }}/g4-hub.v${{ env.buildVersion }}-win-linux-osx-x64.zip
   
       - name: Upload a Build Artifact
         uses: actions/upload-artifact@v4
