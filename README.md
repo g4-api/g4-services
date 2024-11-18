@@ -29,7 +29,7 @@ The **G4 Hub API** provides a comprehensive interface for managing templates, en
 
 - **Template Management**: Add, update, retrieve, and delete templates efficiently.
 - **Environment Operations**: Create, modify, and remove environments and their associated parameters.
-- **Automation Execution**: Invoke and initialize automation workflows seamlessly.
+- **Automation Invocation**: Invoke and initialize automation workflows seamlessly.
 - **Integration Metadata Access**: Retrieve plugin manifests, caches, and synchronize integration data.
 
 ---
@@ -170,7 +170,7 @@ POST /api/v4/g4/automation/invoke
 
 #### Description
 
-- **authentication**: Contains credentials for API access. Replace `{{ApiUser}}` with your API username.
+- **authentication**: Contains credentials for API access. Replace `{{ApiUser}}` with your API username/key/credentials.
 - **driverParameters**: Configures the web driver for the automation session.
   - **driver**: Specifies the driver to use (e.g., `MicrosoftEdgeDriver`).
   - **driverBinaries**: Can be a physical location of the WebDriver binaries or a Selenium Grid endpoint. Replace `{{DriverBinaries}}` with the appropriate file path or grid URL.
@@ -239,7 +239,7 @@ Contributions are welcome! Please follow these steps:
 
 ## License
 
-This project is licensed under the [Apache v2](LICENSE).
+This project is licensed under the [Apache v2.0](LICENSE).
 
 ---
 
