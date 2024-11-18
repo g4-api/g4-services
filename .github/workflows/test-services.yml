@@ -28,7 +28,7 @@ jobs:
 
       - name: Run G4 Services Hub Docker Container
         run: |
-          docker run -d -p 9944:9944 --name g4-container g4-services-hub
+          docker run -d -e HOST_URL=http://host.docker.internal:9999 -p 9944:9944 --name g4-container g4-services-hub
 
       - name: Verify Service Readiness
         shell: pwsh
@@ -130,7 +130,7 @@ jobs:
         shell: pwsh
         env:
           G4_ENDPOINT: http://localhost:9944/api/v4/g4
-          G4_EXTERNAL_ENDPOINT: http://localhost:9999
+          G4_EXTERNAL_ENDPOINT: http://host.docker.internal:9999
           G4_USERNAME: ${{ secrets.G4_API_KEY }}
           GRID_ENDPOINT: ${{ secrets.GRID_ENDPOINT }}
         run: |
