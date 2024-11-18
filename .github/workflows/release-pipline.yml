@@ -14,6 +14,15 @@ on:
     branches:
       - development
 
+# Set environment variables
+env:
+  artifactPublishDirectory: ${{ github.workspace }}/artifact_publish
+  artifactStagingDirectory: ${{ github.workspace }}/artifact_staging
+  artifactType: 'Production'
+  binariesDirectory: ${{ github.workspace }}/binaries
+  buildConfiguration: 'Release'
+  buildPlatform: 'any cpu'
+
 jobs:
   new-version:
     name: New Version
@@ -188,7 +197,7 @@ jobs:
           files: |
             test-results.xml
 
-  publish-services-docker:
+  publish-hub-docker:
     name: Publish Docker Images
     runs-on: ubuntu-latest
     if: ${{ needs.new-version.result == 'success' && needs.new-version.outputs.validVersion == 'True' && needs.invoke-api-tests.result == 'success' }}
@@ -215,7 +224,7 @@ jobs:
       - name: Push Docker Image '${{ env.buildVersion }}'
         run: docker push g4api/g4-hub:${{ env.buildVersion }}
 
-  publish-services-standalone:
+  publish-hub-standalone:
     name: Publish Standalone Services
     runs-on: ubuntu-latest
     if: ${{ needs.new-version.result == 'success' && needs.new-version.outputs.validVersion == 'True' && needs.invoke-api-tests.result == 'success' }}
@@ -223,6 +232,33 @@ jobs:
       - invoke-api-tests
       - new-version
 
+    env:
+      buildVersion: ${{ needs.new-version.outputs.buildVersion }}
+
     steps:
       - name: Checkout Workflow Repository
         uses: actions/checkout@v4
+
+      - name: Setup .NET Core SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8
+
+      - name: Publish
+        shell: pwsh
+        run: dotnet publish -o ${{ env.artifactPublishDirectory }} -c Release
+  
+      - name: Create Build Artifact
+        shell: pwsh
+        run: |
+          New-Item -Path "${{ env.artifactStagingDirectory }}" -ItemType Directory
+          Compress-Archive `
+              -Path ${{ env.artifactPublishDirectory }}/* `
+              -DestinationPath ${{ env.artifactStagingDirectory }}/g4-services-hub.v${{ env.buildVersion }}-win-linux-osx-x64.zip
+  
+      - name: Upload a Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: drop
+          path: ${{ env.artifactStagingDirectory }}/*.zip
+  
