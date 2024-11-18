@@ -20,7 +20,7 @@ jobs:
 
     steps:
       - name: Checkout Workflow Repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Build G4 Services Hub Docker Image
         run: docker build -f ./docker/G4.Services.Hub.Dockerfile -t g4-services-hub .
@@ -63,7 +63,7 @@ jobs:
           }
 
       - name: Checkout Target Repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: g4-api/g4-external-python
           ref: main
@@ -111,10 +111,10 @@ jobs:
           }
 
       - name: Checkout Workflow Repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set Up Node.js Environment
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: '16'
 
@@ -157,3 +157,11 @@ jobs:
         with:
           name: postman-test-results
           path: "./test-results.xml"
+
+      - name: Publish Test Results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: always()
+        with:
+          check_name: G4™ API - Integration Tests
+          files: |
+            test-results.xml
