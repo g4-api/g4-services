@@ -198,7 +198,7 @@ jobs:
             test-results.xml
 
   publish-hub-docker:
-    name: Publish Docker Images
+    name: Publish Hub Docker Images
     runs-on: ubuntu-latest
     if: ${{ needs.new-version.result == 'success' && needs.new-version.outputs.validVersion == 'True' && needs.invoke-api-tests.result == 'success' }}
     needs:
@@ -225,7 +225,7 @@ jobs:
         run: docker push g4api/g4-hub:${{ env.buildVersion }}
 
   publish-hub-standalone:
-    name: Publish Standalone Services
+    name: Publish Standalone Hub Service
     runs-on: ubuntu-latest
     if: ${{ needs.new-version.result == 'success' && needs.new-version.outputs.validVersion == 'True' && needs.invoke-api-tests.result == 'success' }}
     needs:
@@ -259,7 +259,7 @@ jobs:
 
       - name: Publish
         shell: pwsh
-        run: dotnet publish -o ${{ env.artifactPublishDirectory }} -c Release
+        run: dotnet publish ./src/G4.Services.Hub/G4.Services.Hub.csproj -o ${{ env.artifactPublishDirectory }} -c Release
   
       - name: Create Build Artifact
         shell: pwsh
