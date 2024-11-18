@@ -33,7 +33,7 @@ jobs:
       - name: Verify Service Readiness
         shell: bash
         run: |
-          url="http://localhost:5000"
+          url="http://localhost:9944"
           timeout=15 # Timeout in seconds
           start_time=$(date +%s)
 
@@ -59,6 +59,10 @@ jobs:
             echo "Waiting for service to be ready... Status code: $status_code"
             sleep 1
           done
+
+      - name: List Docker Containers
+        run: |
+          docker ps -a
 
       # - name: Verify GET Request
       #   shell: bash
