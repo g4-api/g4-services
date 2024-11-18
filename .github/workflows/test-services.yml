@@ -31,55 +31,38 @@ jobs:
           docker run -d -p 9944:9944 --name g4-container g4-services-hub
 
       - name: Verify Service Readiness
-        shell: bash
+        shell: pwsh
         run: |
-          url="http://localhost:9944/api/v4/g4/ping"
-          timeout=15 # Timeout in seconds
-          start_time=$(date +%s)
+          $url = "http://localhost:9944/api/v4/g4/ping"
+          $timeout = 15 # Timeout in seconds
+          $startTime = Get-Date
 
-          while true; do
-            # Send GET request and capture status code
-            status_code=$(curl -o /dev/null -s -w "%{http_code}" $url || echo 000)
+          while ($true) {
+              try {
+                  # Send GET request and capture the status code
+                  $response = Invoke-WebRequest -Uri $url -UseBasicParsing -ErrorAction Stop
+                  $statusCode = $response.StatusCode
+              } catch {
+                  $statusCode = 0
+              }
 
-            # Break the loop if the status code is 200
-            if [ "$status_code" -eq 200 ]; then
-              echo "Service is ready with status code 200!"
-              break
-            fi
+              # Break the loop if the status code is 200
+              if ($statusCode -eq 200) {
+                  Write-Host "Service is ready with status code 200!"
+                  break
+              }
 
-            # Check if the timeout has been reached
-            current_time=$(date +%s)
-            elapsed_time=$((current_time - start_time))
-            if [ "$elapsed_time" -ge "$timeout" ]; then
-              echo "Timeout reached. Service is not ready."
-              exit 0
-            fi
+              # Check if the timeout has been reached
+              $elapsedTime = (Get-Date) - $startTime
+              if ($elapsedTime.TotalSeconds -ge $timeout) {
+                  Write-Host "Timeout reached. Service is not ready."
+                  exit 1
+              }
 
-            # Wait before retrying
-            echo "Waiting for service to be ready... Status code: $status_code"
-            sleep 1
-          done
-
-      - name: List Docker Containers
-        run: |
-          docker ps -a
-
-      # - name: Verify GET Request
-      #   shell: bash
-      #   run: |
-      #     # Define the endpoint
-      #     url="http://localhost:9944/api/v4/g4/ping"
-
-      #     # Send the GET request and capture the HTTP status code
-      #     status_code=$(curl -o /dev/null -s -w "%{http_code}" $url)
-
-      #     # Check if the status code is 200
-      #     if [ "$status_code" -ne 200 ]; then
-      #       echo "Expected status code 200 but got $status_code"
-      #       exit 1
-      #     else
-      #       echo "Status code is 200. Test passed!"
-      #     fi
+              # Wait before retrying
+              Write-Host "Waiting for service to be ready... Status code: $statusCode"
+              Start-Sleep -Seconds 1
+          }
 
       - name: Checkout Target Repository
         uses: actions/checkout@v3
@@ -97,6 +80,40 @@ jobs:
       - name: Run Flask API Docker Container
         run: |
           docker run -d -p 9999:9999 --name flask-container flask-service
+
+      - name: Verify Service Readiness
+        shell: pwsh
+        run: |
+          $url = "http://localhost:9999/api/v4/g4/plugins"
+          $timeout = 15 # Timeout in seconds
+          $startTime = Get-Date
+
+          while ($true) {
+              try {
+                  # Send GET request and capture the status code
+                  $response = Invoke-WebRequest -Uri $url -UseBasicParsing -ErrorAction Stop
+                  $statusCode = $response.StatusCode
+              } catch {
+                  $statusCode = 0
+              }
+
+              # Break the loop if the status code is 200
+              if ($statusCode -eq 200) {
+                  Write-Host "Service is ready with status code 200!"
+                  break
+              }
+
+              # Check if the timeout has been reached
+              $elapsedTime = (Get-Date) - $startTime
+              if ($elapsedTime.TotalSeconds -ge $timeout) {
+                  Write-Host "Timeout reached. Service is not ready."
+                  exit 1
+              }
+
+              # Wait before retrying
+              Write-Host "Waiting for service to be ready... Status code: $statusCode"
+              Start-Sleep -Seconds 1
+          }
 
       - name: Checkout Workflow Repository
         uses: actions/checkout@v3
@@ -132,8 +149,16 @@ jobs:
           # Write the updated content back to the file
           Set-Content -Path $collectionFile -Value $content
 
-      - name: Run Postman Collection
-        run: |
-          newman run ./postman/G4.Services.json \
-            --delay-request 500 \
-            --reporters cli
+          Write-Host "Tokens replaced successfully!"
+          Write-Host "G4 Endpoint: $env:G4_ENDPOINT"
+          Write-Host "G4 External Endpoint: $env:G4_EXTERNAL_ENDPOINT"
+          Write-Host "G4 Username: $env:G4_USERNAME"
+          Write-Host "Grid Endpoint: $env:GRID_ENDPOINT"
+          Write-Host "Collection File: $collectionFile"
+          Write-Host "Content: $content"
+
+      # - name: Run Postman Collection
+      #   run: |
+      #     newman run ./postman/G4.Services.json \
+      #       --delay-request 500 \
+      #       --reporters cli
