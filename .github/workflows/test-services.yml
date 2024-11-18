@@ -141,10 +141,10 @@ jobs:
           $content = Get-Content $collectionFile
 
           # Replace placeholders with secrets
-          $content = $content -replace '\$\(\G4\.Endpoint\)', "$env:G4_ENDPOINT"
-          $content = $content -replace '\$\(\G4\.Username\)', "$env:G4_USERNAME"
-          $content = $content -replace '\$\(\G4\.ExternalEndpoint\)', "$env:G4_EXTERNAL_ENDPOINT"
-          $content = $content -replace '\$\(\Grid\.Endpoint\)', "$env:GRID_ENDPOINT"
+          $content = $content -replace '\$\(G4\.Endpoint\)', "$env:G4_ENDPOINT"
+          $content = $content -replace '\$\(G4\.Username\)', "$env:G4_USERNAME"
+          $content = $content -replace '\$\(G4\.ExternalEndpoint\)', "$env:G4_EXTERNAL_ENDPOINT"
+          $content = $content -replace '\$\(Grid\.Endpoint\)', "$env:GRID_ENDPOINT"
 
           # Write the updated content back to the file
           Set-Content -Path $collectionFile -Value $content
