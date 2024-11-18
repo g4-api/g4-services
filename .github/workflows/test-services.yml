@@ -166,3 +166,33 @@ jobs:
           check_name: G4™ API - Integration Tests Results
           files: |
             test-results.xml
+
+  trigger-deployment-workflow:
+    name: Trigger Deployment Workflow
+    runs-on: ubuntu-latest
+    needs: run-api-tests
+    if: ${{ success() }}
+
+    steps:
+      - name: Trigger Deployment Workflow
+        uses: actions/github-script@v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { data: workflows } = await github.actions.listRepoWorkflows({
+              owner: context.repo.owner,
+              repo: context.repo.repo
+            });
+
+            const workflow = workflows.find(w => w.name === 'Publish Services');
+            if (!workflow) {
+              console.log('Workflow not found');
+              return;
+            }
+
+            await github.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: workflow.id,
+              ref: 'development'
+            });

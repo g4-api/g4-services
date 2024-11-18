@@ -1,5 +1,5 @@
 # Workflow to build and release OcrInspector for production
-name: Build, Test & Release
+name: Publish Services
 
 on:
   workflow_run:
