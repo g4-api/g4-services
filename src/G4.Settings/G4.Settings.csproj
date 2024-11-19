@@ -1,0 +1,49 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<!-- Assembly -->
+		<TargetFramework>net8.0</TargetFramework>
+		<AssemblyVersion>8.0.0.0</AssemblyVersion>
+		<FileVersion>8.0.0.0</FileVersion>
+		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+		<SatelliteResourceLanguages>en-US</SatelliteResourceLanguages>
+		<LangVersion>latest</LangVersion>
+		<IsPackable>false</IsPackable>
+
+		<!-- Package -->
+		<PackageId>G4.Settings</PackageId>
+		<Title>G4.Settings</Title>
+		<PackageProjectUrl>https://github.com/g4-api</PackageProjectUrl>
+		<Authors>G4™ API Community</Authors>
+		<PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
+		<PackageLicenseExpression>Apache-2.0+</PackageLicenseExpression>
+		<Description>
+			The AppSettings library provides a convenient and centralized way to manage application settings, including configuration, JSON serialization options, and LiteDB connections.
+			This library simplifies the initialization of these settings, making it easy to integrate with your .NET applications.
+		</Description>
+		<PackageTags>WebDriver;Automation;Testing;RPA;G4</PackageTags>
+		<Copyright>Copyright 2023 (c) Roei Sabag &amp; HRC Corporation. All rights reserved.</Copyright>
+
+		<!-- https://learn.microsoft.com/en-us/dotnet/fundamentals/syslib-diagnostics/syslib1040-1049 -->
+		<NoWarn>$(NoWarn);SYSLIB1045;IDE0130</NoWarn>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<!-- Please refrain from upgrading LiteDB until the locking bug is addressed.
+			 The latest known version without this issue is version 5.0.17. 
+			 https://github.com/mbdavid/LiteDB/issues/1976#issuecomment-1968006775 -->
+		<PackageReference Include="G4.Converters" Version="2024.11.14.75" />
+		<PackageReference Include="LiteDB" Version="5.0.17" />
+		<PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
+		<PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="8.0.0" />
+		<PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="8.0.2" />
+		<PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="8.0.0" />
+		<PackageReference Include="Microsoft.Extensions.Configuration.FileExtensions" Version="8.0.1" />
+		<PackageReference Include="Microsoft.Extensions.Configuration.Ini" Version="8.0.0" />
+		<PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.1" />
+		<PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="8.0.1" />
+		<PackageReference Include="Microsoft.Extensions.Configuration.Xml" Version="8.0.1" />
+		<PackageReference Include="Microsoft.Extensions.Primitives" Version="8.0.0" />
+	</ItemGroup>
+
+</Project>

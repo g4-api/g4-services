@@ -23,4 +23,8 @@
 		<PackageReference Include="Swashbuckle.AspNetCore.Annotations" Version="7.0.0" />
 	</ItemGroup>
 
+	<ItemGroup>
+		<ProjectReference Include="..\G4.Settings\G4.Settings.csproj" />
+	</ItemGroup>
+
 </Project>
