@@ -8,11 +8,11 @@ permissions:
   pull-requests: write
   statuses: write
 
-# Trigger the workflow on push to the development branch
+# Trigger the workflow on push to the main branch
 on:
   push:
     branches:
-      - development
+      - main
 
 # Set environment variables
 env:
