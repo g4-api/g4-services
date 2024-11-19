@@ -63,7 +63,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Publish Executable Project
+      - name: Run Unit Tests
         uses: g4-api/g4-github-actions/actions/test-dotnet-project@v1
         with:
           build_version: '${{ env.buildVersion }}'
