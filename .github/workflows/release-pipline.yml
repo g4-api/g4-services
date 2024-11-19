@@ -141,6 +141,82 @@ jobs:
               Start-Sleep -Seconds 1
           }
 
+      - name: Run Selenoid Docker Container
+        run: |
+            $dockerComposeContent = @"
+            services:
+              selenoid:
+                network_mode: bridge
+                image: aerokube/selenoid:latest-release
+                ports:
+                  - '4444:4444'
+                volumes:
+                  - '/var/run/docker.sock:/var/run/docker.sock'
+                  - '$PWD/config/:/etc/selenoid/:ro'
+                command: ['-limit', '5']
+            "@.Trim()
+
+            $browsersJsonContent = @"
+            {
+              "MicrosoftEdge": {
+                "default": "124.0",
+                "versions": {
+                  "124.0": {
+                    "image": "browsers/edge:124.0",
+                    "port": "4444"
+                  }
+                }
+              }
+            }
+            "@.Trim()
+
+            # Create the docker-compose.yml file
+            Set-Content -Path "./docker-compose.yml" -Value $dockerComposeContent -Encoding UTF8
+            Write-Host "docker-compose.yml has been created successfully."
+
+            # Create the config directory if it doesn't exist
+            if (!(Test-Path -Path "./config")) {
+                New-Item -ItemType Directory -Path "./config" | Out-Null
+                Write-Host "Config directory created."
+            }
+
+            Set-Content -Path "./config/browsers.json" -Value $browsersJsonContent -Encoding UTF8
+            Write-Host "browsers.json has been created successfully in the config directory."
+
+            docker pull browsers/edge:124.0
+            Write-Host "Successfully pulled browsers/edge:124.0 image."
+
+            docker compose -p selenoid up -d
+            Write-Host "Docker Compose has started Selenoid successfully."
+
+            # Check if the service is ready
+            $url       = "http://localhost:4444/wd/hub/status"
+            $timeout   = 15 # Timeout in seconds
+            $startTime = Get-Date
+
+            while ($true) {
+                try {
+                    $response = Invoke-WebRequest -Uri $url -UseBasicParsing -ErrorAction Stop
+                    $statusCode = $response.StatusCode
+                } catch {
+                    $statusCode = 0
+                }
+
+                if ($statusCode -eq 200) {
+                    Write-Host "Service is ready with status code 200!"
+                    break
+                }
+
+                $elapsedTime = (Get-Date) - $startTime
+                if ($elapsedTime.TotalSeconds -ge $timeout) {
+                    Write-Host "Timeout reached. Service is not ready."
+                    exit 1
+                }
+
+                Write-Host "Waiting for service to be ready... Status code: $statusCode"
+                Start-Sleep -Seconds 1
+            }
+
       - name: Checkout Workflow Repository
         uses: actions/checkout@v4
 
@@ -158,7 +234,7 @@ jobs:
           G4_ENDPOINT: http://localhost:9944/api/v4/g4
           G4_EXTERNAL_ENDPOINT: http://localhost:9999
           G4_USERNAME: ${{ secrets.G4_API_KEY }}
-          GRID_ENDPOINT: ${{ secrets.GRID_ENDPOINT }}
+          GRID_ENDPOINT: http://localhost:4444/wd/hub
 
         run: |
           # Define the collection file path
