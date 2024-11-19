@@ -12,7 +12,7 @@ permissions:
 on:
   push:
     branches:
-      - main
+      - development
 
 # Set environment variables
 env:
@@ -46,7 +46,7 @@ jobs:
       run: |
         $version = "${{ steps.parse-version.outputs.version }}"
         echo "valid=$($version -match '^\d+(\.\d+){3}$')" >> $env:GITHUB_OUTPUT
-
+  
   invoke-api-tests:
     name: G4™ API - Docker Deployment & Integration Tests
     runs-on: ubuntu-latest
