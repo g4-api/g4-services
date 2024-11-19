@@ -47,286 +47,262 @@ jobs:
         $version = "${{ steps.parse-version.outputs.version }}"
         echo "valid=$($version -match '^\d+(\.\d+){3}$')" >> $env:GITHUB_OUTPUT
   
-  test-test:
-    name: Invoke Unit Tests & Artifact Results
-    runs-on: windows-latest
-    if: ${{ needs.new-version.result == 'success' && needs.new-version.outputs.validVersion == 'True' }}
-    needs: 
+  invoke-api-tests:
+    name: G4™ API - Docker Deployment & Integration Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Workflow Repository
+        uses: actions/checkout@v4
+
+      - name: Build G4 Services Hub Docker Image
+        run: docker build -f ./docker/G4.Services.Hub.Dockerfile -t g4-services-hub .
+
+      - name: Run G4 Services Hub Docker Container
+        run: docker run --rm --network=host -d -p 9944:9944 --name g4-container g4-services-hub
+
+      - name: Verify Service Readiness
+        shell: pwsh
+        run: |
+          $url = "http://localhost:9944/api/v4/g4/ping"
+          $timeout = 15 # Timeout in seconds
+          $startTime = Get-Date
+
+          while ($true) {
+              try {
+                  # Send GET request and capture the status code
+                  $response = Invoke-WebRequest -Uri $url -UseBasicParsing -ErrorAction Stop
+                  $statusCode = $response.StatusCode
+              } catch {
+                  $statusCode = 0
+              }
+
+              # Break the loop if the status code is 200
+              if ($statusCode -eq 200) {
+                  Write-Host "Service is ready with status code 200!"
+                  break
+              }
+
+              # Check if the timeout has been reached
+              $elapsedTime = (Get-Date) - $startTime
+              if ($elapsedTime.TotalSeconds -ge $timeout) {
+                  Write-Host "Timeout reached. Service is not ready."
+                  exit 1
+              }
+
+              # Wait before retrying
+              Write-Host "Waiting for service to be ready... Status code: $statusCode"
+              Start-Sleep -Seconds 1
+          }
+
+      - name: Checkout Target Repository
+        uses: actions/checkout@v4
+        with:
+          repository: g4-api/g4-external-python
+          ref: main
+
+      - name: Build Flask API Docker Image
+        run: docker build -t flask-service ./src
+
+      - name: Run Flask API Docker Container
+        run: docker run --rm --network=host -d -p 9999:9999 --name flask-container flask-service
+
+      - name: Verify Service Readiness
+        shell: pwsh
+        run: |
+          $url = "http://localhost:9999/api/v4/g4/plugins"
+          $timeout = 15 # Timeout in seconds
+          $startTime = Get-Date
+
+          while ($true) {
+              try {
+                  # Send GET request and capture the status code
+                  $response = Invoke-WebRequest -Uri $url -UseBasicParsing -ErrorAction Stop
+                  $statusCode = $response.StatusCode
+              } catch {
+                  $statusCode = 0
+              }
+
+              # Break the loop if the status code is 200
+              if ($statusCode -eq 200) {
+                  Write-Host "Service is ready with status code 200!"
+                  break
+              }
+
+              # Check if the timeout has been reached
+              $elapsedTime = (Get-Date) - $startTime
+              if ($elapsedTime.TotalSeconds -ge $timeout) {
+                  Write-Host "Timeout reached. Service is not ready."
+                  exit 1
+              }
+
+              # Wait before retrying
+              Write-Host "Waiting for service to be ready... Status code: $statusCode"
+              Start-Sleep -Seconds 1
+          }
+
+      - name: Checkout Workflow Repository
+        uses: actions/checkout@v4
+
+      - name: Set Up Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: '16'
+
+      - name: Install Newman
+        run: npm install -g newman
+
+      - name: Replace Tokens in Collection
+        shell: pwsh
+        env:
+          G4_ENDPOINT: http://localhost:9944/api/v4/g4
+          G4_EXTERNAL_ENDPOINT: http://localhost:9999
+          G4_USERNAME: ${{ secrets.G4_API_KEY }}
+          GRID_ENDPOINT: ${{ secrets.GRID_ENDPOINT }}
+
+        run: |
+          # Define the collection file path
+          $collectionFile = "./postman/G4.Services.json"
+
+          # Read the file content
+          $content = Get-Content $collectionFile
+
+          # Replace placeholders with secrets
+          $content = $content -replace '\$\(G4\.Endpoint\)', "$env:G4_ENDPOINT"
+          $content = $content -replace '\$\(G4\.Username\)', "$env:G4_USERNAME"
+          $content = $content -replace '\$\(G4\.ExternalEndpoint\)', "$env:G4_EXTERNAL_ENDPOINT"
+          $content = $content -replace '\$\(Grid\.Endpoint\)', "$env:GRID_ENDPOINT"
+
+          # Write the updated content back to the file
+          Set-Content -Path $collectionFile -Value $content
+
+      - name: Run Postman Collection
+        run: |
+          newman run ./postman/G4.Services.json \
+            --delay-request 500 \
+            --reporters cli,junit \
+            --reporter-junit-export ./test-results.xml
+
+      - name: Upload a Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: postman-test-results
+          path: "./test-results.xml"
+
+      - name: Publish Test Results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: always()
+        with:
+          check_name: G4™ API - Integration Tests Results
+          files: |
+            test-results.xml
+
+  publish-hub-docker:
+    name: Publish Hub Docker Images
+    runs-on: ubuntu-latest
+    if: ${{ needs.new-version.result == 'success' && needs.new-version.outputs.validVersion == 'True' && needs.invoke-api-tests.result == 'success' }}
+    needs:
+      - invoke-api-tests
       - new-version
 
     env:
       buildVersion: ${{ needs.new-version.outputs.buildVersion }}
-      projectName: 'G4.UnitTests'
-      projectType: 'csproj'
-    
+
     steps:
-      - name: Checkout repository
+      - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Run Unit Tests
-        uses: g4-api/g4-github-actions/actions/test-dotnet-project@v1
+      - name: Log in to Docker Hub
+        run:  echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+
+      - name: Build Docker Image
+        run: docker build -f ./docker/G4.Services.Hub.Dockerfile -t g4api/g4-hub:latest -t g4api/g4-hub:${{ env.buildVersion }} .
+
+      - name: Push Docker Image 'latest'
+        run: docker push g4api/g4-hub:latest
+
+      - name: Push Docker Image '${{ env.buildVersion }}'
+        run: docker push g4api/g4-hub:${{ env.buildVersion }}
+
+  publish-hub-standalone:
+    name: Publish Standalone Hub Service
+    runs-on: ubuntu-latest
+    if: ${{ needs.new-version.result == 'success' && needs.new-version.outputs.validVersion == 'True' && needs.invoke-api-tests.result == 'success' }}
+    needs:
+      - invoke-api-tests
+      - new-version
+
+    env:
+      buildVersion: ${{ needs.new-version.outputs.buildVersion }}
+
+    steps:
+      - name: Checkout Workflow Repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET Core SDK
+        uses: actions/setup-dotnet@v4
         with:
-          build_version: '${{ env.buildVersion }}'
-          project_name: '${{ env.projectName }}'
-          project_type: '${{ env.projectType }}'
-          filter: 'TestCategory=ExportData'
+          dotnet-version: 8
 
-  # invoke-api-tests:
-  #   name: G4™ API - Docker Deployment & Integration Tests
-  #   runs-on: ubuntu-latest
+      - name: Set Version v${{ env.buildVersion }}
+        shell: pwsh
+        run: |
+            $tempVersion = '"0000.00.00.0000"'
+            $version     = '"${{ env.buildVersion }}"'
 
-  #   steps:
-  #     - name: Checkout Workflow Repository
-  #       uses: actions/checkout@v4
+            Get-ChildItem -Path $searchDirectory -Filter "Program.cs" -Recurse | ForEach-Object {
+                $filePath = $_.FullName
+                $content = Get-Content -Path $filePath -Raw
+                $newContent = $content -replace [regex]::Escape($tempVersion), $version
+                Set-Content -Path $filePath -Value $newContent
+            }
 
-  #     - name: Build G4 Services Hub Docker Image
-  #       run: docker build -f ./docker/G4.Services.Hub.Dockerfile -t g4-services-hub .
-
-  #     - name: Run G4 Services Hub Docker Container
-  #       run: docker run --rm --network=host -d -p 9944:9944 --name g4-container g4-services-hub
-
-  #     - name: Verify Service Readiness
-  #       shell: pwsh
-  #       run: |
-  #         $url = "http://localhost:9944/api/v4/g4/ping"
-  #         $timeout = 15 # Timeout in seconds
-  #         $startTime = Get-Date
-
-  #         while ($true) {
-  #             try {
-  #                 # Send GET request and capture the status code
-  #                 $response = Invoke-WebRequest -Uri $url -UseBasicParsing -ErrorAction Stop
-  #                 $statusCode = $response.StatusCode
-  #             } catch {
-  #                 $statusCode = 0
-  #             }
-
-  #             # Break the loop if the status code is 200
-  #             if ($statusCode -eq 200) {
-  #                 Write-Host "Service is ready with status code 200!"
-  #                 break
-  #             }
-
-  #             # Check if the timeout has been reached
-  #             $elapsedTime = (Get-Date) - $startTime
-  #             if ($elapsedTime.TotalSeconds -ge $timeout) {
-  #                 Write-Host "Timeout reached. Service is not ready."
-  #                 exit 1
-  #             }
-
-  #             # Wait before retrying
-  #             Write-Host "Waiting for service to be ready... Status code: $statusCode"
-  #             Start-Sleep -Seconds 1
-  #         }
-
-  #     - name: Checkout Target Repository
-  #       uses: actions/checkout@v4
-  #       with:
-  #         repository: g4-api/g4-external-python
-  #         ref: main
-
-  #     - name: Build Flask API Docker Image
-  #       run: docker build -t flask-service ./src
-
-  #     - name: Run Flask API Docker Container
-  #       run: docker run --rm --network=host -d -p 9999:9999 --name flask-container flask-service
-
-  #     - name: Verify Service Readiness
-  #       shell: pwsh
-  #       run: |
-  #         $url = "http://localhost:9999/api/v4/g4/plugins"
-  #         $timeout = 15 # Timeout in seconds
-  #         $startTime = Get-Date
-
-  #         while ($true) {
-  #             try {
-  #                 # Send GET request and capture the status code
-  #                 $response = Invoke-WebRequest -Uri $url -UseBasicParsing -ErrorAction Stop
-  #                 $statusCode = $response.StatusCode
-  #             } catch {
-  #                 $statusCode = 0
-  #             }
-
-  #             # Break the loop if the status code is 200
-  #             if ($statusCode -eq 200) {
-  #                 Write-Host "Service is ready with status code 200!"
-  #                 break
-  #             }
-
-  #             # Check if the timeout has been reached
-  #             $elapsedTime = (Get-Date) - $startTime
-  #             if ($elapsedTime.TotalSeconds -ge $timeout) {
-  #                 Write-Host "Timeout reached. Service is not ready."
-  #                 exit 1
-  #             }
-
-  #             # Wait before retrying
-  #             Write-Host "Waiting for service to be ready... Status code: $statusCode"
-  #             Start-Sleep -Seconds 1
-  #         }
-
-  #     - name: Checkout Workflow Repository
-  #       uses: actions/checkout@v4
-
-  #     - name: Set Up Node.js Environment
-  #       uses: actions/setup-node@v4
-  #       with:
-  #         node-version: '16'
-
-  #     - name: Install Newman
-  #       run: npm install -g newman
-
-  #     - name: Replace Tokens in Collection
-  #       shell: pwsh
-  #       env:
-  #         G4_ENDPOINT: http://localhost:9944/api/v4/g4
-  #         G4_EXTERNAL_ENDPOINT: http://localhost:9999
-  #         G4_USERNAME: ${{ secrets.G4_API_KEY }}
-  #         GRID_ENDPOINT: ${{ secrets.GRID_ENDPOINT }}
-
-  #       run: |
-  #         # Define the collection file path
-  #         $collectionFile = "./postman/G4.Services.json"
-
-  #         # Read the file content
-  #         $content = Get-Content $collectionFile
-
-  #         # Replace placeholders with secrets
-  #         $content = $content -replace '\$\(G4\.Endpoint\)', "$env:G4_ENDPOINT"
-  #         $content = $content -replace '\$\(G4\.Username\)', "$env:G4_USERNAME"
-  #         $content = $content -replace '\$\(G4\.ExternalEndpoint\)', "$env:G4_EXTERNAL_ENDPOINT"
-  #         $content = $content -replace '\$\(Grid\.Endpoint\)', "$env:GRID_ENDPOINT"
-
-  #         # Write the updated content back to the file
-  #         Set-Content -Path $collectionFile -Value $content
-
-  #     - name: Run Postman Collection
-  #       run: |
-  #         newman run ./postman/G4.Services.json \
-  #           --delay-request 500 \
-  #           --reporters cli,junit \
-  #           --reporter-junit-export ./test-results.xml
-
-  #     - name: Upload a Build Artifact
-  #       uses: actions/upload-artifact@v4
-  #       with:
-  #         name: postman-test-results
-  #         path: "./test-results.xml"
-
-  #     - name: Publish Test Results
-  #       uses: EnricoMi/publish-unit-test-result-action@v2
-  #       if: always()
-  #       with:
-  #         check_name: G4™ API - Integration Tests Results
-  #         files: |
-  #           test-results.xml
-
-  # publish-hub-docker:
-  #   name: Publish Hub Docker Images
-  #   runs-on: ubuntu-latest
-  #   if: ${{ needs.new-version.result == 'success' && needs.new-version.outputs.validVersion == 'True' && needs.invoke-api-tests.result == 'success' }}
-  #   needs:
-  #     - invoke-api-tests
-  #     - new-version
-
-  #   env:
-  #     buildVersion: ${{ needs.new-version.outputs.buildVersion }}
-
-  #   steps:
-  #     - name: Checkout Code
-  #       uses: actions/checkout@v4
-
-  #     - name: Log in to Docker Hub
-  #       run:  echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
-
-  #     - name: Build Docker Image
-  #       run: docker build -f ./docker/G4.Services.Hub.Dockerfile -t g4api/g4-hub:latest -t g4api/g4-hub:${{ env.buildVersion }} .
-
-  #     - name: Push Docker Image 'latest'
-  #       run: docker push g4api/g4-hub:latest
-
-  #     - name: Push Docker Image '${{ env.buildVersion }}'
-  #       run: docker push g4api/g4-hub:${{ env.buildVersion }}
-
-  # publish-hub-standalone:
-  #   name: Publish Standalone Hub Service
-  #   runs-on: ubuntu-latest
-  #   if: ${{ needs.new-version.result == 'success' && needs.new-version.outputs.validVersion == 'True' && needs.invoke-api-tests.result == 'success' }}
-  #   needs:
-  #     - invoke-api-tests
-  #     - new-version
-
-  #   env:
-  #     buildVersion: ${{ needs.new-version.outputs.buildVersion }}
-
-  #   steps:
-  #     - name: Checkout Workflow Repository
-  #       uses: actions/checkout@v4
-
-  #     - name: Setup .NET Core SDK
-  #       uses: actions/setup-dotnet@v4
-  #       with:
-  #         dotnet-version: 8
-
-  #     - name: Set Version v${{ env.buildVersion }}
-  #       shell: pwsh
-  #       run: |
-  #           $tempVersion = '"0000.00.00.0000"'
-  #           $version     = '"${{ env.buildVersion }}"'
-
-  #           Get-ChildItem -Path $searchDirectory -Filter "Program.cs" -Recurse | ForEach-Object {
-  #               $filePath = $_.FullName
-  #               $content = Get-Content -Path $filePath -Raw
-  #               $newContent = $content -replace [regex]::Escape($tempVersion), $version
-  #               Set-Content -Path $filePath -Value $newContent
-  #           }
-
-  #     - name: Publish
-  #       shell: pwsh
-  #       run: dotnet publish ./src/G4.Services.Hub/G4.Services.Hub.csproj -o ${{ env.artifactPublishDirectory }} -c Release
+      - name: Publish
+        shell: pwsh
+        run: dotnet publish ./src/G4.Services.Hub/G4.Services.Hub.csproj -o ${{ env.artifactPublishDirectory }} -c Release
   
-  #     - name: Create Build Artifact
-  #       shell: pwsh
-  #       run: |
-  #         New-Item -Path "${{ env.artifactStagingDirectory }}" -ItemType Directory
-  #         Compress-Archive `
-  #             -Path ${{ env.artifactPublishDirectory }}/* `
-  #             -DestinationPath ${{ env.artifactStagingDirectory }}/g4-hub.v${{ env.buildVersion }}-win-linux-osx-x64.zip
+      - name: Create Build Artifact
+        shell: pwsh
+        run: |
+          New-Item -Path "${{ env.artifactStagingDirectory }}" -ItemType Directory
+          Compress-Archive `
+              -Path ${{ env.artifactPublishDirectory }}/* `
+              -DestinationPath ${{ env.artifactStagingDirectory }}/g4-hub.v${{ env.buildVersion }}-win-linux-osx-x64.zip
   
-  #     - name: Upload a Build Artifact
-  #       uses: actions/upload-artifact@v4
-  #       with:
-  #         name: g4-hub
-  #         path: ${{ env.artifactStagingDirectory }}/*.zip
+      - name: Upload a Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: g4-hub
+          path: ${{ env.artifactStagingDirectory }}/*.zip
   
-  # new-release:
-  #   name: New GitHub Release Version ${{ needs.new-version.outputs.buildVersion }}
-  #   runs-on: ubuntu-latest
-  #   if: ${{ needs.new-version.result == 'success' && needs.new-version.outputs.validVersion == 'True' && needs.invoke-api-tests.result == 'success' }}
-  #   needs:
-  #     - invoke-api-tests
-  #     - new-version
-  #     - publish-hub-standalone
+  new-release:
+    name: New GitHub Release Version ${{ needs.new-version.outputs.buildVersion }}
+    runs-on: ubuntu-latest
+    if: ${{ needs.new-version.result == 'success' && needs.new-version.outputs.validVersion == 'True' && needs.invoke-api-tests.result == 'success' }}
+    needs:
+      - invoke-api-tests
+      - new-version
+      - publish-hub-standalone
 
-  #   env:
-  #     buildVersion: ${{ needs.new-version.outputs.buildVersion }}
+    env:
+      buildVersion: ${{ needs.new-version.outputs.buildVersion }}
 
-  #   steps:
-  #   - name: Checkout repository
-  #     uses: actions/checkout@v4
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
 
-  #   - name: Download Build Artifacts
-  #     uses: actions/download-artifact@v4
-  #     with:
-  #       name: g4-hub
+    - name: Download Build Artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: g4-hub
 
-  #   - name: Create GitHub Release & Tag v${{ env.buildVersion }}
-  #     uses: softprops/action-gh-release@v2
-  #     with:
-  #       files: ./*.zip
-  #       tag_name: v${{ env.buildVersion }}
-  #       name: ${{ env.artifactType }} v${{ env.buildVersion }}
-  #       generate_release_notes: true
+    - name: Create GitHub Release & Tag v${{ env.buildVersion }}
+      uses: softprops/action-gh-release@v2
+      with:
+        files: ./*.zip
+        tag_name: v${{ env.buildVersion }}
+        name: ${{ env.artifactType }} v${{ env.buildVersion }}
+        generate_release_notes: true
 
-  #     env:
-  #       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
