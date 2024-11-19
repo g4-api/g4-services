@@ -64,8 +64,8 @@ jobs:
       - name: Verify Service Readiness
         shell: pwsh
         run: |
-          $url = "http://localhost:9944/api/v4/g4/ping"
-          $timeout = 15 # Timeout in seconds
+          $url       = "http://localhost:9944/api/v4/g4/ping"
+          $timeout   = 15 # Timeout in seconds
           $startTime = Get-Date
 
           while ($true) {
@@ -110,8 +110,8 @@ jobs:
       - name: Verify Service Readiness
         shell: pwsh
         run: |
-          $url = "http://localhost:9999/api/v4/g4/plugins"
-          $timeout = 15 # Timeout in seconds
+          $url       = "http://localhost:9999/api/v4/g4/plugins"
+          $timeout   = 15 # Timeout in seconds
           $startTime = Get-Date
 
           while ($true) {
@@ -142,6 +142,7 @@ jobs:
           }
 
       - name: Run Selenoid Docker Container
+        shell: pwsh
         run: |
             $dockerComposeContent = @"
             services:
@@ -154,7 +155,7 @@ jobs:
                   - '/var/run/docker.sock:/var/run/docker.sock'
                   - '$PWD/config/:/etc/selenoid/:ro'
                 command: ['-limit', '5']
-            "@
+            "@.Trim()
 
             $browsersJsonContent = @"
             {
@@ -168,7 +169,7 @@ jobs:
                 }
               }
             }
-            "@
+            "@.Trim()
 
             # Create the docker-compose.yml file
             Set-Content -Path "./docker-compose.yml" -Value $dockerComposeContent -Encoding UTF8
@@ -191,7 +192,7 @@ jobs:
 
             # Check if the service is ready
             $url       = "http://localhost:4444/wd/hub/status"
-            $timeout   = 15 # Timeout in seconds
+            $timeout   = 15
             $startTime = Get-Date
 
             while ($true) {
