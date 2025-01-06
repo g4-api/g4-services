@@ -26,7 +26,10 @@ namespace G4.Services.Hub.Api.V4.Controllers
             summary: "Invokes an automation session.",
             description: "Triggers the invocation of an automation session based on the provided automation model. The result includes detailed information about the entire automation run, returned in JSON format.",
             Tags = ["Automation"])]
-        [SwaggerResponse(StatusCodes.Status200OK, description: "Successfully invoked the automation session. Returns a dictionary containing detailed information about the automation run.", type: typeof(IDictionary<string, G4AutomationResponseModel>), contentTypes: MediaTypeNames.Application.Json)]
+        [SwaggerResponse(StatusCodes.Status200OK,
+            description: "Successfully invoked the automation session. Returns a dictionary containing detailed information about the automation run.",
+            type: typeof(IDictionary<string, G4AutomationResponseModel>),
+            contentTypes: MediaTypeNames.Application.Json)]
         public IActionResult Post([FromBody] G4AutomationModel automation)
         {
             // Invoke the automation session using the provided automation model.
@@ -42,7 +45,10 @@ namespace G4.Services.Hub.Api.V4.Controllers
             summary: "Initializes an automation request.",
             description: "Configures and prepares an automation request by setting up all necessary references and action connections in the provided model. The result is an initialized `G4AutomationModel` that is fully configured and ready for invocation.",
             Tags = ["Automation"])]
-        [SwaggerResponse(StatusCodes.Status200OK, description: "Successfully initialized the automation request. Returns the initialized `G4AutomationModel`, ready for invocation.", type: typeof(G4AutomationModel), contentTypes: MediaTypeNames.Application.Json)]
+        [SwaggerResponse(StatusCodes.Status200OK,
+            description: "Successfully initialized the automation request. Returns the initialized `G4AutomationModel`, ready for invocation.",
+            type: typeof(G4AutomationModel),
+            contentTypes: MediaTypeNames.Application.Json)]
         public IActionResult Initialize([FromBody] G4AutomationModel automation)
         {
             // Initialize the automation request, setting up references and action connections.
@@ -50,6 +56,25 @@ namespace G4.Services.Hub.Api.V4.Controllers
 
             // Return a 200 OK response with the initialized G4AutomationModel ready for invocation.
             return Ok(response);
+        }
+
+        [HttpPost]
+        [Route("resolve")]
+        [SwaggerOperation(
+            summary: "Resolves macros in the provided G4AutomationModel.",
+            description: "Scans and resolves macros for all rules in the G4AutomationModel, returning a list of G4RuleModelBase objects with macros resolved.",
+            Tags = ["Automation"])]
+        [SwaggerResponse(StatusCodes.Status200OK,
+            description: "Successfully resolved macros. Returns a list of G4RuleModelBase objects with macros resolved.",
+            type: typeof(IEnumerable<G4RuleModelBase>),
+            contentTypes: [MediaTypeNames.Application.Json])]
+        public IActionResult Resolve([FromBody] G4AutomationModel automation)
+        {
+            // Call the extension method to resolve macros for all rules in the provided automation model.
+            var resolvedRules = automation.ResolveMacros();
+
+            // Return a 200 OK response with the resolved rules.
+            return Ok(resolvedRules);
         }
     }
 }
