@@ -1,6 +1,8 @@
 ﻿using G4.Api;
 using G4.Cache;
+using G4.Services.Domain.V4.Hubs;
 
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 
 using System.Text.Json;
@@ -31,5 +33,7 @@ namespace G4.Services.Domain.V4
         /// Gets or sets the logger used for logging within the domain.
         /// </summary>
         ILogger Logger { get; set; }
+
+        public IHubContext<G4AutomationNotificationsHub> NotificationsHubContext { get; set; }
     }
 }
