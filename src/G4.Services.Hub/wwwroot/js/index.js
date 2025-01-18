@@ -710,18 +710,23 @@ async function initializeDesigner() {
 	_designer = sequentialWorkflowDesigner.Designer.create(designerHtmlElement, startDefinition, configuration);
 
 	// Listen for the "ReceiveAutomationEvent" message from the server
+	const excludedTypes = ["AUTOMATION", "ASSERTION", "OPERATOR"];
 	_connection.on("ReceiveAutomationStartEvent", (message) => {
-		if (message.type === "Automation") {
+		if (excludedTypes.includes(message.type.toUpperCase())) {
 			return;
 		}
 
-		// Select the step in the designer by its ID.
-		_designer.selectStepById(message.id);
+		//try {
+		//	// Select the step in the designer by its ID.
+		//	_designer.selectStepById(message.id);
 
-		// Adjust the viewport so the selected step is brought into view.
-		_designer.moveViewportToStep(message.id);
+		//	// Adjust the viewport so the selected step is brought into view.
+		//	_designer.moveViewportToStep(message.id);
+		//} catch {
+		//	// Do nothing on error, silent handling (no logging or actions)
+		//}
 
-        // Log the message to the console.
+		// Log the message to the console.
 		console.log(message);
 	});
 

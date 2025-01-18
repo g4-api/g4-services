@@ -201,11 +201,118 @@ class StateMachine {
 		const client = new G4Client();
 
 		// Instantiate a new automation object from the client
-		const automation = client.newAutomation(definition);
+		//const automation = client.newAutomation(definition);
 
-		var j = JSON.stringify(automation);
+		const automation = {
+			"authentication": {
+				"username": "pyhBifB6z1YxJv53xLip",
+				"password": ""
+			},
+			"driverParameters": {
+				"capabilities": {
+					"alwaysMatch": {},
+					"firstMatch": [
+						{}
+					]
+				},
+				"driver": "MicrosoftEdgeDriver",
+				"driverBinaries": "E:\\\\Binaries\\\\Automation\\\\WebDrivers"
+			},
+			"settings": {
+				"automationSettings": {
+					"loadTimeout": 60000,
+					"maxParallel": 1,
+					"returnStructuredResponse": false,
+					"searchTimeout": 15000
+				},
+				"environmentSettings": {
+					"defaultEnvironment": "SystemParameters",
+					"returnEnvironment": false
+				},
+				"screenshotsSettings": {
+					"outputFolder": ".",
+					"convertToBase64": false,
+					"exceptionsOnly": false,
+					"returnScreenshots": false
+				}
+			},
+			"stages": [
+				{
+					"reference": {
+						"description": "\\n        A container that holds jobs, each comprising specific actions, to structure and manage the sequential automation flow.\\n        Stages organize tasks into logical groups, enabling efficient execution, resource allocation, monitoring, and error handling within the automation sequence.",
+						"id": "425c9562fc7f3",
+						"name": "G4™ Default Stage"
+					},
+					"jobs": [
+						{
+							"reference": {
+								"description": "",
+								"id": "ef0c8f374d3d3",
+								"name": "G4™ Default Job"
+							},
+							"rules": [
+								{
+									"$type": "Action",
+									"pluginName": "OpenUrl",
+									"reference": {
+										"id": "768fd86f995bcab0d7f9a27797998117"
+									},
+									"argument": "https://sroei.github.io/html-test-pages/search",
+									"locator": "Xpath",
+									"onAttribute": "",
+									"onElement": "",
+									"regularExpression": ""
+								},
+								{
+									"$type": "Action",
+									"pluginName": "InvokeWhileLoop",
+									"reference": {
+										"id": "0dcd870490927249522cc5c32af9bba7"
+									},
+									"argument": "{{$ --condition:ElementEnabled}}",
+									"locator": "Xpath",
+									"onAttribute": "",
+									"onElement": " //button[.='Next']",
+									"rules": [
+										{
+											"$type": "Action",
+											"pluginName": "InvokeClick",
+											"argument": "{{$ --polling: 1500}}",
+											"locator": "Xpath",
+											"onElement": " //button[.='Next']",
+											"rules": [],
+											"reference": {
+												"id": "0c55f062cf165d63e3b58d3df69c84a5"
+											}
+										},
+										{
+											"$type": "Action",
+											"pluginName": "WriteLog",
+											"argument": "Foo Bar",
+											"rules": [],
+											"reference": {
+												"id": "cd5bd7b5033dc"
+											}
+										}
+									]
+								},
+								{
+									"$type": "Action",
+									"pluginName": "CloseBrowser",
+									"reference": {
+										"id": "ccb643759850f76be1a4ee13b007340e"
+									},
+									"argument": ""
+								}
+							]
+						}
+					]
+				}
+			]
+		}
 
-        // Invoke the "StartAutomation" method on the server with the automation object as the argument
+		// Invoke the "StartAutomation" method on the server with the automation object as the argument
+		//await client.invokeAutomation(automation);
 		_connection.invoke("StartAutomation", automation)
 	}
 }
@@ -609,7 +716,6 @@ class G4Client {
 
 		const rule = {
 			"$type": getRuleType(step),
-			"argument": formatParameters(step),
 			"pluginName": step.pluginName,
 			"reference": {
 				"id": step.id
@@ -627,6 +733,8 @@ class G4Client {
 			// Assign the property's value to the rule object using the camelCase key.
 			rule[propertyKey] = step.properties[key].value;
 		}
+
+		rule.argument = formatParameters(step);
 
 
 		if (!step.sequence || step.sequence.length === 0) {
