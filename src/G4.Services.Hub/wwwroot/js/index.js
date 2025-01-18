@@ -726,7 +726,7 @@ async function initializeDesigner() {
 	});
 
 	// Listen for the "ReceiveDefinitionCompleteEvent" message from the server
-	_connection.on("ReceiveDefinitionCompleteEvent", () => {
+	_connection.on("ReceiveDefinitionCompleteEvent", (_) => {
 		// Indicate that the automation is no longer running
 		_stateMachine.isRunning = false;
 

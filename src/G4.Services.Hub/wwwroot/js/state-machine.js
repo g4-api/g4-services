@@ -203,6 +203,8 @@ class StateMachine {
 		// Instantiate a new automation object from the client
 		const automation = client.newAutomation(definition);
 
+		var j = JSON.stringify(automation);
+
         // Invoke the "StartAutomation" method on the server with the automation object as the argument
 		_connection.invoke("StartAutomation", automation)
 	}
@@ -346,38 +348,32 @@ class StateMachineSteps {
 		}
 
 		// Check if the manifest has categories and determine if it is a condition or loop
-		const categories = manifest.categories ? manifest.categories.join("|").toUpperCase() : "";
-		let isCondition = categories.includes('CONDITION');
-		let isLoop = categories.includes('LOOP');
-		let isContainer = !isCondition && !isLoop && (categories.includes('CONTAINER') || manifest.properties.some(item => item.name.toUpperCase() === "RULES"));
+		const context = manifest.context?.integration?.sequentialWorkflow || {};
+		const componentType = context?.componentType?.toLowerCase() || "taks";
+		const iconProvider = context?.iconProvider?.toLowerCase() || "task";
+		const label = context?.label || convertPascalToSpaceCase(manifest.key);
+		const isCondition = componentType === "switch";
+		const isLoop = componentType === "loop";
+		const isContainer = componentType === "container";
 
 		// Initialize the new G4 step object
 		let step = {
-			componentType: "task",
+			componentType: componentType,
 		};
 
+		// TODO: Take branches for the manifest or initialize an empty branches collection - will be available on next api release.
 		// Check if the manifest is a condition and initialize the branches object
 		if (isCondition) {
-			step.componentType = 'switch';
-			step.type = 'if';
+			step.type = iconProvider;
 			step.branches = {
 				true: [],
 				false: []
 			};
 		}
 
-		// Check if the manifest is a loop and initialize the sequence array
-		if (isLoop) {
-			step.componentType = 'container';
-			step.type = 'loop';
-			step.sequence = [];
-		}
-
-		// Check if the manifest is a loop and initialize the sequence array
-		if (isContainer) {
-			step.componentType = 'container';
-			step.name = "Actions Group";
-			step.type = 'container';
+		// Check if the manifest is a loop or container and initialize the sequence array
+		if (isLoop || isContainer) {
+			step.type = iconProvider;
 			step.sequence = [];
 		}
 
@@ -385,13 +381,13 @@ class StateMachineSteps {
 		step.categories = manifest.categories ? manifest.categories.join("|").toUpperCase() : "";
 		step.description = manifest.summary ? manifest.summary.join('\n') : 'Description not provided.';
 		step.id = uid();
-		step.name = step.name === "Actions Group" ? step.name : convertPascalToSpaceCase(manifest.key);
+		step.name = label;
 		step.parameters = parameters;
 		step.pluginName = manifest.key;
 		step.aliases = manifest.aliases || [];
 		step.pluginType = manifest.pluginType;
 		step.properties = properties;
-		step.context = {};
+		step.context = context;
 
 		// Return the new G4 step object
 		return step;
@@ -486,6 +482,169 @@ class G4Client {
 		);
 	}
 
+	convertToRule(step) {
+		/**
+		 * Converts an array parameter into a formatted string of command-line arguments.
+		 *
+		 * @param {Object}        parameter         - The parameter object containing the name and value.
+		 * @param {string}        parameter.name    - The name of the parameter.
+		 * @param {Array<string>} [parameter.value] - An array of values for the parameter.
+		 * @returns {string} - A string of formatted command-line arguments. Returns an empty string if the value array is empty.
+		 *
+		 * @example
+		 * const param = { name: 'option', value: ['val1', 'val2'] };
+		 * const result = convertFromArray(param);
+		 * console.log(result); // "--option:val1 --option:val2"
+		 */
+		const convertFromArray = (parameter) => {
+			// Initialize parameter.value to an empty array if it is undefined or null.
+			parameter.value = parameter.value || [];
+
+			// Return an empty string if the value array is empty.
+			if (parameter.value.length === 0) {
+				return "";
+			}
+
+			// Extract the name property from the parameter object.
+			const name = parameter.name;
+
+			// Map each item in the value array to a formatted string and join them with spaces.
+			return parameter.value.map(item => `--${name}:${item}`).join(" ");
+		}
+
+		/**
+		 * Converts a dictionary parameter into a formatted string of command-line arguments.
+		 *
+		 * @param {Object} parameter - The parameter object containing the name and value.
+		 * @param {string} parameter.name - The name of the parameter.
+		 * @param {Object} [parameter.value] - An object representing key-value pairs for the parameter.
+		 * @returns {string} - A string of formatted command-line arguments. Returns an empty string if the value object is empty.
+		 *
+		 * @example
+		 * const param = { name: 'config', value: { host: 'localhost', port: '8080' } };
+		 * const result = convertFromDictionary(param);
+		 * console.log(result); // "--config:host=localhost --config:port=8080"
+		 */
+		const convertFromDictionary = (parameter) => {
+			// Initialize parameter.value to an empty object if it is undefined or null.
+			parameter.value = parameter.value || {};
+
+			// Extract the keys from the parameter value object.
+			const keys = Object.keys(parameter.value);
+
+			// Return an empty string if the value object has no keys.
+			if (keys.length === 0) {
+				return "";
+			}
+
+			// Extract the name property from the parameter object.
+			const name = parameter.name;
+
+			// Map each key-value pair to a formatted string and join them with spaces.
+			return keys.map(key => `--${name}:${key}=${parameter.value[key]}`).join(" ");
+		}
+
+		const formatParameters = (step) => {
+			// Initialize an array to hold formatted parameter strings.
+			let parameters = [];
+
+			// Initialize the parameter token as an empty string.
+			let parameterToken = '';
+
+			/**
+			 * Iterate over each parameter in the step's parameters object.
+			 * Format each parameter as "--key:value" and add it to the parameters array.
+			 */
+			for (const key in step.parameters) {
+				// Extract the parameter type from the step's parameters object.
+				const parameterType = step.parameters[key].type.toUpperCase();
+
+				// Check if the parameter has a value and is not an empty string.
+				const value = step.parameters[key].value;
+				const isArray = value && parameterType === 'ARRAY';
+				const isDictionary = value && (parameterType === 'DICTIONARY' || parameterType === 'KEY/VALUE' || parameterType === 'OBJECT');
+				const isBoolean = parameterType === 'SWITCH';
+				const isValue = !isDictionary && !isArray && value && value.length > 0;
+
+				// Construct the parameter token based on the parameter type and value.
+				if (isBoolean && isValue) {
+					parameterToken = `--${key}`;
+				}
+				else if (isValue) {
+					parameterToken = `--${key}:${value}`;
+				}
+				else if (isArray) {
+					parameterToken = convertFromArray(step.parameters[key]);
+				}
+				else if (isDictionary) {
+					parameterToken = convertFromDictionary(step.parameters[key]);
+				}
+				else if (!parameterToken || parameterToken === "") {
+					continue;
+				}
+				else {
+					continue;
+				}
+
+				// Add the formatted parameter token to the parameters array.
+				parameters.push(`${parameterToken}`);
+			}
+
+			/**
+			 * If there are any parameters, concatenate them into a single string
+			 * and assign it to the rule's "argument" field in the specified format.
+			 */
+            return parameters.length > 0 ? `{{$ ${parameters.join(" ")}}}` : "";
+		}
+
+		const getRuleType = (step) => {
+			const keys = Object.keys(step.context);
+			let type = keys.includes("$type") ? step.context["$type"] : "Action";
+			if (step.context.model) {
+				type = step.context.model.replace("RuleModel", "");
+			}
+
+			return type;
+		}
+
+		const rule = {
+			"$type": getRuleType(step),
+			"argument": formatParameters(step),
+			"pluginName": step.pluginName,
+			"reference": {
+				"id": step.id
+			}
+		}
+
+		/**
+		 * Iterate over each property in the step's properties object.
+		 * Convert the property key to camelCase and assign its value to the rule object.
+		 */
+		for (const key in step.properties) {
+			// Convert the property key from its original format to camelCase.
+			const propertyKey = convertToCamelCase(key);
+
+			// Assign the property's value to the rule object using the camelCase key.
+			rule[propertyKey] = step.properties[key].value;
+		}
+
+
+		if (!step.sequence || step.sequence.length === 0) {
+			return rule;
+		}
+
+		const rules = []
+
+		for (const s of step.sequence) {
+			const rule = this.convert(s);
+            rules.push(rule);
+		}
+
+        rule.rules = rules;
+
+		return rule;
+	}
+
     // TODO: refactor to convert into a rule object
 	/**
 	 * Converts a step object into a rule object for the G4 Automation Sequence.
@@ -525,7 +684,7 @@ class G4Client {
 	 * //   "argument": "{{$ --param1:value1 --param2:value2}}"
 	 * // }
 	 */
-	convertToRule(step) {
+	convert(step) {
 		/**
 		 * Converts an array parameter into a formatted string of command-line arguments.
 		 *

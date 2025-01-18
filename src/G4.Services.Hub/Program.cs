@@ -1,5 +1,3 @@
-using Enc;
-
 using G4.Converters;
 using G4.Services.Domain.V4;
 using G4.Services.Domain.V4.Extensions;
