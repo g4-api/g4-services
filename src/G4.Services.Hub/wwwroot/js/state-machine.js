@@ -95,18 +95,8 @@ function convertToPascalCase(str) {
 class StateMachine {
 	isInterrupted = false;
 
-	constructor(definition, handler) {
+	constructor(definition) {
 		this.definition = definition;
-		this.speed = definition.properties["speed"];
-		this.handler = handler;
-		this.data = {};
-		this.callstack = [
-			{
-				sequence: this.definition.sequence,
-				index: 0,
-				unwind: null
-			}
-		];
 		this.isRunning = false;
 	}
 
@@ -494,6 +484,32 @@ class G4Client {
 	 * @returns {Object} A rule object derived from the given step configuration.
 	 */
 	convertToRule(step) {
+		const convertConditionRuleModel = (step) => {
+			const branches = Object.keys(step.branches);
+			const rules = [];
+			const negativeRules = [];
+
+			for (const branch of branches) {
+				const branchSteps = step.branches[branch];
+
+				for (const branchStep of branchSteps) {
+					const childRule = this.convertToRule(branchStep);
+
+					if (branch === "true") {
+						rules.push(childRule);
+					}
+					else if (branch === "false") {
+						negativeRules.push(childRule);
+					}
+				}
+			};
+
+			return {
+				rules,
+				negativeRules
+			}
+		};
+
 		/**
 		 * Converts an array parameter into a formatted string of command-line arguments.
 		 *
@@ -669,6 +685,21 @@ class G4Client {
 		// If parameters exist, set them on the rule's argument property.
 		if (parameters && parameters !== "") {
 			rule.argument = parameters;
+		}
+
+        // If the step context model is a condition rule model, convert the branches.
+		if (step.context.model.toUpperCase() === "CONDITIONRULEMODEL") {
+            // Convert the branches to rules and negativeRules.
+			const branches = convertConditionRuleModel(step);
+
+            // Assign the branches to the rule object.
+			rule.rules = branches.rules;
+
+            // Assign the negative branches to the rule object.
+			rule.negativeRules = branches.negativeRules;
+
+            // Return the rule object with the branches.
+			return rule;
 		}
 
 		// If there's no sequence in the step, we can return the rule here.
