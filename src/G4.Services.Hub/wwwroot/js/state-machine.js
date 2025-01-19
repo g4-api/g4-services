@@ -340,13 +340,13 @@ class StateMachineSteps {
 		const componentType = context?.componentType?.toLowerCase() || "taks";
 		const iconProvider = context?.iconProvider?.toLowerCase() || "task";
 		const label = context?.label || convertPascalToSpaceCase(manifest.key);
-		const isCondition = componentType === "switch";
+		const isCondition = componentType === "switch" && context?.model?.toLowerCase() === "conditionrulemodel";
 		const isLoop = componentType === "loop";
 		const isContainer = componentType === "container";
 
 		// Initialize the new G4 step object
 		let step = {
-			componentType: componentType,
+			componentType: componentType
 		};
 
 		// TODO: Take branches for the manifest or initialize an empty branches collection - will be available on next api release.
@@ -1125,6 +1125,9 @@ class G4Client {
 			return this.manifests;
 		}
 
+        // Define the plugin types to include in the fetch request.
+		const includeTypes = ["ACTION", "CONTENT", "TRANSFORMER"];
+
 		try {
 			// Fetch the plugin manifests from the API.
 			const response = await fetch(this.manifestsUrl);
@@ -1139,7 +1142,7 @@ class G4Client {
 
 			// Filter only the plugins of type 'Action' and organize them into a dictionary by `key`.
 			this.manifests = data
-				.filter(item => item.pluginType === 'Action') // Include only 'Action' type plugins.
+				.filter(item => includeTypes.includes(item.pluginType.toUpperCase()))
 				.reduce((cache, manifest) => {
 					// Use the `key` field of the manifest as the dictionary key.
 					cache[manifest.key] = manifest;
