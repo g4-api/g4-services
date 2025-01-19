@@ -716,15 +716,11 @@ async function initializeDesigner() {
 			return;
 		}
 
-		//try {
-		//	// Select the step in the designer by its ID.
-		//	_designer.selectStepById(message.id);
+		// Select the step in the designer by its ID.
+		_designer.selectStepById(message.id);
 
-		//	// Adjust the viewport so the selected step is brought into view.
-		//	_designer.moveViewportToStep(message.id);
-		//} catch {
-		//	// Do nothing on error, silent handling (no logging or actions)
-		//}
+		// Adjust the viewport so the selected step is brought into view.
+		_designer.moveViewportToStep(message.id);
 
 		// Log the message to the console.
 		console.log(message);
