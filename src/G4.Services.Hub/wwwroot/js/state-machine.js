@@ -110,78 +110,78 @@ class StateMachine {
 		this.isRunning = false;
 	}
 
-	/**
-	 * Invokes a specific rule within a given session using automation rules.
-	 *
-	 * This asynchronous static method performs the following actions:
-	 * 1. Converts the provided `step` object into a rule using the `client.convertToRule` method.
-	 * 2. Assigns the generated rule to the first job of the first stage in the `automation` configuration.
-	 * 3. Sets the driver parameters based on the provided `session`. If `session` is undefined, existing driver parameters are retained.
-	 * 4. Invokes the automation process asynchronously using `client.invokeAutomation` and awaits the result.
-	 * 5. Extracts the new session identifier from the automation result for further processing.
-	 * 6. Returns an object containing the new session identifier and the full automation result.
-	 *
-	 * @param {Object}  client             - The client instance with `convertToRule` and `invokeAutomation` methods.
-	 * @param {Object}  options            - Configuration options for invoking the rule.
-	 * @param {string} [options.session]   - The current session identifier. If undefined, existing driver parameters are retained.
-	 * @param {Object}  options.step       - The step object to be invoked, containing necessary details for rule conversion.
-	 * @param {Object} [options.rule]      - The rule object to be invoked directly, bypassing the conversion from `step`.
-	 * @param {Object}  options.automation - The automation configuration object to be modified and used for invocation.
-	 *
-	 * @returns {Promise<{ session: string, automationResult: Object }>} 
-	 *          A promise that resolves to an object containing the new session identifier and the automation result after successfully invoking the rule.
-	 *
-	 * @throws {Error} Throws an error if the automation invocation fails or if the expected structure is not present in the result.
-	 */
-	static async invokeStep(client, options) {
-		// Convert the provided step object into a rule using the client's utility method.
-		const rule = options.rule ? options.rule : client.convertToRule(options.step);
+	///**
+	// * Invokes a specific rule within a given session using automation rules.
+	// *
+	// * This asynchronous static method performs the following actions:
+	// * 1. Converts the provided `step` object into a rule using the `client.convertToRule` method.
+	// * 2. Assigns the generated rule to the first job of the first stage in the `automation` configuration.
+	// * 3. Sets the driver parameters based on the provided `session`. If `session` is undefined, existing driver parameters are retained.
+	// * 4. Invokes the automation process asynchronously using `client.invokeAutomation` and awaits the result.
+	// * 5. Extracts the new session identifier from the automation result for further processing.
+	// * 6. Returns an object containing the new session identifier and the full automation result.
+	// *
+	// * @param {Object}  client             - The client instance with `convertToRule` and `invokeAutomation` methods.
+	// * @param {Object}  options            - Configuration options for invoking the rule.
+	// * @param {string} [options.session]   - The current session identifier. If undefined, existing driver parameters are retained.
+	// * @param {Object}  options.step       - The step object to be invoked, containing necessary details for rule conversion.
+	// * @param {Object} [options.rule]      - The rule object to be invoked directly, bypassing the conversion from `step`.
+	// * @param {Object}  options.automation - The automation configuration object to be modified and used for invocation.
+	// *
+	// * @returns {Promise<{ session: string, automationResult: Object }>} 
+	// *          A promise that resolves to an object containing the new session identifier and the automation result after successfully invoking the rule.
+	// *
+	// * @throws {Error} Throws an error if the automation invocation fails or if the expected structure is not present in the result.
+	// */
+	//static async invokeStep(client, options) {
+	//	// Convert the provided step object into a rule using the client's utility method.
+	//	const rule = options.rule ? options.rule : client.convertToRule(options.step);
 
-		// Exclude certain step types from being directly invoked as rules.
-		const excludeStepTypes = ['STAGE', 'JOB', 'LOOP', 'IF', 'CONTAINER'];
-		if (excludeStepTypes.includes(options.step.type?.toUpperCase())) {
-			return;
-		}
+	//	// Exclude certain step types from being directly invoked as rules.
+	//	const excludeStepTypes = ['STAGE', 'JOB', 'LOOP', 'IF', 'CONTAINER'];
+	//	if (excludeStepTypes.includes(options.step.type?.toUpperCase())) {
+	//		return;
+	//	}
 
-		// Create an array of rules, currently containing only the converted rule.
-		const rules = [rule];
+	//	// Create an array of rules, currently containing only the converted rule.
+	//	const rules = [rule];
 
-		// Assign the generated rules to the first job of the first stage in the automation configuration.
-		// Assumes that the automation configuration has at least one stage and one job.
-		options.automation.stages[0].jobs[0].rules = rules;
+	//	// Assign the generated rules to the first job of the first stage in the automation configuration.
+	//	// Assumes that the automation configuration has at least one stage and one job.
+	//	options.automation.stages[0].jobs[0].rules = rules;
 
-		// Update the driver parameters based on the provided session.
-		// If `session` is undefined, retain the existing driver parameters.
-		// Otherwise, set the driver to reference the new session ID.
-		options.automation.driverParameters = options.session === undefined
-			? options.automation.driverParameters
-			: { driver: `Id(${options.session})` };
+	//	// Update the driver parameters based on the provided session.
+	//	// If `session` is undefined, retain the existing driver parameters.
+	//	// Otherwise, set the driver to reference the new session ID.
+	//	options.automation.driverParameters = options.session === undefined
+	//		? options.automation.driverParameters
+	//		: { driver: `Id(${options.session})` };
 
-		try {
-			// Invoke the automation process asynchronously and wait for the result.
-			const automationResult = await client.invokeAutomation(options.automation);
+	//	try {
+	//		// Invoke the automation process asynchronously and wait for the result.
+	//		const automationResult = await client.invokeAutomation(options.automation);
 
-			// Extract the first key from the automation result object.
-			// This key typically represents the main response or a specific response type.
-			const responseKey = Object.keys(automationResult)[0];
+	//		// Extract the first key from the automation result object.
+	//		// This key typically represents the main response or a specific response type.
+	//		const responseKey = Object.keys(automationResult)[0];
 
-			// Extract the first session ID from the sessions object within the response.
-			// This assumes that there is at least one session present in the response.
-			options.session = Object.keys(automationResult[responseKey].sessions)[0];
+	//		// Extract the first session ID from the sessions object within the response.
+	//		// This assumes that there is at least one session present in the response.
+	//		options.session = Object.keys(automationResult[responseKey].sessions)[0];
 
-			// Return an object containing the new session ID and the full automation result.
-			return {
-				session: options.session,
-				automationResult
-			};
-		} catch (error) {
-			// Handle any errors that occur during the automation invocation.
-			console.error('Automation invocation failed:', error);
+	//		// Return an object containing the new session ID and the full automation result.
+	//		return {
+	//			session: options.session,
+	//			automationResult
+	//		};
+	//	} catch (error) {
+	//		// Handle any errors that occur during the automation invocation.
+	//		console.error('Automation invocation failed:', error);
 
-			// Rethrow the error after logging to allow further handling upstream.
-			throw error;
-		}
-	}
+	//		// Rethrow the error after logging to allow further handling upstream.
+	//		throw error;
+	//	}
+	//}
 
 	/**
 	 * Initiates the automation process.
@@ -201,118 +201,9 @@ class StateMachine {
 		const client = new G4Client();
 
 		// Instantiate a new automation object from the client
-		//const automation = client.newAutomation(definition);
+		const automation = client.newAutomation(definition);
 
-		const automation = {
-			"authentication": {
-				"username": "pyhBifB6z1YxJv53xLip",
-				"password": ""
-			},
-			"driverParameters": {
-				"capabilities": {
-					"alwaysMatch": {},
-					"firstMatch": [
-						{}
-					]
-				},
-				"driver": "MicrosoftEdgeDriver",
-				"driverBinaries": "E:\\\\Binaries\\\\Automation\\\\WebDrivers"
-			},
-			"settings": {
-				"automationSettings": {
-					"loadTimeout": 60000,
-					"maxParallel": 1,
-					"returnStructuredResponse": false,
-					"searchTimeout": 15000
-				},
-				"environmentSettings": {
-					"defaultEnvironment": "SystemParameters",
-					"returnEnvironment": false
-				},
-				"screenshotsSettings": {
-					"outputFolder": ".",
-					"convertToBase64": false,
-					"exceptionsOnly": false,
-					"returnScreenshots": false
-				}
-			},
-			"stages": [
-				{
-					"reference": {
-						"description": "\\n        A container that holds jobs, each comprising specific actions, to structure and manage the sequential automation flow.\\n        Stages organize tasks into logical groups, enabling efficient execution, resource allocation, monitoring, and error handling within the automation sequence.",
-						"id": "425c9562fc7f3",
-						"name": "G4™ Default Stage"
-					},
-					"jobs": [
-						{
-							"reference": {
-								"description": "",
-								"id": "ef0c8f374d3d3",
-								"name": "G4™ Default Job"
-							},
-							"rules": [
-								{
-									"$type": "Action",
-									"pluginName": "OpenUrl",
-									"reference": {
-										"id": "768fd86f995bcab0d7f9a27797998117"
-									},
-									"argument": "https://sroei.github.io/html-test-pages/search",
-									"locator": "Xpath",
-									"onAttribute": "",
-									"onElement": "",
-									"regularExpression": ""
-								},
-								{
-									"$type": "Action",
-									"pluginName": "InvokeWhileLoop",
-									"reference": {
-										"id": "0dcd870490927249522cc5c32af9bba7"
-									},
-									"argument": "{{$ --condition:ElementEnabled}}",
-									"locator": "Xpath",
-									"onAttribute": "",
-									"onElement": " //button[.='Next']",
-									"rules": [
-										{
-											"$type": "Action",
-											"pluginName": "InvokeClick",
-											"argument": "{{$ --polling: 1500}}",
-											"locator": "Xpath",
-											"onElement": " //button[.='Next']",
-											"rules": [],
-											"reference": {
-												"id": "0c55f062cf165d63e3b58d3df69c84a5"
-											}
-										},
-										{
-											"$type": "Action",
-											"pluginName": "WriteLog",
-											"argument": "Foo Bar",
-											"rules": [],
-											"reference": {
-												"id": "cd5bd7b5033dc"
-											}
-										}
-									]
-								},
-								{
-									"$type": "Action",
-									"pluginName": "CloseBrowser",
-									"reference": {
-										"id": "ccb643759850f76be1a4ee13b007340e"
-									},
-									"argument": ""
-								}
-							]
-						}
-					]
-				}
-			]
-		}
-
-		// Invoke the "StartAutomation" method on the server with the automation object as the argument
-		//await client.invokeAutomation(automation);
+        // Start the automation process by invoking the first step
 		_connection.invoke("StartAutomation", automation)
 	}
 }
@@ -589,6 +480,19 @@ class G4Client {
 		);
 	}
 
+	/**
+	 * Converts a step configuration object into a rule object.
+	 * 
+	 * @param {Object} step            - The step object containing all necessary details.
+	 * @param {Object} step.context    - An object containing context details, such as $type or model.
+	 * @param {string} step.pluginName - The name of the plugin associated with this step.
+	 * @param {string} step.id         - A unique identifier for this step.
+	 * @param {Object} step.properties - Key-value pairs of property definitions.
+	 * @param {Object} step.parameters - Key-value pairs describing parameters and their types.
+	 * @param {Array}  step.sequence   - An array of nested steps (if any).
+	 * 
+	 * @returns {Object} A rule object derived from the given step configuration.
+	 */
 	convertToRule(step) {
 		/**
 		 * Converts an array parameter into a formatted string of command-line arguments.
@@ -596,124 +500,152 @@ class G4Client {
 		 * @param {Object}        parameter         - The parameter object containing the name and value.
 		 * @param {string}        parameter.name    - The name of the parameter.
 		 * @param {Array<string>} [parameter.value] - An array of values for the parameter.
+		 * 
 		 * @returns {string} - A string of formatted command-line arguments. Returns an empty string if the value array is empty.
-		 *
-		 * @example
-		 * const param = { name: 'option', value: ['val1', 'val2'] };
-		 * const result = convertFromArray(param);
-		 * console.log(result); // "--option:val1 --option:val2"
 		 */
 		const convertFromArray = (parameter) => {
-			// Initialize parameter.value to an empty array if it is undefined or null.
+			// If parameter.value is undefined or null, default it to an empty array.
 			parameter.value = parameter.value || [];
 
-			// Return an empty string if the value array is empty.
+			// If no values exist, return an empty string.
 			if (parameter.value.length === 0) {
 				return "";
 			}
 
-			// Extract the name property from the parameter object.
+			// Extract the name from the parameter object.
 			const name = parameter.name;
 
-			// Map each item in the value array to a formatted string and join them with spaces.
+			// Map each value to a "--name:value" format and join them with spaces.
 			return parameter.value.map(item => `--${name}:${item}`).join(" ");
 		}
 
 		/**
 		 * Converts a dictionary parameter into a formatted string of command-line arguments.
 		 *
-		 * @param {Object} parameter - The parameter object containing the name and value.
-		 * @param {string} parameter.name - The name of the parameter.
-		 * @param {Object} [parameter.value] - An object representing key-value pairs for the parameter.
+		 * @param {Object} parameter            - The parameter object containing the name and value.
+		 * @param {string} parameter.name       - The name of the parameter.
+		 * @param {Object} [parameter.value]    - An object representing key-value pairs for the parameter.
+		 * 
 		 * @returns {string} - A string of formatted command-line arguments. Returns an empty string if the value object is empty.
-		 *
-		 * @example
-		 * const param = { name: 'config', value: { host: 'localhost', port: '8080' } };
-		 * const result = convertFromDictionary(param);
-		 * console.log(result); // "--config:host=localhost --config:port=8080"
 		 */
 		const convertFromDictionary = (parameter) => {
-			// Initialize parameter.value to an empty object if it is undefined or null.
+			// If parameter.value is undefined or null, default it to an empty object.
 			parameter.value = parameter.value || {};
 
-			// Extract the keys from the parameter value object.
+			// Extract all keys from the dictionary.
 			const keys = Object.keys(parameter.value);
 
-			// Return an empty string if the value object has no keys.
+			// If no keys exist, return an empty string.
 			if (keys.length === 0) {
 				return "";
 			}
 
-			// Extract the name property from the parameter object.
+			// Extract the name from the parameter object.
 			const name = parameter.name;
 
-			// Map each key-value pair to a formatted string and join them with spaces.
+			// Map each key-value pair to a "--name:key=value" format and join them with spaces.
 			return keys.map(key => `--${name}:${key}=${parameter.value[key]}`).join(" ");
 		}
 
+		/**
+		 * Processes the parameters from the given step object and returns a single aggregated
+		 * string of command-line arguments in the format "{{$ --key:value --key2:value2 ...}}".
+		 *
+		 * @param {Object} step - The step object containing parameters.
+		 * 
+		 * @returns {string} A formatted command-line arguments string, or an empty string if no parameters.
+		 */
 		const formatParameters = (step) => {
-			// Initialize an array to hold formatted parameter strings.
+			// This will hold all parameter tokens, e.g., ["--key:value", "--key2:value2", ...].
 			let parameters = [];
 
-			// Initialize the parameter token as an empty string.
+			// We’ll reuse parameterToken for each parameter we process.
 			let parameterToken = '';
 
-			/**
-			 * Iterate over each parameter in the step's parameters object.
-			 * Format each parameter as "--key:value" and add it to the parameters array.
-			 */
+			// Iterate over each parameter within step.parameters.
 			for (const key in step.parameters) {
-				// Extract the parameter type from the step's parameters object.
+				// Determine the parameter type and transform to uppercase for consistency.
 				const parameterType = step.parameters[key].type.toUpperCase();
-
-				// Check if the parameter has a value and is not an empty string.
+				// Retrieve the value.
 				const value = step.parameters[key].value;
+
+				// Check for different parameter types.
 				const isArray = value && parameterType === 'ARRAY';
-				const isDictionary = value && (parameterType === 'DICTIONARY' || parameterType === 'KEY/VALUE' || parameterType === 'OBJECT');
+				const isDictionary = value && (parameterType === 'DICTIONARY'
+					|| parameterType === 'KEY/VALUE'
+					|| parameterType === 'OBJECT');
 				const isBoolean = parameterType === 'SWITCH';
 				const isValue = !isDictionary && !isArray && value && value.length > 0;
 
-				// Construct the parameter token based on the parameter type and value.
+				// Construct the parameter token based on its type.
 				if (isBoolean && isValue) {
+					// Boolean type usually doesn't need a value, just the presence of the flag.
 					parameterToken = `--${key}`;
 				}
 				else if (isValue) {
+					// Simple string or numeric value type: "--key:value".
 					parameterToken = `--${key}:${value}`;
 				}
 				else if (isArray) {
+					// Array type: convert using convertFromArray().
 					parameterToken = convertFromArray(step.parameters[key]);
 				}
 				else if (isDictionary) {
+					// Dictionary type: convert using convertFromDictionary().
 					parameterToken = convertFromDictionary(step.parameters[key]);
 				}
 				else if (!parameterToken || parameterToken === "") {
+					// If there's no valid token, skip.
 					continue;
 				}
 				else {
+					// Otherwise, skip as well.
 					continue;
 				}
 
-				// Add the formatted parameter token to the parameters array.
+				// Push the resulting token to the parameters array.
 				parameters.push(`${parameterToken}`);
 			}
 
-			/**
-			 * If there are any parameters, concatenate them into a single string
-			 * and assign it to the rule's "argument" field in the specified format.
-			 */
-            return parameters.length > 0 ? `{{$ ${parameters.join(" ")}}}` : "";
+			// Join all parameter tokens with spaces and wrap them with the required format "{{$ ...}}".
+			return parameters.length > 0 ? `{{$ ${parameters.join(" ")}}}` : "";
 		}
 
+		/**
+		 * Determines the rule type based on the step's context object. If the context contains a "$type" key,
+		 * or if a 'model' property ending with "RuleModel" is found, it returns the appropriate value. 
+		 *
+		 * @param {Object} step - The step containing the context.
+		 * @returns {string} The resolved rule type.
+		 */
 		const getRuleType = (step) => {
+            // Extract the keys from the step's context object.
 			const keys = Object.keys(step.context);
+
+            // Determine the rule type based on the context.
 			let type = keys.includes("$type") ? step.context["$type"] : "Action";
+
+			// If step.context.model exists, strip "RuleModel" from the end of the string.
 			if (step.context.model) {
 				type = step.context.model.replace("RuleModel", "");
 			}
 
+            // Return the resolved rule type.
 			return type;
 		}
 
+		/**
+		 * Helper function that converts strings to camelCase format.
+		 * 
+		 * @param {string} str - The original string.
+		 * 
+		 * @returns {string} - The camelCase converted string.
+		 */
+		function convertToCamelCase(str) {
+			return str.replace(/[\.\-_](\w|$)/g, (_, x) => x.toUpperCase());
+		}
+
+		// Construct the base rule object with type, pluginName, and a reference ID.
 		const rule = {
 			"$type": getRuleType(step),
 			"pluginName": step.pluginName,
@@ -722,223 +654,42 @@ class G4Client {
 			}
 		}
 
-		/**
-		 * Iterate over each property in the step's properties object.
-		 * Convert the property key to camelCase and assign its value to the rule object.
-		 */
+		// Iterate over the step's properties to populate the rule object.
 		for (const key in step.properties) {
-			// Convert the property key from its original format to camelCase.
+			// Convert the property key to camelCase.
 			const propertyKey = convertToCamelCase(key);
 
 			// Assign the property's value to the rule object using the camelCase key.
 			rule[propertyKey] = step.properties[key].value;
 		}
 
-		rule.argument = formatParameters(step);
+		// Format all parameters into a single argument string.
+		const parameters = formatParameters(step);
 
+		// If parameters exist, set them on the rule's argument property.
+		if (parameters && parameters !== "") {
+			rule.argument = parameters;
+		}
 
+		// If there's no sequence in the step, we can return the rule here.
 		if (!step.sequence || step.sequence.length === 0) {
 			return rule;
 		}
 
+		// Otherwise, process each step in the sequence recursively (assuming 'this.convert' is defined elsewhere).
 		const rules = []
+		for (const nestedStep of step.sequence) {
+            // Convert the nested step to a rule object.
+			const childRule = this.convertToRule(nestedStep);
 
-		for (const s of step.sequence) {
-			const rule = this.convert(s);
-            rules.push(rule);
+            // If the child rule is not null, add it to the rules array.
+			rules.push(childRule);
 		}
 
-        rule.rules = rules;
+		// Assign the array of child rules to our main rule under 'rules'.
+		rule.rules = rules;
 
-		return rule;
-	}
-
-    // TODO: refactor to convert into a rule object
-	/**
-	 * Converts a step object into a rule object for the G4 Automation Sequence.
-	 *
-	 * This function transforms a given `step` object, which contains plugin information,
-	 * properties, and parameters, into a structured `rule` object suitable for use in
-	 * the G4 Automation Sequence. It handles the conversion of property keys to camelCase
-	 * and formats parameters as command-line arguments.
-	 *
-	 * @param {Object} step - The step object to convert.
-	 * @param {string} step.pluginName - The name of the plugin.
-	 * @param {Object} step.properties - An object containing properties for the plugin.
-	 * @param {Object} step.parameters - An object containing parameters for the plugin.
-	 * @returns {Object} - The converted rule object.
-	 *
-	 * @example
-	 * const step = {
-	 *   pluginName: 'SomePlugin',
-	 *   properties: {
-	 *     'Property One': { value: 'Value1' },
-	 *     'Property Two': { value: 'Value2' },
-	 *   },
-	 *   parameters: {
-	 *     'param1': { value: 'value1' },
-	 *     'param2': { value: 'value2' },
-	 *   }
-	 * };
-	 *
-	 * const rule = convertToRule(step);
-	 * console.log(rule);
-	 * // Output:
-	 * // {
-	 * //   "$type": "Action",
-	 * //   "pluginName": "SomePlugin",
-	 * //   "propertyOne": "Value1",
-	 * //   "propertyTwo": "Value2",
-	 * //   "argument": "{{$ --param1:value1 --param2:value2}}"
-	 * // }
-	 */
-	convert(step) {
-		/**
-		 * Converts an array parameter into a formatted string of command-line arguments.
-		 *
-		 * @param {Object}        parameter         - The parameter object containing the name and value.
-		 * @param {string}        parameter.name    - The name of the parameter.
-		 * @param {Array<string>} [parameter.value] - An array of values for the parameter.
-		 * @returns {string} - A string of formatted command-line arguments. Returns an empty string if the value array is empty.
-		 *
-		 * @example
-		 * const param = { name: 'option', value: ['val1', 'val2'] };
-		 * const result = convertFromArray(param);
-		 * console.log(result); // "--option:val1 --option:val2"
-		 */
-		const convertFromArray = (parameter) => {
-			// Initialize parameter.value to an empty array if it is undefined or null.
-			parameter.value = parameter.value || [];
-
-			// Return an empty string if the value array is empty.
-			if (parameter.value.length === 0) {
-				return "";
-			}
-
-			// Extract the name property from the parameter object.
-			const name = parameter.name;
-
-			// Map each item in the value array to a formatted string and join them with spaces.
-			return parameter.value.map(item => {
-				return `--${name}:${item}`;
-			}).join(" ");
-		}
-
-		/**
-		 * Converts a dictionary parameter into a formatted string of command-line arguments.
-		 *
-		 * @param {Object} parameter - The parameter object containing the name and value.
-		 * @param {string} parameter.name - The name of the parameter.
-		 * @param {Object} [parameter.value] - An object representing key-value pairs for the parameter.
-		 * @returns {string} - A string of formatted command-line arguments. Returns an empty string if the value object is empty.
-		 *
-		 * @example
-		 * const param = { name: 'config', value: { host: 'localhost', port: '8080' } };
-		 * const result = convertFromDictionary(param);
-		 * console.log(result); // "--config:host=localhost --config:port=8080"
-		 */
-		const convertFromDictionary = (parameter) => {
-			// Initialize parameter.value to an empty object if it is undefined or null.
-			parameter.value = parameter.value || {};
-
-			// Extract the keys from the parameter value object.
-			const keys = Object.keys(parameter.value);
-
-			// Return an empty string if the value object has no keys.
-			if (keys.length === 0) {
-				return "";
-			}
-
-			// Extract the name property from the parameter object.
-			const name = parameter.name;
-
-			// Map each key-value pair to a formatted string and join them with spaces.
-			return keys.map(key => {
-				return `--${name}:${key}=${parameter.value[key]}`;
-			}).join(" ");
-		}
-
-		// Initialize the rule object with the default type and plugin name.
-		let rule = {
-			"$type": "Action",
-			"pluginName": step.pluginName
-		};
-
-		// Initialize an array to hold formatted parameter strings.
-		let parameters = [];
-
-		/**
-		 * Iterate over each property in the step's properties object.
-		 * Convert the property key to camelCase and assign its value to the rule object.
-		 */
-		for (const key in step.properties) {
-			// Convert the property key from its original format to camelCase.
-			const propertyKey = convertToCamelCase(key);
-
-			// Assign the property's value to the rule object using the camelCase key.
-			rule[propertyKey] = step.properties[key].value;
-		}
-
-		// Initialize the parameter token as an empty string.
-		let parameterToken = '';
-
-		/**
-		 * Iterate over each parameter in the step's parameters object.
-		 * Format each parameter as "--key:value" and add it to the parameters array.
-		 */
-		for (const key in step.parameters) {
-			// Extract the parameter type from the step's parameters object.
-			const parameterType = step.parameters[key].type.toUpperCase();
-
-			// Check if the parameter has a value and is not an empty string.
-			const value = step.parameters[key].value;
-			const isArray = value && parameterType === 'ARRAY';
-			const isDictionary = value && (parameterType === 'DICTIONARY' || parameterType === 'KEY/VALUE' || parameterType === 'OBJECT');
-			const isBoolean = parameterType === 'SWITCH';
-			const isValue = !isDictionary && !isArray && value && value.length > 0;
-
-			// Construct the parameter token based on the parameter type and value.
-			if (isBoolean && isValue) {
-				parameterToken = `--${key}`;
-			}
-			else if (isValue) {
-				parameterToken = `--${key}:${value}`;
-			}
-			else if (isArray) {
-				parameterToken = convertFromArray(step.parameters[key]);
-			}
-			else if (isDictionary) {
-				parameterToken = convertFromDictionary(step.parameters[key]);
-			}
-			else if (!parameterToken || parameterToken === "") {
-				continue;
-			}
-			else {
-				continue;
-			}
-
-			// Add the formatted parameter token to the parameters array.
-			parameters.push(`${parameterToken}`);
-		}
-
-		/**
-		 * If there are any parameters, concatenate them into a single string
-		 * and assign it to the rule's "argument" field in the specified format.
-		 */
-		if (parameters.length > 0) {
-			// The argument field uses a templating syntax with double curly braces.
-			rule["argument"] = `{{$ ${parameters.join(" ")}}}`;
-		}
-
-		// Normalize rules to avoid bad requests.
-		rule.rules = Array.isArray(rule.rules) && rule.rules.length > 0 ? rule.rules : [];
-
-		// Add a reference to the step in the rule object.
-		rule.reference = {
-			id: step.id
-		}
-
-		// Return the fully constructed rule object.
+		// Finally, return the fully-constructed rule object.
 		return rule;
 	}
 
@@ -1239,6 +990,7 @@ class G4Client {
 	 *
 	 * @async
 	 * @returns {Promise<Object>} A promise that resolves to the cached data retrieved from the API.
+	 * 
 	 * @throws {Error} Throws an error if the network request fails or the response is not OK.
 	 */
 	async getCache() {
@@ -1269,8 +1021,7 @@ class G4Client {
 	 * Retrieves and organizes plugin manifests into groups based on their categories and scopes.
 	 *
 	 * @async
-	 * @returns {Promise<Object>} A promise that resolves to an object containing grouped manifests.
-	 * Each group is keyed by category (and optionally scope) with its corresponding manifests.
+	 * @returns {Promise<Object>} A promise that resolves to an object containing grouped manifests. Each group is keyed by category (and optionally scope) with its corresponding manifests.
 	 */
 	async getGroups() {
 		// Function to convert PascalCase to space-separated words.
@@ -1334,6 +1085,7 @@ class G4Client {
 	 * Caches the manifests after the first fetch to avoid redundant network requests.
 	 * 
 	 * @returns {Promise<Object>} A promise that resolves to the manifests object.
+	 * 
 	 * @throws Will throw an error if the network request fails.
 	 */
 	async getManifests() {
@@ -1470,12 +1222,14 @@ class G4Client {
 	 * authentication, driver parameters, settings, and sequences of stages and jobs.
 	 *
 	 * @function newAutomation
+	 * 
 	 * @param {Object} definition                               - The definition object describing the automation flow.
 	 * @param {Object} definition.properties                    - The properties of the automation, including authentication, driver parameters, and settings.
 	 * @param {Object} [definition.properties.authentication]   - Optional authentication details (e.g., tokens or credentials).
 	 * @param {Object} [definition.properties.driverParameters] - Optional driver parameters (e.g., capabilities for WebDriver).
 	 * @param {Object} [definition.properties.settings]         - Optional additional settings (e.g., timeouts, logging preferences).
 	 * @param {Array}  definition.sequence                      - An array of stages, each of which may contain multiple jobs.
+	 * 
 	 * @returns {Object} The newly constructed automation object containing authentication, driver parameters, settings, and stages.
 	 */
 	newAutomation(definition) {
@@ -1486,11 +1240,13 @@ class G4Client {
 		 * or similar driver-configuration mechanism.
 		 *
 		 * @function formatDriverParameters
+		 * 
 		 * @param {Object} [driverParameters] - The raw driver parameters, potentially containing capabilities and vendor-specific settings.
 		 * @param {Object} [driverParameters.capabilities]                    - Root WebDriver capabilities.
 		 * @param {Object} [driverParameters.capabilities.vendorCapabilities] - An object mapping vendor keys to vendor-specific capabilities.
 		 * @param {string} [driverParameters.driver]                          - The driver identifier (e.g., a browser driver name).
 		 * @param {Object} [driverParameters.driverBinaries]                  - Driver-specific binaries or paths.
+		 * 
 		 * @returns {Object} A new parameters object with correctly placed vendor options, or the original `driverParameters` if capabilities are missing.
 		 */
 		const formatDriverParameters = (driverParameters) => {
