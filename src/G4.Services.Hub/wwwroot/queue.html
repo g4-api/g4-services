@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Queue</title>
+</head>
+
+<body>
+    <h1>Queue</h1>
+    <p>Queue is empty</p>
+    <script src="./js/queue-manager.js"></script>
+    <script>
+        const definition = {
+            "steps": [
+                {
+                    "id": "step1",
+                    "type": "simple"
+                },
+                {
+                    "id": "step2",
+                    "type": "switch",
+                    "branches": {
+                        "true": [
+                            {
+                                "id": "step2a",
+                                "type": "simple"
+                            }
+                        ],
+                        "false": [
+                            {
+                                "id": "step2b",
+                                "type": "simple"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "id": "step3",
+                    "type": "container",
+                    "sequence": [
+                        {
+                            "id": "step3a",
+                            "type": "simple"
+                        },
+                        {
+                            "id": "step3b",
+                            "type": "simple"
+                        }
+                    ]
+                },
+                {
+                    "id": "step4",
+                    "type": "loop",
+                    "sequence": [
+                        {
+                            "id": "step4a",
+                            "type": "simple"
+                        }
+                    ]
+                }
+            ]
+        }
+
+
+    </script>
+</body>
+
+</html>

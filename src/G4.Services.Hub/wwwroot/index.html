@@ -1,9 +1,453 @@
-﻿<html>
-	<head>
-		<title>Static Page Placeholder</title>
-	</head>
-	<body>
-		<h1>Static Page Placeholder</h1>
-		<p>This is a placeholder for a static page.  This page will be replaced with a static page that is stored in the database.</p>
-	</body>
+<!doctype html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+
+	<title>Sequential Workflow Designer</title>
+
+	<link rel="icon" href="./images/favicon.ico" />
+	<link href="./css/designer.css" rel="stylesheet">
+	<link href="./css/designer-light.css" rel="stylesheet">
+	<link href="./css/designer-dark.css" rel="stylesheet">
+	<style>
+		body,
+		input,
+		select,
+		button {
+			font: 14px/1.3em 'Open Sans', Arial, Verdana, Serif;
+		}
+
+		html,
+		body {
+			width: 100vw;
+			height: 100vh;
+			margin: 0;
+			padding: 0;
+			overflow: hidden;
+		}
+
+		#designer {
+			position: absolute;
+			left: 0;
+			top: 0;
+			width: 100vw;
+			height: 100vh;
+		}
+
+		.sqd-editor {
+			padding: 10px;
+		}
+
+			.sqd-editor p {
+				margin: 0;
+				padding: 0 0 10px;
+			}
+
+		.sqd-smart-editor {
+			height: 100%;
+			overflow: auto;
+		}
+
+		.sqd-editor label,
+		.label-text {
+			font-weight: 700;
+			font-size: 1.05em;
+			margin-top: 0;
+		}
+
+		.sqd-layout-desktop .sqd-smart-editor {
+			width: 350px;
+		}
+
+		.sqd-layout-desktop .sqd-smart-editor-toggle {
+			right: 350px;
+		}
+
+		.sqd-editor input[type='text'],
+		input[type="number"],
+		input[list],
+		select,
+		textarea {
+			width: 100%;
+			box-sizing: border-box;
+			border: 1px solid silver;
+			padding: 6px;
+			border-radius: 0px;
+			line-height: 1.3em;
+			min-height: 31.33px;
+		}
+
+		.sqd-editor textarea {
+			margin: 0px;
+			min-height: 55px;
+			resize: none;
+			white-space: pre;
+			overflow-y: hidden;
+			overflow-x: auto;
+		}
+
+		.sqd-editor div[data-g4-role='field'] {
+			margin-top: 1em;
+		}
+
+		.sqd-editor div[data-g4-role='hint'] {
+			margin-top: 0.25em;
+			margin-bottom: 0.25em;
+		}
+
+		.sqd-editor input[type='text']:focus,
+		input[type="number"]:focus,
+		input[list]:focus,
+		select:focus,
+		textarea:focus {
+			border: 1px solid #000;
+			outline: none;
+		}
+
+		.sqd-editor input[type='text']:read-only,
+		input[type="number"]:read-only {
+			background: #f4f4f4;
+			border-color: #ddd;
+			color: #999;
+		}
+
+		#result {
+			position: absolute;
+			right: 0;
+			bottom: 0;
+			width: 30vw;
+			height: 100vh;
+			padding: 10px;
+			box-sizing: border-box;
+			color: #fff;
+			background: #2c18df;
+		}
+
+			#result a.github {
+				color: #fff;
+				display: inline-block;
+				margin: 6px 8px;
+			}
+
+				#result a.github:hover {
+					text-decoration: none;
+				}
+
+			#result button {
+				padding: 10px;
+				color: #000;
+				background: #fff;
+				border: 0;
+				border-radius: 5px;
+				cursor: pointer;
+			}
+
+				#result button:hover {
+					opacity: 0.8;
+				}
+
+		.subtitle {
+			display: block;
+			margin-bottom: 15px;
+			font-size: 1.2em;
+			font-weight: 500;
+		}
+	</style>
+
+	<style>
+		/* Box-sizing Reset */
+		*,
+		*::before,
+		*::after {
+			box-sizing: border-box;
+		}
+
+		/* Flexbox Container for Label */
+		.label-with-icon {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			font-family: Arial, sans-serif;
+			width: 100%;
+			font-size: 16px;
+		}
+
+		/* SVG Icon Styling */
+		.hint-icon-container {
+			position: relative;
+			cursor: pointer;
+			align-items: center;
+			font: 14px/1.3em Arial, Verdana, sans-serif;
+			line-height: 1.3em;
+			display: block;
+			width: 18px;
+			height: 18px;
+			background: #ddd;
+			border-radius: 50% 50%;
+			text-align: center;
+			font-size: 11px;
+		}
+
+		.hint-icon {
+			font: 14px/1.3em Arial, Verdana, sans-serif;
+			line-height: 1.3em;
+			text-align: center;
+			font-size: 11px;
+			cursor: pointer;
+			width: 64%;
+			height: 64%;
+			margin: 18%;
+		}
+
+		/* Change icon color on hover/focus */
+		.hint-icon-container:hover .hint-icon,
+		.hint-icon-container:focus .hint-icon {
+			fill: #007BFF;
+		}
+
+		.hint-text {
+			font: 14px/1.3em Arial, Verdana, sans-serif;
+			font-size: 13px;
+			line-height: 1.3em;
+			padding: 6px 10px;
+			border-radius: 0px;
+			background: #eee;
+			border: 1px solid #ddd;
+		}
+
+		div[data-g4-role='input-row'],
+		div[data-g4-role='keyvalue'],
+		.input-row {
+			display: flex;
+			align-items: center;
+			margin: 0.2em 0;
+		}
+
+		.add-button {
+			position: absolute;
+			top: 0;
+			right: 0;
+			background: none;
+			border: none;
+			font-size: 20px;
+			cursor: pointer;
+			line-height: 1;
+		}
+
+		div[data-g4-role='input-row'],
+		div[data-g4-role='keyvalue'],
+		.text-with-button {
+			box-sizing: border-box;
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+		}
+
+			div[data-g4-role='input-row'] button,
+			div[data-g4-role='keyvalue'] button,
+			.text-with-button button {
+				box-sizing: border-box;
+				border: 1px solid silver;
+				padding: 6px;
+				border-radius: 0px;
+				line-height: 1.3em;
+				min-width: 32.19px;
+				cursor: pointer;
+			}
+
+			div[data-g4-role='input-row'] input[type="text"],
+			div[data-g4-role='keyvalue'] input[type="text"],
+			.text-with-button input[type="text"],
+			textarea {
+				margin-left: 0.2em;
+			}
+
+		button svg {
+			width: 1em;
+			height: 1em;
+			vertical-align: middle;
+		}
+
+		div[data-g4-role='custom-buttons'] {
+			margin-top: 0.2em;
+		}
+
+			div[data-g4-role='custom-buttons'] svg {
+				padding: 1.5px;
+			}
+
+			div[data-g4-role='custom-buttons'] path {
+				fill: none;
+				stroke: black;
+				stroke-width: 6
+			}
+	</style>
+
+	<style>
+		details {
+			border: 1px solid silver;
+			border-radius: 0px;
+			padding: 10px;
+			max-width: 500px;
+			margin: 0.25em auto;
+		}
+
+		summary {
+			font-size: 1.2em;
+			cursor: pointer;
+			outline: none;
+		}
+
+		.content {
+			margin-top: 10px;
+			animation: fadeIn 0.3s ease-in-out;
+		}
+
+		@keyframes fadeIn {
+			from {
+				opacity: 0;
+			}
+
+			to {
+				opacity: 1;
+			}
+		}
+	</style>
+</head>
+
+<body>
+	<div id="designer"></div>
+
+	<script src="./js/signalr.min.js" integrity="" crossorigin="anonymous"></script>
+	<script src="./js/custom-fields.js"></script>
+	<script src="./js/index.umd.js"></script>
+	<script src="./js/state-machine.js"></script>
+	<script src="./js/index.js"></script>
+
+	<script>
+		/**
+		 * Waits for the '.sqd-control-bar' element to appear in the DOM within a specified timeout,
+		 * then adds custom control bar buttons for exporting, importing, starting, and stopping definitions.
+		 *
+		 * @param {string} selector - The CSS selector of the element to wait for.
+		 * @param {number} timeout  - The maximum time to wait for the element in milliseconds.
+		 */
+		waitForElement('.sqd-control-bar', 5000)
+			.then((controlBar) => {
+				// SVG path data for the Export button icon
+				const exportSvg = "M960 608a32 32 0 0 0-32 32v288h-288a32 32 0 0 0 0 64h320a32 32 0 0 0 32-32V640a32 32 0 0 0-32-32zM512 928h-128a32 32 0 0 0 0 64h128a32 32 0 0 0 0-64zM278.72 937.28a32 32 0 0 0-34.88-6.72 29.76 29.76 0 0 0-10.56 6.72 32 32 0 0 0-6.72 10.56A32 32 0 0 0 224 960a32 32 0 0 0 54.72 22.72 37.12 37.12 0 0 0 6.72-10.56 30.08 30.08 0 0 0 0-24.32 29.76 29.76 0 0 0-6.72-10.56zM128 928H96v-288a32 32 0 0 0-64 0v320a32 32 0 0 0 32 32h64a32 32 0 0 0 0-64zM743.68 491.2a32 32 0 1 0 48.64 41.6l192-224a30.08 30.08 0 0 0 1.92-3.52 32 32 0 0 0 2.56-4.16v-2.24a32 32 0 0 0 0-5.12A32 32 0 0 0 992 288a32 32 0 0 0 0-4.8 32 32 0 0 0 0-5.12v-2.24a32 32 0 0 0-2.56-4.16 30.08 30.08 0 0 0-1.92-3.52l-192-224a32 32 0 0 0-48.64 41.6L890.56 256H480v480a32 32 0 0 0 64 0V320h346.56z";
+
+				// SVG path data for the Import button icon
+				const importSvg = "M960 608a32 32 0 0 0-32 32v288h-288a32 32 0 0 0 0 64h320a32 32 0 0 0 32-32V640a32 32 0 0 0-32-32zM512 928h-128a32 32 0 0 0 0 64h128a32 32 0 0 0 0-64zM278.72 937.28a32 32 0 0 0-34.88-6.72 29.76 29.76 0 0 0-10.56 6.72 32 32 0 0 0-6.72 10.56A32 32 0 0 0 224 960a32 32 0 0 0 54.72 22.72 37.12 37.12 0 0 0 6.72-10.56 30.08 30.08 0 0 0 0-24.32 29.76 29.76 0 0 0-6.72-10.56zM128 928H96v-288a32 32 0 0 0-64 0v320a32 32 0 0 0 32 32h64a32 32 0 0 0 0-64zM64 96h416v570.56l-171.2-146.88a32 32 0 0 0-41.6 48.64l224 192a32 32 0 0 0 4.8 2.88l2.56 1.6a30.08 30.08 0 0 0 23.36 0l2.24-1.6a32 32 0 0 0 4.8-2.88l224-192a32 32 0 0 0-41.6-48.64L544 666.56V64a32 32 0 0 0-32-32H64a32 32 0 0 0 0 64z";
+
+				// SVG path data for the Start button icon
+				const startSvg = "M10 10 L10 90 L90 50 Z";
+
+				// SVG path data for the Stop button icon
+				const stopSvg = "M10,10 L90,10 L90,90 L10,90 Z";
+
+				// SVG path data for the Reset button icon
+				const resetSvg = "M960 0v112.941c467.125 0 847.059 379.934 847.059 847.059 0 467.125-379.934 847.059-847.059 847.059-467.125 0-847.059-379.934-847.059-847.059 0-267.106 126.607-515.915 338.824-675.727v393.374h112.94V112.941H0v112.941h342.89C127.058 407.38 0 674.711 0 960c0 529.355 430.645 960 960 960s960-430.645 960-960S1489.355 0 960 0";
+
+				// Create a container div for the custom buttons
+				const customButtonsContainer = document.createElement("div");
+
+				// Set a custom data attribute for identification
+				customButtonsContainer.setAttribute('data-g4-role', 'custom-buttons');
+
+				/**
+				 * Creates and configures the Connect Definition button.
+				 */
+				CustomG4Fields.newControlBarButton({
+					classList: ['sqd-control-bar-button'],
+					container: customButtonsContainer,
+					icon: resetSvg,
+					pathClassList: ['sqd-icon-path'],
+					svgClassList: ['sqd-control-bar-button-icon'],
+					title: 'Connect Definition',
+					viewBox: '0 0 1920 1920',
+					onClick: () => {
+						// Indicate that the automation is no longer running
+						_stateMachine.isRunning = false;
+
+						// Release the designer from read-only mode
+						_designer.setIsReadonly(false);
+					}
+				});
+
+				/**
+				 * Creates and configures the Export Definition button.
+				 */
+				CustomG4Fields.newControlBarButton({
+					classList: ['sqd-control-bar-button'],
+					container: customButtonsContainer,
+					icon: exportSvg,
+					pathClassList: ['sqd-icon-path'],
+					svgClassList: ['sqd-control-bar-button-icon'],
+					title: 'Export Definition',
+					viewBox: '0 0 1024 1024',
+					onClick: () => {
+						console.log('Export Definition');
+					}
+				});
+
+				/**
+				 * Creates and configures the Import Definition button.
+				 */
+				CustomG4Fields.newControlBarButton({
+					classList: ['sqd-control-bar-button'],
+					container: customButtonsContainer,
+					icon: importSvg,
+					pathClassList: ['sqd-icon-path'],
+					svgClassList: ['sqd-control-bar-button-icon'],
+					title: 'Import Definition',
+					viewBox: '0 0 1024 1024',
+					onClick: () => {
+						console.log('Import Definition');
+					}
+				});
+
+				/**
+				 * Creates and configures the Stop Definition button.
+				 */
+				CustomG4Fields.newControlBarButton({
+					classList: ['sqd-control-bar-button'],
+					container: customButtonsContainer,
+					icon: stopSvg,
+					svgClassList: ['sqd-control-bar-button-icon'],
+					title: 'Stop Definition',
+					viewBox: '0 0 100 100',
+					onClick: () => {
+						console.log('Stop Definition');
+					}
+				});
+
+				/**
+				 * Creates and configures the Start Definition button.
+				 *
+				 * Assumes that the `startDefinition` function is defined elsewhere in the script.
+				 */
+				CustomG4Fields.newControlBarButton({
+					classList: ['sqd-control-bar-button'],
+					container: customButtonsContainer,
+					icon: startSvg,
+					svgClassList: ['sqd-control-bar-button-icon'],
+					title: 'Start Definition',
+					viewBox: '0 0 100 100',
+					// Event handler for starting the definition process
+					onClick: startDefinition
+				});
+
+				// Append the container with custom buttons to the existing control bar
+				controlBar.appendChild(customButtonsContainer);
+			})
+			.catch((error) => {
+				// Handle any errors that occur while waiting for the element
+				console.error(`Error waiting for element: ${error.message}`);
+			});
+	</script>
+</body>
+
 </html>

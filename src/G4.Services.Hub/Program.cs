@@ -14,6 +14,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi.Models;
 
+using System;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -67,6 +68,9 @@ builder.Services
         // Use camelCase naming for JSON properties to follow JavaScript conventions.
         i.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
 
+        // Enable case-insensitive property name matching during deserialization.
+        i.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+
         // Add a custom type converter for handling specific types during serialization/deserialization.
         i.JsonSerializerOptions.Converters.Add(new TypeConverter());
 
@@ -108,17 +112,52 @@ builder.Services
         i.AddPolicy("CorsPolicy", builder =>
             builder.AllowAnyOrigin()
                    .AllowAnyMethod()
-                   .AllowAnyHeader()));
+                   .AllowAnyHeader()
+                   .SetIsOriginAllowed(_ => true)
+                   .AllowCredentials()));
 
 // Add and configure SignalR for real-time web functionalities.
-builder.Services.AddSignalR((i) =>
-{
-    // Enable detailed error messages for debugging purposes.
-    i.EnableDetailedErrors = true;
+builder.Services
+    .AddSignalR((i) =>
+    {
+        // Enable detailed error messages for debugging purposes.
+        i.EnableDetailedErrors = true;
 
-    // Set the maximum size of incoming messages to the largest possible value.
-    i.MaximumReceiveMessageSize = long.MaxValue;
-});
+        // Set the maximum size of incoming messages to the largest possible value.
+        i.MaximumReceiveMessageSize = long.MaxValue;
+
+        // How often the server sends a keep-alive ping. Default is 15 seconds.
+        i.KeepAliveInterval = TimeSpan.FromSeconds(15);
+
+        // If the server hasn’t heard from a client in this much time, it might consider the client disconnected.
+        // Usually the clientTimeout is set higher than KeepAliveInterval.
+        i.ClientTimeoutInterval = TimeSpan.FromSeconds(60);
+    })
+    .AddJsonProtocol((i) =>
+    {
+        i.PayloadSerializerOptions = new JsonSerializerOptions
+        {
+            // Configure JSON serializer to format JSON with indentation for readability.
+            WriteIndented = false,
+
+            // Ignore properties with null values during serialization to reduce payload size.
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+
+            // Use camelCase naming for JSON properties to follow JavaScript conventions.
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+
+            // Enable case-insensitive property name matching during deserialization.
+            PropertyNameCaseInsensitive = true,
+
+            // Add a custom type converter for handling specific types during serialization/deserialization.
+            Converters =
+            {
+                new TypeConverter(),
+                new ExceptionConverter(),
+                new DateTimeIso8601Converter()
+            }
+        };
+    });
 #endregion
 
 #region *** Dependencies  ***
@@ -162,7 +201,10 @@ app.MapControllers();
 app.UseStaticFiles();
 
 // Add the SignalR hub to the application for real-time communication with clients and other services
-app.MapHub<G4Hub>($"/api/v{AppSettings.ApiVersion}/g4/orchestrator");
+app.MapHub<G4Hub>($"/hub/v{AppSettings.ApiVersion}/g4/orchestrator");
+
+// Add the SignalR hub to send automation notifications to clients and other services in real-time
+app.MapHub<G4AutomationNotificationsHub>($"/hub/v{AppSettings.ApiVersion}/g4/notifications");
 #endregion
 
 // Retrieve the logger service and log that the application has started.
