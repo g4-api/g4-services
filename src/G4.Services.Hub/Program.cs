@@ -112,7 +112,9 @@ builder.Services
         i.AddPolicy("CorsPolicy", builder =>
             builder.AllowAnyOrigin()
                    .AllowAnyMethod()
-                   .AllowAnyHeader()));
+                   .AllowAnyHeader()
+                   .SetIsOriginAllowed(_ => true)
+                   .AllowCredentials()));
 
 // Add and configure SignalR for real-time web functionalities.
 builder.Services
