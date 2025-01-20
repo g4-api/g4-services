@@ -113,8 +113,7 @@ builder.Services
             builder.AllowAnyOrigin()
                    .AllowAnyMethod()
                    .AllowAnyHeader()
-                   .SetIsOriginAllowed(_ => true)
-                   .AllowCredentials()));
+                   .SetIsOriginAllowed(_ => true)));
 
 // Add and configure SignalR for real-time web functionalities.
 builder.Services
