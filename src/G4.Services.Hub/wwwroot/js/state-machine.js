@@ -1323,9 +1323,7 @@ class G4Client {
 		const authentication = definition.properties["authentication"];
 
 		// Extract and format the driver parameters from the definition properties using the helper function.
-		const driverParameters = formatDriverParameters(
-			definition.properties["driverParameters"]
-		);
+		const driverParameters = formatDriverParameters(definition.properties?.driverParameters);
 
 		// Extract additional settings (if any) from the definition properties.
 		const settings = definition.properties["settings"] || undefined;
@@ -1338,7 +1336,7 @@ class G4Client {
 			// Construct a new stage object with minimal required properties.
 			const newStage = {
 				// Stage-level driver parameters (if provided).
-				driverParameters: stage.properties?.driverParameters,
+				driverParameters: formatDriverParameters(stage.properties?.driverParameters),
 
 				// A reference object that captures key metadata about the stage.
 				reference: {
@@ -1356,7 +1354,7 @@ class G4Client {
 				// Construct a new job object.
 				const newJob = {
 					// Job-level driver parameters (if provided).
-					driverParameters: job.properties?.driverParameters,
+					driverParameters: formatDriverParameters(job.properties?.driverParameters),
 
 					// A reference object that captures key metadata about the job.
 					reference: {

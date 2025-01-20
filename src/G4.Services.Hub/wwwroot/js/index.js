@@ -13,7 +13,7 @@ _connection
 	.start()
 	.catch(err => console.error("Connection failed:", err.message));
 
-const _includeTypes = ["ACTION", "CONTENT", "TRANSFORMER"];
+const _includeTypes = ["ACTION", "CONTENT", "JOB", "STAGE", "TRANSFORMER"];
 let _designer;
 let _cache = {};
 let _cacheKeys = [];
@@ -540,7 +540,7 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 			definition.properties['driverParameters']['capabilities'] = definition.properties['driverParameters']['capabilities'] || {};
 
 			// Ensure the 'firstMatch' object exists within 'capabilities'.
-			definition.properties['driverParameters']['capabilities']['firstMatch'] = definition.properties['driverParameters']['capabilities']['firstMatch'] || {};
+			definition.properties['driverParameters']['capabilities']['firstMatch'] = definition.properties['driverParameters']['capabilities']['firstMatch'] || [{}];
 
 			// Ensure the 'vendorCapabilities' object exists within 'capabilities'.
 			definition.properties['driverParameters']['capabilities']['vendorCapabilities'] = definition.properties['driverParameters']['capabilities']['vendorCapabilities'] || {};
@@ -1007,7 +1007,7 @@ function stepEditorProvider(step, editorContext) {
 				step.properties['driverParameters']['capabilities'] = step.properties['driverParameters']['capabilities'] || {};
 
 				// Ensure the 'firstMatch' object exists within 'capabilities'.
-				step.properties['driverParameters']['capabilities']['firstMatch'] = step.properties['driverParameters']['capabilities']['firstMatch'] || {};
+				step.properties['driverParameters']['capabilities']['firstMatch'] = step.properties['driverParameters']['capabilities']['firstMatch'] || [{}];
 
 				// Ensure the 'vendorCapabilities' object exists within 'capabilities'.
 				step.properties['driverParameters']['capabilities']['vendorCapabilities'] = step.properties['driverParameters']['capabilities']['vendorCapabilities'] || {};
@@ -1156,13 +1156,12 @@ function stepEditorProvider(step, editorContext) {
 	 * Iterate through each sorted property key to initialize corresponding input fields.
 	 * Certain properties like 'Argument' and 'Rules' are conditionally skipped based on the presence of parameters.
 	 */
-	const validProperties = [];
-	for (let index = 0; index < sortedProperties.length; index++) {
-		// Retrieve the current property key from the sorted list.
-		const key = sortedProperties[index];
-
+	const validProperties = []; 
+	for (const key of sortedProperties) {
 		// Determine if the current property should be skipped.
-		const skip = (hasParameters && key.toUpperCase() === 'ARGUMENT') || key.toUpperCase() === 'RULES';
+		const skip = (hasParameters && key.toUpperCase() === 'ARGUMENT')
+			|| key.toUpperCase() === 'RULES'
+			|| key.toUpperCase() === 'TRANSFORMERS';
 
 		// Update the sorted properties list to exclude the skipped property.
 		//sortedProperties = skip ? sortedProperties.filter((property) => property !== key) : sortedProperties;
