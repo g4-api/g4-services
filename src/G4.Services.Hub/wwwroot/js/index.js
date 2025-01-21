@@ -162,13 +162,20 @@ async function initializeDesigner() {
 
 		// Adjust the viewport so the selected step is brought into view.
 		_designer.moveViewportToStep(message.id);
+	});
 
-		// Log the message to the console.
+    // Listen for the "ReceiveAutomationRequestInitializedEvent" message from the server
+	_connection.on("ReceiveAutomationRequestInitializedEvent", (message) => {
+        console.log(message);
+	});
+
+	// Listen for the "ReceiveAutomationRequestInitializedEvent" message from the server
+	_connection.on("ReceiveLogCreatedEvent", (message) => {
 		console.log(message);
 	});
 
-	// Listen for the "ReceiveDefinitionCompleteEvent" message from the server
-	_connection.on("ReceiveDefinitionCompleteEvent", (_) => {
+	// Listen for the "ReceiveAutomationInvokedEvent" message from the server
+	_connection.on("ReceiveAutomationInvokedEvent", (_) => {
 		// Indicate that the automation is no longer running
 		_stateMachine.isRunning = false;
 
