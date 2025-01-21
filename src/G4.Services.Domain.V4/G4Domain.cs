@@ -3,6 +3,7 @@ using G4.Api;
 using G4.Cache;
 using G4.Extensions;
 using G4.Models;
+using G4.Models.Events;
 using G4.Services.Domain.V4.Hubs;
 
 using Microsoft.AspNetCore.Builder;
@@ -133,7 +134,7 @@ namespace G4.Services.Domain.V4
                 var connectionId = GetConnection(e.Automation);
 
                 // Send a notification about the completion of the automation to the specified SignalR client.
-                SendMessage(context, connectionId, method: "ReceiveDefinitionCompleteEvent", message: new EventDataModel
+                SendMessage(context, connectionId, method: "ReceiveAutomationInvokedEvent", message: new EventDataModel
                 {
                     Id = e.Automation.Reference.Id,
                     ObjectType = nameof(G4AutomationModel),
@@ -203,6 +204,54 @@ namespace G4.Services.Domain.V4
                     ObjectType = e.Rule.GetType().Name,
                     Type = e.Rule.GetManifest().PluginType,
                     Value = e.Rule
+                });
+            };
+
+            // Set up the event handler for when an automation request is initialized.
+            client.Automation.AutomationRequestInitialized += (_, e) =>
+            {
+                // Retrieve the connection ID for SignalR from environment variables.
+                var connectionId = GetConnection(e.Status.Automation);
+
+                // Send a notification about the automation request initialization to the specified SignalR client.
+                SendMessage(context, connectionId, method: "ReceiveAutomationRequestInitializedEvent", message: new EventDataModel
+                {
+                    Id = e.Status.Automation.Reference.Id,
+                    ObjectType = nameof(G4AutomationModel),
+                    Type = "Automation",
+                    Value = e.Status.Automation
+                });
+            };
+
+            // Set up the event handler for when a log is being created.
+            client.Automation.LogCreating += (_, e) =>
+            {
+                // Retrieve the connection ID for SignalR from environment variables.
+                var connectionId = GetConnection(e.Automation);
+
+                // Send a notification about the log creation to the specified SignalR client.
+                SendMessage(context, connectionId, method: "ReceiveLogCreatingEvent", message: new EventDataModel
+                {
+                    Id = e.Invoker,
+                    ObjectType = nameof(LogEventArgs),
+                    Type = "Log",
+                    Value = e.LogMessage
+                });
+            };
+
+            // Set up the event handler for when a log is created.
+            client.Automation.LogCreated += (_, e) =>
+            {
+                // Retrieve the connection ID for SignalR from environment variables.
+                var connectionId = GetConnection(e.Automation);
+
+                // Send a notification about the log creation to the specified SignalR client.
+                SendMessage(context, connectionId, method: "ReceiveLogCreatedEvent", message: new EventDataModel
+                {
+                    Id = e.Invoker,
+                    ObjectType = nameof(LogEventArgs),
+                    Type = "Log",
+                    Value = e.LogMessage
                 });
             };
 
