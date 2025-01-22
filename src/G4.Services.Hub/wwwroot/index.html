@@ -295,6 +295,9 @@
 	<script src="./js/index.js"></script>
 
 	<script>
+		// Create a new instance of the G4Client class
+		const client = new G4Client();
+
 		/**
 		 * Waits for the '.sqd-control-bar' element to appear in the DOM within a specified timeout,
 		 * then adds custom control bar buttons for exporting, importing, starting, and stopping definitions.
@@ -357,7 +360,47 @@
 					title: 'Export Definition',
 					viewBox: '0 0 1024 1024',
 					onClick: () => {
-						console.log('Export Definition');
+						// Retrieve the definition from the designer
+						const definition = _designer.getDefinition();
+
+						// Create or retrieve the object you want to print
+						const automationObject = _client.newAutomation(definition);
+
+						// Convert the object into a pretty-printed JSON string (4 spaces)
+						const automationJson = JSON.stringify(automationObject, null, 4);
+
+						// Print a decorative header
+						console.log("====================================");
+						console.log("         Automation Details         ");
+						console.log("====================================");
+
+						// Print a quick description
+						console.log("Below is the automation object as JSON:\n");
+
+						// Print the JSON itself
+						console.log(automationJson);
+
+						// Print a closing line
+						console.log("====================================");
+						console.log("   End of Automation Object Details ");
+						console.log("====================================\n\n");
+
+						// Create a Blob from the string (specify the MIME type as JSON)
+						const blob = new Blob([automationJson], { type: 'application/json' });
+
+						// Generate a temporary URL for that blob
+						const url = URL.createObjectURL(blob);
+
+						// Create a hidden <a> element and set its download attribute
+						const downloadLink = document.createElement('a');
+						downloadLink.href = url;
+						downloadLink.download = `${uid()}.json`;
+
+						// Programmatically click the link to trigger the download
+						downloadLink.click();
+
+						// Revoke the Blob URL to release memory
+						URL.revokeObjectURL(url);
 					}
 				});
 

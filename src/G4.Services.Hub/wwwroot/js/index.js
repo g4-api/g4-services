@@ -1,5 +1,12 @@
 /* global window, document */
 
+
+// Define the list of types to include in the workflow designer
+const _includeTypes = ["ACTION", "CONTENT", "JOB", "STAGE", "TRANSFORMER"];
+
+// Initialize the G4Client for automation requests, interactions, and notifications
+const _client = new G4Client();
+
 // Build a connection to the hub endpoint.
 // The URL must match app.MapHub<G4AutomationNotificationsHub>("/hub/v4/g4/notifications")
 const _connection = new signalR
@@ -13,12 +20,10 @@ _connection
 	.start()
 	.catch(err => console.error("Connection failed:", err.message));
 
-const _includeTypes = ["ACTION", "CONTENT", "JOB", "STAGE", "TRANSFORMER"];
-let _designer;
 let _cache = {};
 let _cacheKeys = [];
+let _designer;
 let _manifests = {};
-let _definition = {};
 let _stateMachine = {};
 
 /**
