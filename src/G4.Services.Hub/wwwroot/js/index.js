@@ -27,42 +27,56 @@ let _manifests = {};
 let _stateMachine = {};
 
 /**
- * Initializes and starts the workflow definition. This function checks whether the
- * designer is in a valid and editable state, then sets it to read-only mode before
- * creating and invoking the state machine that processes the workflow.
+ * Exports the current definition from the designer as a G4 JSON file.
  *
- * @async
- * @function startDefinition
- * 
- * @returns {Promise<void>} Resolves when the workflow has been fully executed.
+ * 1. Retrieves the definition object from the designer.
+ * 2. Generates an automation object from the definition.
+ * 3. Logs the pretty-printed JSON in the console with decorative headers.
+ * 4. Creates a Blob URL from the JSON and triggers a download.
+ * 5. Cleans up the Blob URL reference.
  */
-async function startDefinition() {
-	// Check if the designer is in read-only mode - indicating the workflow is running
-	// If it is, exit the function early
-	if (_designer.isReadonly()) {
-
-		return;
-	}
-
-	// Check if the designer is valid before proceeding
-	// If it is not, display an alert and exit the function
-	if (!_designer.isValid()) {
-		window.alert('The workflow definition is invalid. Please review and correct any errors.');
-		return;
-	}
-
-	// Set the designer to read-only mode to prevent further editing while the workflow is running
-	_designer.setIsReadonly(true);
-
-	// Retrieve the current definition from the designer
+function exportDefinition() {
+	// Retrieve the definition from the designer
 	const definition = _designer.getDefinition();
 
-	// Initialize the state machine with the definition and handler objects created above
-	_stateMachine = new StateMachine(definition);
+	// Create or retrieve the object you want to print
+	const automationObject = _client.newAutomation(definition);
 
-	// Start the workflow execution using the state machine instance
-	// created above and wait for it to complete
-	await _stateMachine.start();
+	// Convert the object into a pretty-printed JSON string (4 spaces)
+	const automationJson = JSON.stringify(automationObject, null, 4);
+
+	// Print a decorative header
+	console.log("====================================");
+	console.log("         Automation Details         ");
+	console.log("====================================");
+
+	// Print a quick description
+	console.log("Below is the automation object as JSON:\n");
+
+	// Print the JSON itself
+	console.log(automationJson);
+
+	// Print a closing line
+	console.log("====================================");
+	console.log("   End of Automation Object Details ");
+	console.log("====================================\n\n");
+
+	// Create a Blob from the string (specify the MIME type as JSON)
+	const blob = new Blob([automationJson], { type: 'application/json' });
+
+	// Generate a temporary URL for that blob
+	const url = URL.createObjectURL(blob);
+
+	// Create a hidden <a> element and set its download attribute
+	const downloadLink = document.createElement('a');
+	downloadLink.href = url;
+	downloadLink.download = `${uid()}.json`;
+
+	// Programmatically click the link to trigger the download
+	downloadLink.click();
+
+	// Revoke the Blob URL to release memory
+	URL.revokeObjectURL(url);
 }
 
 /**
@@ -392,6 +406,119 @@ function newConfiguration() {
 		// Flag to enable the control bar in the UI
 		controlBar: true
 	};
+}
+
+function newImportModal() {
+	const newButtonsContainerElement = (inputId, modalElement) => {
+		const buttonsContainerElement = document.createElement("div");
+		buttonsContainerElement.setAttribute("style", "display: inline-flex; gap: 0.2em; margin-bottom: 0.2em;");
+
+		const closeButtonElement = document.createElement('button');
+		closeButtonElement.setAttribute('id', `${inputId}-closeButton`);
+		closeButtonElement.setAttribute('type', 'button');
+		closeButtonElement.innerText = 'Close';
+
+		closeButtonElement.addEventListener('click', () => {
+			fieldContainer.removeChild(modalElement);
+		});
+
+		const importButtonElement = document.createElement('button');
+		importButtonElement.setAttribute('id', `${inputId}-importButton`);
+		importButtonElement.setAttribute('type', 'button');
+		importButtonElement.innerText = 'Import';
+
+		importButtonElement.addEventListener('click', () => {
+			inputFileElement.click();
+		});
+
+		const applyButtonElement = document.createElement('button');
+		applyButtonElement.setAttribute('id', `${inputId}-applyButton`);
+		applyButtonElement.setAttribute('type', 'button');
+		applyButtonElement.innerText = 'Apply';
+
+		applyButtonElement.addEventListener('click', () => {
+			console.log("apply");
+		});
+
+		buttonsContainerElement.appendChild(importButtonElement);
+		buttonsContainerElement.appendChild(applyButtonElement);
+		buttonsContainerElement.appendChild(closeButtonElement);
+
+		return buttonsContainerElement;
+	}
+
+	const newInputFileElement = (inputId, textareaElement) => {
+		const inputFileElement = document.createElement("input");
+
+		inputFileElement.setAttribute("type", "file");
+		inputFileElement.setAttribute("id", `${inputId}-input-file`);
+		inputFileElement.setAttribute("accept", `.txt;.json`);
+		inputFileElement.setAttribute("style", `display: none;`);
+
+		inputFileElement.addEventListener('change', (event) => {
+			const file = event.target.files[0];
+			if (file) {
+				const reader = new FileReader();
+				reader.onload = (e) => {
+					// e.target.result is the file's text content
+					textareaElement.value = e.target.result;
+				};
+				// Read the file as text
+				reader.readAsText(file);
+			}
+		});
+
+		return inputFileElement;
+	};
+
+	const newModalElement = (inputId) => {
+		const modalElement = document.createElement('div');
+
+		modalElement.setAttribute('id', `${inputId}-import-modal`);
+		modalElement.setAttribute('data-g4-role', 'import-modal');
+		modalElement.setAttribute(
+			'style',
+			'display: block; gap: 0.2em; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); margin-left: 0; z-index: 9999;');
+
+		return modalElement;
+	};
+
+	const newTextareaElement = (inputId) => {
+		const textareaElement = document.createElement("textarea");
+
+		textareaElement.setAttribute("id", `${inputId}-textarea`);
+		textareaElement.setAttribute("style", "width: 60vw; height: 25vh;");
+		textareaElement.setAttribute("wrap", "off");
+		textareaElement.setAttribute("spellcheck", "false");
+		textareaElement.setAttribute("placeholder", "Type, paste or import definition here...");
+
+		return textareaElement;
+	}
+
+	const inputId = newUid();
+	const fieldContainer = document.querySelector("body");
+	const existingModals = fieldContainer?.querySelectorAll("[id*=import-modal]");
+
+	for (const existingModal of existingModals) {
+		fieldContainer.removeChild(existingModal);
+	}
+
+	const modalElement = newModalElement(inputId);
+
+	// Create a container for the textarea and close button
+	const textareaElement = newTextareaElement(inputId);
+	const inputFileElement = newInputFileElement(inputId, textareaElement);
+	const buttonsContainerElement = newButtonsContainerElement(inputId, modalElement);
+	const textareaContainerElement = document.createElement('div');
+
+	textareaContainerElement.setAttribute("style", "margin-top:0.2em;")
+	textareaContainerElement.appendChild(textareaElement);
+	textareaContainerElement.appendChild(buttonsContainerElement);
+
+	modalElement.appendChild(inputFileElement);
+	modalElement.appendChild(textareaContainerElement);
+
+	fieldContainer.appendChild(modalElement);
 }
 
 /**
@@ -817,6 +944,45 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 
 	// Return the fully constructed container with all added elements.
 	return container;
+}
+
+/**
+ * Initializes and starts the workflow definition. This function checks whether the
+ * designer is in a valid and editable state, then sets it to read-only mode before
+ * creating and invoking the state machine that processes the workflow.
+ *
+ * @async
+ * @function startDefinition
+ * 
+ * @returns {Promise<void>} Resolves when the workflow has been fully executed.
+ */
+async function startDefinition() {
+	// Check if the designer is in read-only mode - indicating the workflow is running
+	// If it is, exit the function early
+	if (_designer.isReadonly()) {
+
+		return;
+	}
+
+	// Check if the designer is valid before proceeding
+	// If it is not, display an alert and exit the function
+	if (!_designer.isValid()) {
+		window.alert('The workflow definition is invalid. Please review and correct any errors.');
+		return;
+	}
+
+	// Set the designer to read-only mode to prevent further editing while the workflow is running
+	_designer.setIsReadonly(true);
+
+	// Retrieve the current definition from the designer
+	const definition = _designer.getDefinition();
+
+	// Initialize the state machine with the definition and handler objects created above
+	_stateMachine = new StateMachine(definition);
+
+	// Start the workflow execution using the state machine instance
+	// created above and wait for it to complete
+	await _stateMachine.start();
 }
 
 /**

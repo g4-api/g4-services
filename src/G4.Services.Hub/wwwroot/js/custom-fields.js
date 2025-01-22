@@ -3077,7 +3077,7 @@ class CustomFields {
                 'style',
                 'display: block; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);'
             );
-            modalElement.setAttribute('data-g4-role', 'modal');
+            modalElement.setAttribute('data-g4-role', 'input-modal');
 
             // Create a container for the textarea and close button
             const textareaContainerElement = document.createElement('div');

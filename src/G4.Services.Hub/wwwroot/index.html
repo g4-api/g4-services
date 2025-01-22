@@ -75,8 +75,9 @@
 			right: 350px;
 		}
 
-		.sqd-editor input[type='text'],
+		.sqd-editor input[type="text"],
 		input[type="number"],
+		input[type="file"],
 		input[list],
 		select,
 		textarea {
@@ -226,9 +227,9 @@
 			}
 
 			div[data-g4-role='input-row'] input[type="text"],
+			div[data-g4-role='input-row'] textarea,
 			div[data-g4-role='keyvalue'] input[type="text"],
-			.text-with-button input[type="text"],
-			textarea {
+			.text-with-button input[type="text"] {
 				margin-left: 0.2em;
 			}
 
@@ -359,49 +360,7 @@
 					svgClassList: ['sqd-control-bar-button-icon'],
 					title: 'Export Definition',
 					viewBox: '0 0 1024 1024',
-					onClick: () => {
-						// Retrieve the definition from the designer
-						const definition = _designer.getDefinition();
-
-						// Create or retrieve the object you want to print
-						const automationObject = _client.newAutomation(definition);
-
-						// Convert the object into a pretty-printed JSON string (4 spaces)
-						const automationJson = JSON.stringify(automationObject, null, 4);
-
-						// Print a decorative header
-						console.log("====================================");
-						console.log("         Automation Details         ");
-						console.log("====================================");
-
-						// Print a quick description
-						console.log("Below is the automation object as JSON:\n");
-
-						// Print the JSON itself
-						console.log(automationJson);
-
-						// Print a closing line
-						console.log("====================================");
-						console.log("   End of Automation Object Details ");
-						console.log("====================================\n\n");
-
-						// Create a Blob from the string (specify the MIME type as JSON)
-						const blob = new Blob([automationJson], { type: 'application/json' });
-
-						// Generate a temporary URL for that blob
-						const url = URL.createObjectURL(blob);
-
-						// Create a hidden <a> element and set its download attribute
-						const downloadLink = document.createElement('a');
-						downloadLink.href = url;
-						downloadLink.download = `${uid()}.json`;
-
-						// Programmatically click the link to trigger the download
-						downloadLink.click();
-
-						// Revoke the Blob URL to release memory
-						URL.revokeObjectURL(url);
-					}
+					onClick: exportDefinition
 				});
 
 				/**
@@ -415,9 +374,7 @@
 					svgClassList: ['sqd-control-bar-button-icon'],
 					title: 'Import Definition',
 					viewBox: '0 0 1024 1024',
-					onClick: () => {
-						console.log('Import Definition');
-					}
+					onClick: newImportModal
 				});
 
 				/**
