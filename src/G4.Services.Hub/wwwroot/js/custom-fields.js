@@ -2664,36 +2664,6 @@ class CustomFields {
      * @returns {HTMLElement} The container element that includes the newly created list field.
      *
      * @throws {Error} Throws an error if `itemsSource` is neither a string nor an array.
-     *
-     * @example
-     *
-     * // Using a string as itemsSource (retrieves from _cache)
-     * const listField = newListField({
-     *   container: document.getElementById('form-container'),
-     *   label: 'pluginList',
-     *   title: 'Select a Plugin',
-     *   initialValue: 'PluginOne',
-     *   itemsSource: 'plugins',
-     *   isReadonly: false
-     * }, (selectedValue) => {
-     *   console.log(`Selected Plugin: ${selectedValue}`);
-     * });
-     *
-     * // Using an array as itemsSource
-     * const pluginsArray = [
-     *   { name: 'PluginOne', description: 'First plugin description' },
-     *   { name: 'PluginTwo', description: 'Second plugin description' },
-     * ];
-     * const listField = newListField({
-     *   container: document.getElementById('form-container'),
-     *   label: 'pluginList',
-     *   title: 'Select a Plugin',
-     *   initialValue: 'PluginTwo',
-     *   itemsSource: pluginsArray,
-     *   isReadonly: false
-     * }, (selectedValue) => {
-     *   console.log(`Selected Plugin: ${selectedValue}`);
-     * });
      */
     static newListField(options, setCallback) {
         /**
@@ -3148,6 +3118,79 @@ class CustomFields {
             setCallback(textarea.value);
         };
 
+        /**
+         * Creates and appends a new modal containing a textarea and a close button
+         * for a given input field. If a modal with the same ID already exists,
+         * it is first removed. The contents of the textarea are mirrored into
+         * the original input field. Clicking the close button removes the modal
+         * and re-enables the original input.
+         *
+         * @param {string} inputId - The unique identifier of the target input.
+         * @param {HTMLElement} fieldContainer - The container element to which the modal will be appended.
+         * @returns {HTMLElement} The newly created modal element.
+         */
+        const newModal = (inputId, fieldContainer) => {
+            // Escape the inputId to ensure valid and safe usage in CSS selectors
+            const escapedId = CSS.escape(inputId);
+
+            // Find and remove any existing modal with the same ID in the container
+            const existingModal = fieldContainer?.querySelector(`#${escapedId}-modal`);
+            if (existingModal) {
+                fieldContainer.removeChild(existingModal);
+            }
+
+            // Create a container <div> to serve as the modal
+            const modalElement = document.createElement('div');
+            modalElement.setAttribute('id', `${inputId}-modal`);
+            modalElement.setAttribute(
+                'style',
+                'display: block; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);'
+            );
+            modalElement.setAttribute('data-g4-role', 'modal');
+
+            // Create a container for the textarea and close button
+            const textareaContainerElement = document.createElement('div');
+
+            // Create the textarea element
+            const textareaElement = document.createElement('textarea');
+            textareaElement.setAttribute('id', `${inputId}-textarea`);
+            textareaElement.setAttribute('style', 'width: 60vw; height: 25vh;');
+            textareaElement.setAttribute('wrap', 'off');
+            textareaElement.setAttribute('spellcheck', 'false');
+
+            // Listen for changes in the modal's textarea and update the original field's value
+            textareaElement.addEventListener('input', () => {
+                const textarea = fieldContainer.querySelector(`#${escapedId}`);
+                textarea.value = textareaElement.value;
+            });
+
+            // Create a button to close the modal
+            const closeButtonElement = document.createElement('button');
+            closeButtonElement.setAttribute('id', `${inputId}-closeButton`);
+            closeButtonElement.setAttribute('type', 'button');
+            closeButtonElement.innerText = 'Close';
+
+            // On click, re-enable the original textarea and remove the modal
+            closeButtonElement.addEventListener('click', () => {
+                const textarea = fieldContainer.querySelector(`#${escapedId}`);
+                textarea.disabled = false;
+                fieldContainer.removeChild(modalElement);
+            });
+
+            // Add the textarea and close button to the container
+            textareaContainerElement.appendChild(textareaElement);
+            textareaContainerElement.appendChild(closeButtonElement);
+
+            // Add the container to the modal
+            modalElement.appendChild(textareaContainerElement);
+
+            // Append the newly created modal to the field container
+            fieldContainer.appendChild(modalElement);
+
+            // Return the modal element so it can be referenced if needed
+            return modalElement;
+        };
+
         // Generate a unique identifier for the textarea to ensure uniqueness in the DOM.
         const inputId = newUid();
 
@@ -3173,6 +3216,18 @@ class CustomFields {
         textareaElement.setAttribute('spellcheck', 'false');              // Disable spell checking.
         textareaElement.setAttribute('title', options.initialValue);      // Tooltip displaying the current value.
         textareaElement.value = options.initialValue;                     // Set the initial value of the textarea.
+
+        // Listen for double-click events to open a modal for editing the textarea content.
+        textareaElement.addEventListener("dblclick", () => {
+            // Create a modal for the textarea using a helper function.
+            const modalElement = newModal(inputId, fieldContainer);
+
+            // Disable the original textarea to prevent editing while the modal is open
+            textareaElement.disabled = true;
+
+            // Mirror the textarea content into the modal textarea
+            modalElement.querySelector("textarea").value = textareaElement.value;
+        });
 
         // Create a container for the field using a helper function, passing the unique ID, display label, and title.
         const fieldContainer = newFieldContainer(inputId, labelDisplayName, options.title);

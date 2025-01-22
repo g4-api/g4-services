@@ -28,6 +28,7 @@ let _stateMachine = {};
  *
  * @async
  * @function startDefinition
+ * 
  * @returns {Promise<void>} Resolves when the workflow has been fully executed.
  */
 async function startDefinition() {
@@ -63,6 +64,7 @@ async function startDefinition() {
  * Initializes the workflow designer with manifests, groups, and configurations.
  *
  * @async
+ * 
  * @returns {Promise<void>} A promise that resolves once the designer is initialized.
  */
 async function initializeDesigner() {
@@ -164,9 +166,9 @@ async function initializeDesigner() {
 		_designer.moveViewportToStep(message.id);
 	});
 
-    // Listen for the "ReceiveAutomationRequestInitializedEvent" message from the server
+	// Listen for the "ReceiveAutomationRequestInitializedEvent" message from the server
 	_connection.on("ReceiveAutomationRequestInitializedEvent", (message) => {
-        console.log(message);
+		console.log(message);
 	});
 
 	// Listen for the "ReceiveAutomationRequestInitializedEvent" message from the server
@@ -191,6 +193,7 @@ async function initializeDesigner() {
  * Initializes the default start definition for a state machine workflow.
  *
  * @param {Object} manifest - The manifest object containing necessary metadata for the state machine steps.
+ * 
  * @returns {Array} An array containing the top-level container (`stage`) with its nested structure.
  */
 function initializeStartDefinition(manifest) {
@@ -218,18 +221,14 @@ function initializeStartDefinition(manifest) {
  * This function initializes the configuration settings, including toolbox setup,
  * step icon provisioning, validation rules, editor providers, and control bar settings.
  *
- * @returns {Object} The configuration object containing all necessary settings.
- *
  * @property {number}  undoStackSize - The maximum number of undo operations allowed.
  * @property {Object}  toolbox       - Configuration for the toolbox UI component.
  * @property {Object}  steps         - Configuration related to step icons and types.
  * @property {Object}  validator     - Validation rules for steps and the root definition.
  * @property {Object}  editors       - Providers for root and step editors.
  * @property {boolean} controlBar    - Flag to enable or disable the control bar.
- *
- * @example
- * const config = newConfiguration();
- * initializeApplication(config);
+ * 
+ * @returns {Object} The configuration object containing all necessary settings.
  */
 function newConfiguration() {
 	return {
@@ -394,6 +393,7 @@ function newConfiguration() {
  * Creates a new start definition object for a workflow with default properties.
  *
  * @param {Array} sequence - The sequence of steps or containers to include in the start definition.
+ * 
  * @returns {Object} An object representing the start definition, containing default properties and the provided sequence.
  */
 function newStartDefinition(sequence) {
@@ -446,6 +446,7 @@ function newStartDefinition(sequence) {
  * @param {Object}  definition    - The definition object containing the properties and settings for the workflow.
  * @param {Object}  editorContext - Context object for notifying changes to the editor.
  * @param {boolean} isReadonly    - Flag indicating if the editor should be in read-only mode.
+ * 
  * @returns {HTMLElement} A container element housing the root editor fields.
  */
 function rootEditorProvider(definition, editorContext, isReadonly) {
@@ -823,9 +824,25 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
  *
  * @param {Object} step          - The plugin step configuration object.
  * @param {Object} editorContext - The context object for the editor, used for notifying changes.
+ * 
  * @returns {HTMLElement} The fully populated step editor container element.
  */
 function stepEditorProvider(step, editorContext) {
+
+	const initializeDriverParameters = (step) => {
+		// Ensure the 'driverParameters' property exists in the definition.
+		step.properties['driverParameters'] = step.properties['driverParameters'] || {};
+
+		// Ensure the 'capabilities' object exists within 'driverParameters'.
+		step.properties['driverParameters']['capabilities'] = step.properties['driverParameters']['capabilities'] || {};
+
+		// Ensure the 'firstMatch' object exists within 'capabilities'.
+		step.properties['driverParameters']['capabilities']['firstMatch'] = step.properties['driverParameters']['capabilities']['firstMatch'] || [{}];
+
+		// Ensure the 'vendorCapabilities' object exists within 'capabilities'.
+		step.properties['driverParameters']['capabilities']['vendorCapabilities'] = step.properties['driverParameters']['capabilities']['vendorCapabilities'] || {};
+	}
+
 	/**
 	 * Initializes and appends the appropriate input field to the container based on the parameter type.
 	 *
@@ -849,9 +866,6 @@ function stepEditorProvider(step, editorContext) {
 		} else if (type === 'parameters') {
 			parameter = step.parameters[key];
 		}
-
-		// normalize the key to ensure it is in the correct format
-
 
 		// Determine the nature of the parameter to decide which input field to create.
 		const label = convertPascalToSpaceCase(convertToPascalCase(key));
@@ -1007,17 +1021,7 @@ function stepEditorProvider(step, editorContext) {
 			 * @param {Object} value - The updated Driver Parameters provided by the user.
 			 */
 			(value) => {
-				// Ensure the 'driverParameters' property exists in the definition.
-				step.properties['driverParameters'] = step.properties['driverParameters'] || {};
-
-				// Ensure the 'capabilities' object exists within 'driverParameters'.
-				step.properties['driverParameters']['capabilities'] = step.properties['driverParameters']['capabilities'] || {};
-
-				// Ensure the 'firstMatch' object exists within 'capabilities'.
-				step.properties['driverParameters']['capabilities']['firstMatch'] = step.properties['driverParameters']['capabilities']['firstMatch'] || [{}];
-
-				// Ensure the 'vendorCapabilities' object exists within 'capabilities'.
-				step.properties['driverParameters']['capabilities']['vendorCapabilities'] = step.properties['driverParameters']['capabilities']['vendorCapabilities'] || {};
+				initializeDriverParameters(step);
 
 				// Iterate over each key in the provided `value` object.
 				for (const key of Object.keys(value)) {
@@ -1163,7 +1167,7 @@ function stepEditorProvider(step, editorContext) {
 	 * Iterate through each sorted property key to initialize corresponding input fields.
 	 * Certain properties like 'Argument' and 'Rules' are conditionally skipped based on the presence of parameters.
 	 */
-	const validProperties = []; 
+	const validProperties = [];
 	for (const key of sortedProperties) {
 		// Determine if the current property should be skipped.
 		const skip = (hasParameters && key.toUpperCase() === 'ARGUMENT')
@@ -1208,11 +1212,7 @@ function stepEditorProvider(step, editorContext) {
 	/**
 	 * Iterate through each sorted parameter key to initialize corresponding input fields.
 	 */
-	for (let index = 0; index < sortedParameters.length; index++) {
-		// Retrieve the current parameter key from the sorted list.
-		const key = sortedParameters[index];
-
-		// Initialize the input field for the current parameter key.
+	for (const key of sortedParameters) {
 		initializeField(parametersControllerContainer, key, step, "parameters");
 	}
 
