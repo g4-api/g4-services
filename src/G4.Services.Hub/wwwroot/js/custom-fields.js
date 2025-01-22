@@ -9,16 +9,8 @@
  * the function returns `null` to indicate an unparseable value.
  *
  * @param {string} str - The string to parse into a boolean.
+ * 
  * @returns {boolean|null} - The parsed boolean value or `null` if parsing fails.
- *
- * @example
- * parseStringToBool('true');   // returns true
- * parseStringToBool('FALSE');  // returns false
- * parseStringToBool('Yes');    // returns true
- * parseStringToBool('no');     // returns false
- * parseStringToBool('1');      // returns true
- * parseStringToBool('0');      // returns false
- * parseStringToBool('maybe');  // returns null
  */
 function convertStringToBool(str) {
     if (typeof str !== 'string') {
@@ -49,13 +41,8 @@ function convertStringToBool(str) {
  * @param {string} id               - The unique identifier for the input field. This should match the `id` of the corresponding input element.
  * @param {string} labelDisplayName - The display text for the label associated with the input field.
  * @param {string} hintText         - The hint text to display when the hint icon is clicked.
+ * 
  * @returns {HTMLDivElement} The created `div` element containing the labeled input and hint icon.
- *
- * @example
- * // Create a new field container and append it to a form
- * const form = document.getElementById('userForm');
- * const field = newFieldContainer('username', 'Username');
- * form.appendChild(field);
  */
 const newFieldContainer = (id, labelDisplayName, hintText) => {
     /**
@@ -164,15 +151,8 @@ const newFieldContainer = (id, labelDisplayName, hintText) => {
  *
  * @param {string} id   - A unique identifier used to assign IDs to the field and controller containers.
  * @param {string} role - The role of the container
+ * 
  * @returns {HTMLDivElement} - The constructed field container element containing the controller.
- *
- * @example
- * const container = newUnlabeledFieldContainer('uniqueId123');
- * document.body.appendChild(container);
- * // This will append the following HTML structure to the body:
- * // <div data-g4-role="field" id="uniqueId123-field">
- * //   <div data-g4-role="controller" id="uniqueId123-controller"></div>
- * // </div>
  */
 const newUnlabeledFieldContainer = (id, role) => {
     // Create the main field container div element.
@@ -212,24 +192,8 @@ const newUnlabeledFieldContainer = (id, role) => {
  * @param {string} options.labelDisplayName - The text to display in the summary section, serving as the label for the container.
  * @param {string} options.hintText         - The tooltip text that appears when hovering over the summary label.
  * @param {string} options.role             - The role of the container.
+ * 
  * @returns {HTMLDetailsElement} - The constructed `details` container element containing the summary and field container.
- *
- * @example
- * const container = newMultipleFieldsContainer('uniqueId123', {
- *     labelDisplayName: 'User Details',
- *     hintText: 'Click to expand and view user details',
- *     role: 'user-role'
- * });
- * document.body.appendChild(container);
- * // This will append the following HTML structure to the body:
- * // <details>
- * //   <summary title="Click to expand and view user details">User Details</summary>
- * //   <div>
- * //     <div data-g4-role="field" id="uniqueId123-field">
- * //       <div data-g4-role="controller" id="uniqueId123-controller"></div>
- * //     </div>
- * //   </div>
- * // </details>
  */
 const newMultipleFieldsContainer = (id, options) => {
     // Create the main <details> container element.
@@ -272,6 +236,7 @@ const newMultipleFieldsContainer = (id, options) => {
  * @param {Array<Object>} options.dataObjects       - An array of data objects to initialize the container with.
  * @param {string}        [options.groupName]       - The group name used for property normalization.
  * @param {Function}      setCallback - A callback function invoked whenever the container is modified.
+ * 
  * @returns {HTMLElement} - The DOM element representing the Object Array Fields container.
  */
 const newObjectArrayFieldsContainer = (id, options, setCallback) => {
@@ -282,6 +247,7 @@ const newObjectArrayFieldsContainer = (id, options, setCallback) => {
      * @param {number}   index       - The index of the array item.
      * @param {string}   mode        - The mode of the form, e.g., 'NEW' or 'EDIT'.
      * @param {Function} setCallback - A callback function invoked when the array item is modified or removed.
+     * 
      * @returns {HTMLElement} - The DOM element representing the array item container.
      */
     const newArrayObject = (dataObject, index, mode, setCallback) => {
@@ -508,18 +474,6 @@ const newObjectArrayFieldsContainer = (id, options, setCallback) => {
  * @param {string} selector - The CSS selector of the element to wait for.
  * @param {number} [timeout=5000] - The maximum time to wait for the element in milliseconds. Default is 5000ms.
  * @returns {Promise<HTMLElement>} A promise that resolves with the found HTMLElement or rejects with an error if the timeout is reached.
- *
- * @example
- * // Usage example: Wait for an element with ID 'submit-button' to appear
- * waitForElement('#submit-button', 3000)
- *     .then(element => {
- *         // Element found, perform actions on it
- *         element.click();
- *     })
- *     .catch(error => {
- *         // Handle the error if the element was not found within the timeout
- *         console.error(error.message);
- *     });
  */
 function waitForElement(selector, timeout = 5000) {
     return new Promise((resolve, reject) => {
@@ -809,21 +763,6 @@ class CustomG4Fields {
      * @param {Object}      [options.pathAttributes]- Optional additional attributes for the SVG path element.
      *
      * @returns {HTMLElement} The parent container with the newly added button appended.
-     *
-     * @example
-     * // Example usage:
-     * CustomG4Fields.newControlBarButton({
-     *     classList: ['sqd-control-bar-button'],
-     *     container: customButtonsContainer,
-     *     icon: exportSvg,
-     *     pathClassList: ['sqd-icon-path'],
-     *     svgClassList: ['sqd-control-bar-button-icon'],
-     *     title: 'Export Definition',
-     *     viewBox: '0 0 1024 1024',
-     *     onClick: () => {
-     *         console.log('Export Definition');
-     *     }
-     * });
      */
     static newControlBarButton(options) {
         // Generate a unique identifier for the automation settings fields.
@@ -1097,14 +1036,6 @@ class CustomG4Fields {
          * @param {string} id             - A unique identifier used to assign IDs to the field container and its controller.
          * @param {HTMLElement} container - The DOM element that will contain the "First Match" capabilities.
          * @param {Object} firstMatch     - An object representing existing "First Match" capabilities groups.
-         *
-         * @example
-         * const container = document.getElementById('capabilities-container');
-         * const firstMatch = {
-         *     group1: { /* capabilities data *\/ },
-         *     group2: { /* capabilities data *\/ }
-         * };
-         * addFirstMatch('uniqueId123', container, firstMatch);
          */
         const newFirstMatchCapabilities = (id, firstMatch) => {
             /**
