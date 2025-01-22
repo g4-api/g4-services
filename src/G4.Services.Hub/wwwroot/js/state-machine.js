@@ -1020,6 +1020,7 @@ class G4Client {
 	 * Fetches the G4 cache from the API.
 	 *
 	 * @async
+	 * 
 	 * @returns {Promise<Object>} A promise that resolves to the cached data retrieved from the API.
 	 * 
 	 * @throws {Error} Throws an error if the network request fails or the response is not OK.
@@ -1052,6 +1053,7 @@ class G4Client {
 	 * Retrieves and organizes plugin manifests into groups based on their categories and scopes.
 	 *
 	 * @async
+	 * 
 	 * @returns {Promise<Object>} A promise that resolves to an object containing grouped manifests. Each group is keyed by category (and optionally scope) with its corresponding manifests.
 	 */
 	async getGroups() {
