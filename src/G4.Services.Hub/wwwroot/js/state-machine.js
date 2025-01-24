@@ -219,7 +219,7 @@ class StateMachineSteps {
         Stages organize tasks into logical groups, enabling efficient execution, resource allocation, monitoring, and error handling within the automation sequence.`;
 
 		// Initialize the Stage container using the newG4Container function.
-		let container = StateMachineSteps.newG4Container(name, 'stage', stageDescription, properties, parameters, steps);
+		const container = StateMachineSteps.newG4Container(name, 'stage', stageDescription, properties, parameters, steps);
 		container["pluginType"] = 'Container'
 		container["pluginName"] = 'G4™ Stage'
 
@@ -340,28 +340,29 @@ class StateMachineSteps {
 		const componentType = context?.componentType?.toLowerCase() || "taks";
 		const iconProvider = context?.iconProvider?.toLowerCase() || "task";
 		const label = context?.label || convertPascalToSpaceCase(manifest.key);
-		const isCondition = componentType === "switch" && context?.model?.toLowerCase() === "conditionrulemodel";
+		const isSwitch = componentType === "switch";
 		const isLoop = componentType === "loop";
 		const isContainer = componentType === "container";
 
 		// Initialize the new G4 step object
 		let step = {
-			componentType: componentType
+			componentType: componentType,
+			type: iconProvider
 		};
 
 		// TODO: Take branches for the manifest or initialize an empty branches collection - will be available on next api release.
 		// Check if the manifest is a condition and initialize the branches object
-		if (isCondition) {
-			step.type = iconProvider;
-			step.branches = {
-				true: [],
-				false: []
-			};
+		if (isSwitch) {
+			const branches = {};
+			const contextBranches = manifest.context?.integration?.sequentialWorkflow?.branches || [];
+			for (const branch of contextBranches) {
+				branches[branch] = [];
+			}
+			step.branches = branches;
 		}
 
 		// Check if the manifest is a loop or container and initialize the sequence array
 		if (isLoop || isContainer) {
-			step.type = iconProvider;
 			step.sequence = [];
 		}
 
@@ -486,28 +487,19 @@ class G4Client {
 	convertToRule(step) {
 		const convertConditionRuleModel = (step) => {
 			const branches = Object.keys(step.branches);
-			const rules = [];
-			const negativeRules = [];
+			const ruleBranches = {};
 
 			for (const branch of branches) {
 				const branchSteps = step.branches[branch];
 
 				for (const branchStep of branchSteps) {
 					const childRule = this.convertToRule(branchStep);
-
-					if (branch === "true") {
-						rules.push(childRule);
-					}
-					else if (branch === "false") {
-						negativeRules.push(childRule);
-					}
+					ruleBranches[branch] = ruleBranches[branch] || [];
+					ruleBranches[branch].push(childRule);
 				}
 			};
 
-			return {
-				rules,
-				negativeRules
-			}
+			return ruleBranches;
 		};
 
 		/**
@@ -687,16 +679,14 @@ class G4Client {
 			rule.argument = parameters;
 		}
 
-        // If the step context model is a condition rule model, convert the branches.
-		if (step.context.model.toUpperCase() === "CONDITIONRULEMODEL") {
+		// If the step context model is a condition rule model, convert the branches.
+		const model = step.context.model.toUpperCase();
+		if (model === "SWITCHRULEMODEL" || model === "CONDITIONRULEMODEL") {
             // Convert the branches to rules and negativeRules.
 			const branches = convertConditionRuleModel(step);
 
             // Assign the branches to the rule object.
-			rule.rules = branches.rules;
-
-            // Assign the negative branches to the rule object.
-			rule.negativeRules = branches.negativeRules;
+			rule.branches = branches;
 
             // Return the rule object with the branches.
 			return rule;

@@ -409,7 +409,15 @@ function newConfiguration() {
 }
 
 function newImportModal() {
-	const newButtonsContainerElement = (inputId, modalElement) => {
+	const getManifest = (cache, manifestName) => {
+		for (const group of Object.keys(cache)) {
+			if (manifestName in cache[group]) {
+				return cache[group][manifestName].manifest;
+			}
+		}
+	}
+
+	const newButtonsContainerElement = (inputId, modalElement, setCallback) => {
 		const buttonsContainerElement = document.createElement("div");
 		buttonsContainerElement.setAttribute("style", "display: inline-flex; gap: 0.2em; margin-bottom: 0.2em;");
 
@@ -437,7 +445,17 @@ function newImportModal() {
 		applyButtonElement.innerText = 'Apply';
 
 		applyButtonElement.addEventListener('click', () => {
-			console.log("apply");
+            try {
+				const textareaElement = modalElement.querySelector('textarea');
+				const value = !textareaElement.value || textareaElement.value === ""
+					? {}
+					: JSON.parse(textareaElement.value);
+				fieldContainer.removeChild(modalElement);
+				setCallback(value);
+			}
+			catch (error) {
+                console.error(error);
+			}
 		});
 
 		buttonsContainerElement.appendChild(importButtonElement);
@@ -447,7 +465,7 @@ function newImportModal() {
 		return buttonsContainerElement;
 	}
 
-	const newInputFileElement = (inputId, textareaElement) => {
+	const newInputFileElement = (inputId, textareaElement, setCallback) => {
 		const inputFileElement = document.createElement("input");
 
 		inputFileElement.setAttribute("type", "file");
@@ -460,7 +478,6 @@ function newImportModal() {
 			if (file) {
 				const reader = new FileReader();
 				reader.onload = (e) => {
-					// e.target.result is the file's text content
 					textareaElement.value = e.target.result;
 				};
 				// Read the file as text
@@ -495,6 +512,102 @@ function newImportModal() {
 		return textareaElement;
 	}
 
+	const setDefinition = (definition) => {
+		const newStep = (rule) => {
+			const manifest = getManifest(_cache, rule.pluginName);
+			const step = StateMachineSteps.newG4Step(manifest);
+
+			rule.rules = rule.rules || [];
+			rule.branches = rule.branches || {};
+
+            const branchesKeys = Object.keys(rule.branches);
+			const isRules = rule.rules.length > 0;
+            const isBranches = branchesKeys.length > 0;
+
+			if (!isRules && !isBranches) {
+				return step;
+			}
+
+			if (isRules) {
+				step.sequence = [];
+
+				for (const subRule of rule.rules) {
+					const subStep = newStep(subRule);
+					step.sequence.push(subStep);
+				}
+			}
+
+			if (isBranches) {
+				for (const branchKey of branchesKeys) {
+					for (const subRule of rule.branches[branchKey]) {
+						const subStep = newStep(subRule);
+						step.branches[branchKey] = step.branches[branchKey] || [];
+                        step.branches[branchKey].push(subStep);
+					}
+				}
+			}
+
+			return step;
+		}
+
+		const newDefinition = (definition, sequence) => {
+            const id = definition?.reference?.id && definition.reference.id !== ""
+				? definition?.reference?.id
+				: uid();
+
+			return {
+				id,
+				properties: {
+					authentication: definition.authentication,
+					dataSource: definition.dataSource,
+					driverParameters: definition.driverParameters,
+					settings: definition.settings,
+					speed: 300
+				},
+				sequence
+			};
+		}
+
+		const sequence = [];
+
+		definition.stages = definition.stages || [];
+
+		for (const stage of definition.stages) {
+			const stageStep = StateMachineSteps.newG4Stage('Stage', {}, {}, []);
+
+			stageStep.name = stage?.reference?.name || stageStep.name;
+			stageStep.description = stage?.reference?.description || stageStep.description;
+            stageStep.id = stage?.reference?.id || stageStep.id;
+
+			stage.jobs = stage.jobs || [];
+
+
+			for (const job of stage.jobs) {
+				const jobStep = StateMachineSteps.newG4Job('Job', {}, {}, []);
+
+				jobStep.name = job?.reference?.name || jobStep.name;
+				jobStep.description = job?.reference?.description || jobStep.description;
+                jobStep.id = job?.reference?.id || jobStep.id;
+
+				job.rules = job.rules || [];
+
+                for (const rule of job.rules) {
+					const step = newStep(rule);
+					jobStep.sequence.push(step);
+				}
+
+                stageStep.sequence.push(jobStep);
+			}
+
+            sequence.push(stageStep);
+		}
+
+		const newDefinitionState = newDefinition(definition, sequence);
+
+		// Create the workflow designer using the configuration and start definition.
+		_designer.state.setDefinition(newDefinitionState);
+	};
+
 	const inputId = newUid();
 	const fieldContainer = document.querySelector("body");
 	const existingModals = fieldContainer?.querySelectorAll("[id*=import-modal]");
@@ -508,7 +621,9 @@ function newImportModal() {
 	// Create a container for the textarea and close button
 	const textareaElement = newTextareaElement(inputId);
 	const inputFileElement = newInputFileElement(inputId, textareaElement);
-	const buttonsContainerElement = newButtonsContainerElement(inputId, modalElement);
+	const buttonsContainerElement = newButtonsContainerElement(inputId, modalElement, (definition) => {
+		setDefinition(definition);
+	});
 	const textareaContainerElement = document.createElement('div');
 
 	textareaContainerElement.setAttribute("style", "margin-top:0.2em;")
