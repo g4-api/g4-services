@@ -322,11 +322,38 @@ class G4Client {
 				? {} 
 				: _cliFactory.convertToDictionary(arg);
 
+		/**
+		 * Formats and copies parameters from the manifest to prevent unintended mutations.
+		 *
+		 * This function extracts parameters from the provided manifest object, creates copies
+		 * of each parameter to ensure immutability, and returns an array of these copied parameters.
+		 * By doing so, it safeguards the original manifest parameters from accidental modification
+		 */
+		const formatParameters = (manifest) => {
+			// Initialize an empty array to hold the copied parameters
+			const copiedParameters = [];
+
+			// Iterate over each parameter in the manifest's parameters array
+			// If manifest or manifest.parameters is undefined, default to an empty array to prevent errors
+			for (const parameter of manifest?.parameters || []) {
+				// Create a deep copy of the current parameter to ensure immutability
+				// Replace the following line with a deep copy method if parameters contain nested objects
+				const parameterJson = JSON.stringify(parameter);
+				const newParameter = JSON.parse(parameterJson);
+
+				// Add the copied parameter object to the copiedParameters array
+				copiedParameters.push(newParameter);
+			}
+
+			// Return the array of copied parameter objects
+			return copiedParameters;
+		};
+
 		// Retrieve the manifest for the step's plugin
 		const manifest = _manifests[step.pluginName];
 
 		// Extract parameters from the manifest or default to an empty array
-		const parameters = manifest?.parameters || [];
+		const parameters = formatParameters(manifest?.parameters || []);
 
 		// Define the list of keys to include when updating step properties
 		const includeKeys = [
@@ -347,9 +374,9 @@ class G4Client {
 			step.parameters[key] = parameter;
 
 			// Join the description array into a single string if it exists
-			step.parameters[key].description = parameter.description
-				? parameter.description.join('\n')
-				: "";
+			step.parameters[key].description = Array.isArray(parameter.description)
+				? parameter.description?.join('\n').trim()
+				: parameter.description?.trim() || "";
 		}
 
 		// Iterate over each key in the rule object to update the corresponding step properties
@@ -637,16 +664,16 @@ class G4Client {
 		try {
 			// Invoke the G4 automation sequence by sending a POST request with the automation definition.
 			const response = await fetch(this.invokeUrl, {
-				method: 'POST', // HTTP method set to POST for sending data
+				method: 'POST',
 				headers: {
-					'Content-Type': 'application/json' // Indicates that the request body is in JSON format
+					'Content-Type': 'application/json'
 				},
-				body: JSON.stringify(definition) // Converts the definition object to a JSON string for the request body
+				body: JSON.stringify(definition)
 			});
 
 			// Check if the response status indicates a successful request (HTTP status code 200-299).
+			// If the response is not ok, throw an error with the status text for debugging purposes.
 			if (!response.ok) {
-				// If the response is not ok, throw an error with the status text for debugging purposes.
 				throw new Error(`Network response was not ok: ${response.statusText}`);
 			}
 
