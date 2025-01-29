@@ -480,10 +480,11 @@ function newImportModal() {
 
             const branchesKeys = Object.keys(rule.branches);
 			const isRules = rule.rules.length > 0;
-            const isBranches = branchesKeys.length > 0;
+			const isBranches = branchesKeys.length > 0;
+
+			_client.syncStep(step, rule);
 
 			if (!isRules && !isBranches) {
-				_client.syncStep(step, rule);
 				return step;
 			}
 
@@ -537,7 +538,7 @@ function newImportModal() {
 			const stageStep = StateMachineSteps.newG4Stage('Stage', {}, {}, []);
 
 			stageStep.name = stage?.reference?.name || stageStep.name;
-			stageStep.description = stage?.reference?.description || stageStep.description;
+			stageStep.description = stage?.reference?.description?.trim() || stageStep.description?.trim();
             stageStep.id = stage?.reference?.id || stageStep.id;
 
 			stage.jobs = stage.jobs || [];
@@ -1074,20 +1075,95 @@ async function startDefinition() {
  * @returns {HTMLElement} The fully populated step editor container element.
  */
 function stepEditorProvider(step, editorContext) {
+	/**
+	 * Converts an array of strings in the format "key=value" into an object (dictionary).
+	 * If a string does not contain an "=", the entire string is treated as the key with an empty string as its value.
+	 * If the value part after "=" is missing, it defaults to an empty string.
+	 */
+	const convertToDictionary = (values) => {
+		return values.reduce((accumulator, currentString) => {
+			// Use a regular expression to split the string at the first occurrence of "="
+			// ^([^=]+)=(.*)$
+			// ^        : Start of the string
+			// ([^=]+)  : Capture one or more characters that are not "=" as the key
+			// =        : The literal "=" character
+			// (.*)     : Capture the rest of the string as the value
+			// $        : End of the string
+			const match = /^([^=]+)=(.*)$/.exec(currentString);
 
+			if (match) {
+				// Extract the key from the first capturing group
+				const key = match[1];
+
+				/**
+				 * Extract the value from the second capturing group.
+				 * If the value is undefined or an empty string, default it to "".
+				 * This handles cases like "key=" where the value is missing.
+				 */
+				const value = match[2] !== undefined ? match[2] : "";
+
+				// Assign the key-value pair to the accumulator object
+				accumulator[key] = value;
+			} else {
+				/**
+				 * If the string does not contain an "=", treat the entire string as the key
+				 * and assign an empty string as its value.
+				 * This handles cases like "key" without any associated value.
+				 */
+				accumulator[currentString] = "";
+			}
+
+			// Return the updated accumulator for the next iteration
+			return accumulator;
+		}, {});
+	};
+
+	//const initializeDriverParameters = (step) => {
+	//	// Ensure the 'driverParameters' property exists in the definition.
+	//	step.properties['driverParameters'] = step.properties['driverParameters'] || {};
+
+	//	// Ensure the 'capabilities' object exists within 'driverParameters'.
+	//	step.properties['driverParameters']['capabilities'] = step.properties['driverParameters']['capabilities'] || {};
+
+	//	// Ensure the 'firstMatch' object exists within 'capabilities'.
+	//	step.properties['driverParameters']['capabilities']['firstMatch'] = step.properties['driverParameters']['capabilities']['firstMatch'] || [{}];
+
+	//	// Ensure the 'vendorCapabilities' object exists within 'capabilities'.
+	//	step.properties['driverParameters']['capabilities']['vendorCapabilities'] = step.properties['driverParameters']['capabilities']['vendorCapabilities'] || {};
+	//}
+
+	/**
+	 * Initializes the driver parameters for a given step.
+	 *
+	 * This function ensures that the 'driverParameters' property exists within the step's properties.
+	 * It also initializes the nested 'capabilities', 'firstMatch', and 'vendorCapabilities' objects
+	 * to their default states if they are not already defined. This setup is essential for configuring
+	 * driver-specific settings required for the step's execution.
+	 */
 	const initializeDriverParameters = (step) => {
-		// Ensure the 'driverParameters' property exists in the definition.
+		// Ensure the 'driverParameters' property exists in the step's properties.
+		// If it doesn't exist, initialize it as an empty object.
 		step.properties['driverParameters'] = step.properties['driverParameters'] || {};
 
-		// Ensure the 'capabilities' object exists within 'driverParameters'.
-		step.properties['driverParameters']['capabilities'] = step.properties['driverParameters']['capabilities'] || {};
+		// Access the 'driverParameters' object for further initialization.
+		const driverParams = step.properties['driverParameters'];
 
-		// Ensure the 'firstMatch' object exists within 'capabilities'.
-		step.properties['driverParameters']['capabilities']['firstMatch'] = step.properties['driverParameters']['capabilities']['firstMatch'] || [{}];
+		// Ensure the 'capabilities' object exists within 'driverParameters'.
+		// Capabilities define the desired capabilities for the driver, such as browser name, version, etc.
+		driverParams['capabilities'] = driverParams['capabilities'] || {};
+
+		// Access the 'capabilities' object for nested initialization.
+		const capabilities = driverParams['capabilities'];
+
+		// Ensure the 'firstMatch' array exists within 'capabilities'.
+		// 'firstMatch' is used to specify an array of capability objects for matching the driver.
+		// Initialize it with a default empty object if it doesn't exist.
+		capabilities['firstMatch'] = capabilities['firstMatch'] || [{}];
 
 		// Ensure the 'vendorCapabilities' object exists within 'capabilities'.
-		step.properties['driverParameters']['capabilities']['vendorCapabilities'] = step.properties['driverParameters']['capabilities']['vendorCapabilities'] || {};
-	}
+		// 'vendorCapabilities' can be used to specify vendor-specific capabilities.
+		capabilities['vendorCapabilities'] = capabilities['vendorCapabilities'] || {};
+	};
 
 	/**
 	 * Initializes and appends the appropriate input field to the container based on the parameter type.
@@ -1127,11 +1203,10 @@ function stepEditorProvider(step, editorContext) {
 		 * Updates the parameter value and notifies the editor context upon changes.
 		 */
 		if (isKeyValue) {
-			// TODO: convert value to object from array of a=b
 			CustomFields.newKeyValueField(
 				{
 					container: container,
-					initialValue: parameter.value,
+					initialValue: convertToDictionary(parameter.value),
 					label: label,
 					title: parameter.description
 				},
