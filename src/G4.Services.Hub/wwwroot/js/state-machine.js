@@ -262,12 +262,11 @@ class StateMachineSteps {
 		const isContainer = componentType === "container";
 
 		// Initialize the new G4 step object
-		let step = {
+		const step = {
 			componentType: componentType,
 			type: iconProvider
 		};
 
-		// TODO: Take branches for the manifest or initialize an empty branches collection - will be available on next api release.
 		// Check if the manifest is a condition and initialize the branches object
 		if (isSwitch) {
 			const branches = {};
