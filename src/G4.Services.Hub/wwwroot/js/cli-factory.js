@@ -96,11 +96,8 @@
 
         // Iterate over the nestedExpressionMap to replace placeholders with the original nested expressions.
         for (const [originalExpression, placeholder] of Object.entries(nestedExpressionMap)) {
-            // Create a JSON-compatible placeholder string.
-            const placeholderJson = `"${placeholder}"`;
-
             // Replace the placeholder in the JSON string with the JSON-stringified original expression.
-            argumentsJson = argumentsJson.replace(placeholderJson, JSON.stringify(originalExpression));
+            argumentsJson = argumentsJson.replace(placeholder, originalExpression);
         }
 
         // Deserialize the JSON string back into a JavaScript object.
