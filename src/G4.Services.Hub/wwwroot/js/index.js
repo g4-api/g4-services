@@ -1,30 +1,4 @@
-/* global window, document */
-
-
-// Define the list of types to include in the workflow designer
-const _includeTypes = ["ACTION", "CONTENT", "JOB", "STAGE", "TRANSFORMER"];
-
-// Initialize the G4Client for automation requests, interactions, and notifications
-const _client = new G4Client();
-
-// Build a connection to the hub endpoint.
-// The URL must match app.MapHub<G4AutomationNotificationsHub>("/hub/v4/g4/notifications")
-const _connection = new signalR
-	.HubConnectionBuilder()
-	.withUrl("/hub/v4/g4/notifications")
-	.withAutomaticReconnect()
-	.build();
-
-// Once the connection starts, enable the button
-_connection
-	.start()
-	.catch(err => console.error("Connection failed:", err.message));
-
-let _cache = {};
-let _cacheKeys = [];
-let _designer;
-let _manifests = {};
-let _stateMachine = {};
+/* global window, document, _designer, _manifests, _cache, _cacheKeys */
 
 /**
  * Exports the current definition from the designer as a G4 JSON file.
@@ -47,7 +21,7 @@ function exportDefinition() {
 
 	// Print a decorative header
 	console.log("====================================");
-	console.log("         Automation Details         ");
+	console.log("          Automation Details        ");
 	console.log("====================================");
 
 	// Print a quick description
@@ -58,7 +32,7 @@ function exportDefinition() {
 
 	// Print a closing line
 	console.log("====================================");
-	console.log("   End of Automation Object Details ");
+	console.log("  End of Automation Object Details  ");
 	console.log("====================================\n\n");
 
 	// Create a Blob from the string (specify the MIME type as JSON)
@@ -70,7 +44,7 @@ function exportDefinition() {
 	// Create a hidden <a> element and set its download attribute
 	const downloadLink = document.createElement('a');
 	downloadLink.href = url;
-	downloadLink.download = `${uid()}.json`;
+	downloadLink.download = `${Utilities.newUid()}.json`;
 
 	// Programmatically click the link to trigger the download
 	downloadLink.click();
@@ -87,27 +61,11 @@ function exportDefinition() {
  * @returns {Promise<void>} A promise that resolves once the designer is initialized.
  */
 async function initializeDesigner() {
-	// Create a new G4Client instance.
-	const g4Cliet = new G4Client();
-
-	// Fetch manifests and manifest groups from the G4Client.
-	const manifests = await g4Cliet.getManifests();
-	const manifestsGroups = await g4Cliet.getGroups();
-
-	// Store the manifests and groups in global variables for later use.
-	_manifests = manifests;
-
-	// Store the cache in a global variable for later use.
-	_cache = await g4Cliet.getCache();
-
-	// Store the cache keys in a global variable for later use.
-	_cacheKeys = Object.keys(_cache).map(key => key.toUpperCase());
-
 	// Get the HTML element where the designer will be rendered.
 	const designerHtmlElement = document.getElementById('designer');
 
 	// Initialize the workflow's starting definition with the "WriteLog" manifest.
-	const initalState = initializeStartDefinition(manifests["WriteLog"]);
+	const initalState = initializeStartDefinition(_manifests["WriteLog"]);
 
 	// Create a new start definition object.
 	const startDefinition = newStartDefinition(initalState);
@@ -119,7 +77,7 @@ async function initializeDesigner() {
 	const groups = [];
 
 	// Process each manifest group to create the groups for the designer.
-	for (const [groupName, manifestsGroup] of Object.entries(manifestsGroups)) {
+	for (const [groupName, manifestsGroup] of Object.entries(_manifestsGroups)) {
 		// Retrieve the manifests from the group, or default to an empty array.
 		const manifests = manifestsGroup.manifests ? manifestsGroup.manifests : [];
 
@@ -525,6 +483,7 @@ function newImportModal() {
             const isBranches = branchesKeys.length > 0;
 
 			if (!isRules && !isBranches) {
+				_client.syncStep(step, rule);
 				return step;
 			}
 
@@ -533,6 +492,7 @@ function newImportModal() {
 
 				for (const subRule of rule.rules) {
 					const subStep = newStep(subRule);
+					_client.syncStep(subStep, subRule);
 					step.sequence.push(subStep);
 				}
 			}
@@ -542,6 +502,7 @@ function newImportModal() {
 					for (const subRule of rule.branches[branchKey]) {
 						const subStep = newStep(subRule);
 						step.branches[branchKey] = step.branches[branchKey] || [];
+						_client.syncStep(subStep, subRule);
                         step.branches[branchKey].push(subStep);
 					}
 				}
@@ -553,7 +514,7 @@ function newImportModal() {
 		const newDefinition = (definition, sequence) => {
             const id = definition?.reference?.id && definition.reference.id !== ""
 				? definition?.reference?.id
-				: uid();
+				: Utilities.newUid();
 
 			return {
 				id,
@@ -608,7 +569,7 @@ function newImportModal() {
 		_designer.state.setDefinition(newDefinitionState);
 	};
 
-	const inputId = newUid();
+	const inputId = Utilities.newUid();
 	const fieldContainer = document.querySelector("body");
 	const existingModals = fieldContainer?.querySelectorAll("[id*=import-modal]");
 
@@ -618,7 +579,6 @@ function newImportModal() {
 
 	const modalElement = newModalElement(inputId);
 
-	// Create a container for the textarea and close button
 	const textareaElement = newTextareaElement(inputId);
 	const inputFileElement = newInputFileElement(inputId, textareaElement);
 	const buttonsContainerElement = newButtonsContainerElement(inputId, modalElement, (definition) => {
@@ -645,7 +605,7 @@ function newImportModal() {
  */
 function newStartDefinition(sequence) {
 	return {
-		id: uid(),
+		id: Utilities.newUid(),
 		// Default properties for the start definition.
 		properties: {
 			authentication: {
@@ -1154,18 +1114,20 @@ function stepEditorProvider(step, editorContext) {
 		}
 
 		// Determine the nature of the parameter to decide which input field to create.
-		const label = convertPascalToSpaceCase(convertToPascalCase(key));
-		const isListField = _cacheKeys.includes(parameter.type?.toUpperCase());
+		const parameterType = parameter.type?.toUpperCase();
+		const label = Utilities.convertPascalToSpaceCase(Utilities.convertToPascalCase(key));
+		const isListField = _cacheKeys.includes(parameterType);
 		const isOptionsField = parameter.optionsList && parameter.optionsList.length > 0;
-		const isArray = parameter.type?.toUpperCase() === 'ARRAY';
-		const isSwitch = ['SWITCH', 'BOOLEAN', 'BOOL'].includes(parameter.type.toUpperCase());
-		const isKeyValue = ['KEY/VALUE', 'KEYVALUE', 'DICTIONARY'].includes(parameter.type.toUpperCase());
+		const isArray = parameterType === 'ARRAY';
+		const isSwitch = ['SWITCH', 'BOOLEAN', 'BOOL'].includes(parameterType);
+		const isKeyValue = ['KEY/VALUE', 'KEYVALUE', 'DICTIONARY'].includes(parameterType);
 
 		/**
 		 * Handles the creation and configuration of a Key-Value input field.
 		 * Updates the parameter value and notifies the editor context upon changes.
 		 */
 		if (isKeyValue) {
+			// TODO: convert value to object from array of a=b
 			CustomFields.newKeyValueField(
 				{
 					container: container,
@@ -1375,7 +1337,7 @@ function stepEditorProvider(step, editorContext) {
 	}
 
 	// Generate a unique identifier for input elements within the editor.
-	const inputId = newUid();
+	const inputId = Utilities.newUid();
 
 	// Escape the generated ID to ensure it's safe for use in CSS selectors.
 	const escapedId = CSS.escape(inputId);
@@ -1394,7 +1356,7 @@ function stepEditorProvider(step, editorContext) {
 	 */
 	CustomFields.newTitle({
 		container: stepEditorContainer,
-		titleText: convertPascalToSpaceCase(step.pluginName),
+		titleText: Utilities.convertPascalToSpaceCase(step.pluginName),
 		subTitleText: step.pluginType,
 		helpText: step.description
 	});
@@ -1516,7 +1478,66 @@ function stepEditorProvider(step, editorContext) {
 	return stepEditorContainer;
 }
 
-// Initialize the designer when the window has loaded
-window.addEventListener('load', () => {
-	initializeDesigner();
+/**
+ * Initializes the designer application once the browser window has fully loaded.
+ */
+window.addEventListener('load', async () => {
+	// The loader element
+	const loadingIndicator = document.getElementById('loading-indicator');
+
+	// Maximum time to wait for _cache to be populated (in milliseconds)
+	const MAX_WAIT_TIME = 15000;
+
+	// Interval between each check of _cache (in milliseconds)
+	const CHECK_INTERVAL = 1000;
+
+	/**
+	 * Returns a promise that resolves after a specified delay.
+	 */
+	const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+	/**
+	 * Checks if the global _cache object is empty.
+	 */
+	const assertCacheEmpty = () => Object.keys(_cache).length === 0;
+
+	/**
+	 * Attempts to initialize the designer by ensuring that _cache contains data.
+	 */
+	const attemptInitializeDesigner = async () => {
+		// Record the current time to track elapsed time
+		const startTime = Date.now();
+
+		// Continuously check if _cache is empty until data is available or timeout is reached
+		while (assertCacheEmpty()) {
+			// Calculate elapsed time
+			const elapsedTime = Date.now() - startTime;
+
+			// If the maximum wait time is exceeded, log a warning
+			if (elapsedTime >= MAX_WAIT_TIME) {
+				console.warn('Timeout reached. The designer could not be loaded.');
+				break;
+			}
+			// If still within the wait time, wait for the specified interval before rechecking
+			else {
+				await wait(CHECK_INTERVAL);
+			}
+		}
+
+		// Initialize the designer after exiting the loop
+		initializeDesigner();
+	};
+
+	try {
+		// Attempt to initialize the designer, awaiting the completion of the asynchronous operation
+		await attemptInitializeDesigner();
+	} catch (error) {
+		// Handle any errors that occur during the initialization process
+		console.error('An error occurred during designer initialization:', error);
+	} finally {
+		// After initialization (successful or not), hide the loading indicator if it exists
+		if (loadingIndicator) {
+			loadingIndicator.style.display = 'none';
+		}
+	}
 });
