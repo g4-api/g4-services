@@ -512,17 +512,52 @@ function newImportModal() {
 			return step;
 		}
 
+		const setVendorCapabilities = (driverParameters) => {
+			if (!driverParameters?.capabilities?.alwaysMatch) {
+				return undefined;
+			}
+
+			const pattern = /^\w+(?=:options$)/si;
+			const keys = Object.keys(driverParameters.capabilities.alwaysMatch);
+			const vendorOptions = keys.filter(key => pattern.test(key.trim())) || [];
+
+			driverParameters.capabilities.vendorCapabilities = {};
+
+			for (let i = 0; i < vendorOptions.length; i++) {
+				const key = vendorOptions[i];
+				const jsonValue = JSON.stringify(driverParameters.capabilities.alwaysMatch[key]);
+				const value = JSON.parse(jsonValue);
+				const vendor = pattern.exec(key)[0];
+
+				if (!vendor) {
+					continue;
+				}
+
+				driverParameters.capabilities.vendorCapabilities[i] = {
+					vendor: vendor,
+					capabilities: value
+				}
+
+				delete driverParameters.capabilities.alwaysMatch[key]
+			}
+
+			return driverParameters;
+		}
+
 		const newDefinition = (definition, sequence) => {
+
             const id = definition?.reference?.id && definition.reference.id !== ""
 				? definition?.reference?.id
 				: Utilities.newUid();
+
+			const driverParameters = setVendorCapabilities(definition.driverParameters);
 
 			return {
 				id,
 				properties: {
 					authentication: definition.authentication,
 					dataSource: definition.dataSource,
-					driverParameters: definition.driverParameters,
+					driverParameters: driverParameters,
 					settings: definition.settings,
 					speed: 300
 				},
@@ -539,7 +574,8 @@ function newImportModal() {
 
 			stageStep.name = stage?.reference?.name || stageStep.name;
 			stageStep.description = stage?.reference?.description?.trim() || stageStep.description?.trim();
-            stageStep.id = stage?.reference?.id || stageStep.id;
+			stageStep.id = stage?.reference?.id || stageStep.id;
+			stageStep.properties.driverParameters = stage.driverParameters || {};
 
 			stage.jobs = stage.jobs || [];
 
@@ -549,7 +585,8 @@ function newImportModal() {
 
 				jobStep.name = job?.reference?.name || jobStep.name;
 				jobStep.description = job?.reference?.description || jobStep.description;
-                jobStep.id = job?.reference?.id || jobStep.id;
+				jobStep.id = job?.reference?.id || jobStep.id;
+				jobStep.properties.driverParameters = job.driverParameters || {};
 
 				job.rules = job.rules || [];
 
@@ -1117,20 +1154,6 @@ function stepEditorProvider(step, editorContext) {
 			return accumulator;
 		}, {});
 	};
-
-	//const initializeDriverParameters = (step) => {
-	//	// Ensure the 'driverParameters' property exists in the definition.
-	//	step.properties['driverParameters'] = step.properties['driverParameters'] || {};
-
-	//	// Ensure the 'capabilities' object exists within 'driverParameters'.
-	//	step.properties['driverParameters']['capabilities'] = step.properties['driverParameters']['capabilities'] || {};
-
-	//	// Ensure the 'firstMatch' object exists within 'capabilities'.
-	//	step.properties['driverParameters']['capabilities']['firstMatch'] = step.properties['driverParameters']['capabilities']['firstMatch'] || [{}];
-
-	//	// Ensure the 'vendorCapabilities' object exists within 'capabilities'.
-	//	step.properties['driverParameters']['capabilities']['vendorCapabilities'] = step.properties['driverParameters']['capabilities']['vendorCapabilities'] || {};
-	//}
 
 	/**
 	 * Initializes the driver parameters for a given step.
