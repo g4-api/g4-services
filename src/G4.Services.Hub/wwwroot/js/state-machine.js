@@ -142,6 +142,7 @@ class StateMachineSteps {
 		const container = StateMachineSteps.newG4Container(name, 'stage', stageDescription, properties, parameters, steps);
 		container["pluginType"] = 'Container'
 		container["pluginName"] = 'G4™ Stage'
+		container.properties.driverParameters = {};
 
 		// Return the Stage container.
 		return container;
@@ -175,6 +176,7 @@ class StateMachineSteps {
 		let container = StateMachineSteps.newG4Container(name, 'job', jobDescription, properties, parameters, steps);
 		container["pluginType"] = 'Container'
 		container["pluginName"] = 'G4™ Job'
+		container.properties.driverParameters = {};
 
 		// Return the Job container.
 		return container;
