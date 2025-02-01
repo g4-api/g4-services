@@ -358,6 +358,29 @@ const newObjectArrayFieldsContainer = (id, options, setCallback) => {
                     (value) => propertyCallback(value, setCallback)
                 );
                 break;
+            case 'ARRAY':
+                CustomFields.newArrayField(
+                    {
+                        container: container,
+                        label: label,
+                        title: title,
+                        initialValue: mode === 'NEW' ? null : options.property.value
+                    },
+                    (value) => propertyCallback(value, setCallback)
+                );
+                break;
+            case 'DATALIST':
+                CustomFields.newDataListField(
+                    {
+                        container: container,
+                        label: label,
+                        title: title,
+                        initialValue: mode === 'NEW' ? null : options.property.value,
+                        itemSource: options.property?.itemSource || []
+                    },
+                    (value) => propertyCallback(value, setCallback)
+                );
+                break;
             default:
                 console.warn(`Unsupported property type: ${type}`);
                 break;
@@ -938,10 +961,6 @@ class CustomG4Fields {
          * within the provided container. It constructs data objects based on existing `firstMatch`
          * configurations and initializes an object array fields container to allow users to add,
          * remove, and modify capability groups.
-         *
-         * @param {string} id             - A unique identifier used to assign IDs to the field container and its controller.
-         * @param {HTMLElement} container - The DOM element that will contain the "First Match" capabilities.
-         * @param {Object} firstMatch     - An object representing existing "First Match" capabilities groups.
          */
         const newFirstMatchCapabilities = (id, firstMatch) => {
             /**
@@ -958,7 +977,7 @@ class CustomG4Fields {
                 dataObject['capabilities'] = {
                     label: 'Capabilities',
                     title: 'A collection of capabilities with additional custom information for the invocation.',
-                    type: 'KEYVALUE',
+                    type: 'STRING',
                     value: firstMatchCapabilities || [{}]
                 };
 
@@ -1035,135 +1054,225 @@ class CustomG4Fields {
             return firstMatchContainer;
         }
 
-        /**
-         * Adds a Vendor Capabilities UI component to the specified container.
-         *
-         * This function dynamically generates a user interface for managing vendor capabilities.
-         * It allows users to add, remove, and configure groups of vendor capabilities.
-         *
-         * @param {string} id                 - A unique identifier used to distinguish the component instance.
-         * @param {HTMLElement} container     - The DOM element where the vendor capabilities UI will be appended.
-         * @param {Object} vendorCapabilities - An object containing existing vendor capability data.
-         */
-        const newVendorCapabilities = (id, vendorCapabilities) => {
-            /**
-             * Creates a standardized data object for a single vendor capability entry.
-             *
-             * @param {Object} [vendorCapabilities] - The vendor capabilities data for a single vendor.
-             * @returns {Object} The structured data object containing vendor and capabilities information.
-             */
-            const newDataObject = (vendorCapabilities) => {
-                const dataObject = {};
+        ///**
+        // * Adds a Vendor Capabilities UI component to the specified container.
+        // *
+        // * This function dynamically generates a user interface for managing vendor capabilities.
+        // * It allows users to add, remove, and configure groups of vendor capabilities.
+        // */
+        //const newVendorCapabilities = (id, vendorCapabilities) => {
+        //    /**
+        //     * Creates a standardized data object for a single vendor capabilities entry.
+        //     * This object is structured to be compatible with WebDriver's vendor-specific capabilities UI.
+        //     * Each field includes metadata such as labels and titles to enhance user understanding within the UI.
+        //     */
+        //    const newDataObject = (vendorCapabilities) => {
+        //        // Initialize an empty object to hold the structured data
+        //        const dataObject = {};
 
-                // Define the vendor field with its metadata and value
-                dataObject['vendor'] = {
-                    label: 'Vendor',
-                    title: 'The vendor name associated with the capabilities.',
-                    type: 'TEXT',
-                    value: vendorCapabilities?.vendor || '' // Use optional chaining to safely access vendor
-                };
+        //        /**
+        //         * Adds the 'vendor' field to the dataObject.
+        //         * This field captures the identifier of the vendor and includes metadata for UI representation.
+        //         */
+        //        dataObject['vendor'] = {
+        //            itemSource: [
+        //                {
+        //                    "name": "goog:chromeOptions",
+        //                    "description": [
+        //                        "Chrome-Specific Configuration: Allows customization of Chrome browser behavior. ",
+        //                        "You can set options such as running in headless mode, disabling extensions, setting proxy settings, specifying binary paths, and defining preferences like download directories."
+        //                    ]
+        //                },
+        //                {
+        //                    "name": "moz:firefoxOptions",
+        //                    "description": [
+        //                        "Firefox-Specific Configuration: Enables configuration of Firefox browser settings. ",
+        //                        "Options include running in headless mode, specifying binary paths, setting Firefox profiles, managing preferences, and enabling logging or debugging features."
+        //                    ]
+        //                },
+        //                {
+        //                    "name": "ms:edgeOptions",
+        //                    "description": [
+        //                        "Edge-Specific Configuration: Facilitates customization of Microsoft Edge browser behavior. ",
+        //                        "Options include headless mode, specifying binary locations, managing extensions, setting startup arguments, and configuring proxy settings."
+        //                    ]
+        //                },
+        //                {
+        //                    "name": "safari:automaticInspection",
+        //                    "description": [
+        //                        "Safari-Specific Configuration: Controls Safari's Web Inspector settings. ",
+        //                        "Enables or disables automatic inspection, manages developer settings, and configures other Safari-specific testing behaviors."
+        //                    ]
+        //                },
+        //                {
+        //                    "name": "appium:options",
+        //                    "description": [
+        //                        "Mobile Automation Configuration: Essential for mobile device testing. ",
+        //                        "Allows specification of device names, platform types (iOS, Android), application paths, automation engines (e.g., XCUITest, UIAutomator2), and other mobile-specific settings."
+        //                    ]
+        //                },
+        //                {
+        //                    "name": "sauce:options",
+        //                    "description": [
+        //                        "Sauce Labs Cloud Testing Configuration: Configures tests to run on Sauce Labs' cloud infrastructure. ",
+        //                        "Options include authentication credentials, build identifiers, test names, video recording settings, and concurrency controls."
+        //                    ]
+        //                },
+        //                {
+        //                    "name": "bstack:options",
+        //                    "description": [
+        //                        "BrowserStack Cloud Testing Configuration: Sets up tests to execute on BrowserStack's cloud platform. ",
+        //                        "Includes options for specifying operating systems, browser versions, session names, project identifiers, and other BrowserStack-specific settings."
+        //                    ]
+        //                },
+        //                {
+        //                    "name": "lt:options",
+        //                    "description": [
+        //                        "LambdaTest Cloud Testing Configuration: Enables configuration of tests on LambdaTest's platform. ",
+        //                        "Options cover authentication, build names, test descriptions, video recordings, screenshots, and other LambdaTest-specific parameters."
+        //                    ]
+        //                },
+        //                {
+        //                    "name": "uia:options",
+        //                    "description": [
+        //                        "UIAutomation Configuration: Provides settings for automating native Windows applications using UIAutomation. ",
+        //                        "Includes options such as enabling specific features, setting automation modes, specifying application paths, and other UIAutomation-specific configurations."
+        //                    ]
+        //                }
+        //            ],
+        //            label: 'Vendor',
+        //            title: 'Specify the vendor identifier (e.g., "ms" for Microsoft, "goog" for Google, "appium", "uia").',
+        //            type: 'DATALIST',
+        //            value: vendorCapabilities?.vendor || ''
+        //        };
 
-                // Define the capabilities field with its metadata and value
-                dataObject['capabilities'] = {
-                    label: 'Capabilities',
-                    title: 'A collection of capabilities with additional custom information for the invocation.',
-                    type: 'KEYVALUE',
-                    value: vendorCapabilities?.capabilities || {} // Use optional chaining to safely access capabilities
-                };
+        //        /**
+        //         * Adds the 'capabilities' field to the dataObject.
+        //         * This field holds key-value pairs that define the specific capabilities or features of the vendor.
+        //         */
+        //        dataObject['capabilities'] = {
+        //            label: 'Capabilities',
+        //            title: 'Define key-value pairs representing the vendor-specific capabilities or features.',
+        //            type: 'KEYVALUE',
+        //            value: vendorCapabilities?.capabilities || {}
+        //        };
 
-                return dataObject;
-            };
+        //        /**
+        //         * Adds the 'argumentsKey' field to the dataObject.
+        //         * This field captures the key used to store arguments or configuration options related to the vendor's capabilities.
+        //         */
+        //        dataObject['argumentsKey'] = {
+        //            label: 'Arguments Capabilities Key',
+        //            title: "The key used to store arguments or configuration options related to the vendor's capabilities.",
+        //            type: 'TEXT',
+        //            value: vendorCapabilities?.argumentsKey || 'args'
+        //        };
 
-            // Initialize an array to hold all data objects for vendor capabilities
-            const dataObjects = [];
+        //        /**
+        //         * Adds the 'arguments' field to the dataObject.
+        //         * This field contains an array of arguments or configuration options related to the vendor's capabilities.
+        //         */
+        //        dataObject['args'] = {
+        //            label: 'Arguments',
+        //            title: "List any command-line arguments or configuration options relevant to the vendor's capabilities.",
+        //            type: 'ARRAY',
+        //            value: vendorCapabilities?.arguments || []
+        //        };
 
-            // Retrieve all keys from the vendorCapabilities object
-            const indexes = Object.keys(vendorCapabilities);
+        //        // Return the fully constructed data object
+        //        return dataObject;
+        //    };
 
-            // Iterate over each key to create a corresponding data object
-            for (const index of indexes) {
-                const schema = newDataObject(vendorCapabilities[index]);
-                dataObjects.push(schema);
-            }
+        //    // Initialize an array to hold all data objects for vendor capabilities
+        //    const dataObjects = [];
 
-            // If there are no existing vendor capabilities, add a default empty data object
-            if (dataObjects.length === 0) {
-                dataObjects.push(newDataObject(undefined));
-            }
+        //    // Retrieve all keys from the vendorCapabilities object
+        //    const indexes = Object.keys(vendorCapabilities);
 
-            // Configuration options for the array fields UI component
-            const arrayFieldOptions = {
-                addButtonLabel: 'Add Capabilities Group',
-                dataObjects: dataObjects,
-                groupName: 'VendorCapabilities',
-                itemLabel: 'Group',
-                labelDisplayName: "Vendor Capabilities",
-                removeButtonLabel: 'Remove',
-                role: 'container',
-                title: "Vendor Capabilities"
-            };
+        //    // Iterate over each key to create a corresponding data object
+        //    for (const index of indexes) {
+        //        const schema = newDataObject(vendorCapabilities[index]);
+        //        dataObjects.push(schema);
+        //    }
 
-            /**
-             * Creates the vendor capabilities container using a utility function.
-             *
-             * @param {string} `${id}-vendor-capabilities` - The unique identifier for the container.
-             * @param {Object} arrayFieldOptions - Configuration options for the array fields.
-             * @param {Function} callback - A function to handle updates to the vendor capabilities data.
-             * @returns {HTMLElement} The constructed vendor capabilities container element.
-             */
-            const vendorContainer = newObjectArrayFieldsContainer(
-                `${id}-vendor-capabilities`, // Unique ID for the container
-                arrayFieldOptions, // Configuration options for the array fields
-                (value) => { // Callback function to handle changes in the vendor capabilities data
-                    const updatedVendorCapabilities = {}; // Initialize an object to store updated capabilities
+        //    // If there are no existing vendor capabilities, add a default empty data object
+        //    if (dataObjects.length === 0) {
+        //        dataObjects.push(newDataObject(undefined));
+        //    }
 
-                    // Iterate over each key in the value object
-                    const keys = Object.keys(value);
-                    for (const key of keys) {
-                        // Safely access capabilities and vendor using optional chaining
-                        const capabilities = value[key]?.vendorCapabilities?.capabilities;
-                        const vendor = value[key]?.vendorCapabilities?.vendor;
+        //    // Configuration options for the array fields UI component
+        //    const arrayFieldOptions = {
+        //        addButtonLabel: 'Add Capabilities Group',
+        //        dataObjects: dataObjects,
+        //        groupName: 'VendorCapabilities',
+        //        itemLabel: 'Group',
+        //        labelDisplayName: "Vendor Capabilities",
+        //        removeButtonLabel: 'Remove',
+        //        role: 'container',
+        //        title: "Vendor Capabilities"
+        //    };
 
-                        // If both capabilities and vendor are missing, skip this entry
-                        if (!capabilities && !vendor) {
-                            continue;
-                        }
-                        // If vendor is missing, only include capabilities
-                        else if (!vendor) {
-                            updatedVendorCapabilities[key] = {
-                                capabilities: capabilities || {}
-                            };
-                        }
-                        // If capabilities are missing, only include vendor
-                        else if (!capabilities) {
-                            updatedVendorCapabilities[key] = {
-                                vendor: vendor || ''
-                            };
-                        }
-                        // If both are present, include both
-                        else {
-                            updatedVendorCapabilities[key] = {
-                                vendor: vendor,
-                                capabilities: capabilities
-                            };
-                        }
-                    }
+        //    /**
+        //     * Creates the vendor capabilities container using a utility function.
+        //     */
+        //    const vendorContainer = newObjectArrayFieldsContainer(
+        //        `${id}-vendor-capabilities`,
+        //        arrayFieldOptions,
+        //        (value) => {
+        //            // Initialize an object to store updated capabilities
+        //            const updatedVendorCapabilities = {};
 
-                    // Structure the driver parameters with the updated vendor capabilities
-                    const driverParameters = {
-                        capabilities: {
-                            vendorCapabilities: updatedVendorCapabilities
-                        }
-                    };
+        //            // Iterate over each key-value pair in the input object
+        //            for (const [key, val] of Object.entries(value)) {
+        //                const vendorCapabilities = val?.vendorCapabilities;
 
-                    // Invoke the callback with the updated driver parameters
-                    setCallback(driverParameters);
-                }
-            );
+        //                // If vendorCapabilities is undefined or null, skip to the next iteration
+        //                if (!vendorCapabilities) {
+        //                    continue;
+        //                }
 
-            // Return the fully constructed vendor capabilities container
-            return vendorContainer;
-        };
+        //                const { vendor, capabilities, args, argumentsKey } = vendorCapabilities;
+
+        //                // Check if at least one of the properties exists
+        //                const hasVendor = Boolean(vendor);
+        //                const hasCapabilities = capabilities && Object.keys(capabilities).length > 0;
+        //                const hasArguments = args && Object.keys(args).length > 0;
+
+        //                // Skip entries where all properties are missing or empty
+        //                if (!hasVendor && !hasCapabilities && !hasArguments) {
+        //                    continue;
+        //                }
+
+        //                // Initialize the entry for the current key
+        //                updatedVendorCapabilities[key] = {};
+
+        //                // Conditionally add properties if they exist
+        //                if (hasVendor) {
+        //                    updatedVendorCapabilities[key].vendor = vendor;
+        //                }
+        //                if (hasCapabilities) {
+        //                    updatedVendorCapabilities[key].capabilities = capabilities;
+        //                }
+        //                if (hasArguments) {
+        //                    updatedVendorCapabilities[key][argumentsKey || 'args'] = args;
+        //                }
+        //            }
+
+        //            // Structure the driver parameters with the updated vendor capabilities
+        //            const driverParameters = {
+        //                capabilities: {
+        //                    vendorCapabilities: updatedVendorCapabilities
+        //                }
+        //            };
+
+        //            // Invoke the callback with the updated driver parameters
+        //            setCallback(driverParameters);
+        //        }
+        //    );
+
+        //    // Return the fully constructed vendor capabilities container
+        //    return vendorContainer;
+        //};
 
         // Generate a unique identifier for the plugins settings fields.
         const inputId = Utilities.newUid();
@@ -1221,17 +1330,31 @@ class CustomG4Fields {
         });
 
         // Create a new Key-Value Field for "Always Match" capabilities.
-        CustomFields.newKeyValueField(
+        let alwaysMatch = '';
+        try {
+            alwaysMatch = JSON.stringify(options.initialValue?.capabilities?.alwaysMatch || {}, null, 4);
+        }
+        catch {
+            // Silent error - do nothing.
+        }
+        CustomFields.newStringField(
             {
                 container: alwaysMatchField.querySelector('[data-g4-role="always-match-capabilities"]'),
                 label: 'Capabilities',
                 title: 'A collection of capabilities with additional custom information for the invocation.',
-                initialValue: options.initialValue?.capabilities?.alwaysMatch
+                initialValue: alwaysMatch
             },
             (value) => {
+                let alwaysMatch = {};
+                try {
+                    alwaysMatch = JSON.parse(value)
+                }
+                catch {
+                    // Silent error - do nothing.
+                }
                 const driverParameters = {
                     capabilities: {
-                        alwaysMatch: value
+                        alwaysMatch: alwaysMatch
                     }
                 };
                 setCallback(driverParameters);
@@ -1243,17 +1366,17 @@ class CustomG4Fields {
 
         // Create and append the "First Match" capabilities group to the controller.
         const firstMatchField = newFirstMatchCapabilities(
-            inputId,                                               // Unique identifier
-            options.initialValue?.capabilities?.firstMatch || [{}] // Existing "First Match" data or default
+            inputId,
+            options.initialValue?.capabilities?.firstMatch || [{}]
         );
         controller.appendChild(firstMatchField);
 
-        // Create and append the Vendor Capabilities UI component to the controller.
-        const vendorCapabilitiesField = newVendorCapabilities(
-            inputId,                                                       // Unique identifier
-            options.initialValue?.capabilities?.vendorCapabilities || [{}] // Existing vendor capabilities or default
-        );
-        controller.appendChild(vendorCapabilitiesField);
+        //// Create and append the Vendor Capabilities UI component to the controller.
+        //const vendorCapabilitiesField = newVendorCapabilities(
+        //    inputId,
+        //    options.initialValue?.capabilities?.vendorCapabilities || [{}]
+        //);
+        //controller.appendChild(vendorCapabilitiesField);
 
         // If an external container is provided, append the field container to it
         if (options.container) {
@@ -1613,9 +1736,6 @@ class CustomG4Fields {
     static newPluginsSettingsField(options, setCallback) {
         /**
          * Generates a data object schema for an external repository.
-         *
-         * @param {Object} externalRepository - The external repository data to initialize the schema with.
-         * @returns {Object} - The data object schema for the external repository.
          */
         const newDataObject = (externalRepository) => {
             // Initialize an empty object to hold the data object schema.
@@ -1914,11 +2034,6 @@ class CustomFields {
          * This function locates the container element using the provided `id`, and then invokes
          * the `newInput` function to create a new row containing an input field and a remove button.
          * If the container is not found, the function returns without taking any action.
-         *
-         * @param {string} id - The unique identifier used to locate the input container in the DOM.
-         * @param {Function} setCallback - The callback function to handle updates after creating a new input row.
-         *
-         * @returns {HTMLElement | undefined} The newly created input element, or `undefined` if the container is not found.
          */
         const newInputCallback = (id, setCallback) => {
             // Select the container element based on the provided ID, targeting
@@ -1940,13 +2055,6 @@ class CustomFields {
          * users to enter a value associated with `data-g4-role="valueitem"`,
          * and the remove button provides the option to remove the row from
          * the container.
-         *
-         * @param {Object}      options           - Configuration options for the new input row.
-         * @param {HTMLElement} options.container - The DOM element to which the input row will be appended.
-         * @param {string}     [options.value=''] - An optional initial value for the input field.
-         * @param {Function}    setCallback       - A callback function to handle updates after a row is removed.
-         *
-         * @returns {HTMLInputElement} The newly created input element (for possible further manipulation).
          */
         const newInput = (options, setCallback) => {
             // Create a div element to serve as the row container for the input and remove button
@@ -1999,9 +2107,6 @@ class CustomFields {
          * 2. Updates the title attribute of each input to mirror its current value.
          * 3. Collects all non-empty input values into an array.
          * 4. Passes this array to the setCallback function for further handling.
-         *
-         * @param {HTMLElement} container   - The DOM element containing the target input elements.
-         * @param {Function}    setCallback - The callback function to handle the processed array of values.
          */
         const callback = (container, setCallback) => {
             // Retrieve all input elements with data-g4-role="valueitem" within the container
@@ -2066,8 +2171,7 @@ class CustomFields {
         const inputContainer = fieldContainer.querySelector(`#${escapedId}-input-container`);
 
         // For each remaining initial value, create an additional input row in the container
-        for (let index = 0; index < values.length; index++) {
-            const value = values[index];
+        for (const value of values) {
             newInput({ container: inputContainer, value: value }, setCallback);
         }
 
@@ -2106,15 +2210,6 @@ class CustomFields {
          * 2. **Array**: Assumes `itemSource` is an array of objects with `name` and `description` properties, and transforms them accordingly.
          *
          * The items are finally sorted alphabetically by their keys before being returned.
-         *
-         * @param {string | Array<Object>} itemSource - The source from which items are retrieved and transformed.
-         *   - If a string, it is used as a key to look up items in the `_cache` object.
-         *   - If an array, each array element should have `name` and `description` properties.
-         *
-         * @returns {Object} A sorted object whose keys represent item names or manifest keys,
-         *   and whose values contain corresponding manifest summaries.
-         *
-         * @throws {Error} Throws an error if `itemSource` is not a string or an array.
          */
         const getItems = (itemSource) => {
             // Define a cache object to store items retrieved by key.
@@ -2160,7 +2255,7 @@ class CustomFields {
              * The sorted keys are then used to reconstruct the object in sorted order.
              */
             items = Object.keys(items)
-                .sort()
+                .sort((i, j) => i.localeCompare(j))
                 .reduce((obj, key) => {
                     obj[key] = items[key];
                     return obj;
@@ -2273,11 +2368,6 @@ class CustomFields {
          *
          * This function locates the input container using the provided `id` and,
          * if found, invokes the `newInput` function to add a new input row with default values.
-         *
-         * @param {string}   id          - The unique identifier used to locate the input container in the DOM.
-         * @param {Function} setCallback - The callback function to handle updates to the key-value pairs.
-         *
-         * @returns {HTMLElement | undefined} The newly created input row element, or `undefined` if the container is not found.
          */
         const newInputCallback = (id, setCallback) => {
             // Select the input container within the controller section using the provided id
@@ -2296,14 +2386,6 @@ class CustomFields {
          * Creates a new key-value input row and appends it to the specified container.
          * Each row consists of a remove button, a key input field, and a value input field.
          * The remove button allows the user to delete the specific key-value pair.
-         *
-         * @param {Object}       options           - Configuration options for the new input row.
-         * @param {HTMLElement}  options.container - The DOM element to which the input row will be appended.
-         * @param {string}      [options.key='']   - Optional initial value for the key input field.
-         * @param {string}      [options.value=''] - Optional initial value for the value input field.
-         * @param {Function}     setCallback       - Callback function to handle changes after removal of a key-value pair.
-         *
-         * @returns {HTMLElement} The created input row element.
          */
         const newInput = (options, setCallback) => {
             // Create a div element to serve as the row container for the key-value pair
@@ -2372,9 +2454,6 @@ class CustomFields {
          * 3. Builds a dictionary of key-value pairs, excluding entries with empty keys.
          * 4. Updates the title attributes of the input fields to reflect their current values.
          * 5. Invokes the provided `setCallback` function with the resulting dictionary.
-         *
-         * @param {HTMLElement} container   - The DOM element that contains the key-value input elements.
-         * @param {Function}    setCallback - The callback function to handle the processed key-value pairs.
          */
         const callback = (container, setCallback) => {
             // Select all div elements with data-g4-role="keyvalue" within the container
@@ -2463,8 +2542,7 @@ class CustomFields {
         const inputContainer = fieldContainer.querySelector(`#${escapedId}-input-container`);
 
         // For each remaining key in the initial values, create additional key-value rows
-        for (let i = 0; i < keys.length; i++) {
-            const key = keys[i];
+        for (const key of keys) {
             const value = values[key];
             newInput({ container: inputContainer, key, value }, setCallback);
         }
@@ -2515,15 +2593,6 @@ class CustomFields {
          *    - Defaults to 'No name available' if the name property is missing.
          *
          * After processing, the function sorts the items alphabetically by their keys.
-         *
-         * @param {string | Array<Object>} itemsSource - The source of items to process.
-         *   - If a string, it is used as a key to retrieve items from the `_cache` object.
-         *   - If an array, it should contain objects with `name` and `description` properties.
-         *
-         * @returns {Object} A sorted object where each key is derived from the item's manifest key or name,
-         *   and each value contains the item's manifest with a summary.
-         *
-         * @throws {Error} Throws an error if `itemsSource` is neither a string nor an array.
          */
         const getItems = (itemsSource) => {
             // Define a variable to hold the items after processing
@@ -2588,7 +2657,7 @@ class CustomFields {
              * - Extracts the keys, sorts them, and reconstructs the items object in sorted order.
              */
             items = Object.keys(items)
-                .sort()
+                .sort((i, j) => i.localeCompare(j))
                 .reduce((obj, key) => {
                     obj[key] = items[key];
                     return obj;
@@ -3298,9 +3367,6 @@ class CustomFields {
         /**
          * Toggles a hint text element inside a specified container.
          * If the hint text element already exists, it is removed. Otherwise, a new one is created and added.
-         *
-         * @param {HTMLElement} hintContainer - The parent container where the hint text will be toggled.
-         * @param {string} hintText - The text to display inside the hint element.
          */
         const switchHint = (hintContainer, hintText) => {
             // Query for an existing hint text element within the hintContainer.
