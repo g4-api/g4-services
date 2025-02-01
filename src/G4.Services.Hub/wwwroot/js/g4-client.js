@@ -792,15 +792,21 @@ class G4Client {
 			parameters.capabilities.alwaysMatch = capabilities.alwaysMatch;
 			parameters.capabilities.firstMatch = capabilities.firstMatch;
 
-			// Loop through each vendor key and add its capabilities under `{vendor}:options`.
+			// Loop through each vendor key and add its capabilities under `{vendor}`.
 			const vendorKeys = Object.keys(vendorCapabilities);
 			for (const vendorKey of vendorKeys) {
 				// Construct the vendor options key, e.g., "goog:chromeOptions".
-				const vendorOptionsKey = `${vendorCapabilities[vendorKey]?.vendor}:options`;
+				const vendorOptionsKey = `${vendorCapabilities[vendorKey]?.vendor}`;
 
 				// Add the vendor-specific capabilities to alwaysMatch under the new key.
-				parameters.capabilities.alwaysMatch[vendorOptionsKey] =
-					vendorCapabilities[vendorKey]?.capabilities;
+				parameters.capabilities.alwaysMatch[vendorOptionsKey] = vendorCapabilities[vendorKey]?.capabilities;
+
+                // If the vendor capabilities include arguments, add them to the alwaysMatch object.
+				if (vendorCapabilities[vendorKey].arguments && vendorCapabilities[vendorKey].arguments.length > 0) {
+					parameters.capabilities.alwaysMatch[vendorOptionsKey] = parameters.capabilities.alwaysMatch[vendorOptionsKey] || {};
+					parameters.capabilities.alwaysMatch[vendorOptionsKey].arguments = vendorCapabilities[vendorKey].arguments;
+					parameters.capabilities.alwaysMatch[vendorOptionsKey].args = vendorCapabilities[vendorKey].arguments;
+				}
 			}
 
 			// Return the fully constructed parameters object.
