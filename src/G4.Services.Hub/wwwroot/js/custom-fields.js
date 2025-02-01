@@ -972,13 +972,16 @@ class CustomG4Fields {
             const newDataObject = (firstMatchCapabilities) => {
                 // Create a new data object with the "Capabilities" group properties.
                 const dataObject = {};
+                const value = firstMatchCapabilities === undefined || firstMatchCapabilities === null
+                    ? "{}"
+                    : Utilities.convertToJson(firstMatchCapabilities);
 
                 // Define the "capabilities" field with its properties.
                 dataObject['capabilities'] = {
                     label: 'Capabilities',
                     title: 'A collection of capabilities with additional custom information for the invocation.',
                     type: 'STRING',
-                    value: firstMatchCapabilities || [{}]
+                    value: value
                 };
 
                 // Return the fully constructed data object for the "Capabilities" group.
@@ -988,12 +991,9 @@ class CustomG4Fields {
             // Initialize an array to hold all data objects for existing "First Match" groups.
             const dataObjects = [];
 
-            // Retrieve all existing group keys from the `firstMatch` object.
-            const indexes = Object.keys(firstMatch);
-
             // Iterate over each group key to create corresponding data objects.
-            for (const index of indexes) {
-                const schema = newDataObject(firstMatch[index]);
+            for (const item of firstMatch) {
+                const schema = newDataObject(item);
                 dataObjects.push(schema);
             }
 
@@ -1033,7 +1033,7 @@ class CustomG4Fields {
                         continue;
                     }
 
-                    firstMatchCapabilities[key] = capabilities;
+                    firstMatchCapabilities[key] = Utilities.convertFromJson(capabilities);
                 }
 
                 // Construct the driver parameters object with the updated "First Match" capabilities.
@@ -1330,13 +1330,7 @@ class CustomG4Fields {
         });
 
         // Create a new Key-Value Field for "Always Match" capabilities.
-        let alwaysMatch = '';
-        try {
-            alwaysMatch = JSON.stringify(options.initialValue?.capabilities?.alwaysMatch || {}, null, 4);
-        }
-        catch {
-            // Silent error - do nothing.
-        }
+        const alwaysMatch = Utilities.convertToJson(options.initialValue?.capabilities?.alwaysMatch);
         CustomFields.newStringField(
             {
                 container: alwaysMatchField.querySelector('[data-g4-role="always-match-capabilities"]'),
@@ -1345,13 +1339,7 @@ class CustomG4Fields {
                 initialValue: alwaysMatch
             },
             (value) => {
-                let alwaysMatch = {};
-                try {
-                    alwaysMatch = JSON.parse(value)
-                }
-                catch {
-                    // Silent error - do nothing.
-                }
+                const alwaysMatch = Utilities.convertFromJson(value);
                 const driverParameters = {
                     capabilities: {
                         alwaysMatch: alwaysMatch
@@ -1370,13 +1358,6 @@ class CustomG4Fields {
             options.initialValue?.capabilities?.firstMatch || [{}]
         );
         controller.appendChild(firstMatchField);
-
-        //// Create and append the Vendor Capabilities UI component to the controller.
-        //const vendorCapabilitiesField = newVendorCapabilities(
-        //    inputId,
-        //    options.initialValue?.capabilities?.vendorCapabilities || [{}]
-        //);
-        //controller.appendChild(vendorCapabilitiesField);
 
         // If an external container is provided, append the field container to it
         if (options.container) {
