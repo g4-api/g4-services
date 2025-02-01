@@ -22,22 +22,21 @@
     }
 
     /**
-     * Converts a JavaScript value into a formatted JSON string.
+     * Converts a JSON string into a JavaScript object.
      *
-     * This static method attempts to convert the provided value into a JSON string
-     * with an indentation of 4 spaces for readability.
-     * If the conversion fails (e.g., if the value contains circular references), it returns null.
+     * This static method attempts to parse the provided string as JSON.
+     * If the parsing fails (e.g., due to invalid JSON format), it returns null.
      *
-     * @param {*} value - The JavaScript value to convert to JSON. This can be any type that is JSON serializable.
+     * @param {string} value - The JSON string to convert.
      * 
-     * @returns {string|null} The formatted JSON string if conversion is successful; otherwise, null.
+     * @returns {Object|null} The parsed JavaScript object if the string is valid JSON; otherwise, null.
      */
     static convertFromJson(value) {
         try {
-            // Attempt to stringify the value to a JSON string with 4-space indentation.
-            return JSON.stringify(value, null, 4);
+            // Attempt to parse the JSON string.
+            return JSON.parse(value);
         } catch {
-            // If stringification fails (for example, due to circular references), return null.
+            // If parsing fails, return null.
             return null;
         }
     }
@@ -147,21 +146,22 @@
     }
 
     /**
-     * Converts a JSON string into a JavaScript object.
+     * Converts a JavaScript value into a formatted JSON string.
      *
-     * This static method attempts to parse the provided string as JSON.
-     * If the parsing fails (e.g., due to invalid JSON format), it returns null.
+     * This static method attempts to convert the provided value into a JSON string
+     * with an indentation of 4 spaces for readability.
+     * If the conversion fails (e.g., if the value contains circular references), it returns null.
      *
-     * @param {string} value - The JSON string to convert.
+     * @param {*} value - The JavaScript value to convert to JSON. This can be any type that is JSON serializable.
      * 
-     * @returns {Object|null} The parsed JavaScript object if the string is valid JSON; otherwise, null.
+     * @returns {string|null} The formatted JSON string if conversion is successful; otherwise, null.
      */
     static convertToJson(value) {
         try {
-            // Attempt to parse the JSON string.
-            return JSON.parse(value);
+            // Attempt to stringify the value to a JSON string with 4-space indentation.
+            return JSON.stringify(value, null, 4);
         } catch {
-            // If parsing fails, return null.
+            // If stringification fails (for example, due to circular references), return null.
             return null;
         }
     }
