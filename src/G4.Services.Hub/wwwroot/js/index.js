@@ -1,4 +1,4 @@
-/* global window, document, _designer, _manifests, _cache, _cacheKeys */
+/* global window, document, _designer, _manifests, _cache, _cacheKeys, _stateMachine */
 
 /**
  * Exports the current definition from the designer as a G4 JSON file.
@@ -517,17 +517,16 @@ function newImportModal() {
 				return undefined;
 			}
 
-			const pattern = /^\w+(?=:options$)/si;
+			const pattern = /^\w+:(\w+)?(options|inspection)$/si;
 			const keys = Object.keys(driverParameters.capabilities.alwaysMatch);
 			const vendorOptions = keys.filter(key => pattern.test(key.trim())) || [];
 
 			driverParameters.capabilities.vendorCapabilities = {};
 
 			for (let i = 0; i < vendorOptions.length; i++) {
-				const key = vendorOptions[i];
+				const vendor = vendorOptions[i];
 				const jsonValue = JSON.stringify(driverParameters.capabilities.alwaysMatch[key]);
 				const value = JSON.parse(jsonValue);
-				const vendor = pattern.exec(key)[0];
 
 				if (!vendor) {
 					continue;
@@ -795,9 +794,6 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 			// Ensure the 'firstMatch' object exists within 'capabilities'.
 			definition.properties['driverParameters']['capabilities']['firstMatch'] = definition.properties['driverParameters']['capabilities']['firstMatch'] || [{}];
 
-			// Ensure the 'vendorCapabilities' object exists within 'capabilities'.
-			definition.properties['driverParameters']['capabilities']['vendorCapabilities'] = definition.properties['driverParameters']['capabilities']['vendorCapabilities'] || {};
-
 			// Iterate over each key in the provided `value` object.
 			for (const key of Object.keys(value)) {
 				// Determine if the current key pertains to 'capabilities' with 'firstMatch'.
@@ -805,9 +801,6 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 
 				// Determine if the current key pertains to 'capabilities' with 'alwaysMatch'.
 				const isAlwaysMatch = key.toLocaleUpperCase() === 'CAPABILITIES' && 'alwaysMatch' in value[key];
-
-				// Determine if the current key pertains to 'capabilities' with 'vendorCapabilities'.
-				const isVendors = key.toLocaleUpperCase() === 'CAPABILITIES' && 'vendorCapabilities' in value[key];
 
 				// Reference to the existing 'capabilities' object for easy access.
 				const capabilities = definition.properties['driverParameters'].capabilities;
@@ -825,29 +818,9 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 					continue;
 				}
 
-				if (isVendors) {
-					// Extract the 'vendorCapabilities' object from the input value.
-					const vendors = value[key].vendorCapabilities;
-
-					// Iterate over each vendor in 'vendorCapabilities'.
-					for (const vendor of Object.keys(vendors)) {
-						// Iterate over each property for the current vendor.
-						for (const property of Object.keys(vendors[vendor])) {
-							// Ensure the vendor object exists within 'vendorCapabilities'.
-							capabilities['vendorCapabilities'][vendor] = capabilities['vendorCapabilities'][vendor] || {};
-
-							// Assign the property value to the corresponding vendor and property.
-							capabilities['vendorCapabilities'][vendor][property] = vendors[vendor][property];
-						}
-					}
-
-					// Continue to the next key as this one has been processed.
-					continue;
-				}
-
 				if (isAlwaysMatch) {
 					// Assign the 'alwaysMatch' object directly to the capabilities.
-					capabilities['alwaysMatch'] = value[key].alwaysMatch;
+					capabilities['alwaysMatch'] = value[key]?.alwaysMatch;
 
 					// Continue to the next key as this one has been processed.
 					continue;
@@ -1156,39 +1129,6 @@ function stepEditorProvider(step, editorContext) {
 	};
 
 	/**
-	 * Initializes the driver parameters for a given step.
-	 *
-	 * This function ensures that the 'driverParameters' property exists within the step's properties.
-	 * It also initializes the nested 'capabilities', 'firstMatch', and 'vendorCapabilities' objects
-	 * to their default states if they are not already defined. This setup is essential for configuring
-	 * driver-specific settings required for the step's execution.
-	 */
-	const initializeDriverParameters = (step) => {
-		// Ensure the 'driverParameters' property exists in the step's properties.
-		// If it doesn't exist, initialize it as an empty object.
-		step.properties['driverParameters'] = step.properties['driverParameters'] || {};
-
-		// Access the 'driverParameters' object for further initialization.
-		const driverParams = step.properties['driverParameters'];
-
-		// Ensure the 'capabilities' object exists within 'driverParameters'.
-		// Capabilities define the desired capabilities for the driver, such as browser name, version, etc.
-		driverParams['capabilities'] = driverParams['capabilities'] || {};
-
-		// Access the 'capabilities' object for nested initialization.
-		const capabilities = driverParams['capabilities'];
-
-		// Ensure the 'firstMatch' array exists within 'capabilities'.
-		// 'firstMatch' is used to specify an array of capability objects for matching the driver.
-		// Initialize it with a default empty object if it doesn't exist.
-		capabilities['firstMatch'] = capabilities['firstMatch'] || [{}];
-
-		// Ensure the 'vendorCapabilities' object exists within 'capabilities'.
-		// 'vendorCapabilities' can be used to specify vendor-specific capabilities.
-		capabilities['vendorCapabilities'] = capabilities['vendorCapabilities'] || {};
-	};
-
-	/**
 	 * Initializes and appends the appropriate input field to the container based on the parameter type.
 	 *
 	 * This function dynamically creates and configures input fields within a given container
@@ -1347,7 +1287,7 @@ function stepEditorProvider(step, editorContext) {
 		);
 	};
 
-	const initializeSystemContainerEditorProvider = (container, step, type) => {
+	const initializeSystemContainerEditorProvider = (container, step) => {
 		// Add a driver parameters field for configuring the G4 driver parameters.
 		CustomG4Fields.newDriverParametersField(
 			{
@@ -1363,22 +1303,24 @@ function stepEditorProvider(step, editorContext) {
 			 * accordingly. It ensures that the `capabilities` structure is correctly maintained
 			 * and merges new values into existing configurations. After processing, it notifies
 			 * the editor that properties have changed.
-			 *
-			 * @param {Object} value - The updated Driver Parameters provided by the user.
 			 */
 			(value) => {
-				initializeDriverParameters(step);
+				// Ensure the 'driverParameters' property exists in the definition.
+				step.properties['driverParameters'] = step.properties['driverParameters'] || {};
+
+				// Ensure the 'capabilities' object exists within 'driverParameters'.
+				step.properties['driverParameters']['capabilities'] = step.properties['driverParameters']['capabilities'] || {};
+
+				// Ensure the 'firstMatch' object exists within 'capabilities'.
+				step.properties['driverParameters']['capabilities']['firstMatch'] = step.properties['driverParameters']['capabilities']['firstMatch'] || [{}];
 
 				// Iterate over each key in the provided `value` object.
 				for (const key of Object.keys(value)) {
 					// Determine if the current key pertains to 'capabilities' with 'firstMatch'.
-					const isFirstMatch = key.toLocaleUpperCase() === 'CAPABILITIES' && 'firstMatch' in value[key];
+					const isFirstMatch = key.toUpperCase() === 'CAPABILITIES' && 'firstMatch' in value[key];
 
 					// Determine if the current key pertains to 'capabilities' with 'alwaysMatch'.
-					const isAlwaysMatch = key.toLocaleUpperCase() === 'CAPABILITIES' && 'alwaysMatch' in value[key];
-
-					// Determine if the current key pertains to 'capabilities' with 'vendorCapabilities'.
-					const isVendors = key.toLocaleUpperCase() === 'CAPABILITIES' && 'vendorCapabilities' in value[key];
+					const isAlwaysMatch = key.toUpperCase() === 'CAPABILITIES' && 'alwaysMatch' in value[key];
 
 					// Reference to the existing 'capabilities' object for easy access.
 					const capabilities = step.properties['driverParameters'].capabilities;
@@ -1390,26 +1332,6 @@ function stepEditorProvider(step, editorContext) {
 						// Iterate over each group in 'firstMatch' and merge it into the existing capabilities.
 						for (const group of Object.keys(firstMatch)) {
 							capabilities['firstMatch'][group] = firstMatch[group];
-						}
-
-						// Continue to the next key as this one has been processed.
-						continue;
-					}
-
-					if (isVendors) {
-						// Extract the 'vendorCapabilities' object from the input value.
-						const vendors = value[key].vendorCapabilities;
-
-						// Iterate over each vendor in 'vendorCapabilities'.
-						for (const vendor of Object.keys(vendors)) {
-							// Iterate over each property for the current vendor.
-							for (const property of Object.keys(vendors[vendor])) {
-								// Ensure the vendor object exists within 'vendorCapabilities'.
-								capabilities['vendorCapabilities'][vendor] = capabilities['vendorCapabilities'][vendor] || {};
-
-								// Assign the property value to the corresponding vendor and property.
-								capabilities['vendorCapabilities'][vendor][property] = vendors[vendor][property];
-							}
 						}
 
 						// Continue to the next key as this one has been processed.
@@ -1484,7 +1406,7 @@ function stepEditorProvider(step, editorContext) {
 
 	// Check if the step is a stage or job and initialize the system container editor provider
 	if (step.type?.toUpperCase() === 'STAGE' || step.type?.toUpperCase() === 'JOB') {
-		initializeSystemContainerEditorProvider(stepEditorContainer, step, "properties");
+		initializeSystemContainerEditorProvider(stepEditorContainer, step);
 		return stepEditorContainer;
 	}
 
