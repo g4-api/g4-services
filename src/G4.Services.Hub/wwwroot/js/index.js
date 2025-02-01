@@ -807,7 +807,7 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 
 				if (isFirstMatch) {
 					// Extract the 'firstMatch' object from the input value.
-					const firstMatch = value[key].firstMatch;
+					const firstMatch = value[key].firstMatch[0];
 
 					// Iterate over each group in 'firstMatch' and merge it into the existing capabilities.
 					for (const group of Object.keys(firstMatch)) {
