@@ -1,92 +1,71 @@
-/* global window, document */
-
-// Build a connection to the hub endpoint.
-// The URL must match app.MapHub<G4AutomationNotificationsHub>("/hub/v4/g4/notifications")
-const _connection = new signalR
-	.HubConnectionBuilder()
-	.withUrl("/hub/v4/g4/notifications")
-	.withAutomaticReconnect()
-	.build();
-
-// Once the connection starts, enable the button
-_connection
-	.start()
-	.catch(err => console.error("Connection failed:", err.message));
-
-const _includeTypes = ["ACTION", "CONTENT", "TRANSFORMER"];
-let _designer;
-let _cache = {};
-let _cacheKeys = [];
-let _manifests = {};
-let _definition = {};
-let _stateMachine = {};
+/* global window, document, _designer, _manifests, _cache, _cacheKeys, _stateMachine */
 
 /**
- * Initializes and starts the workflow definition. This function checks whether the
- * designer is in a valid and editable state, then sets it to read-only mode before
- * creating and invoking the state machine that processes the workflow.
+ * Exports the current definition from the designer as a G4 JSON file.
  *
- * @async
- * @function startDefinition
- * @returns {Promise<void>} Resolves when the workflow has been fully executed.
+ * 1. Retrieves the definition object from the designer.
+ * 2. Generates an automation object from the definition.
+ * 3. Logs the pretty-printed JSON in the console with decorative headers.
+ * 4. Creates a Blob URL from the JSON and triggers a download.
+ * 5. Cleans up the Blob URL reference.
  */
-async function startDefinition() {
-	// Check if the designer is in read-only mode - indicating the workflow is running
-	// If it is, exit the function early
-	if (_designer.isReadonly()) {
-
-		return;
-	}
-
-	// Check if the designer is valid before proceeding
-	// If it is not, display an alert and exit the function
-	if (!_designer.isValid()) {
-		window.alert('The workflow definition is invalid. Please review and correct any errors.');
-		return;
-	}
-
-	// Set the designer to read-only mode to prevent further editing while the workflow is running
-	_designer.setIsReadonly(true);
-
-	// Retrieve the current definition from the designer
+function exportDefinition() {
+	// Retrieve the definition from the designer
 	const definition = _designer.getDefinition();
 
-	// Initialize the state machine with the definition and handler objects created above
-	_stateMachine = new StateMachine(definition);
+	// Create or retrieve the object you want to print
+	const automationObject = _client.newAutomation(definition);
 
-	// Start the workflow execution using the state machine instance
-	// created above and wait for it to complete
-	await _stateMachine.start();
+	// Convert the object into a pretty-printed JSON string (4 spaces)
+	const automationJson = JSON.stringify(automationObject, null, 4);
+
+	// Print a decorative header
+	console.log("====================================");
+	console.log("          Automation Details        ");
+	console.log("====================================");
+
+	// Print a quick description
+	console.log("Below is the automation object as JSON:\n");
+
+	// Print the JSON itself
+	console.log(automationJson);
+
+	// Print a closing line
+	console.log("====================================");
+	console.log("  End of Automation Object Details  ");
+	console.log("====================================\n\n");
+
+	// Create a Blob from the string (specify the MIME type as JSON)
+	const blob = new Blob([automationJson], { type: 'application/json' });
+
+	// Generate a temporary URL for that blob
+	const url = URL.createObjectURL(blob);
+
+	// Create a hidden <a> element and set its download attribute
+	const downloadLink = document.createElement('a');
+	downloadLink.href = url;
+	downloadLink.download = `${Utilities.newUid()}.json`;
+
+	// Programmatically click the link to trigger the download
+	downloadLink.click();
+
+	// Revoke the Blob URL to release memory
+	URL.revokeObjectURL(url);
 }
 
 /**
  * Initializes the workflow designer with manifests, groups, and configurations.
  *
  * @async
+ * 
  * @returns {Promise<void>} A promise that resolves once the designer is initialized.
  */
 async function initializeDesigner() {
-	// Create a new G4Client instance.
-	const g4Cliet = new G4Client();
-
-	// Fetch manifests and manifest groups from the G4Client.
-	const manifests = await g4Cliet.getManifests();
-	const manifestsGroups = await g4Cliet.getGroups();
-
-	// Store the manifests and groups in global variables for later use.
-	_manifests = manifests;
-
-	// Store the cache in a global variable for later use.
-	_cache = await g4Cliet.getCache();
-
-	// Store the cache keys in a global variable for later use.
-	_cacheKeys = Object.keys(_cache).map(key => key.toUpperCase());
-
 	// Get the HTML element where the designer will be rendered.
 	const designerHtmlElement = document.getElementById('designer');
 
 	// Initialize the workflow's starting definition with the "WriteLog" manifest.
-	const initalState = initializeStartDefinition(manifests["WriteLog"]);
+	const initalState = initializeStartDefinition(_manifests["WriteLog"]);
 
 	// Create a new start definition object.
 	const startDefinition = newStartDefinition(initalState);
@@ -98,7 +77,7 @@ async function initializeDesigner() {
 	const groups = [];
 
 	// Process each manifest group to create the groups for the designer.
-	for (const [groupName, manifestsGroup] of Object.entries(manifestsGroups)) {
+	for (const [groupName, manifestsGroup] of Object.entries(_manifestsGroups)) {
 		// Retrieve the manifests from the group, or default to an empty array.
 		const manifests = manifestsGroup.manifests ? manifestsGroup.manifests : [];
 
@@ -162,13 +141,20 @@ async function initializeDesigner() {
 
 		// Adjust the viewport so the selected step is brought into view.
 		_designer.moveViewportToStep(message.id);
+	});
 
-		// Log the message to the console.
+	// Listen for the "ReceiveAutomationRequestInitializedEvent" message from the server
+	_connection.on("ReceiveAutomationRequestInitializedEvent", (message) => {
 		console.log(message);
 	});
 
-	// Listen for the "ReceiveDefinitionCompleteEvent" message from the server
-	_connection.on("ReceiveDefinitionCompleteEvent", (_) => {
+	// Listen for the "ReceiveAutomationRequestInitializedEvent" message from the server
+	_connection.on("ReceiveLogCreatedEvent", (message) => {
+		console.log(message);
+	});
+
+	// Listen for the "ReceiveAutomationInvokedEvent" message from the server
+	_connection.on("ReceiveAutomationInvokedEvent", (_) => {
 		// Indicate that the automation is no longer running
 		_stateMachine.isRunning = false;
 
@@ -184,6 +170,7 @@ async function initializeDesigner() {
  * Initializes the default start definition for a state machine workflow.
  *
  * @param {Object} manifest - The manifest object containing necessary metadata for the state machine steps.
+ * 
  * @returns {Array} An array containing the top-level container (`stage`) with its nested structure.
  */
 function initializeStartDefinition(manifest) {
@@ -211,18 +198,14 @@ function initializeStartDefinition(manifest) {
  * This function initializes the configuration settings, including toolbox setup,
  * step icon provisioning, validation rules, editor providers, and control bar settings.
  *
- * @returns {Object} The configuration object containing all necessary settings.
- *
  * @property {number}  undoStackSize - The maximum number of undo operations allowed.
  * @property {Object}  toolbox       - Configuration for the toolbox UI component.
  * @property {Object}  steps         - Configuration related to step icons and types.
  * @property {Object}  validator     - Validation rules for steps and the root definition.
  * @property {Object}  editors       - Providers for root and step editors.
  * @property {boolean} controlBar    - Flag to enable or disable the control bar.
- *
- * @example
- * const config = newConfiguration();
- * initializeApplication(config);
+ * 
+ * @returns {Object} The configuration object containing all necessary settings.
  */
 function newConfiguration() {
 	return {
@@ -384,14 +367,409 @@ function newConfiguration() {
 }
 
 /**
+ * Creates and displays a new import modal on the page.
+ *
+ * This function generates a unique identifier for the modal and its related elements,
+ * removes any existing modals, and then creates a new modal that contains a hidden file input,
+ * a textarea for editing/importing definitions, and a set of action buttons (Import, Apply, Close).
+ * When the Apply button is clicked, the definition is processed and set.
+ */
+function newImportModal() {
+	/**
+	 * Retrieves a manifest from the cache based on the manifest name.
+	 *
+	 * This function iterates over the groups in the provided cache object and checks if the specified
+	 * manifest name exists in any group. If found, it returns the associated `manifest` property.
+	 */
+	const getManifest = (cache, manifestName) => {
+		// Iterate over each group in the cache by retrieving its keys.
+		for (const group of Object.keys(cache)) {
+			// Check if the manifest name exists in the current group.
+			if (manifestName in cache[group]) {
+				// Return the 'manifest' property from the matched manifest entry.
+				return cache[group][manifestName].manifest;
+			}
+		}
+	};
+
+	/**
+	 * Creates a container element with Import, Apply, and Close buttons for modal interactions.
+	 *
+	 * This function creates a div element that contains three buttons:
+	 * - **Import**: Triggers a click on an assumed existing file input element (`inputFileElement`) to import data.
+	 * - **Apply** : Retrieves JSON from a textarea within the modal, parses it, removes the modal from the DOM, and invokes a callback with the parsed value.
+	 * - **Close** : Simply removes the modal element from the DOM.
+	 *
+	 * **Note:** The code assumes that `fieldContainer` and `inputFileElement` are available in the enclosing scope.
+	 */
+	const newButtonsContainerElement = (inputId, modalElement, setCallback) => {
+		// Create a container for the buttons with inline-flex layout for horizontal alignment.
+		const buttonsContainerElement = document.createElement("div");
+		buttonsContainerElement.setAttribute("style", "display: inline-flex; gap: 0.2em; margin-bottom: 0.2em;");
+
+		// Create the Close button.
+		const closeButtonElement = document.createElement('button');
+		closeButtonElement.setAttribute('id', `${inputId}-closeButton`);
+		closeButtonElement.setAttribute('type', 'button');
+		closeButtonElement.innerText = 'Close';
+
+		// Add event listener to remove the modal when the Close button is clicked.
+		// Remove the modal element from the field container.
+		closeButtonElement.addEventListener('click', () => {
+			fieldContainer.removeChild(modalElement);
+		});
+
+		// Create the Import button.
+		const importButtonElement = document.createElement('button');
+		importButtonElement.setAttribute('id', `${inputId}-importButton`);
+		importButtonElement.setAttribute('type', 'button');
+		importButtonElement.innerText = 'Import';
+
+		// Add event listener to simulate a click on the file input element when the Import button is clicked.
+		// Trigger the file input element's click event (assumed to exist in the outer scope).
+		importButtonElement.addEventListener('click', () => {
+			inputFileElement.click();
+		});
+
+		// Create the Apply button.
+		const applyButtonElement = document.createElement('button');
+		applyButtonElement.setAttribute('id', `${inputId}-applyButton`);
+		applyButtonElement.setAttribute('type', 'button');
+		applyButtonElement.innerText = 'Apply';
+
+		// Add event listener to handle JSON parsing and applying the callback.
+		applyButtonElement.addEventListener('click', () => {
+			try {
+				// Retrieve the textarea element within the modal.
+				const textareaElement = modalElement.querySelector('textarea');
+
+				// Parse the JSON from the textarea's value.
+				// If the textarea is empty, default to an empty object.
+				const value = !textareaElement.value || textareaElement.value === ""
+					? {}
+					: JSON.parse(textareaElement.value);
+
+				// Remove the modal element from the field container.
+				fieldContainer.removeChild(modalElement);
+
+				// Invoke the callback function with the parsed JSON value.
+				setCallback(value);
+			}
+			catch (error) {
+				// Log any error encountered during parsing.
+                console.error(error);
+			}
+		});
+
+		// Append the buttons to the container in the order: Import, Apply, Close.
+		buttonsContainerElement.appendChild(importButtonElement);
+		buttonsContainerElement.appendChild(applyButtonElement);
+		buttonsContainerElement.appendChild(closeButtonElement);
+
+		// Return the container element with the buttons.
+		return buttonsContainerElement;
+	}
+
+	/**
+	 * Creates a hidden file input element that, when a file is selected, reads its content and
+	 * sets the content as the value of the specified textarea element.
+	 *
+	 * This function is used to allow users to import file content (either .txt or .json)
+	 * into a textarea via a hidden file input.
+	 */
+	const newInputFileElement = (inputId, textareaElement) => {
+		// Create a new input element.
+		const inputFileElement = document.createElement("input");
+
+		// Set the input element type to "file" so that it opens a file picker.
+		inputFileElement.setAttribute("type", "file");
+
+		// Assign a unique ID to the input element.
+		inputFileElement.setAttribute("id", `${inputId}-input-file`);
+
+		// Restrict the accepted file types to .txt and .json.
+		inputFileElement.setAttribute("accept", `.txt,.json`);
+
+		// Hide the input element from the UI.
+		inputFileElement.setAttribute("style", `display: none;`);
+
+		// Add an event listener to handle file selection.
+		inputFileElement.addEventListener('change', (event) => {
+			// Get the first file from the file input.
+			const file = event.target.files[0];
+
+			if (file) {
+				// Create a FileReader to read the file content.
+				const reader = new FileReader();
+
+				// When the file has been read, update the textarea with its content.
+				reader.onload = (e) => {
+					textareaElement.value = e.target.result;
+				};
+
+				// Read the file as text.
+				reader.readAsText(file);
+			}
+		});
+
+		// Return the configured file input element.
+		return inputFileElement;
+	};
+
+	/**
+	 * Creates a modal element used for import operations.
+	 *
+	 * This function creates and returns a div element configured as a modal.
+	 * The modal is centered on the screen with a fixed position and high z-index to ensure it appears on top.
+	 */
+	const newModalElement = (inputId) => {
+		// Create a new div element to act as the modal.
+		const modalElement = document.createElement('div');
+
+		// Set a unique ID for the modal element using the provided inputId.
+		modalElement.setAttribute('id', `${inputId}-import-modal`);
+
+		// Set a custom data attribute to indicate the role of this element.
+		modalElement.setAttribute('data-g4-role', 'import-modal');
+
+		// Apply inline styles to center the modal and set display properties.
+		modalElement.setAttribute(
+			'style',
+			'display: block; gap: 0.2em; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); margin-left: 0; z-index: 9999;'
+		);
+
+		// Return the configured modal element.
+		return modalElement;
+	};
+
+	/**
+	 * Creates a textarea element configured for importing or editing definitions.
+	 *
+	 * The textarea is styled with a specific width, height, and other attributes for optimal use.
+	 */
+	const newTextareaElement = (inputId) => {
+		// Create a new textarea element.
+		const textareaElement = document.createElement("textarea");
+
+		// Set a unique ID for the textarea using the provided inputId.
+		textareaElement.setAttribute("id", `${inputId}-textarea`);
+
+		// Apply inline styles to define the size of the textarea.
+		textareaElement.setAttribute("style", "width: 60vw; height: 25vh;");
+
+		// Disable text wrapping in the textarea.
+		textareaElement.setAttribute("wrap", "off");
+
+		// Disable spellchecking to prevent browser spell-check from interfering.
+		textareaElement.setAttribute("spellcheck", "false");
+
+		// Set a placeholder text to guide the user on what to do.
+		textareaElement.setAttribute("placeholder", "Type, paste or import definition here...");
+
+		// Return the configured textarea element.
+		return textareaElement;
+	};
+
+	/**
+	 * Sets the definition for the workflow and initializes the designer state.
+	 *
+	 * This function processes a given workflow definition by constructing a sequence of
+	 * steps from its stages, jobs, and rules. It recursively builds each step using the
+	 * `newStep` helper, synchronizes them with the client, and finally creates a new
+	 * definition state that is passed to the workflow designer.
+	 */
+	const setDefinition = (definition) => {
+		/**
+		 * Recursively creates a new step from a rule.
+		 *
+		 * This helper function retrieves the manifest for the rule's plugin, creates a new step
+		 * using the state machine factory, synchronizes it with the rule, and processes any nested
+		 * rules or branches.
+		 */
+		const newStep = (rule) => {
+			// Retrieve the manifest for the rule's plugin from the cache.
+			const manifest = getManifest(_cache, rule.pluginName);
+
+			// Create a new step using the state machine factory and the retrieved manifest.
+			const step = StateMachineSteps.newG4Step(manifest);
+
+			// Ensure that the rule has 'rules' and 'branches' properties.
+			rule.rules = rule.rules || [];
+			rule.branches = rule.branches || {};
+
+			// Determine if the rule contains nested rules or branch entries.
+			const branchesKeys = Object.keys(rule.branches);
+			const isRules = rule.rules.length > 0;
+			const isBranches = branchesKeys.length > 0;
+
+			// Synchronize the current step with the rule configuration.
+			_client.syncStep(step, rule);
+
+			// If no nested rules or branches exist, return the current step.
+			if (!isRules && !isBranches) {
+				return step;
+			}
+
+			// Process nested rules recursively if they exist.
+			if (isRules) {
+				step.sequence = [];
+				for (const subRule of rule.rules) {
+					const subStep = newStep(subRule);
+					_client.syncStep(subStep, subRule);
+					step.sequence.push(subStep);
+				}
+			}
+
+			// Process branch rules if they exist.
+			if (isBranches) {
+				for (const branchKey of branchesKeys) {
+					// Initialize the branch array if not already present.
+					for (const subRule of rule.branches[branchKey]) {
+						const subStep = newStep(subRule);
+						step.branches[branchKey] = step.branches[branchKey] || [];
+						_client.syncStep(subStep, subRule);
+						step.branches[branchKey].push(subStep);
+					}
+				}
+			}
+
+            // Return the constructed step with nested rules or branches.
+			return step;
+		};
+
+		/**
+		 * Creates a new definition state object.
+		 *
+		 * This helper function generates a unique ID for the definition and assembles its properties,
+		 * including authentication, data source, driver parameters, settings, and a default speed.
+		 * It also incorporates the constructed sequence of steps.
+		 */
+		const newDefinition = (definition, sequence) => {
+			// Generate a unique identifier for the new definition.
+			const id = Utilities.newUid();
+
+            // Extract the driver parameters from the definition.
+			const driverParameters = definition.driverParameters;
+
+            // Return the new definition state object with the constructed properties.
+			return {
+				id,
+				properties: {
+					authentication: definition.authentication,
+					dataSource: definition.dataSource,
+					driverParameters: driverParameters,
+					settings: definition.settings,
+					speed: 300
+				},
+				sequence
+			};
+		};
+
+		// Initialize an empty sequence that will hold all stage steps.
+		const sequence = [];
+
+		// Ensure that the definition has a stages property.
+		definition.stages = definition.stages || [];
+
+		// Process each stage in the definition.
+		for (const stage of definition.stages) {
+			// Create a new stage step using the state machine factory.
+			const stageStep = StateMachineSteps.newG4Stage('Stage', {}, {}, []);
+
+			// Assign name and description from the stage reference if available.
+			stageStep.name = stage?.reference?.name || stageStep.name;
+			stageStep.description = stage?.reference?.description?.trim() || stageStep.description?.trim();
+			stageStep.id = Utilities.newUid();
+			stageStep.properties.driverParameters = stage.driverParameters || {};
+
+			// Ensure that the stage has a jobs array.
+			stage.jobs = stage.jobs || [];
+
+			// Process each job within the stage.
+			for (const job of stage.jobs) {
+				// Create a new job step using the state machine factory.
+				const jobStep = StateMachineSteps.newG4Job('Job', {}, {}, []);
+
+				// Assign name and description from the job reference if available.
+				jobStep.name = job?.reference?.name || jobStep.name;
+				jobStep.description = job?.reference?.description || jobStep.description;
+				jobStep.id = Utilities.newUid();
+				jobStep.properties.driverParameters = job.driverParameters || {};
+
+				// Ensure that the job has a rules array.
+				job.rules = job.rules || [];
+
+				// Process each rule in the job by creating and appending a new step.
+				for (const rule of job.rules) {
+					const step = newStep(rule);
+					jobStep.sequence.push(step);
+				}
+
+				// Append the job step to the stage's sequence.
+				stageStep.sequence.push(jobStep);
+			}
+
+			// Append the stage step to the overall sequence.
+			sequence.push(stageStep);
+		}
+
+		// Create the new definition state object using the constructed sequence.
+		const newDefinitionState = newDefinition(definition, sequence);
+
+		// Initialize the workflow designer with the new definition state.
+		_designer.state.setDefinition(newDefinitionState);
+	};
+
+	// Generate a unique identifier for this modal instance.
+	const inputId = Utilities.newUid();
+
+	// Select the field container where the modal will be appended. In this case, it's the <body> element.
+	const fieldContainer = document.querySelector("body");
+
+	// Find and remove any existing modals to ensure only one is visible at a time.
+	const existingModals = fieldContainer?.querySelectorAll("[id*=import-modal]");
+	for (const existingModal of existingModals) {
+		fieldContainer.removeChild(existingModal);
+	}
+
+	// Create a new modal element using the unique identifier.
+	const modalElement = newModalElement(inputId);
+
+	// Create a new textarea element for inputting or editing the definition.
+	const textareaElement = newTextareaElement(inputId);
+
+	// Create a hidden file input element that updates the textarea when a file is selected.
+	const inputFileElement = newInputFileElement(inputId, textareaElement);
+
+	// Create a container with Import, Apply, and Close buttons.
+	const buttonsContainerElement = newButtonsContainerElement(inputId, modalElement, (definition) => {
+		setDefinition(definition);
+	});
+
+	// Create a container for the textarea and the buttons.
+	const textareaContainerElement = document.createElement('div');
+	textareaContainerElement.setAttribute("style", "margin-top:0.2em;");
+	textareaContainerElement.appendChild(textareaElement);
+	textareaContainerElement.appendChild(buttonsContainerElement);
+
+	// Append the hidden file input and the textarea container to the modal.
+	modalElement.appendChild(inputFileElement);
+	modalElement.appendChild(textareaContainerElement);
+
+	// Append the modal to the field container, making it visible on the page.
+	fieldContainer.appendChild(modalElement);
+}
+
+/**
  * Creates a new start definition object for a workflow with default properties.
  *
  * @param {Array} sequence - The sequence of steps or containers to include in the start definition.
+ * 
  * @returns {Object} An object representing the start definition, containing default properties and the provided sequence.
  */
 function newStartDefinition(sequence) {
 	return {
-		id: uid(),
+		id: Utilities.newUid(),
 		// Default properties for the start definition.
 		properties: {
 			authentication: {
@@ -439,6 +817,7 @@ function newStartDefinition(sequence) {
  * @param {Object}  definition    - The definition object containing the properties and settings for the workflow.
  * @param {Object}  editorContext - Context object for notifying changes to the editor.
  * @param {boolean} isReadonly    - Flag indicating if the editor should be in read-only mode.
+ * 
  * @returns {HTMLElement} A container element housing the root editor fields.
  */
 function rootEditorProvider(definition, editorContext, isReadonly) {
@@ -540,10 +919,7 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 			definition.properties['driverParameters']['capabilities'] = definition.properties['driverParameters']['capabilities'] || {};
 
 			// Ensure the 'firstMatch' object exists within 'capabilities'.
-			definition.properties['driverParameters']['capabilities']['firstMatch'] = definition.properties['driverParameters']['capabilities']['firstMatch'] || {};
-
-			// Ensure the 'vendorCapabilities' object exists within 'capabilities'.
-			definition.properties['driverParameters']['capabilities']['vendorCapabilities'] = definition.properties['driverParameters']['capabilities']['vendorCapabilities'] || {};
+			definition.properties['driverParameters']['capabilities']['firstMatch'] = definition.properties['driverParameters']['capabilities']['firstMatch'] || [{}];
 
 			// Iterate over each key in the provided `value` object.
 			for (const key of Object.keys(value)) {
@@ -553,15 +929,12 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 				// Determine if the current key pertains to 'capabilities' with 'alwaysMatch'.
 				const isAlwaysMatch = key.toLocaleUpperCase() === 'CAPABILITIES' && 'alwaysMatch' in value[key];
 
-				// Determine if the current key pertains to 'capabilities' with 'vendorCapabilities'.
-				const isVendors = key.toLocaleUpperCase() === 'CAPABILITIES' && 'vendorCapabilities' in value[key];
-
 				// Reference to the existing 'capabilities' object for easy access.
 				const capabilities = definition.properties['driverParameters'].capabilities;
 
 				if (isFirstMatch) {
 					// Extract the 'firstMatch' object from the input value.
-					const firstMatch = value[key].firstMatch;
+					const firstMatch = value[key].firstMatch[0];
 
 					// Iterate over each group in 'firstMatch' and merge it into the existing capabilities.
 					for (const group of Object.keys(firstMatch)) {
@@ -572,29 +945,9 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 					continue;
 				}
 
-				if (isVendors) {
-					// Extract the 'vendorCapabilities' object from the input value.
-					const vendors = value[key].vendorCapabilities;
-
-					// Iterate over each vendor in 'vendorCapabilities'.
-					for (const vendor of Object.keys(vendors)) {
-						// Iterate over each property for the current vendor.
-						for (const property of Object.keys(vendors[vendor])) {
-							// Ensure the vendor object exists within 'vendorCapabilities'.
-							capabilities['vendorCapabilities'][vendor] = capabilities['vendorCapabilities'][vendor] || {};
-
-							// Assign the property value to the corresponding vendor and property.
-							capabilities['vendorCapabilities'][vendor][property] = vendors[vendor][property];
-						}
-					}
-
-					// Continue to the next key as this one has been processed.
-					continue;
-				}
-
 				if (isAlwaysMatch) {
 					// Assign the 'alwaysMatch' object directly to the capabilities.
-					capabilities['alwaysMatch'] = value[key].alwaysMatch;
+					capabilities['alwaysMatch'] = value[key]?.alwaysMatch;
 
 					// Continue to the next key as this one has been processed.
 					continue;
@@ -615,15 +968,18 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 			container: container,
 			label: "G4™ Automation Settings",
 			title: "Provide G4™ automation settings to configure the automation.",
-			initialValue: definition.properties['automationSettings']
+			initialValue: definition.properties.settings?.automationSettings || {}
 		},
 		(value) => {
+			// Ensure the "settings" property exists in the definition.
+			definition.properties.settings = definition.properties.settings || {};
+
 			// Ensure the "automationSettings" property exists in the definition.
-			definition.properties['automationSettings'] = definition.properties['automationSettings'] || {};
+			definition.properties.settings.automationSettings = definition.properties.settings.automationSettings || {};
 
 			// Update the "automationSettings" property with the new values from the input.
 			for (const key of Object.keys(value)) {
-				definition.properties['automationSettings'][key] = value[key];
+				definition.properties.settings.automationSettings[key] = value[key];
 			}
 
 			// Notify the editor of the updated properties.
@@ -637,15 +993,18 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 			container: container,
 			label: "G4™ Environment Settings",
 			title: "Provide G4™ environment settings to configure the automation.",
-			initialValue: definition.properties['environmentSettings']
+			initialValue: definition.properties.settings?.environmentSettings
 		},
 		(value) => {
+			// Ensure the "settings" property exists in the definition.
+			definition.properties.settings = definition.properties.settings || {};
+
 			// Ensure the "environmentSettings" property exists in the definition.
-			definition.properties['environmentSettings'] = definition.properties['environmentSettings'] || {};
+			definition.properties.settings.environmentSettings = definition.properties.settings.environmentSettings || {};
 
 			// Update the "authentication" property with the new values from the input.
 			for (const key of Object.keys(value)) {
-				definition.properties['environmentSettings'][key] = value[key];
+				definition.properties.settings.environmentSettings[key] = value[key];
 			}
 
 			// Notify the editor of the updated properties.
@@ -659,15 +1018,18 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 			container: container,
 			label: "G4™ Exceptions Settings",
 			title: "Provide G4™ exceptions settings to configure the automation.",
-			initialValue: definition.properties['exceptionsSettings']
+			initialValue: definition.properties.settings?.exceptionsSettings
 		},
 		(value) => {
+			// Ensure the "settings" property exists in the definition.
+			definition.properties.settings = definition.properties.settings || {};
+
 			// Ensure the "exceptionsSettings" property exists in the definition.
-			definition.properties['exceptionsSettings'] = definition.properties['exceptionsSettings'] || {};
+			definition.properties.settings.exceptionsSettings = definition.properties.settings.exceptionsSettings || {};
 
 			// Update the "exceptionsSettings" property with the new values from the input.
 			for (const key of Object.keys(value)) {
-				definition.properties['exceptionsSettings'][key] = value[key];
+				definition.properties.settings.exceptionsSettings[key] = value[key];
 			}
 
 			// Notify the editor of the updated properties.
@@ -681,15 +1043,18 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 			container: container,
 			label: "G4™ Queue Manager Settings",
 			title: "Provide G4™ queue manager settings to configure the automation.",
-			initialValue: definition.properties['queueManagerSettings']
+			initialValue: definition.properties.settings?.queueManagerSettings
 		},
 		(value) => {
+			// Ensure the "settings" property exists in the definition.
+			definition.properties.settings = definition.properties.settings || {};
+
 			// Ensure the "queueManagerSettings" property exists in the definition.
-			definition.properties['queueManagerSettings'] = definition.properties['queueManagerSettings'] || {};
+			definition.properties.settings.queueManagerSettings = definition.properties.settings.queueManagerSettings || {};
 
 			// Update the "queueManagerSettings" property with the new values from the input.
 			for (const key of Object.keys(value)) {
-				definition.properties['queueManagerSettings'][key] = value[key];
+				definition.properties.settings.queueManagerSettings[key] = value[key];
 			}
 
 			// Notify the editor of the updated properties.
@@ -703,15 +1068,18 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 			container: container,
 			label: "G4™ Performance Points Settings",
 			title: "Provide G4™ performance points settings to configure the automation.",
-			initialValue: definition.properties['performancePointsSettings']
+			initialValue: definition.properties.settings?.performancePointsSettings
 		},
 		(value) => {
+			// Ensure the "settings" property exists in the definition.
+			definition.properties.settings = definition.properties.settings || {};
+
 			// Ensure the "performancePointsSettings" property exists in the definition.
-			definition.properties['performancePointsSettings'] = definition.properties['performancePointsSettings'] || {};
+			definition.properties.settings.performancePointsSettings = definition.properties.settings.performancePointsSettings || {};
 
 			// Update the "performancePointsSettings" property with the new values from the input.
 			for (const key of Object.keys(value)) {
-				definition.properties['performancePointsSettings'][key] = value[key];
+				definition.properties.settings.performancePointsSettings[key] = value[key];
 			}
 
 			// Notify the editor of the updated properties.
@@ -725,17 +1093,20 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 			container: container,
 			label: "G4™ Plugins Settings",
 			title: "Provide G4™ plugins settings to configure the automation.",
-			initialValue: definition.properties['pluginsSettings']
+			initialValue: definition.properties.settings?.pluginsSettings
 		},
 		(value) => {
+			// Ensure the "settings" property exists in the definition.
+			definition.properties.settings = definition.properties.settings || {};
+
 			// Initialize pluginsSettings if it doesn't exist
-			definition.properties['pluginsSettings'] = definition.properties['pluginsSettings'] || {
+			definition.properties.settings.pluginsSettings = definition.properties.settings.pluginsSettings || {
 				externalRepositories: {},
 				forceRuleReference: false
 			};
 
 			// Reference to the current plugins settings
-			const pluginsSettings = definition.properties['pluginsSettings'];
+			const pluginsSettings = definition.properties.settings.pluginsSettings;
 
 			// Get all keys from the incoming value
 			const indexes = Object.keys(value) || [];
@@ -773,7 +1144,7 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 			}
 
 			// Update the definition with the new plugins settings
-			definition.properties['pluginsSettings'] = pluginsSettings;
+			definition.properties.settings.pluginsSettings = pluginsSettings;
 
 			// Notify the editor that the properties have changed
 			editorContext.notifyPropertiesChanged();
@@ -786,15 +1157,18 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 			container: container,
 			label: "G4™ Screenshots Settings",
 			title: "Provide G4™ screenshots settings to configure the automation.",
-			initialValue: definition.properties['screenshotsSettings']
+			initialValue: definition.properties.settings?.screenshotsSettings
 		},
 		(value) => {
+			// Ensure the "settings" property exists in the definition.
+			definition.properties.settings = definition.properties.settings || {};
+
 			// Ensure the "screenshotsSettings" property exists in the definition.
-			definition.properties['screenshotsSettings'] = definition.properties['screenshotsSettings'] || {};
+			definition.properties.settings.screenshotsSettings = definition.properties.settings.screenshotsSettings || {};
 
 			// Update the "screenshotsSettings" property with the new values from the input.
 			for (const key of Object.keys(value)) {
-				definition.properties['screenshotsSettings'][key] = value[key];
+				definition.properties.settings.screenshotsSettings[key] = value[key];
 			}
 
 			// Notify the editor of the updated properties.
@@ -807,6 +1181,45 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 }
 
 /**
+ * Initializes and starts the workflow definition. This function checks whether the
+ * designer is in a valid and editable state, then sets it to read-only mode before
+ * creating and invoking the state machine that processes the workflow.
+ *
+ * @async
+ * @function startDefinition
+ * 
+ * @returns {Promise<void>} Resolves when the workflow has been fully executed.
+ */
+async function startDefinition() {
+	// Check if the designer is in read-only mode - indicating the workflow is running
+	// If it is, exit the function early
+	if (_designer.isReadonly()) {
+
+		return;
+	}
+
+	// Check if the designer is valid before proceeding
+	// If it is not, display an alert and exit the function
+	if (!_designer.isValid()) {
+		window.alert('The workflow definition is invalid. Please review and correct any errors.');
+		return;
+	}
+
+	// Set the designer to read-only mode to prevent further editing while the workflow is running
+	_designer.setIsReadonly(true);
+
+	// Retrieve the current definition from the designer
+	const definition = _designer.getDefinition();
+
+	// Initialize the state machine with the definition and handler objects created above
+	_stateMachine = new StateMachine(definition);
+
+	// Start the workflow execution using the state machine instance
+	// created above and wait for it to complete
+	await _stateMachine.start();
+}
+
+/**
  * Provides a step editor UI component for a given plugin step.
  *
  * This function creates and configures the HTML structure necessary for editing a plugin step,
@@ -816,9 +1229,53 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
  *
  * @param {Object} step          - The plugin step configuration object.
  * @param {Object} editorContext - The context object for the editor, used for notifying changes.
+ * 
  * @returns {HTMLElement} The fully populated step editor container element.
  */
 function stepEditorProvider(step, editorContext) {
+	/**
+	 * Converts an array of strings in the format "key=value" into an object (dictionary).
+	 * If a string does not contain an "=", the entire string is treated as the key with an empty string as its value.
+	 * If the value part after "=" is missing, it defaults to an empty string.
+	 */
+	const convertToDictionary = (values) => {
+		return values.reduce((accumulator, currentString) => {
+			// Use a regular expression to split the string at the first occurrence of "="
+			// ^([^=]+)=(.*)$
+			// ^        : Start of the string
+			// ([^=]+)  : Capture one or more characters that are not "=" as the key
+			// =        : The literal "=" character
+			// (.*)     : Capture the rest of the string as the value
+			// $        : End of the string
+			const match = /^([^=]+)=(.*)$/.exec(currentString);
+
+			if (match) {
+				// Extract the key from the first capturing group
+				const key = match[1];
+
+				/**
+				 * Extract the value from the second capturing group.
+				 * If the value is undefined or an empty string, default it to "".
+				 * This handles cases like "key=" where the value is missing.
+				 */
+				const value = match[2] !== undefined ? match[2] : "";
+
+				// Assign the key-value pair to the accumulator object
+				accumulator[key] = value;
+			} else {
+				/**
+				 * If the string does not contain an "=", treat the entire string as the key
+				 * and assign an empty string as its value.
+				 * This handles cases like "key" without any associated value.
+				 */
+				accumulator[currentString] = "";
+			}
+
+			// Return the updated accumulator for the next iteration
+			return accumulator;
+		}, {});
+	};
+
 	/**
 	 * Initializes and appends the appropriate input field to the container based on the parameter type.
 	 *
@@ -843,16 +1300,14 @@ function stepEditorProvider(step, editorContext) {
 			parameter = step.parameters[key];
 		}
 
-		// normalize the key to ensure it is in the correct format
-
-
 		// Determine the nature of the parameter to decide which input field to create.
-		const label = convertPascalToSpaceCase(convertToPascalCase(key));
-		const isListField = _cacheKeys.includes(parameter.type?.toUpperCase());
+		const parameterType = parameter.type?.toUpperCase();
+		const label = Utilities.convertPascalToSpaceCase(Utilities.convertToPascalCase(key));
+		const isListField = _cacheKeys.includes(parameterType);
 		const isOptionsField = parameter.optionsList && parameter.optionsList.length > 0;
-		const isArray = parameter.type?.toUpperCase() === 'ARRAY';
-		const isSwitch = ['SWITCH', 'BOOLEAN', 'BOOL'].includes(parameter.type.toUpperCase());
-		const isKeyValue = ['KEY/VALUE', 'KEYVALUE', 'DICTIONARY'].includes(parameter.type.toUpperCase());
+		const isArray = parameterType === 'ARRAY';
+		const isSwitch = ['SWITCH', 'BOOLEAN', 'BOOL'].includes(parameterType);
+		const isKeyValue = ['KEY/VALUE', 'KEYVALUE', 'DICTIONARY'].includes(parameterType);
 
 		/**
 		 * Handles the creation and configuration of a Key-Value input field.
@@ -862,7 +1317,7 @@ function stepEditorProvider(step, editorContext) {
 			CustomFields.newKeyValueField(
 				{
 					container: container,
-					initialValue: parameter.value,
+					initialValue: convertToDictionary(parameter.value),
 					label: label,
 					title: parameter.description
 				},
@@ -980,7 +1435,7 @@ function stepEditorProvider(step, editorContext) {
 		);
 	};
 
-	const initializeSystemContainerEditorProvider = (container, step, type) => {
+	const initializeSystemContainerEditorProvider = (container, step) => {
 		// Add a driver parameters field for configuring the G4 driver parameters.
 		CustomG4Fields.newDriverParametersField(
 			{
@@ -996,8 +1451,6 @@ function stepEditorProvider(step, editorContext) {
 			 * accordingly. It ensures that the `capabilities` structure is correctly maintained
 			 * and merges new values into existing configurations. After processing, it notifies
 			 * the editor that properties have changed.
-			 *
-			 * @param {Object} value - The updated Driver Parameters provided by the user.
 			 */
 			(value) => {
 				// Ensure the 'driverParameters' property exists in the definition.
@@ -1007,21 +1460,15 @@ function stepEditorProvider(step, editorContext) {
 				step.properties['driverParameters']['capabilities'] = step.properties['driverParameters']['capabilities'] || {};
 
 				// Ensure the 'firstMatch' object exists within 'capabilities'.
-				step.properties['driverParameters']['capabilities']['firstMatch'] = step.properties['driverParameters']['capabilities']['firstMatch'] || {};
-
-				// Ensure the 'vendorCapabilities' object exists within 'capabilities'.
-				step.properties['driverParameters']['capabilities']['vendorCapabilities'] = step.properties['driverParameters']['capabilities']['vendorCapabilities'] || {};
+				step.properties['driverParameters']['capabilities']['firstMatch'] = step.properties['driverParameters']['capabilities']['firstMatch'] || [{}];
 
 				// Iterate over each key in the provided `value` object.
 				for (const key of Object.keys(value)) {
 					// Determine if the current key pertains to 'capabilities' with 'firstMatch'.
-					const isFirstMatch = key.toLocaleUpperCase() === 'CAPABILITIES' && 'firstMatch' in value[key];
+					const isFirstMatch = key.toUpperCase() === 'CAPABILITIES' && 'firstMatch' in value[key];
 
 					// Determine if the current key pertains to 'capabilities' with 'alwaysMatch'.
-					const isAlwaysMatch = key.toLocaleUpperCase() === 'CAPABILITIES' && 'alwaysMatch' in value[key];
-
-					// Determine if the current key pertains to 'capabilities' with 'vendorCapabilities'.
-					const isVendors = key.toLocaleUpperCase() === 'CAPABILITIES' && 'vendorCapabilities' in value[key];
+					const isAlwaysMatch = key.toUpperCase() === 'CAPABILITIES' && 'alwaysMatch' in value[key];
 
 					// Reference to the existing 'capabilities' object for easy access.
 					const capabilities = step.properties['driverParameters'].capabilities;
@@ -1033,26 +1480,6 @@ function stepEditorProvider(step, editorContext) {
 						// Iterate over each group in 'firstMatch' and merge it into the existing capabilities.
 						for (const group of Object.keys(firstMatch)) {
 							capabilities['firstMatch'][group] = firstMatch[group];
-						}
-
-						// Continue to the next key as this one has been processed.
-						continue;
-					}
-
-					if (isVendors) {
-						// Extract the 'vendorCapabilities' object from the input value.
-						const vendors = value[key].vendorCapabilities;
-
-						// Iterate over each vendor in 'vendorCapabilities'.
-						for (const vendor of Object.keys(vendors)) {
-							// Iterate over each property for the current vendor.
-							for (const property of Object.keys(vendors[vendor])) {
-								// Ensure the vendor object exists within 'vendorCapabilities'.
-								capabilities['vendorCapabilities'][vendor] = capabilities['vendorCapabilities'][vendor] || {};
-
-								// Assign the property value to the corresponding vendor and property.
-								capabilities['vendorCapabilities'][vendor][property] = vendors[vendor][property];
-							}
 						}
 
 						// Continue to the next key as this one has been processed.
@@ -1078,7 +1505,7 @@ function stepEditorProvider(step, editorContext) {
 	}
 
 	// Generate a unique identifier for input elements within the editor.
-	const inputId = newUid();
+	const inputId = Utilities.newUid();
 
 	// Escape the generated ID to ensure it's safe for use in CSS selectors.
 	const escapedId = CSS.escape(inputId);
@@ -1097,7 +1524,7 @@ function stepEditorProvider(step, editorContext) {
 	 */
 	CustomFields.newTitle({
 		container: stepEditorContainer,
-		titleText: convertPascalToSpaceCase(step.pluginName),
+		titleText: Utilities.convertPascalToSpaceCase(step.pluginName),
 		subTitleText: step.pluginType,
 		helpText: step.description
 	});
@@ -1127,7 +1554,7 @@ function stepEditorProvider(step, editorContext) {
 
 	// Check if the step is a stage or job and initialize the system container editor provider
 	if (step.type?.toUpperCase() === 'STAGE' || step.type?.toUpperCase() === 'JOB') {
-		initializeSystemContainerEditorProvider(stepEditorContainer, step, "properties");
+		initializeSystemContainerEditorProvider(stepEditorContainer, step);
 		return stepEditorContainer;
 	}
 
@@ -1157,12 +1584,11 @@ function stepEditorProvider(step, editorContext) {
 	 * Certain properties like 'Argument' and 'Rules' are conditionally skipped based on the presence of parameters.
 	 */
 	const validProperties = [];
-	for (let index = 0; index < sortedProperties.length; index++) {
-		// Retrieve the current property key from the sorted list.
-		const key = sortedProperties[index];
-
+	for (const key of sortedProperties) {
 		// Determine if the current property should be skipped.
-		const skip = (hasParameters && key.toUpperCase() === 'ARGUMENT') || key.toUpperCase() === 'RULES';
+		const skip = (hasParameters && key.toUpperCase() === 'ARGUMENT')
+			|| key.toUpperCase() === 'RULES'
+			|| key.toUpperCase() === 'TRANSFORMERS';
 
 		// Update the sorted properties list to exclude the skipped property.
 		//sortedProperties = skip ? sortedProperties.filter((property) => property !== key) : sortedProperties;
@@ -1202,11 +1628,7 @@ function stepEditorProvider(step, editorContext) {
 	/**
 	 * Iterate through each sorted parameter key to initialize corresponding input fields.
 	 */
-	for (let index = 0; index < sortedParameters.length; index++) {
-		// Retrieve the current parameter key from the sorted list.
-		const key = sortedParameters[index];
-
-		// Initialize the input field for the current parameter key.
+	for (const key of sortedParameters) {
 		initializeField(parametersControllerContainer, key, step, "parameters");
 	}
 
@@ -1224,7 +1646,66 @@ function stepEditorProvider(step, editorContext) {
 	return stepEditorContainer;
 }
 
-// Initialize the designer when the window has loaded
-window.addEventListener('load', () => {
-	initializeDesigner();
+/**
+ * Initializes the designer application once the browser window has fully loaded.
+ */
+window.addEventListener('load', async () => {
+	// The loader element
+	const loadingIndicator = document.getElementById('loading-indicator');
+
+	// Maximum time to wait for _cache to be populated (in milliseconds)
+	const MAX_WAIT_TIME = 15000;
+
+	// Interval between each check of _cache (in milliseconds)
+	const CHECK_INTERVAL = 1000;
+
+	/**
+	 * Returns a promise that resolves after a specified delay.
+	 */
+	const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+	/**
+	 * Checks if the global _cache object is empty.
+	 */
+	const assertCacheEmpty = () => Object.keys(_cache).length === 0;
+
+	/**
+	 * Attempts to initialize the designer by ensuring that _cache contains data.
+	 */
+	const attemptInitializeDesigner = async () => {
+		// Record the current time to track elapsed time
+		const startTime = Date.now();
+
+		// Continuously check if _cache is empty until data is available or timeout is reached
+		while (assertCacheEmpty()) {
+			// Calculate elapsed time
+			const elapsedTime = Date.now() - startTime;
+
+			// If the maximum wait time is exceeded, log a warning
+			if (elapsedTime >= MAX_WAIT_TIME) {
+				console.warn('Timeout reached. The designer could not be loaded.');
+				break;
+			}
+			// If still within the wait time, wait for the specified interval before rechecking
+			else {
+				await wait(CHECK_INTERVAL);
+			}
+		}
+
+		// Initialize the designer after exiting the loop
+		initializeDesigner();
+	};
+
+	try {
+		// Attempt to initialize the designer, awaiting the completion of the asynchronous operation
+		await attemptInitializeDesigner();
+	} catch (error) {
+		// Handle any errors that occur during the initialization process
+		console.error('An error occurred during designer initialization:', error);
+	} finally {
+		// After initialization (successful or not), hide the loading indicator if it exists
+		if (loadingIndicator) {
+			loadingIndicator.style.display = 'none';
+		}
+	}
 });

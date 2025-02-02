@@ -12,11 +12,103 @@
 	<link href="./css/designer-light.css" rel="stylesheet">
 	<link href="./css/designer-dark.css" rel="stylesheet">
 	<style>
+		#bars3 {
+			display: block;
+			position: absolute;
+			top: 50%;
+			left: 50%;
+			height: 50px;
+			width: 50px;
+			margin: -25px 0 0 -25px;
+		}
+
+			#bars3 span {
+				position: absolute;
+				display: block;
+				bottom: 10px;
+				width: 9px;
+				height: 15px;
+				background: rgba(0, 0, 0, 0.25);
+				-webkit-animation: bars3 2s infinite ease-in;
+				animation: bars3 2s infinite ease-in;
+			}
+
+				#bars3 span:nth-child(2) {
+					left: 11px;
+					-webkit-animation-delay: 0.2s;
+					animation-delay: 0.2s;
+				}
+
+				#bars3 span:nth-child(3) {
+					left: 22px;
+					-webkit-animation-delay: 0.4s;
+					animation-delay: 0.4s;
+				}
+
+				#bars3 span:nth-child(4) {
+					left: 33px;
+					-webkit-animation-delay: 0.6s;
+					animation-delay: 0.6s;
+				}
+
+				#bars3 span:nth-child(5) {
+					left: 44px;
+					-webkit-animation-delay: 0.8s;
+					animation-delay: 0.8s;
+				}
+
+		@keyframes bars3 {
+			0% {
+				background: rgba(0, 0, 0, 0.25);
+			}
+
+			25% {
+				background: #000000;
+			}
+
+			50% {
+				background: rgba(0, 0, 0, 0.25);
+			}
+
+			100% {
+				background: rgba(0, 0, 0, 0.25);
+			}
+		}
+
+		@-webkit-keyframes bars3 {
+			0% {
+				background: rgba(0, 0, 0, 0.25);
+			}
+
+			25% {
+				background: #000000;
+			}
+
+			50% {
+				background: rgba(0, 0, 0, 0.25);
+			}
+
+			100% {
+				background: rgba(0, 0, 0, 0.25);
+			}
+		}
+	</style>
+	<style>
 		body,
 		input,
 		select,
 		button {
 			font: 14px/1.3em 'Open Sans', Arial, Verdana, Serif;
+		}
+
+		button {
+			box-sizing: border-box;
+			border: 1px solid silver;
+			padding: 6px;
+			border-radius: 0px;
+			line-height: 1.3em;
+			min-width: 32.19px;
+			cursor: pointer;
 		}
 
 		html,
@@ -65,8 +157,9 @@
 			right: 350px;
 		}
 
-		.sqd-editor input[type='text'],
+		.sqd-editor input[type="text"],
 		input[type="number"],
+		input[type="file"],
 		input[list],
 		select,
 		textarea {
@@ -111,48 +204,6 @@
 			background: #f4f4f4;
 			border-color: #ddd;
 			color: #999;
-		}
-
-		#result {
-			position: absolute;
-			right: 0;
-			bottom: 0;
-			width: 30vw;
-			height: 100vh;
-			padding: 10px;
-			box-sizing: border-box;
-			color: #fff;
-			background: #2c18df;
-		}
-
-			#result a.github {
-				color: #fff;
-				display: inline-block;
-				margin: 6px 8px;
-			}
-
-				#result a.github:hover {
-					text-decoration: none;
-				}
-
-			#result button {
-				padding: 10px;
-				color: #000;
-				background: #fff;
-				border: 0;
-				border-radius: 5px;
-				cursor: pointer;
-			}
-
-				#result button:hover {
-					opacity: 0.8;
-				}
-
-		.subtitle {
-			display: block;
-			margin-bottom: 15px;
-			font-size: 1.2em;
-			font-weight: 500;
 		}
 	</style>
 
@@ -258,9 +309,9 @@
 			}
 
 			div[data-g4-role='input-row'] input[type="text"],
+			div[data-g4-role='input-row'] textarea,
 			div[data-g4-role='keyvalue'] input[type="text"],
-			.text-with-button input[type="text"],
-			textarea {
+			.text-with-button input[type="text"] {
 				margin-left: 0.2em;
 			}
 
@@ -318,15 +369,30 @@
 </head>
 
 <body>
+	<div id="loading-indicator">
+		<div id="bars3">
+			<span></span>
+			<span></span>
+			<span></span>
+			<span></span>
+			<span></span>
+		</div>
+	</div>
 	<div id="designer"></div>
-
+	<script src="./js/utilities.js"></script>
+	<script src="./js/cli-factory.js"></script>
 	<script src="./js/signalr.min.js" integrity="" crossorigin="anonymous"></script>
+	<script src="./js/g4-client.js"></script>
+	<script src="./js/global.js"></script>
 	<script src="./js/custom-fields.js"></script>
 	<script src="./js/index.umd.js"></script>
 	<script src="./js/state-machine.js"></script>
 	<script src="./js/index.js"></script>
 
 	<script>
+		// Create a new instance of the G4Client class
+		const client = new G4Client();
+
 		/**
 		 * Waits for the '.sqd-control-bar' element to appear in the DOM within a specified timeout,
 		 * then adds custom control bar buttons for exporting, importing, starting, and stopping definitions.
@@ -334,7 +400,7 @@
 		 * @param {string} selector - The CSS selector of the element to wait for.
 		 * @param {number} timeout  - The maximum time to wait for the element in milliseconds.
 		 */
-		waitForElement('.sqd-control-bar', 5000)
+		Utilities.waitForElement('.sqd-control-bar', 5000)
 			.then((controlBar) => {
 				// SVG path data for the Export button icon
 				const exportSvg = "M960 608a32 32 0 0 0-32 32v288h-288a32 32 0 0 0 0 64h320a32 32 0 0 0 32-32V640a32 32 0 0 0-32-32zM512 928h-128a32 32 0 0 0 0 64h128a32 32 0 0 0 0-64zM278.72 937.28a32 32 0 0 0-34.88-6.72 29.76 29.76 0 0 0-10.56 6.72 32 32 0 0 0-6.72 10.56A32 32 0 0 0 224 960a32 32 0 0 0 54.72 22.72 37.12 37.12 0 0 0 6.72-10.56 30.08 30.08 0 0 0 0-24.32 29.76 29.76 0 0 0-6.72-10.56zM128 928H96v-288a32 32 0 0 0-64 0v320a32 32 0 0 0 32 32h64a32 32 0 0 0 0-64zM743.68 491.2a32 32 0 1 0 48.64 41.6l192-224a30.08 30.08 0 0 0 1.92-3.52 32 32 0 0 0 2.56-4.16v-2.24a32 32 0 0 0 0-5.12A32 32 0 0 0 992 288a32 32 0 0 0 0-4.8 32 32 0 0 0 0-5.12v-2.24a32 32 0 0 0-2.56-4.16 30.08 30.08 0 0 0-1.92-3.52l-192-224a32 32 0 0 0-48.64 41.6L890.56 256H480v480a32 32 0 0 0 64 0V320h346.56z";
@@ -388,9 +454,7 @@
 					svgClassList: ['sqd-control-bar-button-icon'],
 					title: 'Export Definition',
 					viewBox: '0 0 1024 1024',
-					onClick: () => {
-						console.log('Export Definition');
-					}
+					onClick: exportDefinition
 				});
 
 				/**
@@ -404,9 +468,7 @@
 					svgClassList: ['sqd-control-bar-button-icon'],
 					title: 'Import Definition',
 					viewBox: '0 0 1024 1024',
-					onClick: () => {
-						console.log('Import Definition');
-					}
+					onClick: newImportModal
 				});
 
 				/**

@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.ResponseCompression;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi.Models;
@@ -79,6 +80,9 @@ builder.Services
 
         // Add a custom DateTime converter to handle ISO 8601 date/time format.
         i.JsonSerializerOptions.Converters.Add(new DateTimeIso8601Converter());
+
+        // Add a custom method base converter to handle method base serialization.
+        i.JsonSerializerOptions.Converters.Add(new MethodBaseConverter());
     });
 
 // Add and configure Swagger for API documentation and testing.
@@ -106,14 +110,22 @@ builder.Services.Configure<CookiePolicyOptions>(i =>
     i.MinimumSameSitePolicy = SameSiteMode.None;
 });
 
+// Get origins from environment variable (with semicolon separation)
+var originsEnvironmentParameter = Environment.GetEnvironmentVariable("ORIGINS");
+
+// Normalize origins from environment variable or configuration
+var origins = string.IsNullOrEmpty(originsEnvironmentParameter)
+    ? builder.Configuration.GetSection("AllowedOrigins").Get<string[]>() ?? []
+    : originsEnvironmentParameter.Split(";", StringSplitOptions.TrimEntries);
+
 // Add and configure CORS (Cross-Origin Resource Sharing) to allow requests from any origin.
 builder.Services
     .AddCors(i =>
-        i.AddPolicy("CorsPolicy", builder =>
-            builder.AllowAnyOrigin()
-                   .AllowAnyMethod()
-                   .AllowAnyHeader()
-                   .SetIsOriginAllowed(_ => true)));
+        i.AddPolicy("CorsPolicy", policy => policy
+            .WithOrigins(origins)
+            .AllowAnyMethod()
+            .AllowAnyHeader()
+            .AllowCredentials()));
 
 // Add and configure SignalR for real-time web functionalities.
 builder.Services
@@ -153,7 +165,8 @@ builder.Services
             {
                 new TypeConverter(),
                 new ExceptionConverter(),
-                new DateTimeIso8601Converter()
+                new DateTimeIso8601Converter(),
+                new MethodBaseConverter()
             }
         };
     });
@@ -180,6 +193,9 @@ app.UseResponseCaching();
 // Add the cookie policy
 app.UseCookiePolicy();
 
+// Add the routing and controller mapping to the application
+app.UseRouting();
+
 // Add the CORS policy to the application to allow cross-origin requests
 app.UseCors("CorsPolicy");
 
@@ -193,8 +209,6 @@ app.UseSwaggerUI(i =>
     i.EnableTryItOutByDefault();
 });
 
-// Add the routing and controller mapping to the application
-app.UseRouting();
 app.MapDefaultControllerRoute();
 app.MapControllers();
 app.UseStaticFiles();
@@ -203,7 +217,7 @@ app.UseStaticFiles();
 app.MapHub<G4Hub>($"/hub/v{AppSettings.ApiVersion}/g4/orchestrator");
 
 // Add the SignalR hub to send automation notifications to clients and other services in real-time
-app.MapHub<G4AutomationNotificationsHub>($"/hub/v{AppSettings.ApiVersion}/g4/notifications");
+app.MapHub<G4AutomationNotificationsHub>($"/hub/v{AppSettings.ApiVersion}/g4/notifications").RequireCors("CorsPolicy");
 #endregion
 
 // Retrieve the logger service and log that the application has started.

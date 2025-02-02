@@ -1,61 +1,11 @@
 /**
- * Parses a given string and converts it to its corresponding boolean value.
- *
- * The function recognizes the following case-insensitive string representations:
- * - `'true'`, `'1'`, `'yes'`, `'y'`, `'on'` → `true`
- * - `'false'`, `'0'`, `'no'`, `'n'`, `'off'` → `false`
- *
- * If the input string does not match any recognized boolean representations,
- * the function returns `null` to indicate an unparseable value.
- *
- * @param {string} str - The string to parse into a boolean.
- * @returns {boolean|null} - The parsed boolean value or `null` if parsing fails.
- *
- * @example
- * parseStringToBool('true');   // returns true
- * parseStringToBool('FALSE');  // returns false
- * parseStringToBool('Yes');    // returns true
- * parseStringToBool('no');     // returns false
- * parseStringToBool('1');      // returns true
- * parseStringToBool('0');      // returns false
- * parseStringToBool('maybe');  // returns null
- */
-function convertStringToBool(str) {
-    if (typeof str !== 'string') {
-        console.warn(`parseStringToBool: Expected a string but received type '${typeof str}'.`);
-        return null;
-    }
-
-    // Trim whitespace and convert the string to lowercase for case-insensitive comparison
-    const normalizedStr = str.trim().toLowerCase();
-
-    // Define mappings of string representations to boolean values
-    const trueValues = ['true', '1', 'yes', 'y', 'on'];
-    const falseValues = ['false', '0', 'no', 'n', 'off'];
-
-    if (trueValues.includes(normalizedStr)) {
-        return true;
-    } else if (falseValues.includes(normalizedStr)) {
-        return false;
-    } else {
-        console.warn(`parseStringToBool: Unable to parse '${str}' to a boolean.`);
-        return null;
-    }
-}
-
-/**
  * Creates a new field container with a labeled input and a hint icon.
  *
  * @param {string} id               - The unique identifier for the input field. This should match the `id` of the corresponding input element.
  * @param {string} labelDisplayName - The display text for the label associated with the input field.
  * @param {string} hintText         - The hint text to display when the hint icon is clicked.
+ * 
  * @returns {HTMLDivElement} The created `div` element containing the labeled input and hint icon.
- *
- * @example
- * // Create a new field container and append it to a form
- * const form = document.getElementById('userForm');
- * const field = newFieldContainer('username', 'Username');
- * form.appendChild(field);
  */
 const newFieldContainer = (id, labelDisplayName, hintText) => {
     /**
@@ -164,15 +114,8 @@ const newFieldContainer = (id, labelDisplayName, hintText) => {
  *
  * @param {string} id   - A unique identifier used to assign IDs to the field and controller containers.
  * @param {string} role - The role of the container
+ * 
  * @returns {HTMLDivElement} - The constructed field container element containing the controller.
- *
- * @example
- * const container = newUnlabeledFieldContainer('uniqueId123');
- * document.body.appendChild(container);
- * // This will append the following HTML structure to the body:
- * // <div data-g4-role="field" id="uniqueId123-field">
- * //   <div data-g4-role="controller" id="uniqueId123-controller"></div>
- * // </div>
  */
 const newUnlabeledFieldContainer = (id, role) => {
     // Create the main field container div element.
@@ -212,24 +155,8 @@ const newUnlabeledFieldContainer = (id, role) => {
  * @param {string} options.labelDisplayName - The text to display in the summary section, serving as the label for the container.
  * @param {string} options.hintText         - The tooltip text that appears when hovering over the summary label.
  * @param {string} options.role             - The role of the container.
+ * 
  * @returns {HTMLDetailsElement} - The constructed `details` container element containing the summary and field container.
- *
- * @example
- * const container = newMultipleFieldsContainer('uniqueId123', {
- *     labelDisplayName: 'User Details',
- *     hintText: 'Click to expand and view user details',
- *     role: 'user-role'
- * });
- * document.body.appendChild(container);
- * // This will append the following HTML structure to the body:
- * // <details>
- * //   <summary title="Click to expand and view user details">User Details</summary>
- * //   <div>
- * //     <div data-g4-role="field" id="uniqueId123-field">
- * //       <div data-g4-role="controller" id="uniqueId123-controller"></div>
- * //     </div>
- * //   </div>
- * // </details>
  */
 const newMultipleFieldsContainer = (id, options) => {
     // Create the main <details> container element.
@@ -272,6 +199,7 @@ const newMultipleFieldsContainer = (id, options) => {
  * @param {Array<Object>} options.dataObjects       - An array of data objects to initialize the container with.
  * @param {string}        [options.groupName]       - The group name used for property normalization.
  * @param {Function}      setCallback - A callback function invoked whenever the container is modified.
+ * 
  * @returns {HTMLElement} - The DOM element representing the Object Array Fields container.
  */
 const newObjectArrayFieldsContainer = (id, options, setCallback) => {
@@ -282,6 +210,7 @@ const newObjectArrayFieldsContainer = (id, options, setCallback) => {
      * @param {number}   index       - The index of the array item.
      * @param {string}   mode        - The mode of the form, e.g., 'NEW' or 'EDIT'.
      * @param {Function} setCallback - A callback function invoked when the array item is modified or removed.
+     * 
      * @returns {HTMLElement} - The DOM element representing the array item container.
      */
     const newArrayObject = (dataObject, index, mode, setCallback) => {
@@ -358,7 +287,7 @@ const newObjectArrayFieldsContainer = (id, options, setCallback) => {
          */
         const propertyCallback = (value, setCallback) => {
             const data = {};
-            const normalizedGroupName = convertToCamelCase(options.groupName);
+            const normalizedGroupName = Utilities.convertToCamelCase(options.groupName);
             const indexKey = `${index}`;
 
             // Initialize the group object if it doesn't exist.
@@ -425,6 +354,29 @@ const newObjectArrayFieldsContainer = (id, options, setCallback) => {
                         label: label,
                         title: title,
                         initialValue: mode === 'NEW' ? null : options.property.value
+                    },
+                    (value) => propertyCallback(value, setCallback)
+                );
+                break;
+            case 'ARRAY':
+                CustomFields.newArrayField(
+                    {
+                        container: container,
+                        label: label,
+                        title: title,
+                        initialValue: mode === 'NEW' ? null : options.property.value
+                    },
+                    (value) => propertyCallback(value, setCallback)
+                );
+                break;
+            case 'DATALIST':
+                CustomFields.newDataListField(
+                    {
+                        container: container,
+                        label: label,
+                        title: title,
+                        initialValue: mode === 'NEW' ? null : options.property.value,
+                        itemSource: options.property?.itemSource || []
                     },
                     (value) => propertyCallback(value, setCallback)
                 );
@@ -497,73 +449,6 @@ const newObjectArrayFieldsContainer = (id, options, setCallback) => {
     return fieldContainer;
 }
 
-/**
- * Waits for a DOM element matching the specified selector to appear within a given timeout.
- *
- * This function repeatedly checks for the presence of a DOM element that matches the provided
- * CSS selector at regular intervals. If the element is found within the specified timeout period,
- * the promise resolves with the found element. If the timeout is reached without finding the element,
- * the promise rejects with an error.
- *
- * @param {string} selector - The CSS selector of the element to wait for.
- * @param {number} [timeout=5000] - The maximum time to wait for the element in milliseconds. Default is 5000ms.
- * @returns {Promise<HTMLElement>} A promise that resolves with the found HTMLElement or rejects with an error if the timeout is reached.
- *
- * @example
- * // Usage example: Wait for an element with ID 'submit-button' to appear
- * waitForElement('#submit-button', 3000)
- *     .then(element => {
- *         // Element found, perform actions on it
- *         element.click();
- *     })
- *     .catch(error => {
- *         // Handle the error if the element was not found within the timeout
- *         console.error(error.message);
- *     });
- */
-function waitForElement(selector, timeout = 5000) {
-    return new Promise((resolve, reject) => {
-        // Interval time in milliseconds between each check
-        const interval = 100;
-
-        // Tracks the total elapsed time
-        let elapsedTime = 0;
-
-        /**
-         * Repeatedly checks for the presence of the element.
-         *
-         * - If the element is found, clears the interval and resolves the promise with the element.
-         * - If the timeout is reached without finding the element, clears the interval and rejects the promise with an error.
-         */
-        const intervalId = setInterval(() => {
-            // Attempt to find the element
-            const element = document.querySelector(selector);
-
-            if (element) {
-                clearInterval(intervalId); // Stop further checks
-                resolve(element);          // Resolve the promise with the found element
-            } else {
-                // Increment the elapsed time
-                elapsedTime += interval;
-
-                // Stop further checks
-                // Reject the promise with an error
-                if (elapsedTime >= timeout) {
-                    clearInterval(intervalId);
-                    reject(new Error(`Timeout waiting for element: ${selector}`));
-                }
-            }
-        }, interval);
-    });
-}
-
-/**
- * Generates a unique identifier (UID) as a hexadecimal string.
- *
- * @returns {string} A unique identifier generated by combining a random number and converting it to a hexadecimal string.
- */
-newUid = () => Math.ceil(Math.random() * 10 ** 16).toString(16);
-
 class CustomG4Fields {
     /**
      * Creates a new authentication field that provides input fields for a G4™ username and password.
@@ -587,7 +472,7 @@ class CustomG4Fields {
      */
     static newAuthenticationField(options, setCallback) {
         // Generate a unique identifier for the authentication fields.
-        const inputId = newUid();
+        const inputId = Utilities.newUid();
 
         // Escape the unique identifier to ensure it's safe for use in CSS selectors.
         const id = CSS.escape(inputId);
@@ -671,7 +556,7 @@ class CustomG4Fields {
      */
     static newAutomationSettingsField(options, setCallback) {
         // Generate a unique identifier for the automation settings fields.
-        const inputId = newUid();
+        const inputId = Utilities.newUid();
 
         // Escape the unique identifier to ensure it's safe for use in CSS selectors.
         const id = CSS.escape(inputId);
@@ -736,7 +621,7 @@ class CustomG4Fields {
             },
             (value) => {
                 const automationSettings = {
-                    returnFlatResponse: convertStringToBool(value)
+                    returnFlatResponse: Utilities.convertStringToBool(value)
                 };
                 setCallback(automationSettings);
             }
@@ -753,7 +638,7 @@ class CustomG4Fields {
             },
             (value) => {
                 const automationSettings = {
-                    returnStructuredResponse: convertStringToBool(value)
+                    returnStructuredResponse: Utilities.convertStringToBool(value)
                 };
                 setCallback(automationSettings);
             }
@@ -807,25 +692,10 @@ class CustomG4Fields {
      * @param {Object}      [options.pathAttributes]- Optional additional attributes for the SVG path element.
      *
      * @returns {HTMLElement} The parent container with the newly added button appended.
-     *
-     * @example
-     * // Example usage:
-     * CustomG4Fields.newControlBarButton({
-     *     classList: ['sqd-control-bar-button'],
-     *     container: customButtonsContainer,
-     *     icon: exportSvg,
-     *     pathClassList: ['sqd-icon-path'],
-     *     svgClassList: ['sqd-control-bar-button-icon'],
-     *     title: 'Export Definition',
-     *     viewBox: '0 0 1024 1024',
-     *     onClick: () => {
-     *         console.log('Export Definition');
-     *     }
-     * });
      */
     static newControlBarButton(options) {
         // Generate a unique identifier for the automation settings fields.
-        const inputId = newUid();
+        const inputId = Utilities.newUid();
 
         // Escape the unique identifier to ensure it's safe for use in CSS selectors.
         const id = CSS.escape(inputId);
@@ -885,7 +755,7 @@ class CustomG4Fields {
          * Wait for the newly created button element to be present in the DOM,
          * then attach the specified click event handler.
          */
-        waitForElement(`#${id}`, 5000)
+        Utilities.waitForElement(`#${id}`, 5000)
             .then((element) => {
                 // Attach the provided onClick handler to the button element.
                 element.addEventListener('click', options.onClick);
@@ -922,7 +792,7 @@ class CustomG4Fields {
      */
     static newDataSourceField(options, setCallback) {
         // Generate a unique identifier for the Data Source field.
-        const inputId = newUid();
+        const inputId = Utilities.newUid();
 
         // Escape the unique identifier to ensure it's safe for use in CSS selectors.
         const id = CSS.escape(inputId);
@@ -1091,18 +961,6 @@ class CustomG4Fields {
          * within the provided container. It constructs data objects based on existing `firstMatch`
          * configurations and initializes an object array fields container to allow users to add,
          * remove, and modify capability groups.
-         *
-         * @param {string} id             - A unique identifier used to assign IDs to the field container and its controller.
-         * @param {HTMLElement} container - The DOM element that will contain the "First Match" capabilities.
-         * @param {Object} firstMatch     - An object representing existing "First Match" capabilities groups.
-         *
-         * @example
-         * const container = document.getElementById('capabilities-container');
-         * const firstMatch = {
-         *     group1: { /* capabilities data *\/ },
-         *     group2: { /* capabilities data *\/ }
-         * };
-         * addFirstMatch('uniqueId123', container, firstMatch);
          */
         const newFirstMatchCapabilities = (id, firstMatch) => {
             /**
@@ -1114,13 +972,16 @@ class CustomG4Fields {
             const newDataObject = (firstMatchCapabilities) => {
                 // Create a new data object with the "Capabilities" group properties.
                 const dataObject = {};
+                const value = firstMatchCapabilities === undefined || firstMatchCapabilities === null
+                    ? "{}"
+                    : Utilities.convertToJson(firstMatchCapabilities);
 
                 // Define the "capabilities" field with its properties.
                 dataObject['capabilities'] = {
                     label: 'Capabilities',
                     title: 'A collection of capabilities with additional custom information for the invocation.',
-                    type: 'KEYVALUE',
-                    value: firstMatchCapabilities || {}
+                    type: 'STRING',
+                    value: value
                 };
 
                 // Return the fully constructed data object for the "Capabilities" group.
@@ -1130,12 +991,9 @@ class CustomG4Fields {
             // Initialize an array to hold all data objects for existing "First Match" groups.
             const dataObjects = [];
 
-            // Retrieve all existing group keys from the `firstMatch` object.
-            const indexes = Object.keys(firstMatch);
-
             // Iterate over each group key to create corresponding data objects.
-            for (const index of indexes) {
-                const schema = newDataObject(firstMatch[index]);
+            for (const item of firstMatch) {
+                const schema = newDataObject(item);
                 dataObjects.push(schema);
             }
 
@@ -1175,13 +1033,13 @@ class CustomG4Fields {
                         continue;
                     }
 
-                    firstMatchCapabilities[key] = capabilities;
+                    firstMatchCapabilities[key] = Utilities.convertFromJson(capabilities);
                 }
 
                 // Construct the driver parameters object with the updated "First Match" capabilities.
                 const driverParameters = {
                     capabilities: {
-                        firstMatch: firstMatchCapabilities
+                        firstMatch: [firstMatchCapabilities]
                     }
                 };
 
@@ -1196,138 +1054,228 @@ class CustomG4Fields {
             return firstMatchContainer;
         }
 
-        /**
-         * Adds a Vendor Capabilities UI component to the specified container.
-         *
-         * This function dynamically generates a user interface for managing vendor capabilities.
-         * It allows users to add, remove, and configure groups of vendor capabilities.
-         *
-         * @param {string} id                 - A unique identifier used to distinguish the component instance.
-         * @param {HTMLElement} container     - The DOM element where the vendor capabilities UI will be appended.
-         * @param {Object} vendorCapabilities - An object containing existing vendor capability data.
-         */
-        const newVendorCapabilities = (id, vendorCapabilities) => {
-            /**
-             * Creates a standardized data object for a single vendor capability entry.
-             *
-             * @param {Object} [vendorCapabilities] - The vendor capabilities data for a single vendor.
-             * @returns {Object} The structured data object containing vendor and capabilities information.
-             */
-            const newDataObject = (vendorCapabilities) => {
-                const dataObject = {};
+        ///**
+        // * Adds a Vendor Capabilities UI component to the specified container.
+        // *
+        // * This function dynamically generates a user interface for managing vendor capabilities.
+        // * It allows users to add, remove, and configure groups of vendor capabilities.
+        // */
+        //const newVendorCapabilities = (id, vendorCapabilities) => {
+        //    /**
+        //     * Creates a standardized data object for a single vendor capabilities entry.
+        //     * This object is structured to be compatible with WebDriver's vendor-specific capabilities UI.
+        //     * Each field includes metadata such as labels and titles to enhance user understanding within the UI.
+        //     */
+        //    const newDataObject = (vendorCapabilities) => {
+        //        // Initialize an empty object to hold the structured data
+        //        const dataObject = {};
 
-                // Define the vendor field with its metadata and value
-                dataObject['vendor'] = {
-                    label: 'Vendor',
-                    title: 'The vendor name associated with the capabilities.',
-                    type: 'TEXT',
-                    value: vendorCapabilities?.vendor || '' // Use optional chaining to safely access vendor
-                };
+        //        /**
+        //         * Adds the 'vendor' field to the dataObject.
+        //         * This field captures the identifier of the vendor and includes metadata for UI representation.
+        //         */
+        //        dataObject['vendor'] = {
+        //            itemSource: [
+        //                {
+        //                    "name": "goog:chromeOptions",
+        //                    "description": [
+        //                        "Chrome-Specific Configuration: Allows customization of Chrome browser behavior. ",
+        //                        "You can set options such as running in headless mode, disabling extensions, setting proxy settings, specifying binary paths, and defining preferences like download directories."
+        //                    ]
+        //                },
+        //                {
+        //                    "name": "moz:firefoxOptions",
+        //                    "description": [
+        //                        "Firefox-Specific Configuration: Enables configuration of Firefox browser settings. ",
+        //                        "Options include running in headless mode, specifying binary paths, setting Firefox profiles, managing preferences, and enabling logging or debugging features."
+        //                    ]
+        //                },
+        //                {
+        //                    "name": "ms:edgeOptions",
+        //                    "description": [
+        //                        "Edge-Specific Configuration: Facilitates customization of Microsoft Edge browser behavior. ",
+        //                        "Options include headless mode, specifying binary locations, managing extensions, setting startup arguments, and configuring proxy settings."
+        //                    ]
+        //                },
+        //                {
+        //                    "name": "safari:automaticInspection",
+        //                    "description": [
+        //                        "Safari-Specific Configuration: Controls Safari's Web Inspector settings. ",
+        //                        "Enables or disables automatic inspection, manages developer settings, and configures other Safari-specific testing behaviors."
+        //                    ]
+        //                },
+        //                {
+        //                    "name": "appium:options",
+        //                    "description": [
+        //                        "Mobile Automation Configuration: Essential for mobile device testing. ",
+        //                        "Allows specification of device names, platform types (iOS, Android), application paths, automation engines (e.g., XCUITest, UIAutomator2), and other mobile-specific settings."
+        //                    ]
+        //                },
+        //                {
+        //                    "name": "sauce:options",
+        //                    "description": [
+        //                        "Sauce Labs Cloud Testing Configuration: Configures tests to run on Sauce Labs' cloud infrastructure. ",
+        //                        "Options include authentication credentials, build identifiers, test names, video recording settings, and concurrency controls."
+        //                    ]
+        //                },
+        //                {
+        //                    "name": "bstack:options",
+        //                    "description": [
+        //                        "BrowserStack Cloud Testing Configuration: Sets up tests to execute on BrowserStack's cloud platform. ",
+        //                        "Includes options for specifying operating systems, browser versions, session names, project identifiers, and other BrowserStack-specific settings."
+        //                    ]
+        //                },
+        //                {
+        //                    "name": "lt:options",
+        //                    "description": [
+        //                        "LambdaTest Cloud Testing Configuration: Enables configuration of tests on LambdaTest's platform. ",
+        //                        "Options cover authentication, build names, test descriptions, video recordings, screenshots, and other LambdaTest-specific parameters."
+        //                    ]
+        //                },
+        //                {
+        //                    "name": "uia:options",
+        //                    "description": [
+        //                        "UIAutomation Configuration: Provides settings for automating native Windows applications using UIAutomation. ",
+        //                        "Includes options such as enabling specific features, setting automation modes, specifying application paths, and other UIAutomation-specific configurations."
+        //                    ]
+        //                }
+        //            ],
+        //            label: 'Vendor',
+        //            title: 'Specify the vendor identifier (e.g., "ms" for Microsoft, "goog" for Google, "appium", "uia").',
+        //            type: 'DATALIST',
+        //            value: vendorCapabilities?.vendor || ''
+        //        };
 
-                // Define the capabilities field with its metadata and value
-                dataObject['capabilities'] = {
-                    label: 'Capabilities',
-                    title: 'A collection of capabilities with additional custom information for the invocation.',
-                    type: 'KEYVALUE',
-                    value: vendorCapabilities?.capabilities || {} // Use optional chaining to safely access capabilities
-                };
+        //        /**
+        //         * Adds the 'capabilities' field to the dataObject.
+        //         * This field holds key-value pairs that define the specific capabilities or features of the vendor.
+        //         */
+        //        dataObject['capabilities'] = {
+        //            label: 'Capabilities',
+        //            title: 'Define key-value pairs representing the vendor-specific capabilities or features.',
+        //            type: 'KEYVALUE',
+        //            value: vendorCapabilities?.capabilities || {}
+        //        };
 
-                return dataObject;
-            };
+        //        /**
+        //         * Adds the 'argumentsKey' field to the dataObject.
+        //         * This field captures the key used to store arguments or configuration options related to the vendor's capabilities.
+        //         */
+        //        dataObject['argumentsKey'] = {
+        //            label: 'Arguments Capabilities Key',
+        //            title: "The key used to store arguments or configuration options related to the vendor's capabilities.",
+        //            type: 'TEXT',
+        //            value: vendorCapabilities?.argumentsKey || 'args'
+        //        };
 
-            // Initialize an array to hold all data objects for vendor capabilities
-            const dataObjects = [];
+        //        /**
+        //         * Adds the 'arguments' field to the dataObject.
+        //         * This field contains an array of arguments or configuration options related to the vendor's capabilities.
+        //         */
+        //        dataObject['args'] = {
+        //            label: 'Arguments',
+        //            title: "List any command-line arguments or configuration options relevant to the vendor's capabilities.",
+        //            type: 'ARRAY',
+        //            value: vendorCapabilities?.arguments || []
+        //        };
 
-            // Retrieve all keys from the vendorCapabilities object
-            const indexes = Object.keys(vendorCapabilities);
+        //        // Return the fully constructed data object
+        //        return dataObject;
+        //    };
 
-            // Iterate over each key to create a corresponding data object
-            for (const index of indexes) {
-                const schema = newDataObject(vendorCapabilities[index]);
-                dataObjects.push(schema);
-            }
+        //    // Initialize an array to hold all data objects for vendor capabilities
+        //    const dataObjects = [];
 
-            // If there are no existing vendor capabilities, add a default empty data object
-            if (dataObjects.length === 0) {
-                dataObjects.push(newDataObject(undefined));
-            }
+        //    // Retrieve all keys from the vendorCapabilities object
+        //    const indexes = Object.keys(vendorCapabilities);
 
-            // Configuration options for the array fields UI component
-            const arrayFieldOptions = {
-                addButtonLabel: 'Add Capabilities Group',
-                dataObjects: dataObjects,
-                groupName: 'VendorCapabilities',
-                itemLabel: 'Group',
-                labelDisplayName: "Vendor Capabilities",
-                removeButtonLabel: 'Remove',
-                role: 'container',
-                title: "Vendor Capabilities"
-            };
+        //    // Iterate over each key to create a corresponding data object
+        //    for (const index of indexes) {
+        //        const schema = newDataObject(vendorCapabilities[index]);
+        //        dataObjects.push(schema);
+        //    }
 
-            /**
-             * Creates the vendor capabilities container using a utility function.
-             *
-             * @param {string} `${id}-vendor-capabilities` - The unique identifier for the container.
-             * @param {Object} arrayFieldOptions - Configuration options for the array fields.
-             * @param {Function} callback - A function to handle updates to the vendor capabilities data.
-             * @returns {HTMLElement} The constructed vendor capabilities container element.
-             */
-            const vendorContainer = newObjectArrayFieldsContainer(
-                `${id}-vendor-capabilities`, // Unique ID for the container
-                arrayFieldOptions, // Configuration options for the array fields
-                (value) => { // Callback function to handle changes in the vendor capabilities data
-                    const updatedVendorCapabilities = {}; // Initialize an object to store updated capabilities
+        //    // If there are no existing vendor capabilities, add a default empty data object
+        //    if (dataObjects.length === 0) {
+        //        dataObjects.push(newDataObject(undefined));
+        //    }
 
-                    // Iterate over each key in the value object
-                    const keys = Object.keys(value);
-                    for (const key of keys) {
-                        // Safely access capabilities and vendor using optional chaining
-                        const capabilities = value[key]?.vendorCapabilities?.capabilities;
-                        const vendor = value[key]?.vendorCapabilities?.vendor;
+        //    // Configuration options for the array fields UI component
+        //    const arrayFieldOptions = {
+        //        addButtonLabel: 'Add Capabilities Group',
+        //        dataObjects: dataObjects,
+        //        groupName: 'VendorCapabilities',
+        //        itemLabel: 'Group',
+        //        labelDisplayName: "Vendor Capabilities",
+        //        removeButtonLabel: 'Remove',
+        //        role: 'container',
+        //        title: "Vendor Capabilities"
+        //    };
 
-                        // If both capabilities and vendor are missing, skip this entry
-                        if (!capabilities && !vendor) {
-                            continue;
-                        }
-                        // If vendor is missing, only include capabilities
-                        else if (!vendor) {
-                            updatedVendorCapabilities[key] = {
-                                capabilities: capabilities || {}
-                            };
-                        }
-                        // If capabilities are missing, only include vendor
-                        else if (!capabilities) {
-                            updatedVendorCapabilities[key] = {
-                                vendor: vendor || ''
-                            };
-                        }
-                        // If both are present, include both
-                        else {
-                            updatedVendorCapabilities[key] = {
-                                vendor: vendor,
-                                capabilities: capabilities
-                            };
-                        }
-                    }
+        //    /**
+        //     * Creates the vendor capabilities container using a utility function.
+        //     */
+        //    const vendorContainer = newObjectArrayFieldsContainer(
+        //        `${id}-vendor-capabilities`,
+        //        arrayFieldOptions,
+        //        (value) => {
+        //            // Initialize an object to store updated capabilities
+        //            const updatedVendorCapabilities = {};
 
-                    // Structure the driver parameters with the updated vendor capabilities
-                    const driverParameters = {
-                        capabilities: {
-                            vendorCapabilities: updatedVendorCapabilities
-                        }
-                    };
+        //            // Iterate over each key-value pair in the input object
+        //            for (const [key, val] of Object.entries(value)) {
+        //                const vendorCapabilities = val?.vendorCapabilities;
 
-                    // Invoke the callback with the updated driver parameters
-                    setCallback(driverParameters);
-                }
-            );
+        //                // If vendorCapabilities is undefined or null, skip to the next iteration
+        //                if (!vendorCapabilities) {
+        //                    continue;
+        //                }
 
-            // Return the fully constructed vendor capabilities container
-            return vendorContainer;
-        };
+        //                const { vendor, capabilities, args, argumentsKey } = vendorCapabilities;
+
+        //                // Check if at least one of the properties exists
+        //                const hasVendor = Boolean(vendor);
+        //                const hasCapabilities = capabilities && Object.keys(capabilities).length > 0;
+        //                const hasArguments = args && Object.keys(args).length > 0;
+
+        //                // Skip entries where all properties are missing or empty
+        //                if (!hasVendor && !hasCapabilities && !hasArguments) {
+        //                    continue;
+        //                }
+
+        //                // Initialize the entry for the current key
+        //                updatedVendorCapabilities[key] = {};
+
+        //                // Conditionally add properties if they exist
+        //                if (hasVendor) {
+        //                    updatedVendorCapabilities[key].vendor = vendor;
+        //                }
+        //                if (hasCapabilities) {
+        //                    updatedVendorCapabilities[key].capabilities = capabilities;
+        //                }
+        //                if (hasArguments) {
+        //                    updatedVendorCapabilities[key][argumentsKey || 'args'] = args;
+        //                }
+        //            }
+
+        //            // Structure the driver parameters with the updated vendor capabilities
+        //            const driverParameters = {
+        //                capabilities: {
+        //                    vendorCapabilities: updatedVendorCapabilities
+        //                }
+        //            };
+
+        //            // Invoke the callback with the updated driver parameters
+        //            setCallback(driverParameters);
+        //        }
+        //    );
+
+        //    // Return the fully constructed vendor capabilities container
+        //    return vendorContainer;
+        //};
 
         // Generate a unique identifier for the plugins settings fields.
-        const inputId = newUid();
+        const inputId = Utilities.newUid();
 
         // Escape the unique identifier to ensure it's safe for use in CSS selectors.
         const id = CSS.escape(inputId);
@@ -1345,7 +1293,7 @@ class CustomG4Fields {
         CustomFields.newDataListField(
             {
                 container: controller,
-                initialValue: options.initialValue?.driver || 'ChromeDriver',
+                initialValue: options.initialValue?.driver || '',
                 itemSource: 'Driver',
                 label: 'Web Driver',
                 title: 'Select the web driver to use.'
@@ -1362,7 +1310,7 @@ class CustomG4Fields {
         CustomFields.newStringField(
             {
                 container: controller,
-                initialValue: options.initialValue?.driverBinaries || '.',
+                initialValue: options.initialValue?.driverBinaries || '',
                 isReadonly: false,
                 label: 'Driver Binaries',
                 title: 'The driver binaries location on local machine or grid endpoint.'
@@ -1382,17 +1330,19 @@ class CustomG4Fields {
         });
 
         // Create a new Key-Value Field for "Always Match" capabilities.
-        CustomFields.newKeyValueField(
+        const alwaysMatch = Utilities.convertToJson(options.initialValue?.capabilities?.alwaysMatch);
+        CustomFields.newStringField(
             {
                 container: alwaysMatchField.querySelector('[data-g4-role="always-match-capabilities"]'),
                 label: 'Capabilities',
-                title: 'Foo Bar',
-                initialValue: options.initialValue?.capabilities?.alwaysMatch
+                title: 'A collection of capabilities with additional custom information for the invocation.',
+                initialValue: alwaysMatch
             },
             (value) => {
+                const alwaysMatch = Utilities.convertFromJson(value);
                 const driverParameters = {
                     capabilities: {
-                        alwaysMatch: value
+                        alwaysMatch: alwaysMatch
                     }
                 };
                 setCallback(driverParameters);
@@ -1404,17 +1354,10 @@ class CustomG4Fields {
 
         // Create and append the "First Match" capabilities group to the controller.
         const firstMatchField = newFirstMatchCapabilities(
-            inputId,                                               // Unique identifier
-            options.initialValue?.capabilities?.firstMatch || [{}] // Existing "First Match" data or default
+            inputId,
+            options.initialValue?.capabilities?.firstMatch || [{}]
         );
         controller.appendChild(firstMatchField);
-
-        // Create and append the Vendor Capabilities UI component to the controller.
-        const vendorCapabilitiesField = newVendorCapabilities(
-            inputId,                                                       // Unique identifier
-            options.initialValue?.capabilities?.vendorCapabilities || [{}] // Existing vendor capabilities or default
-        );
-        controller.appendChild(vendorCapabilitiesField);
 
         // If an external container is provided, append the field container to it
         if (options.container) {
@@ -1445,7 +1388,7 @@ class CustomG4Fields {
      */
     static newEnvironmentSettingsField(options, setCallback) {
         // Generate a unique identifier for the environment settings fields.
-        const inputId = newUid();
+        const inputId = Utilities.newUid();
 
         // Escape the unique identifier to ensure it's safe for use in CSS selectors.
         const escapedId = CSS.escape(inputId);
@@ -1489,7 +1432,7 @@ class CustomG4Fields {
             (value) => {
                 // Convert the string value ('true'/'false') to a boolean
                 const environmentSettings = {
-                    returnEnvironment: convertStringToBool(value)
+                    returnEnvironment: Utilities.convertStringToBool(value)
                 };
                 // Invoke the main callback function with updated settings
                 setCallback(environmentSettings);
@@ -1539,7 +1482,7 @@ class CustomG4Fields {
      */
     static newExceptionsSettingsField(options, setCallback) {
         // Generate a unique identifier for the exceptions settings fields
-        const inputId = newUid();
+        const inputId = Utilities.newUid();
 
         // Escape the unique identifier to ensure it's safe for use in CSS selectors
         const escapedId = CSS.escape(inputId);
@@ -1574,7 +1517,7 @@ class CustomG4Fields {
             (value) => {
                 // Convert the string value ('true'/'false') to a boolean and update exceptionsSettings
                 const exceptionsSettings = {
-                    returnExceptions: convertStringToBool(value)
+                    returnExceptions: Utilities.convertStringToBool(value)
                 };
                 // Invoke the main callback with the updated settings
                 setCallback(exceptionsSettings);
@@ -1607,7 +1550,7 @@ class CustomG4Fields {
      */
     static newQueueManagerSettingsField(options, setCallback) {
         // Generate a unique identifier for the queue manager settings fields.
-        const inputId = newUid();
+        const inputId = Utilities.newUid();
 
         // Escape the unique identifier to ensure it's safe for use in CSS selectors.
         const escapedId = CSS.escape(inputId);
@@ -1697,7 +1640,7 @@ class CustomG4Fields {
      */
     static newPerformancePointsSettingsField(options, setCallback) {
         // Generate a unique identifier for the performance points settings fields.
-        const inputId = newUid();
+        const inputId = Utilities.newUid();
 
         // Escape the unique identifier to ensure it's safe for use in CSS selectors.
         const escapedId = CSS.escape(inputId);
@@ -1733,7 +1676,7 @@ class CustomG4Fields {
             },
             (value) => {
                 const performancePointsSettings = {
-                    returnPerformancePoints: convertStringToBool(value)
+                    returnPerformancePoints: Utilities.convertStringToBool(value)
                 };
                 setCallback(performancePointsSettings);
             }
@@ -1774,9 +1717,6 @@ class CustomG4Fields {
     static newPluginsSettingsField(options, setCallback) {
         /**
          * Generates a data object schema for an external repository.
-         *
-         * @param {Object} externalRepository - The external repository data to initialize the schema with.
-         * @returns {Object} - The data object schema for the external repository.
          */
         const newDataObject = (externalRepository) => {
             // Initialize an empty object to hold the data object schema.
@@ -1851,7 +1791,7 @@ class CustomG4Fields {
         };
 
         // Generate a unique identifier for the plugins settings fields.
-        const inputId = newUid();
+        const inputId = Utilities.newUid();
 
         // Initialize external repositories with existing data or a default empty object.
         const externalRepositories = options.initialValue?.externalRepositories || [{}];
@@ -1904,7 +1844,7 @@ class CustomG4Fields {
             },
             (value) => {
                 const pluginsSettings = {
-                    forceRuleReference: convertStringToBool(value)
+                    forceRuleReference: Utilities.convertStringToBool(value)
                 };
                 setCallback(pluginsSettings);
             }
@@ -1941,7 +1881,7 @@ class CustomG4Fields {
      */
     static newScreenshotsSettingsField(options, setCallback) {
         // Generate a unique identifier for the screenshots settings fields
-        const inputId = newUid();
+        const inputId = Utilities.newUid();
 
         // Escape the unique identifier to ensure it's safe for use in CSS selectors
         const escapedId = CSS.escape(inputId);
@@ -1998,7 +1938,7 @@ class CustomG4Fields {
             },
             (value) => {
                 const screenshotsSettings = {
-                    convertToBase64: convertStringToBool(value)
+                    convertToBase64: Utilities.convertStringToBool(value)
                 };
                 setCallback(screenshotsSettings);
             }
@@ -2017,7 +1957,7 @@ class CustomG4Fields {
             },
             (value) => {
                 const screenshotsSettings = {
-                    onExceptionOnly: convertStringToBool(value)
+                    onExceptionOnly: Utilities.convertStringToBool(value)
                 };
                 setCallback(screenshotsSettings);
             }
@@ -2036,7 +1976,7 @@ class CustomG4Fields {
             },
             (value) => {
                 const screenshotsSettings = {
-                    returnScreenshots: convertStringToBool(value)
+                    returnScreenshots: Utilities.convertStringToBool(value)
                 };
                 setCallback(screenshotsSettings);
             }
@@ -2075,11 +2015,6 @@ class CustomFields {
          * This function locates the container element using the provided `id`, and then invokes
          * the `newInput` function to create a new row containing an input field and a remove button.
          * If the container is not found, the function returns without taking any action.
-         *
-         * @param {string} id - The unique identifier used to locate the input container in the DOM.
-         * @param {Function} setCallback - The callback function to handle updates after creating a new input row.
-         *
-         * @returns {HTMLElement | undefined} The newly created input element, or `undefined` if the container is not found.
          */
         const newInputCallback = (id, setCallback) => {
             // Select the container element based on the provided ID, targeting
@@ -2101,13 +2036,6 @@ class CustomFields {
          * users to enter a value associated with `data-g4-role="valueitem"`,
          * and the remove button provides the option to remove the row from
          * the container.
-         *
-         * @param {Object}      options           - Configuration options for the new input row.
-         * @param {HTMLElement} options.container - The DOM element to which the input row will be appended.
-         * @param {string}     [options.value=''] - An optional initial value for the input field.
-         * @param {Function}    setCallback       - A callback function to handle updates after a row is removed.
-         *
-         * @returns {HTMLInputElement} The newly created input element (for possible further manipulation).
          */
         const newInput = (options, setCallback) => {
             // Create a div element to serve as the row container for the input and remove button
@@ -2160,9 +2088,6 @@ class CustomFields {
          * 2. Updates the title attribute of each input to mirror its current value.
          * 3. Collects all non-empty input values into an array.
          * 4. Passes this array to the setCallback function for further handling.
-         *
-         * @param {HTMLElement} container   - The DOM element containing the target input elements.
-         * @param {Function}    setCallback - The callback function to handle the processed array of values.
          */
         const callback = (container, setCallback) => {
             // Retrieve all input elements with data-g4-role="valueitem" within the container
@@ -2183,7 +2108,7 @@ class CustomFields {
         }
 
         // Generate a unique identifier for this array field to maintain distinctness in the DOM
-        const inputId = newUid();
+        const inputId = Utilities.newUid();
 
         // Escape the identifier for safe usage in CSS selectors
         const escapedId = CSS.escape(inputId);
@@ -2227,8 +2152,7 @@ class CustomFields {
         const inputContainer = fieldContainer.querySelector(`#${escapedId}-input-container`);
 
         // For each remaining initial value, create an additional input row in the container
-        for (let index = 0; index < values.length; index++) {
-            const value = values[index];
+        for (const value of values) {
             newInput({ container: inputContainer, value: value }, setCallback);
         }
 
@@ -2267,15 +2191,6 @@ class CustomFields {
          * 2. **Array**: Assumes `itemSource` is an array of objects with `name` and `description` properties, and transforms them accordingly.
          *
          * The items are finally sorted alphabetically by their keys before being returned.
-         *
-         * @param {string | Array<Object>} itemSource - The source from which items are retrieved and transformed.
-         *   - If a string, it is used as a key to look up items in the `_cache` object.
-         *   - If an array, each array element should have `name` and `description` properties.
-         *
-         * @returns {Object} A sorted object whose keys represent item names or manifest keys,
-         *   and whose values contain corresponding manifest summaries.
-         *
-         * @throws {Error} Throws an error if `itemSource` is not a string or an array.
          */
         const getItems = (itemSource) => {
             // Define a cache object to store items retrieved by key.
@@ -2321,7 +2236,7 @@ class CustomFields {
              * The sorted keys are then used to reconstruct the object in sorted order.
              */
             items = Object.keys(items)
-                .sort()
+                .sort((i, j) => i.localeCompare(j))
                 .reduce((obj, key) => {
                     obj[key] = items[key];
                     return obj;
@@ -2332,7 +2247,7 @@ class CustomFields {
         };
 
         // Generate a unique ID for the datalist input field to ensure uniqueness in the DOM
-        const inputId = newUid();
+        const inputId = Utilities.newUid();
 
         // Convert the label from PascalCase to a space-separated format for display
         const labelDisplayName = options.label;
@@ -2366,7 +2281,7 @@ class CustomFields {
             const hint = summary.join("\n");
 
             // Create an option element: use 'key' as the value, 'hint' as the label, and display text as a space-separated key
-            html += `  <option value="${key}" label="${hint}">${convertPascalToSpaceCase(key)}</option>\n`;
+            html += `  <option value="${key}" label="${hint}">${Utilities.convertPascalToSpaceCase(key)}</option>\n`;
         });
 
         // Close the datalist element
@@ -2434,11 +2349,6 @@ class CustomFields {
          *
          * This function locates the input container using the provided `id` and,
          * if found, invokes the `newInput` function to add a new input row with default values.
-         *
-         * @param {string}   id          - The unique identifier used to locate the input container in the DOM.
-         * @param {Function} setCallback - The callback function to handle updates to the key-value pairs.
-         *
-         * @returns {HTMLElement | undefined} The newly created input row element, or `undefined` if the container is not found.
          */
         const newInputCallback = (id, setCallback) => {
             // Select the input container within the controller section using the provided id
@@ -2457,14 +2367,6 @@ class CustomFields {
          * Creates a new key-value input row and appends it to the specified container.
          * Each row consists of a remove button, a key input field, and a value input field.
          * The remove button allows the user to delete the specific key-value pair.
-         *
-         * @param {Object}       options           - Configuration options for the new input row.
-         * @param {HTMLElement}  options.container - The DOM element to which the input row will be appended.
-         * @param {string}      [options.key='']   - Optional initial value for the key input field.
-         * @param {string}      [options.value=''] - Optional initial value for the value input field.
-         * @param {Function}     setCallback       - Callback function to handle changes after removal of a key-value pair.
-         *
-         * @returns {HTMLElement} The created input row element.
          */
         const newInput = (options, setCallback) => {
             // Create a div element to serve as the row container for the key-value pair
@@ -2533,9 +2435,6 @@ class CustomFields {
          * 3. Builds a dictionary of key-value pairs, excluding entries with empty keys.
          * 4. Updates the title attributes of the input fields to reflect their current values.
          * 5. Invokes the provided `setCallback` function with the resulting dictionary.
-         *
-         * @param {HTMLElement} container   - The DOM element that contains the key-value input elements.
-         * @param {Function}    setCallback - The callback function to handle the processed key-value pairs.
          */
         const callback = (container, setCallback) => {
             // Select all div elements with data-g4-role="keyvalue" within the container
@@ -2578,7 +2477,7 @@ class CustomFields {
         }
 
         // Generate a unique ID for the field and escape it for safe CSS usage
-        const inputId = newUid();
+        const inputId = Utilities.newUid();
         const escapedId = CSS.escape(inputId);
 
         // Extract the initial key-value pairs from the options or default to an empty object
@@ -2591,7 +2490,7 @@ class CustomFields {
         const mainValue = mainInputKey ? values[mainInputKey] : '';
 
         // Convert the provided label from PascalCase to a more readable space-separated format
-        const labelDisplayName = convertPascalToSpaceCase(options.label);
+        const labelDisplayName = Utilities.convertPascalToSpaceCase(options.label);
 
         // Create the primary field container using a helper function
         const fieldContainer = newFieldContainer(inputId, labelDisplayName, options.title);
@@ -2624,8 +2523,7 @@ class CustomFields {
         const inputContainer = fieldContainer.querySelector(`#${escapedId}-input-container`);
 
         // For each remaining key in the initial values, create additional key-value rows
-        for (let i = 0; i < keys.length; i++) {
-            const key = keys[i];
+        for (const key of keys) {
             const value = values[key];
             newInput({ container: inputContainer, key, value }, setCallback);
         }
@@ -2662,36 +2560,6 @@ class CustomFields {
      * @returns {HTMLElement} The container element that includes the newly created list field.
      *
      * @throws {Error} Throws an error if `itemsSource` is neither a string nor an array.
-     *
-     * @example
-     *
-     * // Using a string as itemsSource (retrieves from _cache)
-     * const listField = newListField({
-     *   container: document.getElementById('form-container'),
-     *   label: 'pluginList',
-     *   title: 'Select a Plugin',
-     *   initialValue: 'PluginOne',
-     *   itemsSource: 'plugins',
-     *   isReadonly: false
-     * }, (selectedValue) => {
-     *   console.log(`Selected Plugin: ${selectedValue}`);
-     * });
-     *
-     * // Using an array as itemsSource
-     * const pluginsArray = [
-     *   { name: 'PluginOne', description: 'First plugin description' },
-     *   { name: 'PluginTwo', description: 'Second plugin description' },
-     * ];
-     * const listField = newListField({
-     *   container: document.getElementById('form-container'),
-     *   label: 'pluginList',
-     *   title: 'Select a Plugin',
-     *   initialValue: 'PluginTwo',
-     *   itemsSource: pluginsArray,
-     *   isReadonly: false
-     * }, (selectedValue) => {
-     *   console.log(`Selected Plugin: ${selectedValue}`);
-     * });
      */
     static newListField(options, setCallback) {
         /**
@@ -2706,15 +2574,6 @@ class CustomFields {
          *    - Defaults to 'No name available' if the name property is missing.
          *
          * After processing, the function sorts the items alphabetically by their keys.
-         *
-         * @param {string | Array<Object>} itemsSource - The source of items to process.
-         *   - If a string, it is used as a key to retrieve items from the `_cache` object.
-         *   - If an array, it should contain objects with `name` and `description` properties.
-         *
-         * @returns {Object} A sorted object where each key is derived from the item's manifest key or name,
-         *   and each value contains the item's manifest with a summary.
-         *
-         * @throws {Error} Throws an error if `itemsSource` is neither a string nor an array.
          */
         const getItems = (itemsSource) => {
             // Define a variable to hold the items after processing
@@ -2779,7 +2638,7 @@ class CustomFields {
              * - Extracts the keys, sorts them, and reconstructs the items object in sorted order.
              */
             items = Object.keys(items)
-                .sort()
+                .sort((i, j) => i.localeCompare(j))
                 .reduce((obj, key) => {
                     obj[key] = items[key];
                     return obj;
@@ -2790,7 +2649,7 @@ class CustomFields {
         };
 
         // Generate a unique identifier for the list field to ensure uniqueness in the DOM
-        const inputId = newUid();
+        const inputId = Utilities.newUid();
 
         // Convert the label from PascalCase to a space-separated format for display purposes
         const labelDisplayName = options.label;
@@ -2889,13 +2748,13 @@ class CustomFields {
      */
     static newNameField(options, setCallback) {
         // Generate a unique identifier for the input field to ensure uniqueness in the DOM.
-        const inputId = newUid();
+        const inputId = Utilities.newUid();
 
         // Extract aliases from the step configuration if available.
         const aliases = options.step.aliases;
 
         // Convert the plugin name from PascalCase to a space-separated format for display purposes.
-        const pluginName = convertPascalToSpaceCase(options.step.pluginName);
+        const pluginName = Utilities.convertPascalToSpaceCase(options.step.pluginName);
 
         // Convert the label from PascalCase to a space-separated format for display purposes.
         const labelDisplayName = options.label;
@@ -2937,7 +2796,7 @@ class CustomFields {
 
             // Iterate over each alias to create corresponding datalist options.
             aliases.forEach(alias => {
-                const formattedAlias = convertPascalToSpaceCase(alias);
+                const formattedAlias = Utilities.convertPascalToSpaceCase(alias);
                 html += `  <option value="${formattedAlias}" label="${alias}">${formattedAlias}</option>\n`;
             });
 
@@ -3009,7 +2868,7 @@ class CustomFields {
      */
     static newNumberField(options, setCallback) {
         // Generate a unique identifier for the number input to ensure uniqueness in the DOM.
-        const inputId = newUid();
+        const inputId = Utilities.newUid();
 
         // Convert the label from PascalCase to a space-separated format for display purposes.
         const labelDisplayName = options.label;
@@ -3146,8 +3005,81 @@ class CustomFields {
             setCallback(textarea.value);
         };
 
+        /**
+         * Creates and appends a new modal containing a textarea and a close button
+         * for a given input field. If a modal with the same ID already exists,
+         * it is first removed. The contents of the textarea are mirrored into
+         * the original input field. Clicking the close button removes the modal
+         * and re-enables the original input.
+         *
+         * @param {string} inputId - The unique identifier of the target input.
+         * @param {HTMLElement} fieldContainer - The container element to which the modal will be appended.
+         * @returns {HTMLElement} The newly created modal element.
+         */
+        const newModal = (inputId, fieldContainer) => {
+            // Escape the inputId to ensure valid and safe usage in CSS selectors
+            const escapedId = CSS.escape(inputId);
+
+            // Find and remove any existing modal with the same ID in the container
+            const existingModal = fieldContainer?.querySelector(`#${escapedId}-modal`);
+            if (existingModal) {
+                fieldContainer.removeChild(existingModal);
+            }
+
+            // Create a container <div> to serve as the modal
+            const modalElement = document.createElement('div');
+            modalElement.setAttribute('id', `${inputId}-modal`);
+            modalElement.setAttribute(
+                'style',
+                'display: block; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);'
+            );
+            modalElement.setAttribute('data-g4-role', 'input-modal');
+
+            // Create a container for the textarea and close button
+            const textareaContainerElement = document.createElement('div');
+
+            // Create the textarea element
+            const textareaElement = document.createElement('textarea');
+            textareaElement.setAttribute('id', `${inputId}-textarea`);
+            textareaElement.setAttribute('style', 'width: 60vw; height: 25vh;');
+            textareaElement.setAttribute('wrap', 'off');
+            textareaElement.setAttribute('spellcheck', 'false');
+
+            // Listen for changes in the modal's textarea and update the original field's value
+            textareaElement.addEventListener('input', () => {
+                const textarea = fieldContainer.querySelector(`#${escapedId}`);
+                textarea.value = textareaElement.value;
+            });
+
+            // Create a button to close the modal
+            const closeButtonElement = document.createElement('button');
+            closeButtonElement.setAttribute('id', `${inputId}-closeButton`);
+            closeButtonElement.setAttribute('type', 'button');
+            closeButtonElement.innerText = 'Close';
+
+            // On click, re-enable the original textarea and remove the modal
+            closeButtonElement.addEventListener('click', () => {
+                const textarea = fieldContainer.querySelector(`#${escapedId}`);
+                textarea.disabled = false;
+                fieldContainer.removeChild(modalElement);
+            });
+
+            // Add the textarea and close button to the container
+            textareaContainerElement.appendChild(textareaElement);
+            textareaContainerElement.appendChild(closeButtonElement);
+
+            // Add the container to the modal
+            modalElement.appendChild(textareaContainerElement);
+
+            // Append the newly created modal to the field container
+            fieldContainer.appendChild(modalElement);
+
+            // Return the modal element so it can be referenced if needed
+            return modalElement;
+        };
+
         // Generate a unique identifier for the textarea to ensure uniqueness in the DOM.
-        const inputId = newUid();
+        const inputId = Utilities.newUid();
 
         // Convert the label from PascalCase to a space-separated format for display purposes.
         const labelDisplayName = options.label;
@@ -3171,6 +3103,18 @@ class CustomFields {
         textareaElement.setAttribute('spellcheck', 'false');              // Disable spell checking.
         textareaElement.setAttribute('title', options.initialValue);      // Tooltip displaying the current value.
         textareaElement.value = options.initialValue;                     // Set the initial value of the textarea.
+
+        // Listen for double-click events to open a modal for editing the textarea content.
+        textareaElement.addEventListener("dblclick", () => {
+            // Create a modal for the textarea using a helper function.
+            const modalElement = newModal(inputId, fieldContainer);
+
+            // Disable the original textarea to prevent editing while the modal is open
+            textareaElement.disabled = true;
+
+            // Mirror the textarea content into the modal textarea
+            modalElement.querySelector("textarea").value = textareaElement.value;
+        });
 
         // Create a container for the field using a helper function, passing the unique ID, display label, and title.
         const fieldContainer = newFieldContainer(inputId, labelDisplayName, options.title);
@@ -3228,7 +3172,7 @@ class CustomFields {
      */
     static newSwitchField(options, setCallback) {
         // Generate a unique identifier for the switch field to ensure uniqueness in the DOM
-        const inputId = newUid();
+        const inputId = Utilities.newUid();
 
         // Convert the label from PascalCase to a space-separated format for display purposes
         const labelDisplayName = options.label;
@@ -3311,7 +3255,7 @@ class CustomFields {
     static newTextField(options, setCallback) {
 
         // Generate a unique identifier for the input field to ensure uniqueness in the DOM
-        const inputId = newUid();
+        const inputId = Utilities.newUid();
 
         // Convert the label from PascalCase to a space-separated format for display purposes
         const labelDisplayName = options.label;
@@ -3404,9 +3348,6 @@ class CustomFields {
         /**
          * Toggles a hint text element inside a specified container.
          * If the hint text element already exists, it is removed. Otherwise, a new one is created and added.
-         *
-         * @param {HTMLElement} hintContainer - The parent container where the hint text will be toggled.
-         * @param {string} hintText - The text to display inside the hint element.
          */
         const switchHint = (hintContainer, hintText) => {
             // Query for an existing hint text element within the hintContainer.

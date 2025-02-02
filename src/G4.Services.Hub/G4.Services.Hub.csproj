@@ -31,8 +31,4 @@
 		<ProjectReference Include="..\G4.Services.Hub.Api.V4\G4.Services.Hub.Api.V4.csproj" />
 	</ItemGroup>
 
-	<ItemGroup>
-	  <Folder Include="wwwroot\js\" />
-	</ItemGroup>
-
 </Project>
