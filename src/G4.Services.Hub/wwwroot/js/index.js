@@ -813,6 +813,7 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 			initialValue: definition.properties.settings?.automationSettings || {}
 		},
 		(value) => {
+			// Ensure the "settings" property exists in the definition.
 			definition.properties.settings = definition.properties.settings || {};
 
 			// Ensure the "automationSettings" property exists in the definition.
