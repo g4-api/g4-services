@@ -366,131 +366,253 @@ function newConfiguration() {
 	};
 }
 
+/**
+ * Creates and displays a new import modal on the page.
+ *
+ * This function generates a unique identifier for the modal and its related elements,
+ * removes any existing modals, and then creates a new modal that contains a hidden file input,
+ * a textarea for editing/importing definitions, and a set of action buttons (Import, Apply, Close).
+ * When the Apply button is clicked, the definition is processed and set.
+ */
 function newImportModal() {
+	/**
+	 * Retrieves a manifest from the cache based on the manifest name.
+	 *
+	 * This function iterates over the groups in the provided cache object and checks if the specified
+	 * manifest name exists in any group. If found, it returns the associated `manifest` property.
+	 */
 	const getManifest = (cache, manifestName) => {
+		// Iterate over each group in the cache by retrieving its keys.
 		for (const group of Object.keys(cache)) {
+			// Check if the manifest name exists in the current group.
 			if (manifestName in cache[group]) {
+				// Return the 'manifest' property from the matched manifest entry.
 				return cache[group][manifestName].manifest;
 			}
 		}
-	}
+	};
 
+	/**
+	 * Creates a container element with Import, Apply, and Close buttons for modal interactions.
+	 *
+	 * This function creates a div element that contains three buttons:
+	 * - **Import**: Triggers a click on an assumed existing file input element (`inputFileElement`) to import data.
+	 * - **Apply** : Retrieves JSON from a textarea within the modal, parses it, removes the modal from the DOM, and invokes a callback with the parsed value.
+	 * - **Close** : Simply removes the modal element from the DOM.
+	 *
+	 * **Note:** The code assumes that `fieldContainer` and `inputFileElement` are available in the enclosing scope.
+	 */
 	const newButtonsContainerElement = (inputId, modalElement, setCallback) => {
+		// Create a container for the buttons with inline-flex layout for horizontal alignment.
 		const buttonsContainerElement = document.createElement("div");
 		buttonsContainerElement.setAttribute("style", "display: inline-flex; gap: 0.2em; margin-bottom: 0.2em;");
 
+		// Create the Close button.
 		const closeButtonElement = document.createElement('button');
 		closeButtonElement.setAttribute('id', `${inputId}-closeButton`);
 		closeButtonElement.setAttribute('type', 'button');
 		closeButtonElement.innerText = 'Close';
 
+		// Add event listener to remove the modal when the Close button is clicked.
+		// Remove the modal element from the field container.
 		closeButtonElement.addEventListener('click', () => {
 			fieldContainer.removeChild(modalElement);
 		});
 
+		// Create the Import button.
 		const importButtonElement = document.createElement('button');
 		importButtonElement.setAttribute('id', `${inputId}-importButton`);
 		importButtonElement.setAttribute('type', 'button');
 		importButtonElement.innerText = 'Import';
 
+		// Add event listener to simulate a click on the file input element when the Import button is clicked.
+		// Trigger the file input element's click event (assumed to exist in the outer scope).
 		importButtonElement.addEventListener('click', () => {
 			inputFileElement.click();
 		});
 
+		// Create the Apply button.
 		const applyButtonElement = document.createElement('button');
 		applyButtonElement.setAttribute('id', `${inputId}-applyButton`);
 		applyButtonElement.setAttribute('type', 'button');
 		applyButtonElement.innerText = 'Apply';
 
+		// Add event listener to handle JSON parsing and applying the callback.
 		applyButtonElement.addEventListener('click', () => {
-            try {
+			try {
+				// Retrieve the textarea element within the modal.
 				const textareaElement = modalElement.querySelector('textarea');
+
+				// Parse the JSON from the textarea's value.
+				// If the textarea is empty, default to an empty object.
 				const value = !textareaElement.value || textareaElement.value === ""
 					? {}
 					: JSON.parse(textareaElement.value);
+
+				// Remove the modal element from the field container.
 				fieldContainer.removeChild(modalElement);
+
+				// Invoke the callback function with the parsed JSON value.
 				setCallback(value);
 			}
 			catch (error) {
+				// Log any error encountered during parsing.
                 console.error(error);
 			}
 		});
 
+		// Append the buttons to the container in the order: Import, Apply, Close.
 		buttonsContainerElement.appendChild(importButtonElement);
 		buttonsContainerElement.appendChild(applyButtonElement);
 		buttonsContainerElement.appendChild(closeButtonElement);
 
+		// Return the container element with the buttons.
 		return buttonsContainerElement;
 	}
 
-	const newInputFileElement = (inputId, textareaElement, setCallback) => {
+	/**
+	 * Creates a hidden file input element that, when a file is selected, reads its content and
+	 * sets the content as the value of the specified textarea element.
+	 *
+	 * This function is used to allow users to import file content (either .txt or .json)
+	 * into a textarea via a hidden file input.
+	 */
+	const newInputFileElement = (inputId, textareaElement) => {
+		// Create a new input element.
 		const inputFileElement = document.createElement("input");
 
+		// Set the input element type to "file" so that it opens a file picker.
 		inputFileElement.setAttribute("type", "file");
+
+		// Assign a unique ID to the input element.
 		inputFileElement.setAttribute("id", `${inputId}-input-file`);
-		inputFileElement.setAttribute("accept", `.txt;.json`);
+
+		// Restrict the accepted file types to .txt and .json.
+		inputFileElement.setAttribute("accept", `.txt,.json`);
+
+		// Hide the input element from the UI.
 		inputFileElement.setAttribute("style", `display: none;`);
 
+		// Add an event listener to handle file selection.
 		inputFileElement.addEventListener('change', (event) => {
+			// Get the first file from the file input.
 			const file = event.target.files[0];
+
 			if (file) {
+				// Create a FileReader to read the file content.
 				const reader = new FileReader();
+
+				// When the file has been read, update the textarea with its content.
 				reader.onload = (e) => {
 					textareaElement.value = e.target.result;
 				};
-				// Read the file as text
+
+				// Read the file as text.
 				reader.readAsText(file);
 			}
 		});
 
+		// Return the configured file input element.
 		return inputFileElement;
 	};
 
+	/**
+	 * Creates a modal element used for import operations.
+	 *
+	 * This function creates and returns a div element configured as a modal.
+	 * The modal is centered on the screen with a fixed position and high z-index to ensure it appears on top.
+	 */
 	const newModalElement = (inputId) => {
+		// Create a new div element to act as the modal.
 		const modalElement = document.createElement('div');
 
+		// Set a unique ID for the modal element using the provided inputId.
 		modalElement.setAttribute('id', `${inputId}-import-modal`);
+
+		// Set a custom data attribute to indicate the role of this element.
 		modalElement.setAttribute('data-g4-role', 'import-modal');
+
+		// Apply inline styles to center the modal and set display properties.
 		modalElement.setAttribute(
 			'style',
-			'display: block; gap: 0.2em; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); margin-left: 0; z-index: 9999;');
+			'display: block; gap: 0.2em; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); margin-left: 0; z-index: 9999;'
+		);
 
+		// Return the configured modal element.
 		return modalElement;
 	};
 
+	/**
+	 * Creates a textarea element configured for importing or editing definitions.
+	 *
+	 * The textarea is styled with a specific width, height, and other attributes for optimal use.
+	 */
 	const newTextareaElement = (inputId) => {
+		// Create a new textarea element.
 		const textareaElement = document.createElement("textarea");
 
+		// Set a unique ID for the textarea using the provided inputId.
 		textareaElement.setAttribute("id", `${inputId}-textarea`);
+
+		// Apply inline styles to define the size of the textarea.
 		textareaElement.setAttribute("style", "width: 60vw; height: 25vh;");
+
+		// Disable text wrapping in the textarea.
 		textareaElement.setAttribute("wrap", "off");
+
+		// Disable spellchecking to prevent browser spell-check from interfering.
 		textareaElement.setAttribute("spellcheck", "false");
+
+		// Set a placeholder text to guide the user on what to do.
 		textareaElement.setAttribute("placeholder", "Type, paste or import definition here...");
 
+		// Return the configured textarea element.
 		return textareaElement;
-	}
+	};
 
+	/**
+	 * Sets the definition for the workflow and initializes the designer state.
+	 *
+	 * This function processes a given workflow definition by constructing a sequence of
+	 * steps from its stages, jobs, and rules. It recursively builds each step using the
+	 * `newStep` helper, synchronizes them with the client, and finally creates a new
+	 * definition state that is passed to the workflow designer.
+	 */
 	const setDefinition = (definition) => {
+		/**
+		 * Recursively creates a new step from a rule.
+		 *
+		 * This helper function retrieves the manifest for the rule's plugin, creates a new step
+		 * using the state machine factory, synchronizes it with the rule, and processes any nested
+		 * rules or branches.
+		 */
 		const newStep = (rule) => {
+			// Retrieve the manifest for the rule's plugin from the cache.
 			const manifest = getManifest(_cache, rule.pluginName);
+
+			// Create a new step using the state machine factory and the retrieved manifest.
 			const step = StateMachineSteps.newG4Step(manifest);
 
+			// Ensure that the rule has 'rules' and 'branches' properties.
 			rule.rules = rule.rules || [];
 			rule.branches = rule.branches || {};
 
-            const branchesKeys = Object.keys(rule.branches);
+			// Determine if the rule contains nested rules or branch entries.
+			const branchesKeys = Object.keys(rule.branches);
 			const isRules = rule.rules.length > 0;
 			const isBranches = branchesKeys.length > 0;
 
+			// Synchronize the current step with the rule configuration.
 			_client.syncStep(step, rule);
 
+			// If no nested rules or branches exist, return the current step.
 			if (!isRules && !isBranches) {
 				return step;
 			}
 
+			// Process nested rules recursively if they exist.
 			if (isRules) {
 				step.sequence = [];
-
 				for (const subRule of rule.rules) {
 					const subStep = newStep(subRule);
 					_client.syncStep(subStep, subRule);
@@ -498,26 +620,38 @@ function newImportModal() {
 				}
 			}
 
+			// Process branch rules if they exist.
 			if (isBranches) {
 				for (const branchKey of branchesKeys) {
+					// Initialize the branch array if not already present.
 					for (const subRule of rule.branches[branchKey]) {
 						const subStep = newStep(subRule);
 						step.branches[branchKey] = step.branches[branchKey] || [];
 						_client.syncStep(subStep, subRule);
-                        step.branches[branchKey].push(subStep);
+						step.branches[branchKey].push(subStep);
 					}
 				}
 			}
 
+            // Return the constructed step with nested rules or branches.
 			return step;
-		}
+		};
 
+		/**
+		 * Creates a new definition state object.
+		 *
+		 * This helper function generates a unique ID for the definition and assembles its properties,
+		 * including authentication, data source, driver parameters, settings, and a default speed.
+		 * It also incorporates the constructed sequence of steps.
+		 */
 		const newDefinition = (definition, sequence) => {
-
+			// Generate a unique identifier for the new definition.
 			const id = Utilities.newUid();
 
+            // Extract the driver parameters from the definition.
 			const driverParameters = definition.driverParameters;
 
+            // Return the new definition state object with the constructed properties.
 			return {
 				id,
 				properties: {
@@ -529,74 +663,100 @@ function newImportModal() {
 				},
 				sequence
 			};
-		}
+		};
 
+		// Initialize an empty sequence that will hold all stage steps.
 		const sequence = [];
 
+		// Ensure that the definition has a stages property.
 		definition.stages = definition.stages || [];
 
+		// Process each stage in the definition.
 		for (const stage of definition.stages) {
+			// Create a new stage step using the state machine factory.
 			const stageStep = StateMachineSteps.newG4Stage('Stage', {}, {}, []);
 
+			// Assign name and description from the stage reference if available.
 			stageStep.name = stage?.reference?.name || stageStep.name;
 			stageStep.description = stage?.reference?.description?.trim() || stageStep.description?.trim();
 			stageStep.id = Utilities.newUid();
 			stageStep.properties.driverParameters = stage.driverParameters || {};
 
+			// Ensure that the stage has a jobs array.
 			stage.jobs = stage.jobs || [];
 
-
+			// Process each job within the stage.
 			for (const job of stage.jobs) {
+				// Create a new job step using the state machine factory.
 				const jobStep = StateMachineSteps.newG4Job('Job', {}, {}, []);
 
+				// Assign name and description from the job reference if available.
 				jobStep.name = job?.reference?.name || jobStep.name;
 				jobStep.description = job?.reference?.description || jobStep.description;
 				jobStep.id = Utilities.newUid();
 				jobStep.properties.driverParameters = job.driverParameters || {};
 
+				// Ensure that the job has a rules array.
 				job.rules = job.rules || [];
 
-                for (const rule of job.rules) {
+				// Process each rule in the job by creating and appending a new step.
+				for (const rule of job.rules) {
 					const step = newStep(rule);
 					jobStep.sequence.push(step);
 				}
 
-                stageStep.sequence.push(jobStep);
+				// Append the job step to the stage's sequence.
+				stageStep.sequence.push(jobStep);
 			}
 
-            sequence.push(stageStep);
+			// Append the stage step to the overall sequence.
+			sequence.push(stageStep);
 		}
 
+		// Create the new definition state object using the constructed sequence.
 		const newDefinitionState = newDefinition(definition, sequence);
 
-		// Create the workflow designer using the configuration and start definition.
+		// Initialize the workflow designer with the new definition state.
 		_designer.state.setDefinition(newDefinitionState);
 	};
 
+	// Generate a unique identifier for this modal instance.
 	const inputId = Utilities.newUid();
-	const fieldContainer = document.querySelector("body");
-	const existingModals = fieldContainer?.querySelectorAll("[id*=import-modal]");
 
+	// Select the field container where the modal will be appended. In this case, it's the <body> element.
+	const fieldContainer = document.querySelector("body");
+
+	// Find and remove any existing modals to ensure only one is visible at a time.
+	const existingModals = fieldContainer?.querySelectorAll("[id*=import-modal]");
 	for (const existingModal of existingModals) {
 		fieldContainer.removeChild(existingModal);
 	}
 
+	// Create a new modal element using the unique identifier.
 	const modalElement = newModalElement(inputId);
 
+	// Create a new textarea element for inputting or editing the definition.
 	const textareaElement = newTextareaElement(inputId);
+
+	// Create a hidden file input element that updates the textarea when a file is selected.
 	const inputFileElement = newInputFileElement(inputId, textareaElement);
+
+	// Create a container with Import, Apply, and Close buttons.
 	const buttonsContainerElement = newButtonsContainerElement(inputId, modalElement, (definition) => {
 		setDefinition(definition);
 	});
-	const textareaContainerElement = document.createElement('div');
 
-	textareaContainerElement.setAttribute("style", "margin-top:0.2em;")
+	// Create a container for the textarea and the buttons.
+	const textareaContainerElement = document.createElement('div');
+	textareaContainerElement.setAttribute("style", "margin-top:0.2em;");
 	textareaContainerElement.appendChild(textareaElement);
 	textareaContainerElement.appendChild(buttonsContainerElement);
 
+	// Append the hidden file input and the textarea container to the modal.
 	modalElement.appendChild(inputFileElement);
 	modalElement.appendChild(textareaContainerElement);
 
+	// Append the modal to the field container, making it visible on the page.
 	fieldContainer.appendChild(modalElement);
 }
 
