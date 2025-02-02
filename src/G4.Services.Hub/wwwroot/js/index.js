@@ -835,15 +835,18 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 			container: container,
 			label: "G4™ Environment Settings",
 			title: "Provide G4™ environment settings to configure the automation.",
-			initialValue: definition.properties['environmentSettings']
+			initialValue: definition.properties.settings?.environmentSettings
 		},
 		(value) => {
+			// Ensure the "settings" property exists in the definition.
+			definition.properties.settings = definition.properties.settings || {};
+
 			// Ensure the "environmentSettings" property exists in the definition.
-			definition.properties['environmentSettings'] = definition.properties['environmentSettings'] || {};
+			definition.properties.settings.environmentSettings = definition.properties.settings.environmentSettings || {};
 
 			// Update the "authentication" property with the new values from the input.
 			for (const key of Object.keys(value)) {
-				definition.properties['environmentSettings'][key] = value[key];
+				definition.properties.settings.environmentSettings[key] = value[key];
 			}
 
 			// Notify the editor of the updated properties.
