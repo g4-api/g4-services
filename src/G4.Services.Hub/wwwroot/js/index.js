@@ -885,15 +885,18 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 			container: container,
 			label: "G4™ Queue Manager Settings",
 			title: "Provide G4™ queue manager settings to configure the automation.",
-			initialValue: definition.properties['queueManagerSettings']
+			initialValue: definition.properties.settings?.queueManagerSettings
 		},
 		(value) => {
+			// Ensure the "settings" property exists in the definition.
+			definition.properties.settings = definition.properties.settings || {};
+
 			// Ensure the "queueManagerSettings" property exists in the definition.
-			definition.properties['queueManagerSettings'] = definition.properties['queueManagerSettings'] || {};
+			definition.properties.settings.queueManagerSettings = definition.properties.settings.queueManagerSettings || {};
 
 			// Update the "queueManagerSettings" property with the new values from the input.
 			for (const key of Object.keys(value)) {
-				definition.properties['queueManagerSettings'][key] = value[key];
+				definition.properties.settings.queueManagerSettings[key] = value[key];
 			}
 
 			// Notify the editor of the updated properties.
