@@ -319,7 +319,7 @@ class G4Client {
 			// Return an empty object if no templated variables are found
 			// Convert to a dictionary if templated variables are present
 			!arg.includes("{{$")
-				? {} 
+				? {}
 				: _cliFactory.convertToDictionary(arg);
 
 		/**
@@ -772,9 +772,8 @@ class G4Client {
 		 * @returns {Object} A new parameters object with correctly placed vendor options, or the original `driverParameters` if capabilities are missing.
 		 */
 		const formatDriverParameters = (driverParameters) => {
-			// Extract the main capabilities and vendor capabilities from the input object.
+			// Extract the main capabilities from the input object.
 			const capabilities = driverParameters?.capabilities || {};
-			const vendorCapabilities = capabilities.vendorCapabilities || {};
 
 			// Create a base parameters object with minimal fields.
 			let parameters = {
@@ -783,31 +782,14 @@ class G4Client {
 				driverBinaries: driverParameters?.driverBinaries,
 			};
 
-			// If there are no capabilities or vendorCapabilities, return the original object as-is.
-			if (!capabilities || !vendorCapabilities) {
+			// If there are no capabilities, return the original object as-is.
+			if (!capabilities) {
 				return driverParameters;
 			}
 
 			// Assign the alwaysMatch and firstMatch capabilities directly.
 			parameters.capabilities.alwaysMatch = capabilities.alwaysMatch;
 			parameters.capabilities.firstMatch = capabilities.firstMatch;
-
-			// Loop through each vendor key and add its capabilities under `{vendor}`.
-			const vendorKeys = Object.keys(vendorCapabilities);
-			for (const vendorKey of vendorKeys) {
-				// Construct the vendor options key, e.g., "goog:chromeOptions".
-				const vendorOptionsKey = `${vendorCapabilities[vendorKey]?.vendor}`;
-
-				// Add the vendor-specific capabilities to alwaysMatch under the new key.
-				parameters.capabilities.alwaysMatch[vendorOptionsKey] = vendorCapabilities[vendorKey]?.capabilities;
-
-                // If the vendor capabilities include arguments, add them to the alwaysMatch object.
-				if (vendorCapabilities[vendorKey].arguments && vendorCapabilities[vendorKey].arguments.length > 0) {
-					parameters.capabilities.alwaysMatch[vendorOptionsKey] = parameters.capabilities.alwaysMatch[vendorOptionsKey] || {};
-					parameters.capabilities.alwaysMatch[vendorOptionsKey].arguments = vendorCapabilities[vendorKey].arguments;
-					parameters.capabilities.alwaysMatch[vendorOptionsKey].args = vendorCapabilities[vendorKey].arguments;
-				}
-			}
 
 			// Return the fully constructed parameters object.
 			return parameters;
