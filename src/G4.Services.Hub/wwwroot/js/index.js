@@ -540,7 +540,7 @@ function newImportModal() {
 
 			stageStep.name = stage?.reference?.name || stageStep.name;
 			stageStep.description = stage?.reference?.description?.trim() || stageStep.description?.trim();
-			stageStep.id = stage?.reference?.id || stageStep.id;
+			stageStep.id = Utilities.newUid();
 			stageStep.properties.driverParameters = stage.driverParameters || {};
 
 			stage.jobs = stage.jobs || [];
@@ -551,7 +551,7 @@ function newImportModal() {
 
 				jobStep.name = job?.reference?.name || jobStep.name;
 				jobStep.description = job?.reference?.description || jobStep.description;
-				jobStep.id = job?.reference?.id || jobStep.id;
+				jobStep.id = Utilities.newUid();
 				jobStep.properties.driverParameters = job.driverParameters || {};
 
 				job.rules = job.rules || [];
