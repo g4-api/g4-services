@@ -910,15 +910,18 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 			container: container,
 			label: "G4™ Performance Points Settings",
 			title: "Provide G4™ performance points settings to configure the automation.",
-			initialValue: definition.properties['performancePointsSettings']
+			initialValue: definition.properties.settings?.performancePointsSettings
 		},
 		(value) => {
+			// Ensure the "settings" property exists in the definition.
+			definition.properties.settings = definition.properties.settings || {};
+
 			// Ensure the "performancePointsSettings" property exists in the definition.
-			definition.properties['performancePointsSettings'] = definition.properties['performancePointsSettings'] || {};
+			definition.properties.settings.performancePointsSettings = definition.properties.settings.performancePointsSettings || {};
 
 			// Update the "performancePointsSettings" property with the new values from the input.
 			for (const key of Object.keys(value)) {
-				definition.properties['performancePointsSettings'][key] = value[key];
+				definition.properties.settings.performancePointsSettings[key] = value[key];
 			}
 
 			// Notify the editor of the updated properties.
@@ -932,17 +935,20 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 			container: container,
 			label: "G4™ Plugins Settings",
 			title: "Provide G4™ plugins settings to configure the automation.",
-			initialValue: definition.properties['pluginsSettings']
+			initialValue: definition.properties.settings?.pluginsSettings
 		},
 		(value) => {
+			// Ensure the "settings" property exists in the definition.
+			definition.properties.settings = definition.properties.settings || {};
+
 			// Initialize pluginsSettings if it doesn't exist
-			definition.properties['pluginsSettings'] = definition.properties['pluginsSettings'] || {
+			definition.properties.settings.pluginsSettings = definition.properties.settings.pluginsSettings || {
 				externalRepositories: {},
 				forceRuleReference: false
 			};
 
 			// Reference to the current plugins settings
-			const pluginsSettings = definition.properties['pluginsSettings'];
+			const pluginsSettings = definition.properties.settings.pluginsSettings;
 
 			// Get all keys from the incoming value
 			const indexes = Object.keys(value) || [];
@@ -980,7 +986,7 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 			}
 
 			// Update the definition with the new plugins settings
-			definition.properties['pluginsSettings'] = pluginsSettings;
+			definition.properties.settings.pluginsSettings = pluginsSettings;
 
 			// Notify the editor that the properties have changed
 			editorContext.notifyPropertiesChanged();
