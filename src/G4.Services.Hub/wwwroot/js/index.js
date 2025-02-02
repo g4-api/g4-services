@@ -512,44 +512,13 @@ function newImportModal() {
 			return step;
 		}
 
-		const setVendorCapabilities = (driverParameters) => {
-			if (!driverParameters?.capabilities?.alwaysMatch) {
-				return undefined;
-			}
-
-			const pattern = /^\w+:(\w+)?(options|inspection)$/si;
-			const keys = Object.keys(driverParameters.capabilities.alwaysMatch);
-			const vendorOptions = keys.filter(key => pattern.test(key.trim())) || [];
-
-			driverParameters.capabilities.vendorCapabilities = {};
-
-			for (let i = 0; i < vendorOptions.length; i++) {
-				const vendor = vendorOptions[i];
-				const jsonValue = JSON.stringify(driverParameters.capabilities.alwaysMatch[key]);
-				const value = JSON.parse(jsonValue);
-
-				if (!vendor) {
-					continue;
-				}
-
-				driverParameters.capabilities.vendorCapabilities[i] = {
-					vendor: vendor,
-					capabilities: value
-				}
-
-				delete driverParameters.capabilities.alwaysMatch[key]
-			}
-
-			return driverParameters;
-		}
-
 		const newDefinition = (definition, sequence) => {
 
             const id = definition?.reference?.id && definition.reference.id !== ""
 				? definition?.reference?.id
 				: Utilities.newUid();
 
-			const driverParameters = setVendorCapabilities(definition.driverParameters);
+			const driverParameters = definition.driverParameters;
 
 			return {
 				id,
@@ -841,15 +810,17 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 			container: container,
 			label: "G4™ Automation Settings",
 			title: "Provide G4™ automation settings to configure the automation.",
-			initialValue: definition.properties['automationSettings']
+			initialValue: definition.properties.settings?.automationSettings || {}
 		},
 		(value) => {
+			definition.properties.settings = definition.properties.settings || {};
+
 			// Ensure the "automationSettings" property exists in the definition.
-			definition.properties['automationSettings'] = definition.properties['automationSettings'] || {};
+			definition.properties.settings.automationSettings = definition.properties.settings.automationSettings || {};
 
 			// Update the "automationSettings" property with the new values from the input.
 			for (const key of Object.keys(value)) {
-				definition.properties['automationSettings'][key] = value[key];
+				definition.properties.settings.automationSettings[key] = value[key];
 			}
 
 			// Notify the editor of the updated properties.
