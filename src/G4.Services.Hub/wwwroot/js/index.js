@@ -860,15 +860,18 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 			container: container,
 			label: "G4™ Exceptions Settings",
 			title: "Provide G4™ exceptions settings to configure the automation.",
-			initialValue: definition.properties['exceptionsSettings']
+			initialValue: definition.properties.settings?.exceptionsSettings
 		},
 		(value) => {
+			// Ensure the "settings" property exists in the definition.
+			definition.properties.settings = definition.properties.settings || {};
+
 			// Ensure the "exceptionsSettings" property exists in the definition.
-			definition.properties['exceptionsSettings'] = definition.properties['exceptionsSettings'] || {};
+			definition.properties.settings.exceptionsSettings = definition.properties.settings.exceptionsSettings || {};
 
 			// Update the "exceptionsSettings" property with the new values from the input.
 			for (const key of Object.keys(value)) {
-				definition.properties['exceptionsSettings'][key] = value[key];
+				definition.properties.settings.exceptionsSettings[key] = value[key];
 			}
 
 			// Notify the editor of the updated properties.
