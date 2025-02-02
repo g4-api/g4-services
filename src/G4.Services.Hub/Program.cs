@@ -80,6 +80,9 @@ builder.Services
 
         // Add a custom DateTime converter to handle ISO 8601 date/time format.
         i.JsonSerializerOptions.Converters.Add(new DateTimeIso8601Converter());
+
+        // Add a custom method base converter to handle method base serialization.
+        i.JsonSerializerOptions.Converters.Add(new MethodBaseConverter());
     });
 
 // Add and configure Swagger for API documentation and testing.
@@ -162,7 +165,8 @@ builder.Services
             {
                 new TypeConverter(),
                 new ExceptionConverter(),
-                new DateTimeIso8601Converter()
+                new DateTimeIso8601Converter(),
+                new MethodBaseConverter()
             }
         };
     });
