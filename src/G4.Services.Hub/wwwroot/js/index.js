@@ -514,9 +514,7 @@ function newImportModal() {
 
 		const newDefinition = (definition, sequence) => {
 
-            const id = definition?.reference?.id && definition.reference.id !== ""
-				? definition?.reference?.id
-				: Utilities.newUid();
+			const id = Utilities.newUid();
 
 			const driverParameters = definition.driverParameters;
 
@@ -999,15 +997,18 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 			container: container,
 			label: "G4™ Screenshots Settings",
 			title: "Provide G4™ screenshots settings to configure the automation.",
-			initialValue: definition.properties['screenshotsSettings']
+			initialValue: definition.properties.settings?.screenshotsSettings
 		},
 		(value) => {
+			// Ensure the "settings" property exists in the definition.
+			definition.properties.settings = definition.properties.settings || {};
+
 			// Ensure the "screenshotsSettings" property exists in the definition.
-			definition.properties['screenshotsSettings'] = definition.properties['screenshotsSettings'] || {};
+			definition.properties.settings.screenshotsSettings = definition.properties.settings.screenshotsSettings || {};
 
 			// Update the "screenshotsSettings" property with the new values from the input.
 			for (const key of Object.keys(value)) {
-				definition.properties['screenshotsSettings'][key] = value[key];
+				definition.properties.settings.screenshotsSettings[key] = value[key];
 			}
 
 			// Notify the editor of the updated properties.
