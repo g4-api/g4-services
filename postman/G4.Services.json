@@ -30,7 +30,7 @@
 									"//-- This section configures the WebDriver\r",
 									"//-- settings, including driver binaries and hubs.\r",
 									"//-----------------------------------------------------\r",
-									"pm.collectionVariables.set('DriverBinaries', '$(G4.Endpoint)');\r",
+									"pm.collectionVariables.set('DriverBinaries', '$(Grid.Endpoint)');\r",
 									""
 								],
 								"type": "text/javascript",
