@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "1c1e56da-e23f-449b-be48-cf350c69ee54",
+		"_postman_id": "bffb66b4-ca50-4baf-b161-008e646eb579",
 		"name": "G4 API Reference Guide v4",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "4883021"
@@ -1589,6 +1589,7 @@
 									"    pm.response.to.have.status(200);\r",
 									"});\r",
 									"\r",
+									"// TODO: check why this is not passing on CI/CD container.\r",
 									"pm.test(\"Verify session parameter 'roman' from external macro is saved\", function () {\r",
 									"    var jsonData = Object.values(pm.response.json())[0];\r",
 									"    \r",
