@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "7c3561b2-fc3a-4f71-81c8-4e3bb4910c50",
+		"_postman_id": "1c1e56da-e23f-449b-be48-cf350c69ee54",
 		"name": "G4 API Reference Guide v4",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "4883021"
@@ -13,6 +13,18 @@
 					"name": "Setup Parameters",
 					"event": [
 						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
 							"listen": "prerequest",
 							"script": {
 								"exec": [
@@ -22,7 +34,7 @@
 									"//-----------------------------------------------------\r",
 									"pm.collectionVariables.set('ApiPassword', '');\r",
 									"pm.collectionVariables.set('ApiUser', '$(G4.Username)');\r",
-									"pm.collectionVariables.set('Endpoint', '$(G4.Endpoint)",
+									"pm.collectionVariables.set('Endpoint', '$(G4.Endpoint)');\r",
 									"pm.collectionVariables.set('ExternalEndpoint', '$(G4.ExternalEndpoint)');\r",
 									"pm.collectionVariables.set('MaxParallel', 1);\r",
 									"\r",
@@ -32,18 +44,6 @@
 									"//-----------------------------------------------------\r",
 									"pm.collectionVariables.set('DriverBinaries', '$(Grid.Endpoint)');\r",
 									""
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						},
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Status code is 200\", function () {\r",
-									"    pm.response.to.have.status(200);\r",
-									"});"
 								],
 								"type": "text/javascript",
 								"packages": {}
