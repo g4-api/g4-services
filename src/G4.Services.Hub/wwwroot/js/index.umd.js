@@ -3958,7 +3958,8 @@
 				const iconImage = Dom.element('img', {
 					class: 'sqd-toolbox-item-icon-image',
 					src: data.iconUrl,
-					draggable: 'false'
+					draggable: 'false',
+					alt: "icon-image"
 				});
 				icon.appendChild(iconImage);
 			}
