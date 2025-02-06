@@ -16,6 +16,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi.Models;
 
 using System;
+using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -211,7 +212,41 @@ app.UseSwaggerUI(i =>
 
 app.MapDefaultControllerRoute();
 app.MapControllers();
-app.UseStaticFiles();
+app.UseStaticFiles(new StaticFileOptions
+{
+    OnPrepareResponse = context =>
+    {
+        // Get the file extension in lower-case.
+        var extension = Path.GetExtension(context.File.Name)?.ToLowerInvariant();
+        if (extension == null)
+        {
+            return;
+        }
+
+        // Set the Content-Type header with charset based on file extension.
+        switch (extension)
+        {
+            case ".html":
+                context.Context.Response.Headers.ContentType = "text/html; charset=utf-8";
+                break;
+            case ".css":
+                context.Context.Response.Headers.ContentType = "text/css; charset=utf-8";
+                break;
+            case ".js":
+                context.Context.Response.Headers.ContentType = "application/javascript; charset=utf-8";
+                break;
+            case ".json":
+                context.Context.Response.Headers.ContentType = "application/json; charset=utf-8";
+                break;
+            case ".svg":
+                context.Context.Response.Headers.ContentType = "image/svg+xml; charset=utf-8";
+                break;
+            default:
+                // Optionally, do nothing for other file types.
+                break;
+        }
+    }
+});
 
 // Add the SignalR hub to the application for real-time communication with clients and other services
 app.MapHub<G4Hub>($"/hub/v{AppSettings.ApiVersion}/g4/orchestrator");
