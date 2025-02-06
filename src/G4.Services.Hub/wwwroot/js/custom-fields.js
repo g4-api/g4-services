@@ -60,8 +60,7 @@ const newFieldContainer = (id, labelDisplayName, hintText) => {
     controllerContainer.id = `${id}-controller`;
 
     // Create a new `label` element
-    const labelElement = document.createElement('label');
-    labelElement.htmlFor = id;
+    const labelElement = document.createElement('span');
     labelElement.classList.add('label-with-icon');
 
     // Create a new `span` element to serve as the hint icon
@@ -2048,7 +2047,7 @@ class CustomFields {
          *    - Each subsequent option has a value, label, and display text derived from the item data.
          */
         let html = `
-        <input list="${inputId}-datalist" title="${options.initialValue === '' ? 'Please select an option' : options.initialValue}" />
+        <input id="${inputId}-input" list="${inputId}-datalist" title="${options.initialValue === '' ? 'Please select an option' : options.initialValue}" />
         <datalist id="${inputId}-datalist">
             <option value="" disabled selected>-- Please select an option --</option>`;
 
@@ -2151,6 +2150,7 @@ class CustomFields {
         const newInput = (options, setCallback) => {
             // Create a div element to serve as the row container for the key-value pair
             const row = document.createElement('div');
+            const inputId = Utilities.newUid();
             row.setAttribute('data-g4-role', 'keyvalue');
 
             // Create the key input field
@@ -2160,6 +2160,7 @@ class CustomFields {
             newKeyInput.setAttribute('data-g4-role', 'key');
             newKeyInput.setAttribute('title', `Key: ${options.key || ''}`);
             newKeyInput.setAttribute('placeholder', 'Enter key');
+            newKeyInput.setAttribute('name', `${inputId}-key`)
 
             // Create the value input field
             const newValueInput = document.createElement('input');
@@ -2168,6 +2169,7 @@ class CustomFields {
             newValueInput.setAttribute('data-g4-role', 'value');
             newValueInput.setAttribute('title', `Value: ${options.value || ''}`);
             newValueInput.setAttribute('placeholder', 'Enter value');
+            newKeyInput.setAttribute('name', `${inputId}-value`)
 
             // Create the remove button to delete the key-value pair
             const removeButton = document.createElement('button');
@@ -2285,8 +2287,8 @@ class CustomFields {
         const html = `
         <div data-g4-role="keyvalue">
             <button type="button" title="Add Key/Value Pair">+</button>
-            <input type="text" data-g4-role="key" title="Key: ${mainKey}" value="${mainKey}" />
-            <input type="text" data-g4-role="value" title="Value: ${mainValue}" value="${mainValue}" />
+            <input name="${inputId}-key" type="text" data-g4-role="key" title="Key: ${mainKey}" value="${mainKey}" />
+            <input name="${inputId}-value" type="text" data-g4-role="value" title="Value: ${mainValue}" value="${mainValue}" />
         </div>
         <div id="${inputId}-input-container"></div>`;
 
@@ -2303,9 +2305,10 @@ class CustomFields {
         const inputContainer = fieldContainer.querySelector(`#${escapedId}-input-container`);
 
         // For each remaining key in the initial values, create additional key-value rows
-        for (const key of keys) {
+        for (let i = 0; i < keys.length; i++) {
+            const key = keys[i];
             const value = values[key];
-            newInput({ container: inputContainer, key, value }, setCallback);
+            newInput({ container: inputContainer, key, value, index: i }, setCallback);
         }
 
         // Whenever an input event occurs (typing, etc.), process the updated field content
@@ -2451,7 +2454,7 @@ class CustomFields {
          * - `type`: Specifies the input type as select.
          */
         let html = `
-        <select title="${options.initialValue === '' ? 'Please select an option' : options.initialValue}"> 
+        <select name="${inputId}-select" title="${options.initialValue === '' ? 'Please select an option' : options.initialValue}"> 
             <option value="" disabled selected>-- Please select an option --</option>`;
 
         /**
@@ -2972,7 +2975,7 @@ class CustomFields {
          * - `select`           : Creates a dropdown with options to activate or deactivate the switch.
          */
         const html = `
-        <select data-g4-attribute="${options.label}" title="${options.initialValue}">
+        <select name="${inputId}-switch" data-g4-attribute="${options.label}" title="${options.initialValue}">
             <option value="" disabled selected>-- Please select an option --</option>
             <option value="true" title="Activate switch">True</option>
             <option value="false" title="Deactivate switch">False</option>
