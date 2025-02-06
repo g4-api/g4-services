@@ -4045,7 +4045,8 @@
 			const filterInput = Dom.element('input', {
 				class: 'sqd-toolbox-filter',
 				type: 'text',
-				placeholder: i18n('toolbox.search', 'Search...')
+				placeholder: i18n('toolbox.search', 'Search...'),
+				name: 'toolbox-filter'
 			});
 			root.appendChild(header);
 			root.appendChild(body);
