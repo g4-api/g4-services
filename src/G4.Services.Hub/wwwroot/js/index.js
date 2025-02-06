@@ -256,6 +256,9 @@ function newConfiguration() {
 				// Create the image element for the step icon
 				const icon = document.createElement('img');
 
+                // Set the alt text for the icon element
+				icon.setAttribute("alt", "g4-icon");
+
 				// Set the class name for the icon element
 				icon.className = 'sqd-toolbox-item-icon';
 
