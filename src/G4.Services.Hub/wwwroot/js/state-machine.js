@@ -59,6 +59,8 @@ class StateMachine {
 			// Instantiate a new automation object using the client and definition
 			const automation = client.newAutomation(definition);
 
+            console.log(JSON.stringify(automation, null, 4));
+
 			// Invoke the StartAutomation method on the connection to begin the process
 			await _connection.invoke("StartAutomation", automation);
 		} catch (error) {
