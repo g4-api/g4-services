@@ -457,7 +457,7 @@ function newImportModal() {
 			}
 			catch (error) {
 				// Log any error encountered during parsing.
-                console.error(error);
+				console.error(error);
 			}
 		});
 
@@ -580,6 +580,20 @@ function newImportModal() {
 	 */
 	const setDefinition = (definition) => {
 		/**
+		 * Retrieves driver parameters if both driver and driverBinaries are provided.
+		 */
+		const getDriverParameters = (driverParameters) => {
+			// Check if driverBinaries exists and contains at least one element.
+			const isBinaries = driverParameters?.driverBinaries && driverParameters?.driverBinaries.length > 0;
+
+			// Check if driver exists and is a non-empty string.
+			const isDriver = driverParameters?.driver && driverParameters?.driver.length > 0;
+
+			// Return the original object if both conditions are met; otherwise, return an empty object.
+			return isBinaries && isDriver ? driverParameters : {};
+		};
+
+		/**
 		 * Recursively creates a new step from a rule.
 		 *
 		 * This helper function retrieves the manifest for the rule's plugin, creates a new step
@@ -633,7 +647,7 @@ function newImportModal() {
 				}
 			}
 
-            // Return the constructed step with nested rules or branches.
+			// Return the constructed step with nested rules or branches.
 			return step;
 		};
 
@@ -648,10 +662,10 @@ function newImportModal() {
 			// Generate a unique identifier for the new definition.
 			const id = Utilities.newUid();
 
-            // Extract the driver parameters from the definition.
+			// Extract the driver parameters from the definition.
 			const driverParameters = definition.driverParameters;
 
-            // Return the new definition state object with the constructed properties.
+			// Return the new definition state object with the constructed properties.
 			return {
 				id,
 				properties: {
@@ -680,7 +694,7 @@ function newImportModal() {
 			stageStep.name = stage?.reference?.name || stageStep.name;
 			stageStep.description = stage?.reference?.description?.trim() || stageStep.description?.trim();
 			stageStep.id = Utilities.newUid();
-			stageStep.properties.driverParameters = stage.driverParameters || {};
+			stageStep.properties.driverParameters = getDriverParameters(stage.driverParameters);
 
 			// Ensure that the stage has a jobs array.
 			stage.jobs = stage.jobs || [];
@@ -694,7 +708,7 @@ function newImportModal() {
 				jobStep.name = job?.reference?.name || jobStep.name;
 				jobStep.description = job?.reference?.description || jobStep.description;
 				jobStep.id = Utilities.newUid();
-				jobStep.properties.driverParameters = job.driverParameters || {};
+				jobStep.properties.driverParameters = getDriverParameters(job.driverParameters);
 
 				// Ensure that the job has a rules array.
 				job.rules = job.rules || [];
