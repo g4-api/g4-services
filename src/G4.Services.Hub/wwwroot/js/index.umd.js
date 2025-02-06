@@ -3958,7 +3958,8 @@
 				const iconImage = Dom.element('img', {
 					class: 'sqd-toolbox-item-icon-image',
 					src: data.iconUrl,
-					draggable: 'false'
+					draggable: 'false',
+					alt: "icon-image"
 				});
 				icon.appendChild(iconImage);
 			}
@@ -4044,7 +4045,8 @@
 			const filterInput = Dom.element('input', {
 				class: 'sqd-toolbox-filter',
 				type: 'text',
-				placeholder: i18n('toolbox.search', 'Search...')
+				placeholder: i18n('toolbox.search', 'Search...'),
+				name: 'toolbox-filter'
 			});
 			root.appendChild(header);
 			root.appendChild(body);
