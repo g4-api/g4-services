@@ -796,7 +796,7 @@ class G4Client {
 			const isDriver = driverParameters?.driver && driverParameters?.driver.length > 0;
 
 			// Return the original object if both conditions are met; otherwise, return an empty object.
-			return isBinaries && isDriver ? driverParameters : null;
+			return isBinaries && isDriver ? driverParameters : undefined;
 		};
 
 		// Extract the authentication parameters from the definition properties.
@@ -806,10 +806,10 @@ class G4Client {
 		let driverParameters = getDriverParameters(definition.properties?.driverParameters);
 
 		// Extract and format the driver parameters from the definition properties using the helper function.
-		driverParameters = driverParameters ? formatDriverParameters(driverParameters) : null;
+		driverParameters = driverParameters ? formatDriverParameters(driverParameters) : undefined;
 
 		// Extract additional settings (if any) from the definition properties.
-		const settings = definition.properties["settings"] || null;
+		const settings = definition.properties["settings"] || undefined;
 
 		// Prepare an array to collect stages from the definition sequence.
 		const stages = [];
@@ -822,7 +822,7 @@ class G4Client {
 			// Construct a new stage object with minimal required properties.
 			const newStage = {
 				// Stage-level driver parameters (if provided).
-				driverParameters: driverParameters ? formatDriverParameters(driverParameters) : null,
+				driverParameters: driverParameters ? formatDriverParameters(driverParameters) : undefined,
 
 				// A reference object that captures key metadata about the stage.
 				reference: {
@@ -843,7 +843,7 @@ class G4Client {
 				// Construct a new job object.
 				const newJob = {
 					// Job-level driver parameters (if provided).
-					driverParameters: driverParameters ? formatDriverParameters(driverParameters) : null,
+					driverParameters: driverParameters ? formatDriverParameters(driverParameters) : undefined,
 
 					// A reference object that captures key metadata about the job.
 					reference: {
