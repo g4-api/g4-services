@@ -760,16 +760,6 @@ class G4Client {
 		 * are placed under the correct keys (e.g., `{vendorName}:options`). This function
 		 * constructs a standardized `parameters` object that can be passed to a WebDriver
 		 * or similar driver-configuration mechanism.
-		 *
-		 * @function formatDriverParameters
-		 * 
-		 * @param {Object} [driverParameters] - The raw driver parameters, potentially containing capabilities and vendor-specific settings.
-		 * @param {Object} [driverParameters.capabilities]                    - Root WebDriver capabilities.
-		 * @param {Object} [driverParameters.capabilities.vendorCapabilities] - An object mapping vendor keys to vendor-specific capabilities.
-		 * @param {string} [driverParameters.driver]                          - The driver identifier (e.g., a browser driver name).
-		 * @param {Object} [driverParameters.driverBinaries]                  - Driver-specific binaries or paths.
-		 * 
-		 * @returns {Object} A new parameters object with correctly placed vendor options, or the original `driverParameters` if capabilities are missing.
 		 */
 		const formatDriverParameters = (driverParameters) => {
 			// Extract the main capabilities from the input object.
@@ -795,24 +785,44 @@ class G4Client {
 			return parameters;
 		};
 
+		/**
+		 * Retrieves driver parameters if both driver and driverBinaries are provided.
+		 */
+		const getDriverParameters = (driverParameters) => {
+			// Check if driverBinaries exists and contains at least one element.
+			const isBinaries = driverParameters?.driverBinaries && driverParameters?.driverBinaries.length > 0;
+
+			// Check if driver exists and is a non-empty string.
+			const isDriver = driverParameters?.driver && driverParameters?.driver.length > 0;
+
+			// Return the original object if both conditions are met; otherwise, return an empty object.
+			return isBinaries && isDriver ? driverParameters : null;
+		};
+
 		// Extract the authentication parameters from the definition properties.
 		const authentication = definition.properties["authentication"];
 
+        // Extract the driver parameters if both driver and driverBinaries are provided.
+		let driverParameters = getDriverParameters(definition.properties?.driverParameters);
+
 		// Extract and format the driver parameters from the definition properties using the helper function.
-		const driverParameters = formatDriverParameters(definition.properties?.driverParameters);
+		driverParameters = driverParameters ? formatDriverParameters(driverParameters) : null;
 
 		// Extract additional settings (if any) from the definition properties.
-		const settings = definition.properties["settings"] || undefined;
+		const settings = definition.properties["settings"] || null;
 
 		// Prepare an array to collect stages from the definition sequence.
 		const stages = [];
 
 		// Iterate over each stage in the definition's sequence.
 		for (const stage of definition.sequence) {
+            // Extract the driver parameters for the current stage.
+			let driverParameters = getDriverParameters(stage.properties?.driverParameters);
+
 			// Construct a new stage object with minimal required properties.
 			const newStage = {
 				// Stage-level driver parameters (if provided).
-				driverParameters: formatDriverParameters(stage.properties?.driverParameters),
+				driverParameters: driverParameters ? formatDriverParameters(driverParameters) : null,
 
 				// A reference object that captures key metadata about the stage.
 				reference: {
@@ -827,10 +837,13 @@ class G4Client {
 
 			// Iterate over each job in the current stage.
 			for (const job of stage.sequence) {
+                // Extract the driver parameters for the current job.
+				let driverParameters = getDriverParameters(job.properties?.driverParameters);
+
 				// Construct a new job object.
 				const newJob = {
 					// Job-level driver parameters (if provided).
-					driverParameters: formatDriverParameters(job.properties?.driverParameters),
+					driverParameters: driverParameters ? formatDriverParameters(driverParameters) : null,
 
 					// A reference object that captures key metadata about the job.
 					reference: {
