@@ -120,7 +120,6 @@ class StateMachine {
 	}
 }
 
-
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 class StateMachineSteps {
 	/**
