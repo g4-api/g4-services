@@ -68,8 +68,11 @@ class StateMachine {
 			console.error("Failed to start the automation process:", error);
 			throw error;
 		} finally {
-			// Mark the state machine as not running, regardless of success or failure
-			this.isRunning = false;
+			// Indicate that the automation is no longer running
+			_stateMachine.isRunning = false;
+
+			// Release the designer from read-only mode
+			_designer.setIsReadonly(false);
 		}
 	}
 
