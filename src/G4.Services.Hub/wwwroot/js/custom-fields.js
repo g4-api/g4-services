@@ -395,7 +395,8 @@ const newObjectArrayFieldsContainer = (id, options, setCallback) => {
     // Create a container with multiple fields using the provided ID, label, title, and role.
     const fieldContainer = newMultipleFieldsContainer(id, {
         labelDisplayName: options.labelDisplayName,
-        role: role
+        role: role,
+        hintText: options.hintText
     });
 
     // Select the controller sub-container within the field container using the escaped unique ID.
@@ -479,7 +480,8 @@ class CustomG4Fields {
         // Create a container with multiple fields (e.g., username and password) using the provided ID, label, and title.
         const fieldContainer = newMultipleFieldsContainer(inputId, {
             labelDisplayName: options.label,
-            role: 'container'
+            role: 'container',
+            hintText: "Authentication credentials used to verify your identity for accessing G4™ services."
         });
 
         // Select the controller sub-container within the field container using the unique ID.
@@ -563,7 +565,8 @@ class CustomG4Fields {
         // Create a container with multiple fields using the provided ID, label, and title.
         const fieldContainer = newMultipleFieldsContainer(inputId, {
             labelDisplayName: options.label,
-            role: 'container'
+            role: 'container',
+            hintText: "Configure automation settings for test execution, including timeouts, parallel execution limits, and response formatting options."
         });
 
         // Select the controller sub-container within the field container using the unique ID.
@@ -799,7 +802,8 @@ class CustomG4Fields {
         // Create a main container for the Data Source field using a helper function.
         const fieldContainer = newMultipleFieldsContainer(inputId, {
             labelDisplayName: options.label,
-            role: 'container'
+            role: 'container',
+            hintText: "Define data input parameters for data-driven scenarios, including filter criteria, repository, source details, data type, and additional capabilities."
         });
 
         // Select the controller sub-container within the field container using the unique ID.
@@ -1062,7 +1066,8 @@ class CustomG4Fields {
         // Create a main container for the Data Source field using a helper function.
         const fieldContainer = newMultipleFieldsContainer(inputId, {
             labelDisplayName: options.label,
-            role: 'container'
+            role: 'container',
+            hintText: "Configure driver parameters to optimize automation performance by selecting a web driver, specifying driver binaries, and defining advanced capability groups for precise driver behavior."
         });
 
         // Select the controller sub-container within the field container using the unique ID.
@@ -1175,7 +1180,8 @@ class CustomG4Fields {
         // Create a container with multiple environment settings fields using the provided ID, label, and title.
         const fieldContainer = newMultipleFieldsContainer(inputId, {
             labelDisplayName: options.label,
-            role: 'container'
+            role: 'container',
+            hintText: "Configure environment settings to specify the default environment for automation, control whether the environment is returned in responses, and define static environment variables for consistent execution."
         });
 
         // Select the controller sub-container within the field container using the escaped unique ID.
@@ -1272,7 +1278,8 @@ class CustomG4Fields {
          */
         const fieldContainer = newMultipleFieldsContainer(inputId, {
             labelDisplayName: options.label,
-            role: 'container'
+            role: 'container',
+            hintText: "Toggle whether detailed exception information should be included in responses to assist with debugging and error analysis."
         });
 
         /**
@@ -1341,7 +1348,8 @@ class CustomG4Fields {
          */
         const fieldContainer = newMultipleFieldsContainer(inputId, {
             labelDisplayName: options.label,
-            role: 'container'
+            role: 'container',
+            hintText: "Define the queue manager type and configure its additional properties to control queue management behavior in automation tasks."
         });
 
         /**
@@ -1431,7 +1439,8 @@ class CustomG4Fields {
          */
         const fieldContainer = newMultipleFieldsContainer(inputId, {
             labelDisplayName: options.label,
-            role: 'container'
+            role: 'container',
+            hintText: "Toggle inclusion of performance points in responses to enable performance diagnostics and analysis."
         });
 
         /**
@@ -1594,14 +1603,15 @@ class CustomG4Fields {
 
         // Configuration options for the object array fields container.
         const arrayFieldOptions = {
-            addButtonLabel: 'Add External Repository', // Label for the "Add" button.
-            dataObjects: dataObjects,                  // Array of data object schemas for initialization.
-            groupName: 'ExternalRepositories',         // Group name used for property normalization.
-            itemLabel: 'External Repository',          // Label prefix for each array item.
-            labelDisplayName: options.label,           // Display name for the container label.
-            removeButtonLabel: 'Remove',               // Label for the "Remove" button.
-            role: 'container',                         // Role attribute for identifying elements.
-            title: options.title                       // Title attribute for the container.
+            addButtonLabel: 'Add External Repository',
+            dataObjects: dataObjects,
+            groupName: 'ExternalRepositories',
+            hintText: "Configure external repository definitions—including authentication, headers, and capabilities—and toggle rule reference enforcement for consistent plugin behavior.",
+            itemLabel: 'External Repository',
+            labelDisplayName: options.label,
+            removeButtonLabel: 'Remove',
+            role: 'container',
+            title: options.title
         };
 
         // Create the object array fields container with the provided options and callback.
@@ -1671,7 +1681,8 @@ class CustomG4Fields {
          */
         const fieldContainer = newMultipleFieldsContainer(inputId, {
             labelDisplayName: options.label,
-            role: 'container'
+            role: 'container',
+            hintText: "Configure screenshot output settings, including the save folder, Base64 conversion, exception-only capture, and inclusion in automation responses."
         });
 
         /**
