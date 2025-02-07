@@ -258,7 +258,7 @@ class StateMachineSteps {
 
 		// Check if the manifest has categories and determine if it is a condition or loop
 		const context = manifest.context?.integration?.sequentialWorkflow || {};
-		const componentType = context?.componentType?.toLowerCase() || "taks";
+		const componentType = context?.componentType?.toLowerCase() || "task";
 		const iconProvider = context?.iconProvider?.toLowerCase() || "task";
 		const label = context?.label || Utilities.convertPascalToSpaceCase(manifest.key);
 		const isSwitch = componentType === "switch";
