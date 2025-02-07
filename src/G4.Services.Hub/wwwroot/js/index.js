@@ -1133,7 +1133,7 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 				const property = value[index];
 
 				// If the property is not an object, set the pluginsSettings to the property
-				if (!assertObject(property)) {
+				if (!Utilities.assertObject(property)) {
 					pluginsSettings[index] = property;
 					continue;
 				}
@@ -1251,60 +1251,12 @@ async function startDefinition() {
  */
 function stepEditorProvider(step, editorContext) {
 	/**
-	 * Converts an array of strings in the format "key=value" into an object (dictionary).
-	 * If a string does not contain an "=", the entire string is treated as the key with an empty string as its value.
-	 * If the value part after "=" is missing, it defaults to an empty string.
-	 */
-	const convertToDictionary = (values) => {
-		return values.reduce((accumulator, currentString) => {
-			// Use a regular expression to split the string at the first occurrence of "="
-			// ^([^=]+)=(.*)$
-			// ^        : Start of the string
-			// ([^=]+)  : Capture one or more characters that are not "=" as the key
-			// =        : The literal "=" character
-			// (.*)     : Capture the rest of the string as the value
-			// $        : End of the string
-			const match = /^([^=]+)=(.*)$/.exec(currentString);
-
-			if (match) {
-				// Extract the key from the first capturing group
-				const key = match[1];
-
-				/**
-				 * Extract the value from the second capturing group.
-				 * If the value is undefined or an empty string, default it to "".
-				 * This handles cases like "key=" where the value is missing.
-				 */
-				const value = match[2] !== undefined ? match[2] : "";
-
-				// Assign the key-value pair to the accumulator object
-				accumulator[key] = value;
-			} else {
-				/**
-				 * If the string does not contain an "=", treat the entire string as the key
-				 * and assign an empty string as its value.
-				 * This handles cases like "key" without any associated value.
-				 */
-				accumulator[currentString] = "";
-			}
-
-			// Return the updated accumulator for the next iteration
-			return accumulator;
-		}, {});
-	};
-
-	/**
 	 * Initializes and appends the appropriate input field to the container based on the parameter type.
 	 *
 	 * This function dynamically creates and configures input fields within a given container
 	 * for either properties or parameters of a plugin step. It determines the type of the parameter
 	 * and utilizes the corresponding `CustomFields` method to generate the appropriate input field.
 	 * After creation, it sets up event listeners to handle value changes and notify the editor context.
-	 *
-	 * @param {HTMLElement} container - The DOM element that will contain the input field.
-	 * @param {string}      key       - The key/name of the property or parameter.
-	 * @param {Object}      step      - The plugin step object containing properties and parameters.
-	 * @param {string}      type      - Specifies whether the field is a 'properties' or 'parameters' type.
 	 */
 	const initializeField = (container, key, step, type) => {
 		// Initialize an empty parameter object to store the current parameter's properties.
@@ -1331,10 +1283,11 @@ function stepEditorProvider(step, editorContext) {
 		 * Updates the parameter value and notifies the editor context upon changes.
 		 */
 		if (isKeyValue) {
+			parameter.value = Utilities.assertObject(parameter.value) ? parameter.value : {};
 			CustomFields.newKeyValueField(
 				{
 					container: container,
-					initialValue: convertToDictionary(parameter.value),
+					initialValue: parameter.value || {},
 					label: label,
 					title: parameter.description
 				},
@@ -1452,6 +1405,10 @@ function stepEditorProvider(step, editorContext) {
 		);
 	};
 
+	/**
+	 * Initializes the system container editor provider by adding a driver parameters field.
+	 * This field allows users to configure G4™ driver parameters in the specified container.
+	 */
 	const initializeSystemContainerEditorProvider = (container, step) => {
 		// Add a driver parameters field for configuring the G4 driver parameters.
 		CustomG4Fields.newDriverParametersField(
