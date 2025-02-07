@@ -265,7 +265,7 @@ class G4Client {
 		}
 
 		// If the step context model is a condition rule model, convert the branches.
-		const model = step.context.model.toUpperCase();
+		const model = step?.context?.model?.toUpperCase();
 		if (model === "SWITCHRULEMODEL" || model === "CONDITIONRULEMODEL") {
 			// Convert the branches to rules and negativeRules.
 			const branches = convertConditionRuleModel(step);
