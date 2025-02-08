@@ -285,6 +285,7 @@ function newConfiguration() {
 		 * @property {Function} iconUrlProvider - Function to determine the icon URL based on component type and step type.
 		 */
 		steps: {
+			// TODO: remove the supportedIcons and check if the file exists. If yes, use it; if not, use icon-task.svg
 			/**
 			 * Provides the URL for the step icon based on its component type and specific type.
 			 *
