@@ -12,6 +12,7 @@
 [Ss][Dd][Kk]/
 [Ii]nstall/
 appsettings.json
+*.db
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs

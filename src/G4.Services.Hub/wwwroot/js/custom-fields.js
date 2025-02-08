@@ -968,9 +968,6 @@ class CustomG4Fields {
         const newFirstMatchCapabilities = (id, firstMatch) => {
             /**
              * Generates a data object for a "Capabilities" group.
-             *
-             * @param {Object} firstMatchCapabilities - The capabilities data for the group.
-             * @returns {Object} - A data object representing the "Capabilities" group.
              */
             const newDataObject = (firstMatchCapabilities) => {
                 // Create a new data object with the "Capabilities" group properties.
@@ -995,7 +992,7 @@ class CustomG4Fields {
             const dataObjects = [];
 
             // Iterate over each group key to create corresponding data objects.
-            for (const item of firstMatch) {
+            for (const item of Object.values(firstMatch)) {
                 const schema = newDataObject(item);
                 dataObjects.push(schema);
             }
@@ -1041,9 +1038,7 @@ class CustomG4Fields {
 
                 // Construct the driver parameters object with the updated "First Match" capabilities.
                 const driverParameters = {
-                    capabilities: {
-                        firstMatch: [firstMatchCapabilities]
-                    }
+                    firstMatch: firstMatchCapabilities
                 };
 
                 // Invoke the callback to apply the updated driver parameters.
@@ -1139,7 +1134,7 @@ class CustomG4Fields {
         // Create and append the "First Match" capabilities group to the controller.
         const firstMatchField = newFirstMatchCapabilities(
             inputId,
-            options.initialValue?.capabilities?.firstMatch || [{}]
+            options.initialValue?.firstMatch || [{}]
         );
         controller.appendChild(firstMatchField);
 
