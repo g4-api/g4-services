@@ -763,25 +763,41 @@ class G4Client {
 		 */
 		const formatDriverParameters = (driverParameters) => {
 			// Extract the main capabilities from the input object.
+			// Use an empty object as a default if none are provided.
 			const capabilities = driverParameters?.capabilities || {};
 
-			// Create a base parameters object with minimal fields.
-			let parameters = {
-				capabilities: {},
+			// Extract the firstMatch capabilities array from the input.
+			// If not provided, default to an empty array.
+			const firstMatch = driverParameters.firstMatch || [];
+
+			// Create a base parameters object with minimal fields:
+			// - An empty alwaysMatch object (to be populated later).
+			// - The driver and driverBinaries properties, if provided.
+			// - A default firstMatch array with a single empty object.
+			const parameters = {
+				capabilities: {
+					alwaysMatch: {}
+				},
 				driver: driverParameters?.driver,
 				driverBinaries: driverParameters?.driverBinaries,
+				firstMatch: []
 			};
 
-			// If there are no capabilities, return the original object as-is.
-			if (!capabilities) {
-				return driverParameters;
+			// Loop over the keys (indexes) of the firstMatch array.
+			for (const group of Object.keys(firstMatch)) {
+				const value = firstMatch[group];
+				parameters.firstMatch.push(value);
 			}
 
-			// Assign the alwaysMatch and firstMatch capabilities directly.
+			// Assign the provided alwaysMatch capabilities (if any) to the parameters object.
+			// If capabilities.alwaysMatch is undefined, this will assign undefined.
 			parameters.capabilities.alwaysMatch = capabilities.alwaysMatch;
-			parameters.capabilities.firstMatch = capabilities.firstMatch;
 
-			// Return the fully constructed parameters object.
+			// Use the provided firstMatch array if it has any entries.
+			// Otherwise, retain the default firstMatch placeholder defined in parameters.
+			parameters.firstMatch = firstMatch.length > 0 ? firstMatch : parameters.firstMatch;
+
+			// Return the fully constructed and merged parameters object.
 			return parameters;
 		};
 

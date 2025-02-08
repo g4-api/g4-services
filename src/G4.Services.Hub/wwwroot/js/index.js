@@ -586,11 +586,28 @@ function newImportModal() {
 		 * Retrieves driver parameters if both driver and driverBinaries are provided.
 		 */
 		const getDriverParameters = (driverParameters) => {
+			if (!driverParameters) {
+				return {};
+			}
+
 			// Check if driverBinaries exists and contains at least one element.
 			const isBinaries = driverParameters?.driverBinaries && driverParameters?.driverBinaries.length > 0;
 
 			// Check if driver exists and is a non-empty string.
 			const isDriver = driverParameters?.driver && driverParameters?.driver.length > 0;
+			const isFirstMatch = driverParameters?.firstMatch?.length > 0;
+			const firstMatch = {};
+
+			if (isFirstMatch) {
+				
+				for (let i = 0; i < driverParameters.firstMatch.length; i++) {
+					const key = `${i}`;
+					const value = driverParameters.firstMatch[i];
+					firstMatch[key] = value
+				}
+			}
+
+			driverParameters.firstMatch = firstMatch || driverParameters.firstMatch;
 
 			// Return the original object if both conditions are met; otherwise, return an empty object.
 			return isBinaries && isDriver ? driverParameters : {};
@@ -936,26 +953,26 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 			definition.properties['driverParameters']['capabilities'] = definition.properties['driverParameters']['capabilities'] || {};
 
 			// Ensure the 'firstMatch' object exists within 'capabilities'.
-			definition.properties['driverParameters']['capabilities']['firstMatch'] = definition.properties['driverParameters']['capabilities']['firstMatch'] || [{}];
+			definition.properties['driverParameters']['firstMatch'] = definition.properties['driverParameters']['firstMatch'] || {};
 
 			// Iterate over each key in the provided `value` object.
 			for (const key of Object.keys(value)) {
 				// Determine if the current key pertains to 'capabilities' with 'firstMatch'.
-				const isFirstMatch = key.toLocaleUpperCase() === 'CAPABILITIES' && 'firstMatch' in value[key];
+				const isFirstMatch = key.toUpperCase() === 'FIRSTMATCH';
 
 				// Determine if the current key pertains to 'capabilities' with 'alwaysMatch'.
-				const isAlwaysMatch = key.toLocaleUpperCase() === 'CAPABILITIES' && 'alwaysMatch' in value[key];
+				const isAlwaysMatch = key.toUpperCase() === 'CAPABILITIES' && 'alwaysMatch' in value[key];
 
 				// Reference to the existing 'capabilities' object for easy access.
 				const capabilities = definition.properties['driverParameters'].capabilities;
 
 				if (isFirstMatch) {
 					// Extract the 'firstMatch' object from the input value.
-					const firstMatch = value[key].firstMatch[0];
+					const firstMatch = value.firstMatch;
 
 					// Iterate over each group in 'firstMatch' and merge it into the existing capabilities.
 					for (const group of Object.keys(firstMatch)) {
-						capabilities['firstMatch'][group] = firstMatch[group];
+						definition.properties['driverParameters']['firstMatch'][group] = firstMatch[group];
 					}
 
 					// Continue to the next key as this one has been processed.
@@ -964,7 +981,7 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 
 				if (isAlwaysMatch) {
 					// Assign the 'alwaysMatch' object directly to the capabilities.
-					capabilities['alwaysMatch'] = value[key]?.alwaysMatch;
+					capabilities['alwaysMatch'] = value[key].alwaysMatch;
 
 					// Continue to the next key as this one has been processed.
 					continue;
@@ -1434,12 +1451,12 @@ function stepEditorProvider(step, editorContext) {
 				step.properties['driverParameters']['capabilities'] = step.properties['driverParameters']['capabilities'] || {};
 
 				// Ensure the 'firstMatch' object exists within 'capabilities'.
-				step.properties['driverParameters']['capabilities']['firstMatch'] = step.properties['driverParameters']['capabilities']['firstMatch'] || [{}];
+				step.properties['driverParameters']['firstMatch'] = step.properties['driverParameters']['firstMatch'] || {};
 
 				// Iterate over each key in the provided `value` object.
 				for (const key of Object.keys(value)) {
 					// Determine if the current key pertains to 'capabilities' with 'firstMatch'.
-					const isFirstMatch = key.toUpperCase() === 'CAPABILITIES' && 'firstMatch' in value[key];
+					const isFirstMatch = key.toUpperCase() === 'FIRSTMATCH';
 
 					// Determine if the current key pertains to 'capabilities' with 'alwaysMatch'.
 					const isAlwaysMatch = key.toUpperCase() === 'CAPABILITIES' && 'alwaysMatch' in value[key];
@@ -1449,11 +1466,11 @@ function stepEditorProvider(step, editorContext) {
 
 					if (isFirstMatch) {
 						// Extract the 'firstMatch' object from the input value.
-						const firstMatch = value[key].firstMatch;
+						const firstMatch = value.firstMatch;
 
 						// Iterate over each group in 'firstMatch' and merge it into the existing capabilities.
 						for (const group of Object.keys(firstMatch)) {
-							capabilities['firstMatch'][group] = firstMatch[group];
+							step.properties['driverParameters']['firstMatch'][group] = firstMatch[group];
 						}
 
 						// Continue to the next key as this one has been processed.
