@@ -299,7 +299,7 @@ function newConfiguration() {
 			 */
 			iconUrlProvider: (_, type) => {
 				// Define the list of supported icon types
-				const supportedIcons = ['if', 'loop', 'text', 'job', 'stage'];
+				const supportedIcons = ['if', 'loop', 'text', 'job', 'stage', 'pointer', 'keyboard'];
 
 				// Determine the filename based on the type; default to 'task' if type is unsupported
 				const fileName = supportedIcons.includes(type) ? type : 'task';
