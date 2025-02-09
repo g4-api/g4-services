@@ -537,7 +537,7 @@ class CustomG4Fields {
             (value) => {
                 // Build an authentication object containing the updated password
                 const authentication = {
-                    toekn: value
+                    token: value
                 };
                 // Invoke the main callback function with the updated password
                 setCallback(authentication);

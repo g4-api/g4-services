@@ -814,17 +814,19 @@ function newStartDefinition(sequence) {
 		id,
 		properties: {
 			authentication: {
-				token
+				token: token,
+				password: '',
+				username: '',
 			},
 			driverParameters: {
 				driver: "MicrosoftEdgeDriver",
 				driverBinaries: ".",
 				capabilities: {
-					alwaysMatch: {},
-					firstMatch: [
-						{}
-					]
-				}
+					alwaysMatch: {}
+				},
+				firstMatch: [
+					{}
+				]
 			},
 			settings: {
 				automationSettings: {
