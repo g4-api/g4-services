@@ -285,7 +285,6 @@ function newConfiguration() {
 		 * @property {Function} iconUrlProvider - Function to determine the icon URL based on component type and step type.
 		 */
 		steps: {
-			// TODO: remove the supportedIcons and check if the file exists. If yes, use it; if not, use icon-task.svg
 			/**
 			 * Provides the URL for the step icon based on its component type and specific type.
 			 *
@@ -299,14 +298,22 @@ function newConfiguration() {
 			 * console.log(iconUrl); // Outputs: './images/icon-loop.svg'
 			 */
 			iconUrlProvider: (_, type) => {
-				// Define the list of supported icon types
-				const supportedIcons = ['if', 'loop', 'text', 'job', 'stage', 'pointer', 'keyboard'];
+                // Import the 'fs' and 'path' modules for file system operations
+				const fs = require('fs');
+				const path = require('path');
+
+				// Build the expected file name and absolute file path.
+				const baseDir = path.join(__dirname, 'images');
+				const iconFile = `icon-${type}.svg`;
+				const iconFilePath = path.join(baseDir, iconFile);
 
 				// Determine the filename based on the type; default to 'task' if type is unsupported
-				const fileName = supportedIcons.includes(type) ? type : 'task';
+				const fileName = fs.existsSync(iconFilePath)
+					? iconFilePath
+					: path.join(baseDir, 'icon-task.svg');
 
 				// Return the relative path to the SVG icon
-				return `./images/icon-${fileName}.svg`;
+				return `./images/${fileName}`;
 			}
 		},
 
