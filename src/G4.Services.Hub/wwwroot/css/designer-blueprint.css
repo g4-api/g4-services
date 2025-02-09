@@ -82,28 +82,36 @@
 	}
 
 .sqd-theme-light .sqd-control-bar {
-	background: #fff;
-	box-shadow: 0 0 8px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0, 0, 0, 0.15);
-	border-radius: 0px;
+	background: var(--control-bar-background);
+	border-radius: var(--border-radius);
+	box-shadow: var(--control-bar-box-shadow);
 }
 
 .sqd-theme-light .sqd-control-bar-button {
-	border: 1px solid #c3c3c3;
-	background: #fff;
-	border-radius: 0px;
+	background: var(--control-bar-button-background);
+	border: var(--control-bar-button-border);
+	border-radius: var(--border-radius);
 }
 
 	.sqd-theme-light .sqd-control-bar-button:hover {
-		border-color: #939393;
-		background: #fff;
+		border-color: var(--control-bar-button-hover-border-color);
+		background: var(--control-bar-button-hover-background);
 	}
 
 	.sqd-theme-light .sqd-control-bar-button .sqd-icon-path {
-		fill: #000;
+		fill: var(--control-bar-button-icon-path);
+	}
+
+	.sqd-theme-light .sqd-control-bar-button .sqd-start-icon-path {
+		fill: var(--control-bar-button-start-icon-path);
+	}
+
+	.sqd-theme-light .sqd-control-bar-button .sqd-stop-icon-path {
+		fill: var(--control-bar-button-stop-icon-path);
 	}
 
 	.sqd-theme-light .sqd-control-bar-button.sqd-delete .sqd-icon-path {
-		fill: #e01a24;
+		fill: var(--control-bar-button-delete-icon-path);
 	}
 
 .sqd-theme-light .sqd-smart-editor {
