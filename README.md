@@ -1,4 +1,4 @@
-# G4 Hub API
+# G4™ Hub API
 
 [![Build, Test & Release G4™ API](https://github.com/g4-api/g4-services/actions/workflows/release-pipline.yml/badge.svg)](https://github.com/g4-api/g4-services/actions/workflows/release-pipline.yml)
 ![Docker Image Version](https://img.shields.io/docker/v/g4api/g4-hub?style=flat&logo=docker&logoColor=959da5&label=Docker%20Version&labelColor=24292f)
@@ -9,6 +9,7 @@ The **G4 Hub API** provides a comprehensive interface for managing templates, en
 
 ## Table of Contents
 
+- [Development License](#development-license)
 - [Features](#features)
 - [Getting Started](#getting-started)
   - [Prerequisites](#prerequisites)
@@ -23,6 +24,20 @@ The **G4 Hub API** provides a comprehensive interface for managing templates, en
 - [License](#license)
 - [Support](#support)
 - [Acknowledgements](#acknowledgements)
+
+---
+
+## Development License
+
+> :warning: Important
+>  
+> This token expires 90 days after the latest release date. Please return here to update your token when it expires.
+
+The unlimited version of the G4™ Hub API is available for personal or an open source non-profit use, provided it is not deployed in enterprise, governmental, or military environments. To enable full functionality, use the license token provided below. When invoking automation workflows, include this token in the `token` field under the `authentication` property.
+
+```none
+rTIlEC3IPr/GYlpGp7CLvnKUJOVrkQ1EqHwd875LZgRn712dg1cnZLAWblDr6f/0Jc5LzyelEr5B7O4O3nZtKumTv4lXST78oM/hW8tCE40q97ZGjGX3oCVWjzj2t7jp9Jh9O0ynNm+WvJfmlQVPXdJLHIjetaIJJWfNZFKgbAFLPqKMIauUIaa2ytMq7lgjVASwKeZ4FRG6CyyfrcLmw6u886UmlpK01Cqa1qy7HQuaiTwXdyFnrY20NjU01rsCm0RRKti/76w9PKK6Cy7mgAkI9JkZQaCS3z9CdKUezu86FNYwkBdG1cnea3lf/FeO5xGa7SH9hNqeyMQeOOOAmwTiM6NeTd15WvjEXFEBsfA=
+```
 
 ---
 
@@ -119,51 +134,53 @@ POST /api/v4/g4/automation/invoke
 
 ```json
 {
-  "authentication": {
-    "username": "{{ApiUser}}"
-  },
-  "driverParameters": {
-    "driver": "MicrosoftEdgeDriver",
-    "driverBinaries": "{{DriverBinaries}}",
-    "capabilities": {
-      "alwaysMatch": {
-        "browserName": "MicrosoftEdge"
-      },
-      "firstMatch": [{}]
-    }
-  },
-  "stages": [
-    {
-      "name": "Sample Automation Flow",
-      "description": "Main stage for invoking Sample Automation Flow.",
-      "jobs": [
-        {
-          "reference": {
-            "name": "Sample Job",
-            "description": "Sample Job."
-          },
-          "rules": [
-            {
-              "$type": "Action",
-              "pluginName": "GoToUrl",
-              "argument": "about:blank",
-              "regularExpression": "(?s).*"
+    "authentication": {
+        "token": "CTJEvbiw0QlqBN5GeXI9bOedyPcxUvBlKFFo3pg1VIxyF30Lt/QN1O8P4wxcj7AEhLexYhzo1H+Z9N17gg1IOaV1LwQ7bNyFnlpI6GmY7jwYV0Jc0at2pcIuU9VOIwJs5eVWktfgsSxSIP4/p1cqGec19ngefShnWnorMdewDn62USCYsxFOxl7b/reTEzqSxWHL8iaFOFJhOkviiarnFhMfD0jAVreMyiIlyOL7nar1fAQl1zCR+NQpfGecT7L6Y5WJMB0yg+oXE7xyZvYn54Acr0p03l8wwhSvK+5mw9H3anbrwvwbEDFpu/aRbMfQ6gYrkOf4SHvZhAl1igDtNFXKtvie0NQNtWiPQ0OTnJ0="
+    },
+    "driverParameters": {
+        "driver": "MicrosoftEdgeDriver",
+        "driverBinaries": "{{DriverBinaries}}",
+        "capabilities": {
+            "alwaysMatch": {
+                "browserName": "MicrosoftEdge"
             },
-            {
-              "$type": "Action",
-              "pluginName": "WriteLog",
-              "argument": "The first 8 alphanumeric characters of the GUID are {{$New-Guid --Pattern:^\\w{8}}}"
-            },
-            {
-              "$type": "Action",
-              "pluginName": "CloseBrowser"
-            }
-          ],
-          "stopOnError": false
+            "firstMatch": [
+                {}
+            ]
         }
-      ]
-    }
-  ]
+    },
+    "stages": [
+        {
+            "name": "Sample Automation Flow",
+            "description": "Main stage for invoking Sample Automation Flow.",
+            "jobs": [
+                {
+                    "reference": {
+                        "name": "Sample Job",
+                        "description": "Sample Job."
+                    },
+                    "rules": [
+                        {
+                            "$type": "Action",
+                            "pluginName": "GoToUrl",
+                            "argument": "about:blank",
+                            "regularExpression": "(?s).*"
+                        },
+                        {
+                            "$type": "Action",
+                            "pluginName": "WriteLog",
+                            "argument": "The first 8 alphanumeric characters of the GUID are {{$New-Guid --Pattern:^\\w{8}}}"
+                        },
+                        {
+                            "$type": "Action",
+                            "pluginName": "CloseBrowser"
+                        }
+                    ],
+                    "stopOnError": false
+                }
+            ]
+        }
+    ]
 }
 ```
 
