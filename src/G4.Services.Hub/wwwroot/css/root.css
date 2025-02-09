@@ -11,8 +11,20 @@
 	/* Colors */
 	--black: #000;
 	--blue: #24497E;
+	--green: #39AA40;
 	--red: #ED4800;
 	--white: #FFF;
+	/* Control Bar */
+	--control-bar-background: var(--blue);
+	--control-bar-box-shadow: 0 0 8px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0, 0, 0, 0.15);
+	--control-bar-button-background: var(--blue);
+	--control-bar-button-border: 1px solid var(--white);
+	--control-bar-button-delete-icon-path: var(--red);
+	--control-bar-button-hover-background: 1px solid var(--blue);
+	--control-bar-button-hover-border-color: var(--red);
+	--control-bar-button-icon-path: var(--white);
+	--control-bar-button-start-icon-path: var(--green);
+	--control-bar-button-stop-icon-path: var(--red);
 	/* Toolbox */
 	--toolbox-background: var(--blue);
 	--toolbox-box-shadow: 0 0 8px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0, 0, 0, 0.15);
