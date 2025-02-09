@@ -8,9 +8,25 @@
 	<title>Sequential Workflow Designer</title>
 
 	<link rel="icon" href="./images/favicon.ico" />
+	<link href="./css/root.css" rel="stylesheet" />
 	<link href="./css/designer.css" rel="stylesheet">
-	<link href="./css/designer-light.css" rel="stylesheet">
-	<link href="./css/designer-dark.css" rel="stylesheet">
+	<link href="./css/designer-blueprint.css" rel="stylesheet">
+	<style>
+		.gradient {
+			width: 100%;
+			height: 200px;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			color: white;
+			font-size: 1.5rem;
+			margin-bottom: 20px;
+			border-radius: 8px;
+		}
+		.gradient-linear-diagonal {
+			background: linear-gradient(45deg, #00619C, #0179B5);
+		}
+	</style>
 	<style>
 		#bars3 {
 			display: block;
@@ -111,22 +127,14 @@
 			cursor: pointer;
 		}
 
-		html,
+/*		html,
 		body {
 			width: 100vw;
 			height: 100vh;
 			margin: 0;
 			padding: 0;
 			overflow: hidden;
-		}
-
-		#designer {
-			position: absolute;
-			left: 0;
-			top: 0;
-			width: 100vw;
-			height: 100vh;
-		}
+		}*/
 
 		.sqd-editor {
 			padding: 10px;
@@ -379,6 +387,17 @@
 		</div>
 	</div>
 	<div id="designer"></div>
+	<div class="top">
+		<div>Column 1</div>
+		<div>Column 2</div>
+		<div>Column 3</div>
+	</div>
+	<div class="bottom">
+		<div>Column 1</div>
+		<div>Column 2</div>
+		<div>Column 3</div>
+	</div>
+
 	<script src="./js/utilities.js"></script>
 	<script src="./js/cli-factory.js"></script>
 	<script src="./js/signalr.min.js" integrity="" crossorigin="anonymous"></script>
