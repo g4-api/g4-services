@@ -803,13 +803,18 @@ function newImportModal() {
  * @returns {Object} An object representing the start definition, containing default properties and the provided sequence.
  */
 function newStartDefinition(sequence) {
+	// Authentication token for G4™ requests
+	const token = "rTIlEC3IPr/GYlpGp7CLvnKUJOVrkQ1EqHwd875LZgRn712dg1cnZLAWblDr6f/0Jc5LzyelEr5B7O4O3nZtKumTv4lXST78oM/hW8tCE40q97ZGjGX3oCVWjzj2t7jp9Jh9O0ynNm+WvJfmlQVPXdJLHIjetaIJJWfNZFKgbAFLPqKMIauUIaa2ytMq7lgjVASwKeZ4FRG6CyyfrcLmw6u886UmlpK01Cqa1qy7HQuaiTwXdyFnrY20NjU01rsCm0RRKti/76w9PKK6Cy7mgAkI9JkZQaCS3z9CdKUezu86FNYwkBdG1cnea3lf/FeO5xGa7SH9hNqeyMQeOOOAmwTiM6NeTd15WvjEXFEBsfA=";
+
+	// Generate a unique identifier for the start definition.
+	const id = Utilities.newUid();
+
+	// Return the start definition object with default properties and the provided sequence.
 	return {
-		id: Utilities.newUid(),
-		// Default properties for the start definition.
+		id,
 		properties: {
 			authentication: {
-				username: "pyhBifB6z1YxJv53xLip",
-				password: ""
+				token
 			},
 			driverParameters: {
 				driver: "MicrosoftEdgeDriver",

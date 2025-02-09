@@ -525,6 +525,25 @@ class CustomG4Fields {
             }
         );
 
+        // Create a new string input field for the "Password" with an empty initial value or the provided initial password.
+        CustomFields.newStringField(
+            {
+                container: controller,
+                initialValue: options.initialValue?.token || '',
+                isReadonly: false,
+                label: 'Token',
+                title: 'A valid G4™ license token. This optional token replaces username/password authentication for streamlined access.'
+            },
+            (value) => {
+                // Build an authentication object containing the updated password
+                const authentication = {
+                    toekn: value
+                };
+                // Invoke the main callback function with the updated password
+                setCallback(authentication);
+            }
+        );
+
         // Append the controller container to the main field container.
         fieldContainer.appendChild(controller);
 
