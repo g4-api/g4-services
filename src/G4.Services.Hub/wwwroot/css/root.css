@@ -1,0 +1,73 @@
+﻿:root {
+	/* Application */
+	--base-height: 100vh;
+	--base-width: 100vw;
+	--border-radius: 0px;
+	--bottom-row-grid-template-columns: 33.33% 33.33% 33.33%;
+	--bottom-row-height: 5vh;
+	--middle-row-height: calc(100vh - var(--top-row-height) - var(--bottom-row-height));
+	--top-row-grid-template-columns: 33.33% 33.33% 33.33%;
+	--top-row-height: 5vh;
+	/* Colors */
+	--black: #000;
+	--blue: #24497E;
+	--red: #ED4800;
+	--white: #FFF;
+	/* Toolbox */
+	--toolbox-background: var(--blue);
+	--toolbox-box-shadow: 0 0 8px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0, 0, 0, 0.15);
+	--toolbox-filter-background: var(--blue);
+	--toolbox-filter-border: 1px solid var(--white);
+	--toolbox-filter-color: var(--white);
+	--toolbox-filter-focus-border-color: var(--red);
+	--toolbox-group-title-color: var(--white);
+	--toolbox-group-title-background: var(--blue);
+	--toolbox-group-title-font: 300 1.3em/1.3em 'Roboto', sans-serif;
+	--toolbox-header-title-color: var(--white);
+	--toolbox-header-title-font: 300 1.5em/1.5em 'Roboto', sans-serif;
+	--toolbox-input-placeholder-color: rgba(255, 255, 255, 0.5);
+	--toolbox-item-background: var(--blue);
+	--toolbox-item-border: 1px solid var(--white);
+	--toolbox-item-box-shadow: 0 2px 2px rgba(0, 0, 0, 0.15);
+	--toolbox-item-color: var(--white);
+	--toolbox-item-hover-background: var(--blue);
+	--toolbox-item-hover-border-color: var(--red);
+	--toolbox-item-icon-no-icon-background: #c6c6c6;
+	--toolbox-width: 150px;
+}
+
+html, body {
+	width: var(--base-width);
+	height: var(--base-height);
+	margin: 0;
+	padding: 0;
+	overflow: hidden;
+}
+
+#designer {
+	position: absolute;
+	left: 0;
+	top: var(--top-row-height);
+	width: var(--base-width);
+	height: var(--middle-row-height);
+}
+
+.top {
+	position: absolute;
+	display: grid;
+	top: 0;
+	left: 0;
+	width: var(--base-width);
+	height: var(--top-row-height);
+	grid-template-columns: var(--top-row-grid-template-columns);
+}
+
+.bottom {
+	position: absolute;
+	display: grid;
+	bottom: 0;
+	left: 0;
+	width: var(--base-width);
+	height: var(--bottom-row-height);
+	grid-template-columns: var(--bottom-row-grid-template-columns);
+}
