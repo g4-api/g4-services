@@ -298,22 +298,33 @@ function newConfiguration() {
 			 * console.log(iconUrl); // Outputs: './images/icon-loop.svg'
 			 */
 			iconUrlProvider: (_, type) => {
-                // Import the 'fs' and 'path' modules for file system operations
-				const fs = require('fs');
-				const path = require('path');
+				// Extract unique icon providers from the _manifests object.
+				const supportedIcons = Array.from(
+					new Set(
+						Object.values(_manifests).map(manifest =>
+							manifest?.context?.integration?.sequentialWorkflow?.iconProvider || 'task'
+						)
+					)
+				);
 
-				// Build the expected file name and absolute file path.
-				const baseDir = path.join(__dirname, 'images');
-				const iconFile = `icon-${type}.svg`;
-				const iconFilePath = path.join(baseDir, iconFile);
+				// Determine the iconType based on the input 'type'.
+				// If the provided type is not in the list of supportedIcons, default to 'task'.
+				let iconType = supportedIcons.includes(type) ? type : 'task';
 
-				// Determine the filename based on the type; default to 'task' if type is unsupported
-				const fileName = fs.existsSync(iconFilePath)
-					? iconFilePath
-					: path.join(baseDir, 'icon-task.svg');
+				// Convert the input type to uppercase for case-insensitive comparisons.
+				const upperType = type.toUpperCase();
 
-				// Return the relative path to the SVG icon
-				return `./images/${fileName}`;
+				// If the type is 'STAGE', force iconType to 'stage'.
+				if (upperType === 'STAGE') {
+					iconType = 'stage';
+				}
+				// Else if the type is 'JOB', force iconType to 'job'.
+				else if (upperType === 'JOB') {
+					iconType = 'job';
+				}
+
+				// Return the relative path to the SVG icon based on the determined iconType.
+				return `./images/icon-${iconType}.svg`;
 			}
 		},
 
