@@ -14,6 +14,7 @@
 	--green: #39AA40;
 	--red: #ED4800;
 	--white: #FFF;
+	--yellow: #FFA200;
 	/* Context Menu */
 	--context-menu-background: var(--white);
 	--context-menu-border: none;
@@ -97,8 +98,21 @@
 	--toolbox-item-icon-no-icon-background: var(--white);
 	--toolbox-width: 150px;
 	/* Workflow */
+	--container-step-input-fill: var(--blue);
+	--container-step-input-stroke: var(--white);
+	--container-step-input-stroke-width: 2;
 	--root-start-stop-circle-fill: var(--white);
 	--root-start-stop-icon-fill: var(--blue);
+	--step-label-primary-rect-fill: var(--white);
+	--step-label-primary-rect-stroke: var(--blue);
+	--step-label-primary-rect-stroke-width: 0;
+	--step-label-primary-text-fill: var(--blue);
+	--step-label-primary-text-font: 700 1.0em/1.0em 'Roboto', sans-serif;
+	--step-label-secondary-rect-fill: var(--blue);
+	--step-label-secondary-rect-stroke: var(--yellow);
+	--step-label-secondary-rect-stroke-width: 2;
+	--step-label-secondary-text-fill: var(--white);
+	--step-label-secondary-text-font: 700 1.0em/1.0em 'Roboto', sans-serif;
 	--step-task-empty-icon-fill: rgba(255, 255, 255, 0.5);
 	--step-task-rect-fill: transparent;
 	--step-task-rect-filter: drop-shadow(0 1.5px 1.5px rgba(0, 0, 0, 0.15));
@@ -110,8 +124,14 @@
 	--step-task-text-font: 400 1.0em/1.0em 'Roboto', sans-serif;
 	--validation-error-path-fill: #FFA200;
 	--validation-error-icon-path-fill: #000;
+	--workflow-input-fill: var(--blue);
+	--workflow-input-stroke: var(--white);
+	--workflow-input-stroke-width: 2;
 	--workflow-join-stroke: var(--white);
 	--workflow-join-stroke-width: 2;
+	--workflow-output-fill: var(--white);
+	--workflow-output-stroke: var(--blue);
+	--workflow-output-stroke-width: 2;
 	--workflow-placeholder-hover-rect-fill: var(--white);
 	--workflow-placeholder-hover-rect-stroke: var(--red);
 	--workflow-placeholder-hover-rect-stroke-dasharray: 0;

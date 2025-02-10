@@ -1,5 +1,7 @@
 ﻿/* stylelint-disable property-no-unknown */
 
+.sqd-theme-light .sqd-step-container > g > .sqd-input,
+.sqd-theme-light .sqd-step-switch > g > .sqd-input,
 .sqd-theme-light .sqd-step-task-empty-icon,
 .sqd-theme-light .sqd-no-icon,
 .sqd-theme-light .sqd-placeholder-rect,
@@ -342,51 +344,58 @@
 }
 
 .sqd-theme-light .sqd-step-task .sqd-input {
-	fill: #fff;
-	stroke-width: 2;
-	stroke: #000;
+	fill: var(--workflow-input-fill);
+	stroke: var(--workflow-input-stroke);
+	stroke-width: var(--workflow-input-stroke-width);
 }
 
 .sqd-theme-light .sqd-step-task .sqd-output {
-	fill: #000;
-	stroke-width: 0;
-}
-
-.sqd-theme-light .sqd-step-switch > .sqd-label-primary > .sqd-label-text {
-	fill: #fff;
+	fill: var(--workflow-output-fill);
+	stroke: var(--workflow-output-stroke);
+	stroke-width: var(--workflow-output-stroke-width);
 }
 
 .sqd-theme-light .sqd-step-switch > .sqd-label-primary > .sqd-label-rect {
-	fill: #2411db;
-	stroke-width: 0;
+	fill: var(--step-label-primary-rect-fill);
+	stroke: var(--step-label-primary-rect-stroke);
+	stroke-width: var(--step-label-primary-rect-stroke-width);
+}
+
+.sqd-theme-light .sqd-step-switch > .sqd-label-primary > .sqd-label-text {
+	fill: var(--step-label-primary-text-fill);
+	font: var(--step-label-primary-text-font);
 }
 
 .sqd-theme-light .sqd-step-switch > .sqd-label-secondary > .sqd-label-rect {
-	fill: #000;
-	stroke-width: 0;
+	fill: var(--step-label-secondary-rect-fill);
+	stroke: var(--step-label-secondary-rect-stroke);
+	stroke-width: var(--step-label-secondary-rect-stroke-width);
 }
 
 .sqd-theme-light .sqd-step-switch > .sqd-label-secondary > .sqd-label-text {
-	fill: #fff;
+	fill: var(--step-label-secondary-text-fill);
+	font: var(--step-label-secondary-text-font);
 }
 
 .sqd-theme-light .sqd-step-switch > g > .sqd-input {
-	fill: #fff;
-	stroke-width: 2;
-	stroke: #000;
-}
-
-.sqd-theme-light .sqd-step-container > .sqd-label > .sqd-label-text {
-	fill: #fff;
+	fill: var(--container-step-input-fill);
+	stroke: var(--container-step-input-stroke);
+	stroke-width: var(--container-step-input-stroke-width);
 }
 
 .sqd-theme-light .sqd-step-container > .sqd-label > .sqd-label-rect {
-	fill: #2411db;
-	stroke-width: 0;
+	fill: var(--step-label-primary-rect-fill);
+	stroke: var(--step-label-primary-rect-stroke);
+	stroke-width: var(--step-label-primary-rect-stroke-width);
+}
+
+.sqd-theme-light .sqd-step-container > .sqd-label > .sqd-label-text {
+	fill: var(--step-label-primary-text-fill);
+	font: var(--step-label-primary-text-font);
 }
 
 .sqd-theme-light .sqd-step-container > g > .sqd-input {
-	fill: #fff;
-	stroke-width: 2;
-	stroke: #000;
+	fill: var(--container-step-input-fill);
+	stroke: var(--container-step-input-stroke);
+	stroke-width: var(--container-step-input-stroke-width);
 }
