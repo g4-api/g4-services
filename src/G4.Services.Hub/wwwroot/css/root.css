@@ -25,16 +25,40 @@
 	--control-bar-button-icon-path: var(--white);
 	--control-bar-button-start-icon-path: var(--green);
 	--control-bar-button-stop-icon-path: var(--red);
+	/* Smart Editor */
+	--smart-editor-background: var(--blue);
+	--smart-editor-box-shadow: 0 0 8px rgba(0, 0, 0, 0.15);
+	--smart-editor-color: var(--white);
+	--smart-editor-details-border: 1px solid var(--white);
+	--smart-editor-details-color: var(--white);
+	--smart-editor-input-background: var(--blue);
+	--smart-editor-input-border: 1px solid var(--white);
+	--smart-editor-input-color: var(--white);
+	--smart-editor-input-focus-background: var(--white);
+	--smart-editor-input-focus-border: 1px solid var(--red);
+	--smart-editor-input-focus-color: var(--black);
+	--smart-editor-input-hover-border: 1px solid var(--red);
+	--smart-editor-input-readonly-background: var(--white);
+	--smart-editor-input-readonly-border: 1px solid var(--red);
+	--smart-editor-input-readonly-color: var(--black);
+	--smart-editor-label-font: 600 1.0em/1.0em 'Roboto', sans-serif;
+	--smart-editor-label-color: var(--white);
+	--smart-editor-toggle-background: var(--blue);
+	--smart-editor-toggle-box-shadow: 0 0 8px rgba(0, 0, 0, 0.15);
+	--smart-editor-width: 350px;
 	/* Toolbox */
 	--toolbox-background: var(--blue);
 	--toolbox-box-shadow: 0 0 8px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0, 0, 0, 0.15);
 	--toolbox-filter-background: var(--blue);
 	--toolbox-filter-border: 1px solid var(--white);
 	--toolbox-filter-color: var(--white);
+	--toolbox-filter-focus-background: var(--white);
 	--toolbox-filter-focus-border-color: var(--red);
+	--toolbox-filter-focus-color: var(--black);
+	--toolbox-filter-hover-border-color: var(--red);
 	--toolbox-group-title-color: var(--white);
 	--toolbox-group-title-background: var(--blue);
-	--toolbox-group-title-font: 300 1.3em/1.3em 'Roboto', sans-serif;
+	--toolbox-group-title-font: 600 1.3em/1.3em 'Roboto', sans-serif;
 	--toolbox-header-title-color: var(--white);
 	--toolbox-header-title-font: 300 1.5em/1.5em 'Roboto', sans-serif;
 	--toolbox-input-placeholder-color: rgba(255, 255, 255, 0.5);
@@ -55,6 +79,51 @@ html, body {
 	padding: 0;
 	overflow: hidden;
 }
+
+button {
+	box-sizing: border-box;
+	padding: 6px;
+	border-radius: 0px;
+	line-height: 1.3em;
+	min-width: 32.19px;
+	cursor: pointer;
+}
+
+input[type="text"],
+input[type="number"],
+input[type="file"],
+input[list],
+select {
+	min-height: 1.3em;
+}
+
+textarea {
+	min-height: 5.2em;
+	white-space: pre;
+	overflow-y: hidden;
+	overflow-x: auto;
+}
+
+input[type="text"],
+input[type="number"],
+input[type="file"],
+input[list],
+select,
+textarea {
+	box-sizing: border-box;
+	line-height: 1.3em;
+	padding: 6px;
+	width: 100%;
+}
+
+	input[type="text"]:focus,
+	input[type="number"]:focus,
+	input[type="file"]:focus,
+	input[list]:focus,
+	select:focus,
+	textarea:focus {
+		outline: none;
+	}
 
 #designer {
 	position: absolute;
