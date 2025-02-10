@@ -1,9 +1,5 @@
 ﻿/* stylelint-disable property-no-unknown */
 
-.sqd-theme-light .sqd-smart-editor-toggle {
-	border-radius: var(--border-radius);
-}
-
 .sqd-theme-light .sqd-step-task-rect,
 .sqd-theme-light .sqd-label-rect {
 	rx: var(--border-radius);
@@ -35,7 +31,13 @@
 }
 
 	.sqd-theme-light .sqd-toolbox-filter:focus {
+		background: var(--toolbox-filter-focus-background);
 		border-color: var(--toolbox-filter-focus-border-color);
+		color: var(--toolbox-filter-focus-color);
+	}
+
+	.sqd-theme-light .sqd-toolbox-filter:hover {
+		border-color: var(--toolbox-filter-hover-border-color);
 	}
 
 	.sqd-theme-light .sqd-toolbox-filter::placeholder {
@@ -115,13 +117,109 @@
 	}
 
 .sqd-theme-light .sqd-smart-editor {
-	background: #fff;
-	box-shadow: 0 0 8px rgba(0, 0, 0, 0.15);
+	background: var(--smart-editor-background);
+	box-shadow: var(--smart-editor-box-shadow);
+	color: var(--smart-editor-color);
+	height: 100%;
+	overflow: auto;
+	width: var(--smart-editor-width);
 }
 
+	.sqd-theme-light .sqd-smart-editor .sqd-editor {
+		padding: 10px;
+	}
+
+		.sqd-theme-light .sqd-smart-editor .sqd-editor details {
+			border: var(--smart-editor-details-border);
+			border-radius: var(--border-radius);
+			color: var(--smart-editor-details-color);
+			margin: 0.25em auto;
+			max-width: var(--smart-editor-width);
+			padding: 10px;
+		}
+
+		.sqd-theme-light .sqd-smart-editor .sqd-editor label,
+		.sqd-theme-light .sqd-smart-editor .sqd-editor .label-text {
+			color: var(--smart-editor-label-color);
+			font: var(--smart-editor-label-font);
+			margin-top: 0;
+		}
+
+		.sqd-theme-light .sqd-smart-editor .sqd-editor p {
+			margin: 0;
+			padding: 0 0 10px;
+		}
+
+		.sqd-theme-light .sqd-smart-editor .sqd-editor input[type="text"],
+		.sqd-theme-light .sqd-smart-editor .sqd-editor input[type="number"],
+		.sqd-theme-light .sqd-smart-editor .sqd-editor input[type="file"],
+		.sqd-theme-light .sqd-smart-editor .sqd-editor input[list],
+		.sqd-theme-light .sqd-smart-editor .sqd-editor select,
+		.sqd-theme-light .sqd-smart-editor .sqd-editor textarea {
+			background: var(--smart-editor-input-background);
+			border: var(--smart-editor-input-border);
+			border-radius: var(--border-radius);
+			color: var(--smart-editor-input-color);
+		}
+
+			.sqd-theme-light .sqd-smart-editor .sqd-editor input[type="text"]:hover,
+			.sqd-theme-light .sqd-smart-editor .sqd-editor input[type="number"]:hover,
+			.sqd-theme-light .sqd-smart-editor .sqd-editor input[type="file"]:hover,
+			.sqd-theme-light .sqd-smart-editor .sqd-editor input[list]:hover,
+			.sqd-theme-light .sqd-smart-editor .sqd-editor select:hover,
+			.sqd-theme-light .sqd-smart-editor .sqd-editor textarea:hover {
+				border: var(--smart-editor-input-hover-border);
+			}
+
+			.sqd-theme-light .sqd-smart-editor .sqd-editor input[type="text"]:focus,
+			.sqd-theme-light .sqd-smart-editor .sqd-editor input[type="number"]:focus,
+			.sqd-theme-light .sqd-smart-editor .sqd-editor input[type="file"]:focus,
+			.sqd-theme-light .sqd-smart-editor .sqd-editor input[list]:focus,
+			.sqd-theme-light .sqd-smart-editor .sqd-editor select:focus,
+			.sqd-theme-light .sqd-smart-editor .sqd-editor textarea:focus {
+				background: var(--smart-editor-input-focus-background);
+				color: var(--smart-editor-input-focus-color);
+				border: var(--smart-editor-input-focus-border);
+			}
+
+			.sqd-theme-light .sqd-smart-editor .sqd-editor input[type="text"]:read-only,
+			.sqd-theme-light .sqd-smart-editor .sqd-editor input[type="number"]:read-only,
+			.sqd-theme-light .sqd-smart-editor .sqd-editor input[type="file"]:read-only,
+			.sqd-theme-light .sqd-smart-editor .sqd-editor input[list]:read-only,
+			.sqd-theme-light .sqd-smart-editor .sqd-editor select:read-only,
+			.sqd-theme-light .sqd-smart-editor .sqd-editor textarea:read-only {
+				background: var(--smart-editor-input-readonly-background);
+				border: var(--smart-editor-input-readonly-border);
+				color: var(--smart-editor-input-readonly-color);
+			}
+
+		.sqd-theme-light .sqd-smart-editor .sqd-editor input[type="text"],
+		.sqd-theme-light .sqd-smart-editor .sqd-editor input[type="number"],
+		.sqd-theme-light .sqd-smart-editor .sqd-editor input[type="file"],
+		.sqd-theme-light .sqd-smart-editor .sqd-editor input[list],
+		.sqd-theme-light .sqd-smart-editor .sqd-editor select {
+			min-height: 1.3em;
+		}
+
+		.sqd-theme-light .sqd-smart-editor .sqd-editor div[data-g4-role='field'] {
+			margin-top: 1em;
+		}
+
+		.sqd-theme-light .sqd-smart-editor .sqd-editor div[data-g4-role='hint'] {
+			margin-top: 0.35em;
+			margin-bottom: 0.35em;
+		}
+
+		.sqd-theme-light .sqd-smart-editor .sqd-editor textarea {
+			margin: 0px;
+			resize: none;
+		}
+
 .sqd-theme-light .sqd-smart-editor-toggle {
-	background: #fff;
-	box-shadow: 0 0 8px rgba(0, 0, 0, 0.15);
+	background: var(--smart-editor-toggle-background);
+	border-radius: var(--border-radius);
+	box-shadow: var(--smart-editor-toggle-box-shadow);
+	right: var(--smart-editor-width);
 }
 
 .sqd-theme-light.sqd-context-menu {
