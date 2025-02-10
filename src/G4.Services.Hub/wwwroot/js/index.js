@@ -646,6 +646,9 @@ function newImportModal() {
 			// Create a new step using the state machine factory and the retrieved manifest.
 			const step = StateMachineSteps.newG4Step(manifest);
 
+			// Assign the name of the rule's capabilities to the step if available.
+			step.name = rule?.capabilities?.name || step.name;
+
 			// Ensure that the rule has 'rules' and 'branches' properties.
 			rule.rules = rule.rules || [];
 			rule.branches = rule.branches || {};

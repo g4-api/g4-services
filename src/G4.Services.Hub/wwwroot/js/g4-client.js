@@ -244,6 +244,9 @@ class G4Client {
 			"pluginName": step.pluginName,
 			"reference": {
 				"id": step.id
+			},
+			"capabilities": {
+				"name": step.name
 			}
 		}
 
