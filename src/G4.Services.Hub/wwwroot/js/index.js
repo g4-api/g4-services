@@ -780,7 +780,7 @@ function newImportModal() {
 	const inputId = Utilities.newUid();
 
 	// Select the field container where the modal will be appended. In this case, it's the <body> element.
-	const fieldContainer = document.querySelector("body");
+	const fieldContainer = document.querySelector("#designer > div");
 
 	// Find and remove any existing modals to ensure only one is visible at a time.
 	const existingModals = fieldContainer?.querySelectorAll("[id*=import-modal]");
