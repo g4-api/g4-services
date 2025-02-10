@@ -38,6 +38,7 @@
 	--smart-editor-input-focus-border: 1px solid var(--red);
 	--smart-editor-input-focus-color: var(--black);
 	--smart-editor-input-hover-border: 1px solid var(--red);
+	--smart-editor-input-placeholder-color: rgba(255, 255, 255, 0.5);
 	--smart-editor-input-readonly-background: var(--white);
 	--smart-editor-input-readonly-border: 1px solid var(--red);
 	--smart-editor-input-readonly-color: var(--black);
@@ -102,6 +103,7 @@ textarea {
 	white-space: pre;
 	overflow-y: hidden;
 	overflow-x: auto;
+	resize: none;
 }
 
 input[type="text"],

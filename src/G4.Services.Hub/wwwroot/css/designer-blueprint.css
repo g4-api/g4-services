@@ -22,6 +22,58 @@
 	width: calc(100% - 10px);
 }
 
+.sqd-theme-light input[type="text"],
+.sqd-theme-light input[type="number"],
+.sqd-theme-light input[type="file"],
+.sqd-theme-light input[list],
+.sqd-theme-light select,
+.sqd-theme-light textarea {
+	background: var(--smart-editor-input-background);
+	border: var(--smart-editor-input-border);
+	border-radius: var(--border-radius);
+	color: var(--smart-editor-input-color);
+}
+
+	.sqd-theme-light input[type="text"]:hover,
+	.sqd-theme-light input[type="number"]:hover,
+	.sqd-theme-light input[type="file"]:hover,
+	.sqd-theme-light input[list]:hover,
+	.sqd-theme-light select:hover,
+	.sqd-theme-light textarea:hover {
+		border: var(--smart-editor-input-hover-border);
+	}
+
+	.sqd-theme-light input[type="text"]:focus,
+	.sqd-theme-light input[type="number"]:focus,
+	.sqd-theme-light input[type="file"]:focus,
+	.sqd-theme-light input[list]:focus,
+	.sqd-theme-light select:focus,
+	.sqd-theme-light textarea:focus {
+		background: var(--smart-editor-input-focus-background);
+		color: var(--smart-editor-input-focus-color);
+		border: var(--smart-editor-input-focus-border);
+	}
+
+	.sqd-theme-light input[type="text"]:read-only,
+	.sqd-theme-light input[type="number"]:read-only,
+	.sqd-theme-light input[type="file"]:read-only,
+	.sqd-theme-light input[list]:read-only,
+	.sqd-theme-light select:read-only,
+	.sqd-theme-light textarea:read-only {
+		background: var(--smart-editor-input-readonly-background);
+		border: var(--smart-editor-input-readonly-border);
+		color: var(--smart-editor-input-readonly-color);
+	}
+
+	.sqd-theme-light input[type="text"]::placeholder,
+	.sqd-theme-light input[type="number"]::placeholder,
+	.sqd-theme-light input[type="file"]::placeholder,
+	.sqd-theme-light input[list]::placeholder,
+	.sqd-theme-light select::placeholder,
+	.sqd-theme-light textarea::placeholder {
+		color: var(--smart-editor-input-placeholder-color) !important;
+	}
+
 .sqd-theme-light .sqd-toolbox-filter {
 	background: var(--toolbox-filter-background);
 	border: var(--toolbox-filter-border);
@@ -150,57 +202,6 @@
 			padding: 0 0 10px;
 		}
 
-		.sqd-theme-light .sqd-smart-editor .sqd-editor input[type="text"],
-		.sqd-theme-light .sqd-smart-editor .sqd-editor input[type="number"],
-		.sqd-theme-light .sqd-smart-editor .sqd-editor input[type="file"],
-		.sqd-theme-light .sqd-smart-editor .sqd-editor input[list],
-		.sqd-theme-light .sqd-smart-editor .sqd-editor select,
-		.sqd-theme-light .sqd-smart-editor .sqd-editor textarea {
-			background: var(--smart-editor-input-background);
-			border: var(--smart-editor-input-border);
-			border-radius: var(--border-radius);
-			color: var(--smart-editor-input-color);
-		}
-
-			.sqd-theme-light .sqd-smart-editor .sqd-editor input[type="text"]:hover,
-			.sqd-theme-light .sqd-smart-editor .sqd-editor input[type="number"]:hover,
-			.sqd-theme-light .sqd-smart-editor .sqd-editor input[type="file"]:hover,
-			.sqd-theme-light .sqd-smart-editor .sqd-editor input[list]:hover,
-			.sqd-theme-light .sqd-smart-editor .sqd-editor select:hover,
-			.sqd-theme-light .sqd-smart-editor .sqd-editor textarea:hover {
-				border: var(--smart-editor-input-hover-border);
-			}
-
-			.sqd-theme-light .sqd-smart-editor .sqd-editor input[type="text"]:focus,
-			.sqd-theme-light .sqd-smart-editor .sqd-editor input[type="number"]:focus,
-			.sqd-theme-light .sqd-smart-editor .sqd-editor input[type="file"]:focus,
-			.sqd-theme-light .sqd-smart-editor .sqd-editor input[list]:focus,
-			.sqd-theme-light .sqd-smart-editor .sqd-editor select:focus,
-			.sqd-theme-light .sqd-smart-editor .sqd-editor textarea:focus {
-				background: var(--smart-editor-input-focus-background);
-				color: var(--smart-editor-input-focus-color);
-				border: var(--smart-editor-input-focus-border);
-			}
-
-			.sqd-theme-light .sqd-smart-editor .sqd-editor input[type="text"]:read-only,
-			.sqd-theme-light .sqd-smart-editor .sqd-editor input[type="number"]:read-only,
-			.sqd-theme-light .sqd-smart-editor .sqd-editor input[type="file"]:read-only,
-			.sqd-theme-light .sqd-smart-editor .sqd-editor input[list]:read-only,
-			.sqd-theme-light .sqd-smart-editor .sqd-editor select:read-only,
-			.sqd-theme-light .sqd-smart-editor .sqd-editor textarea:read-only {
-				background: var(--smart-editor-input-readonly-background);
-				border: var(--smart-editor-input-readonly-border);
-				color: var(--smart-editor-input-readonly-color);
-			}
-
-		.sqd-theme-light .sqd-smart-editor .sqd-editor input[type="text"],
-		.sqd-theme-light .sqd-smart-editor .sqd-editor input[type="number"],
-		.sqd-theme-light .sqd-smart-editor .sqd-editor input[type="file"],
-		.sqd-theme-light .sqd-smart-editor .sqd-editor input[list],
-		.sqd-theme-light .sqd-smart-editor .sqd-editor select {
-			min-height: 1.3em;
-		}
-
 		.sqd-theme-light .sqd-smart-editor .sqd-editor div[data-g4-role='field'] {
 			margin-top: 1em;
 		}
@@ -212,7 +213,6 @@
 
 		.sqd-theme-light .sqd-smart-editor .sqd-editor textarea {
 			margin: 0px;
-			resize: none;
 		}
 
 .sqd-theme-light .sqd-smart-editor-toggle {
