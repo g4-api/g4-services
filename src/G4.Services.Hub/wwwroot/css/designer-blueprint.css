@@ -1,5 +1,6 @@
 ﻿/* stylelint-disable property-no-unknown */
 
+.sqd-theme-light .sqd-placeholder-rect,
 .sqd-theme-light .sqd-step-task-rect,
 .sqd-theme-light .sqd-label-rect {
 	rx: var(--border-radius);
@@ -130,6 +131,10 @@
 		border-color: var(--toolbox-item-hover-border-color);
 	}
 
+	.sqd-theme-light .sqd-toolbox-item .sqd-toolbox-item-icon-image {
+		filter: var(--toolbox-item-icon-image-filter);
+	}
+
 	.sqd-theme-light .sqd-toolbox-item .sqd-toolbox-item-icon.sqd-no-icon {
 		background: var(--toolbox-item-icon-no-icon-background);
 		border-radius: var(--border-radius);
@@ -250,40 +255,43 @@
 	}
 
 .sqd-theme-light.sqd-designer {
-	background: #f9f9f9;
+	background: var(--blue);
 }
 
 .sqd-theme-light .sqd-line-grid-path {
-	stroke: #e3e3e3;
-	stroke-width: 1;
+	stroke: var(--line-grid-path-stroke);
+	stroke-width: var(--line-grid-path-stroke-width);
 }
 
 .sqd-theme-light .sqd-join {
-	stroke-width: 2;
-	stroke: #000;
+	stroke: var(--workflow-join-stroke);
+	stroke-width: var(--workflow-join-stroke-width);
 }
 
 .sqd-theme-light .sqd-region {
-	stroke: #cecece;
-	stroke-width: 2;
-	stroke-dasharray: 3;
+	stroke: var(--workflow-region-stroke);
+	stroke-dasharray: var(--workflow-region-stroke-dasharray);
+	stroke-width: var(--workflow-region-stroke-width);
 }
 
 	.sqd-theme-light .sqd-region.sqd-selected {
-		stroke: #ed4800;
-		stroke-width: 2;
-		stroke-dasharray: 0;
+		stroke: var(--workflow-region-selected-stroke);
+		stroke-dasharray: var(--workflow-region-selected-stroke-dasharray);
+		stroke-width: var(--workflow-region-selected-stroke-width);
 	}
 
 .sqd-theme-light .sqd-placeholder .sqd-placeholder-rect {
-	fill: #d8d8d8;
-	stroke: #6a6a6a;
-	stroke-width: 1;
-	stroke-dasharray: 3;
+	fill: var(--workflow-placeholder-rect-fill);
+	stroke: var(--workflow-placeholder-rect-stroke);
+	stroke-dasharray: var(--workflow-placeholder-rect-stroke-dasharray);
+	stroke-width: var(--workflow-placeholder-rect-stroke-width);
 }
 
 .sqd-theme-light .sqd-placeholder.sqd-hover .sqd-placeholder-rect {
-	fill: #ed4800;
+	fill: var(--workflow-placeholder-hover-rect-fill);
+	stroke: var(--workflow-placeholder-hover-rect-stroke);
+	stroke-dasharray: var(--workflow-placeholder-hover-rect-stroke-dasharray);
+	stroke-width: var(--workflow-placeholder-hover-rect-stroke-width);
 }
 
 .sqd-theme-light .sqd-placeholder-icon-path {

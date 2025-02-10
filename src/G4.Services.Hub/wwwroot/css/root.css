@@ -40,52 +40,79 @@
 	--control-bar-button-icon-path: var(--white);
 	--control-bar-button-start-icon-path: var(--green);
 	--control-bar-button-stop-icon-path: var(--red);
+	/* Line Grid */
+	--line-grid-path-stroke: rgba(255, 255, 255, 0.3);
+	--line-grid-path-stroke-witdh: 1;
 	/* Smart Editor */
-	--smart-editor-background: var(--blue);
+	--smart-editor-background: var(--white);
 	--smart-editor-box-shadow: 0 0 8px rgba(0, 0, 0, 0.15);
-	--smart-editor-color: var(--white);
-	--smart-editor-details-border: 1px solid var(--white);
-	--smart-editor-details-color: var(--white);
-	--smart-editor-input-background: var(--blue);
-	--smart-editor-input-border: 1px solid var(--white);
-	--smart-editor-input-color: var(--white);
+	--smart-editor-color: var(--blue);
+	--smart-editor-details-border: 1px solid var(--blue);
+	--smart-editor-details-color: var(--blue);
+	--smart-editor-input-background: var(--white);
+	--smart-editor-input-border: 1px solid var(--blue);
+	--smart-editor-input-color: var(--blue);
 	--smart-editor-input-focus-background: var(--white);
 	--smart-editor-input-focus-border: 1px solid var(--red);
 	--smart-editor-input-focus-color: var(--black);
 	--smart-editor-input-hover-border: 1px solid var(--red);
 	--smart-editor-input-placeholder-color: rgba(255, 255, 255, 0.5);
 	--smart-editor-input-readonly-background: var(--white);
-	--smart-editor-input-readonly-border: 1px solid var(--red);
+	--smart-editor-input-readonly-border: 1px solid var(--blue);
 	--smart-editor-input-readonly-color: var(--black);
 	--smart-editor-label-font: 700 1.0em/1.0em 'Roboto', sans-serif;
-	--smart-editor-label-color: var(--white);
-	--smart-editor-toggle-background: var(--blue);
+	--smart-editor-label-color: var(--blue);
+	--smart-editor-toggle-background: var(--white);
 	--smart-editor-toggle-box-shadow: 0 0 8px rgba(0, 0, 0, 0.15);
 	--smart-editor-width: 350px;
 	/* Toolbox */
-	--toolbox-background: var(--blue);
+	--toolbox-background: var(--white);
 	--toolbox-box-shadow: 0 0 8px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0, 0, 0, 0.15);
-	--toolbox-filter-background: var(--blue);
-	--toolbox-filter-border: 1px solid var(--white);
-	--toolbox-filter-color: var(--white);
+	--toolbox-filter-background: var(--white);
+	--toolbox-filter-border: 1px solid var(--blue);
+	--toolbox-filter-color: var(--blue);
 	--toolbox-filter-focus-background: var(--white);
 	--toolbox-filter-focus-border-color: var(--red);
 	--toolbox-filter-focus-color: var(--black);
 	--toolbox-filter-hover-border-color: var(--red);
-	--toolbox-group-title-color: var(--white);
-	--toolbox-group-title-background: var(--blue);
+	--toolbox-group-title-color: var(--blue);
+	--toolbox-group-title-background: var(--white);
 	--toolbox-group-title-font: 700 1.3em/1.3em 'Roboto', sans-serif;
-	--toolbox-header-title-color: var(--white);
-	--toolbox-header-title-font: 400 1.5em/1.5em 'Roboto', sans-serif;
-	--toolbox-input-placeholder-color: rgba(255, 255, 255, 0.5);
-	--toolbox-item-background: var(--blue);
-	--toolbox-item-border: 1px solid var(--white);
+	--toolbox-header-title-color: var(--blue);
+	--toolbox-header-title-font: 700 1.5em/1.5em 'Roboto', sans-serif;
+	--toolbox-input-placeholder-color: rgba(36, 73, 126, 0.5);
+	--toolbox-item-background: var(--white);
+	--toolbox-item-border: 1px solid var(--blue);
 	--toolbox-item-box-shadow: 0 2px 2px rgba(0, 0, 0, 0.15);
-	--toolbox-item-color: var(--white);
-	--toolbox-item-hover-background: var(--blue);
+	--toolbox-item-color: var(--blue);
+	--toolbox-item-hover-background: var(--white);
 	--toolbox-item-hover-border-color: var(--red);
-	--toolbox-item-icon-no-icon-background: #c6c6c6;
+	/*
+		This filter chain is intended for images that are not originally black.
+		It starts by applying brightness(0) saturate(100%) to convert the image to black,
+		then applies a blue filter to produce the color #24497E.
+		To adjust for different target colors, try using https://codepen.io/sosuke/pen/Pjoqqp.
+	*/
+	--toolbox-item-icon-image-filter: brightness(0) saturate(100%) invert(18%) sepia(29%) saturate(4501%) hue-rotate(202deg) brightness(90%) contrast(78%);
+	--toolbox-item-icon-no-icon-background: var(--white);
 	--toolbox-width: 150px;
+	/* Workflow */
+	--workflow-join-stroke: var(--white);
+	--workflow-join-stroke-width: 2;
+	--workflow-placeholder-hover-rect-fill: var(--white);
+	--workflow-placeholder-hover-rect-stroke: var(--red);
+	--workflow-placeholder-hover-rect-stroke-dasharray: 0;
+	--workflow-placeholder-hover-rect-stroke-width: 1;
+	--workflow-placeholder-rect-fill: rgba(255, 255, 255, 0.5);
+	--workflow-placeholder-rect-stroke: rgba(36, 73, 126, 0.5);
+	--workflow-placeholder-rect-stroke-dasharray: 0;
+	--workflow-placeholder-rect-stroke-width: 1;
+	--workflow-region-selected-stroke: var(--red);
+	--workflow-region-selected-stroke-dasharray: 0;
+	--workflow-region-selected-stroke-width: 2;
+	--workflow-region-stroke: rgba(255, 255, 255, 0.5);
+	--workflow-region-stroke-dasharray: 3;
+	--workflow-region-stroke-width: 2;
 }
 
 html, body {
