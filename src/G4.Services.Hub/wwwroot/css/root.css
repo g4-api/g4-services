@@ -14,6 +14,21 @@
 	--green: #39AA40;
 	--red: #ED4800;
 	--white: #FFF;
+	/* Context Menu */
+	--context-menu-background: var(--white);
+	--context-menu-border: none;
+	--context-menu-box-shadow: 0 0 8px rgba(0, 0, 0, 0.2);
+	--context-menu-color: var(--blue);
+	--context-menu-font: 400 1.0em/1.0em 'Roboto', sans-serif;
+	--context-menu-group-color: var(--blue);
+	--context-menu-group-font: 700 1.0em/1.0em 'Roboto', sans-serif;
+	--context-menu-item-border: 1px solid var(--white);
+	--context-menu-item-color: var(--black);
+	--context-menu-item-font: 400 1.0em/1.0em 'Roboto', sans-serif;
+	--context-menu-item-hover-background: var(--white);
+	--context-menu-item-hover-border: 1px solid var(--red);
+	--context-menu-item-hover-color: var(--black);
+	--context-menu-item-hover-font: 400 1.0em/1.0em 'Roboto', sans-serif;
 	/* Control Bar */
 	--control-bar-background: var(--blue);
 	--control-bar-box-shadow: 0 0 8px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0, 0, 0, 0.15);
@@ -42,7 +57,7 @@
 	--smart-editor-input-readonly-background: var(--white);
 	--smart-editor-input-readonly-border: 1px solid var(--red);
 	--smart-editor-input-readonly-color: var(--black);
-	--smart-editor-label-font: 600 1.0em/1.0em 'Roboto', sans-serif;
+	--smart-editor-label-font: 700 1.0em/1.0em 'Roboto', sans-serif;
 	--smart-editor-label-color: var(--white);
 	--smart-editor-toggle-background: var(--blue);
 	--smart-editor-toggle-box-shadow: 0 0 8px rgba(0, 0, 0, 0.15);
@@ -59,9 +74,9 @@
 	--toolbox-filter-hover-border-color: var(--red);
 	--toolbox-group-title-color: var(--white);
 	--toolbox-group-title-background: var(--blue);
-	--toolbox-group-title-font: 600 1.3em/1.3em 'Roboto', sans-serif;
+	--toolbox-group-title-font: 700 1.3em/1.3em 'Roboto', sans-serif;
 	--toolbox-header-title-color: var(--white);
-	--toolbox-header-title-font: 300 1.5em/1.5em 'Roboto', sans-serif;
+	--toolbox-header-title-font: 400 1.5em/1.5em 'Roboto', sans-serif;
 	--toolbox-input-placeholder-color: rgba(255, 255, 255, 0.5);
 	--toolbox-item-background: var(--blue);
 	--toolbox-item-border: 1px solid var(--white);

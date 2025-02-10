@@ -223,22 +223,30 @@
 }
 
 .sqd-theme-light.sqd-context-menu {
-	background: #fff;
-	box-shadow: 0 0 8px rgba(0, 0, 0, 0.2);
-	border-radius: 0px;
+	background: var(--context-menu-background);
+	border-radius: var(--border-radius);
+	box-shadow: var(--context-menu-box-shadow);
+	color: var(--context-menu-color);
+	font: var(--context-menu-font)
 }
 
 .sqd-theme-light .sqd-context-menu-group {
-	color: #888;
+	color: var(--context-menu-group-color);
+	font: var(--context-menu-group-font);
 }
 
 .sqd-theme-light .sqd-context-menu-item {
-	color: #000;
-	border-radius: 0px;
+	color: var(--context-menu-item-color);
+	border: var(--context-menu-item-border);
+	border-radius: var(--border-radius);
+	font: var(--context-menu-item-font);
 }
 
 	.sqd-theme-light .sqd-context-menu-item:hover {
-		background: #eee;
+		background: var(--context-menu-item-hover-background);
+		border: var(--context-menu-item-hover-border);
+		color: var(--context-menu-item-hover-color);
+		font: var(--context-menu-item-hover-font);
 	}
 
 .sqd-theme-light.sqd-designer {
