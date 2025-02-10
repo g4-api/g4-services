@@ -97,6 +97,19 @@
 	--toolbox-item-icon-no-icon-background: var(--white);
 	--toolbox-width: 150px;
 	/* Workflow */
+	--root-start-stop-circle-fill: var(--white);
+	--root-start-stop-icon-fill: var(--blue);
+	--step-task-empty-icon-fill: rgba(255, 255, 255, 0.5);
+	--step-task-rect-fill: transparent;
+	--step-task-rect-filter: drop-shadow(0 1.5px 1.5px rgba(0, 0, 0, 0.15));
+	--step-task-rect-stroke: var(--white);
+	--step-task-rect-stroke-width: 2;
+	--step-task-selected-rect-stroke: var(--red);
+	--step-task-selected-rect-stroke-width: 2;
+	--step-task-text-fill: var(--white);
+	--step-task-text-font: 400 1.0em/1.0em 'Roboto', sans-serif;
+	--validation-error-path-fill: #FFA200;
+	--validation-error-icon-path-fill: #000;
 	--workflow-join-stroke: var(--white);
 	--workflow-join-stroke-width: 2;
 	--workflow-placeholder-hover-rect-fill: var(--white);

@@ -1,5 +1,7 @@
 ﻿/* stylelint-disable property-no-unknown */
 
+.sqd-theme-light .sqd-step-task-empty-icon,
+.sqd-theme-light .sqd-no-icon,
 .sqd-theme-light .sqd-placeholder-rect,
 .sqd-theme-light .sqd-step-task-rect,
 .sqd-theme-light .sqd-label-rect {
@@ -294,48 +296,49 @@
 	stroke-width: var(--workflow-placeholder-hover-rect-stroke-width);
 }
 
-.sqd-theme-light .sqd-placeholder-icon-path {
+/*.sqd-theme-light .sqd-placeholder-icon-path {
 	fill: #2b2b2b;
 }
 
 .sqd-theme-light .sqd-placeholder.sqd-hover .sqd-placeholder-icon-path {
 	fill: #fff;
-}
+}*/
 
 .sqd-theme-light .sqd-validation-error {
-	fill: #ffa200;
+	fill: var(--validation-error-path-fill);
 }
 
 .sqd-theme-light .sqd-validation-error-icon-path {
-	fill: #000;
+	fill: var(--validation-error-icon-path-fill);
 }
 
 .sqd-theme-light .sqd-root-start-stop-circle {
-	fill: #2c18df;
+	fill: var(--root-start-stop-circle-fill);
 }
 
 .sqd-theme-light .sqd-root-start-stop-icon {
-	fill: #fff;
+	fill: var(--root-start-stop-icon-fill);
 }
 
 .sqd-theme-light .sqd-step-task .sqd-step-task-rect {
-	fill: #fff;
-	stroke-width: 1;
-	stroke: #c3c3c3;
-	filter: drop-shadow(0 1.5px 1.5px rgba(0, 0, 0, 0.15));
+	fill: var(--step-task-rect-fill);
+	filter: var(--step-task-rect-filter);
+	stroke: var(--step-task-rect-stroke);
+	stroke-width: var(--step-task-rect-stroke-width);
 }
 
 	.sqd-theme-light .sqd-step-task .sqd-step-task-rect.sqd-selected {
-		stroke: #ed4800;
-		stroke-width: 2;
+		stroke: var(--step-task-selected-rect-stroke);
+		stroke-width: var(--step-task-selected-rect-stroke-width);
 	}
 
 .sqd-theme-light .sqd-step-task .sqd-step-task-text {
-	fill: #000;
+	fill: var(--step-task-text-fill);
+	font: var(--step-task-text-font);
 }
 
 .sqd-theme-light .sqd-step-task .sqd-step-task-empty-icon {
-	fill: #c6c6c6;
+	fill: var(--step-task-empty-icon-fill);
 }
 
 .sqd-theme-light .sqd-step-task .sqd-input {
