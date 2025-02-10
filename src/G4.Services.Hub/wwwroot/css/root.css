@@ -50,6 +50,9 @@
 	--smart-editor-color: var(--blue);
 	--smart-editor-details-border: 1px solid var(--blue);
 	--smart-editor-details-color: var(--blue);
+	--smart-editor-group-background: transparent;
+	--smart-editor-group-color: var(--blue);
+	--smart-editor-group-font: 400 1.2em/1.2em 'Roboto', sans-serif;
 	--smart-editor-input-background: var(--white);
 	--smart-editor-input-border: 1px solid var(--blue);
 	--smart-editor-input-color: var(--blue);
@@ -149,20 +152,20 @@
 }
 
 html, body {
-	width: var(--base-width);
 	height: var(--base-height);
 	margin: 0;
-	padding: 0;
 	overflow: hidden;
+	padding: 0;
+	width: var(--base-width);
 }
 
 button {
-	box-sizing: border-box;
-	padding: 6px;
+	cursor: pointer;
 	border-radius: 0px;
+	box-sizing: border-box;
 	line-height: 1.3em;
 	min-width: 32.19px;
-	cursor: pointer;
+	padding: 6px;
 }
 
 input[type="text"],
@@ -173,12 +176,20 @@ select {
 	min-height: 1.3em;
 }
 
+summary {
+	background: var(--smart-editor-group-background);
+	color: var(--smart-editor-group-color);
+	cursor: pointer;
+	font: var(--smart-editor-group-font);
+	outline: none;
+}
+
 textarea {
 	min-height: 5.2em;
-	white-space: pre;
-	overflow-y: hidden;
 	overflow-x: auto;
+	overflow-y: hidden;
 	resize: none;
+	white-space: pre;
 }
 
 input[type="text"],
@@ -203,29 +214,29 @@ textarea {
 	}
 
 #designer {
-	position: absolute;
+	height: var(--middle-row-height);
 	left: 0;
+	position: absolute;
 	top: var(--top-row-height);
 	width: var(--base-width);
-	height: var(--middle-row-height);
 }
 
 .top {
-	position: absolute;
 	display: grid;
-	top: 0;
-	left: 0;
-	width: var(--base-width);
-	height: var(--top-row-height);
 	grid-template-columns: var(--top-row-grid-template-columns);
+	height: var(--top-row-height);
+	left: 0;
+	position: absolute;
+	top: 0;
+	width: var(--base-width);
 }
 
 .bottom {
-	position: absolute;
-	display: grid;
 	bottom: 0;
+	display: grid;
+	grid-template-columns: var(--bottom-row-grid-template-columns);
+	height: var(--bottom-row-height);
+	position: absolute;
 	left: 0;
 	width: var(--base-width);
-	height: var(--bottom-row-height);
-	grid-template-columns: var(--bottom-row-grid-template-columns);
 }
