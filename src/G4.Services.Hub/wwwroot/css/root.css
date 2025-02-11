@@ -50,6 +50,7 @@
 	--smart-editor-color: var(--blue);
 	--smart-editor-details-border: 1px solid var(--blue);
 	--smart-editor-details-color: var(--blue);
+	--smart-editor-details-hover-color: var(--red);
 	--smart-editor-group-background: transparent;
 	--smart-editor-group-color: var(--blue);
 	--smart-editor-group-font: 400 1.2em/1.2em 'Roboto', sans-serif;
@@ -64,7 +65,9 @@
 	--smart-editor-input-readonly-background: var(--white);
 	--smart-editor-input-readonly-border: 1px solid var(--blue);
 	--smart-editor-input-readonly-color: var(--black);
-	--smart-editor-label-font: 700 1.0em/1.0em 'Roboto', sans-serif;
+	--smart-editor-label-font: 700 1.1em/1.1em 'Roboto', sans-serif;
+	--smart-editor-label-hint-icon-container-background: #DDD;
+	--smart-editor-label-hint-icon-container-size: 1.2em;
 	--smart-editor-label-color: var(--blue);
 	--smart-editor-toggle-background: var(--white);
 	--smart-editor-toggle-box-shadow: 0 0 8px rgba(0, 0, 0, 0.15);
@@ -168,14 +171,6 @@ button {
 	padding: 6px;
 }
 
-input[type="text"],
-input[type="number"],
-input[type="file"],
-input[list],
-select {
-	min-height: 1.3em;
-}
-
 summary {
 	background: var(--smart-editor-group-background);
 	color: var(--smart-editor-group-color);
@@ -190,6 +185,14 @@ textarea {
 	overflow-y: hidden;
 	resize: none;
 	white-space: pre;
+}
+
+input[type="text"],
+input[type="number"],
+input[type="file"],
+input[list],
+select {
+	min-height: 1.3em;
 }
 
 input[type="text"],
@@ -221,7 +224,17 @@ textarea {
 	width: var(--base-width);
 }
 
-.top {
+#designer--bottom {
+	bottom: 0;
+	display: grid;
+	grid-template-columns: var(--bottom-row-grid-template-columns);
+	height: var(--bottom-row-height);
+	position: absolute;
+	left: 0;
+	width: var(--base-width);
+}
+
+#designer--top {
 	display: grid;
 	grid-template-columns: var(--top-row-grid-template-columns);
 	height: var(--top-row-height);
@@ -231,12 +244,23 @@ textarea {
 	width: var(--base-width);
 }
 
-.bottom {
-	bottom: 0;
-	display: grid;
-	grid-template-columns: var(--bottom-row-grid-template-columns);
-	height: var(--bottom-row-height);
-	position: absolute;
-	left: 0;
-	width: var(--base-width);
+.sqd-hint-icon-container {
+	position: relative;
+	cursor: pointer;
+	display: block;
+	border-radius: 50% 50%;
+	text-align: center;
+}
+
+.sqd-label--with-help-icon {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	font-family: Arial, sans-serif;
+	width: 100%;
+}
+
+.sqd-smart-editor .sqd-editor details {
+	margin: 0.25em auto;
+	padding: 10px;
 }

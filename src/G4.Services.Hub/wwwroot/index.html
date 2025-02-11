@@ -217,24 +217,23 @@
 
 	<style>
 		/* Box-sizing Reset */
-		*,
+		/**,
 		*::before,
 		*::after {
 			box-sizing: border-box;
-		}
+		}*/
 
 		/* Flexbox Container for Label */
-		.label-with-icon {
+		/*.sqd-label--with-help-icon {
 			display: flex;
 			align-items: center;
 			justify-content: space-between;
 			font-family: Arial, sans-serif;
 			width: 100%;
-			font-size: 16px;
-		}
+		}*/
 
 		/* SVG Icon Styling */
-		.hint-icon-container {
+/*		.sqd-hint-icon-container {
 			position: relative;
 			cursor: pointer;
 			align-items: center;
@@ -247,7 +246,7 @@
 			border-radius: 50% 50%;
 			text-align: center;
 			font-size: 11px;
-		}
+		}*/
 
 		.hint-icon {
 			font: 14px/1.3em Arial, Verdana, sans-serif;
@@ -261,8 +260,8 @@
 		}
 
 		/* Change icon color on hover/focus */
-		.hint-icon-container:hover .hint-icon,
-		.hint-icon-container:focus .hint-icon {
+		.sqd-hint-icon-container:hover .hint-icon,
+		.sqd-hint-icon-container:focus .hint-icon {
 			fill: #007BFF;
 		}
 
@@ -387,12 +386,12 @@
 		</div>
 	</div>
 	<div id="designer"></div>
-	<div class="top">
+	<div id="designer--top">
 		<div>Column 1</div>
 		<div>Column 2</div>
 		<div>Column 3</div>
 	</div>
-	<div class="bottom">
+	<div id="designer--bottom">
 		<div>Column 1</div>
 		<div>Column 2</div>
 		<div>Column 3</div>
