@@ -146,6 +146,7 @@
 
 .sqd-theme-light .sqd-control-bar {
 	background: var(--control-bar-background);
+	border: var(--control-bar-border);
 	border-radius: var(--border-radius);
 	box-shadow: var(--control-bar-box-shadow);
 }
@@ -272,7 +273,7 @@
 	}
 
 .sqd-theme-light.sqd-designer {
-	background: var(--blue);
+	background: var(--primary-color);
 }
 
 .sqd-theme-light .sqd-line-grid-path {
