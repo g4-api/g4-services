@@ -1,5 +1,6 @@
 ﻿:root {
 	/* Application */
+	--base-font: 400 14px/1.3em 'Roboto', sans-serif;
 	--base-height: 100vh;
 	--base-width: 100vw;
 	--border-radius: 0px;
@@ -54,6 +55,8 @@
 	--smart-editor-group-background: transparent;
 	--smart-editor-group-color: var(--blue);
 	--smart-editor-group-font: 400 1.2em/1.2em 'Roboto', sans-serif;
+	--smart-editor-help-text-background: #EEE;
+	--smart-editor-help-text-border: 1px solid #DDD;
 	--smart-editor-input-background: var(--white);
 	--smart-editor-input-border: 1px solid var(--blue);
 	--smart-editor-input-color: var(--blue);
@@ -66,8 +69,9 @@
 	--smart-editor-input-readonly-border: 1px solid var(--blue);
 	--smart-editor-input-readonly-color: var(--black);
 	--smart-editor-label-font: 700 1.1em/1.1em 'Roboto', sans-serif;
-	--smart-editor-label-hint-icon-container-background: #DDD;
-	--smart-editor-label-hint-icon-container-size: 1.2em;
+	--smart-editor-label-help-icon-container-background: #DDD;
+	--smart-editor-label-help-icon-container-hover-fill: #007BFF;
+	--smart-editor-label-help-icon-container-size: 1.2em;
 	--smart-editor-label-color: var(--blue);
 	--smart-editor-toggle-background: var(--white);
 	--smart-editor-toggle-box-shadow: 0 0 8px rgba(0, 0, 0, 0.15);
@@ -155,6 +159,7 @@
 }
 
 html, body {
+	font: var(--base-font);
 	height: var(--base-height);
 	margin: 0;
 	overflow: hidden;
@@ -244,7 +249,11 @@ textarea {
 	width: var(--base-width);
 }
 
-.sqd-hint-icon-container {
+.sqd-control-bar-button-icon {
+	padding: 0 !important;
+}
+
+.sqd-help-icon-container {
 	position: relative;
 	cursor: pointer;
 	display: block;
@@ -260,7 +269,52 @@ textarea {
 	width: 100%;
 }
 
+	.sqd-label--with-help-icon .help-icon {
+		text-align: center;
+		cursor: pointer;
+		width: 64%;
+		height: 64%;
+		margin: 18%;
+	}
+
 .sqd-smart-editor .sqd-editor details {
 	margin: 0.25em auto;
 	padding: 10px;
+}
+
+.sqd-smart-editor .sqd-editor div[data-g4-role='input-row'],
+.sqd-smart-editor .sqd-editor div[data-g4-role='keyvalue'],
+.sqd-smart-editor .sqd-editor .text-with-button {
+	align-items: center;
+	box-sizing: border-box;
+	display: flex;
+	justify-content: space-between;
+	margin: 0.2em 0;
+}
+
+	.sqd-smart-editor .sqd-editor div[data-g4-role='input-row'] button,
+	.sqd-smart-editor .sqd-editor div[data-g4-role='keyvalue'] button,
+	.sqd-smart-editor .sqd-editor .text-with-button button {
+		border-radius: var(--border-radius);
+		box-sizing: border-box;
+		cursor: pointer;
+		font-size: 1.3em;
+		line-height: 1;
+		padding: 6px;
+	}
+
+	.sqd-smart-editor .sqd-editor div[data-g4-role='input-row'] input[type="text"],
+	.sqd-smart-editor .sqd-editor div[data-g4-role='input-row'] textarea,
+	.sqd-smart-editor .sqd-editor div[data-g4-role='keyvalue'] input[type="text"],
+	.sqd-smart-editor .sqd-editor .text-with-button input[type="text"] {
+		margin-left: 0.2em;
+	}
+
+.sqd-smart-editor .sqd-editor textarea {
+	margin: 0px;
+}
+
+.sqd-smart-editor .sqd-editor .sqd-help-text {
+	border-radius: var(--border-radius);
+	padding: 6px 10px;
 }

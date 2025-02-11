@@ -222,14 +222,19 @@
 			margin-bottom: 0.35em;
 		}
 
-		.sqd-theme-light .sqd-smart-editor .sqd-editor .sqd-hint-icon-container {
-			width: var(--smart-editor-label-hint-icon-container-size);
-			height: var(--smart-editor-label-hint-icon-container-size);
-			background: var(--smart-editor-label-hint-icon-container-background);
+		.sqd-theme-light .sqd-smart-editor .sqd-editor .sqd-help-icon-container {
+			width: var(--smart-editor-label-help-icon-container-size);
+			height: var(--smart-editor-label-help-icon-container-size);
+			background: var(--smart-editor-label-help-icon-container-background);
 		}
 
-		.sqd-theme-light .sqd-smart-editor .sqd-editor textarea {
-			margin: 0px;
+			.sqd-theme-light .sqd-smart-editor .sqd-editor .sqd-help-icon-container:hover {
+				fill: var(--smart-editor-label-help-icon-container-hover-fill);
+			}
+
+		.sqd-theme-light .sqd-smart-editor .sqd-editor .sqd-help-text {
+			background: var(--smart-editor-help-text-background);
+			border: var(--smart-editor-help-text-border);
 		}
 
 .sqd-theme-light .sqd-smart-editor-toggle {

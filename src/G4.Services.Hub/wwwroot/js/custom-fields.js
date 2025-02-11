@@ -20,7 +20,7 @@ const newFieldContainer = (id, labelDisplayName, hintText) => {
         const escapedId = CSS.escape(hintContainer.id);
 
         // Query for an existing hint text element within the hintContainer.
-        let hintElement = document.querySelector(`#${escapedId} > div.hint-text`);
+        let hintElement = document.querySelector(`#${escapedId} > div.sqd-help-text`);
 
         // If the hint text element already exists, remove it and exit the function.
         if (hintElement) {
@@ -30,7 +30,7 @@ const newFieldContainer = (id, labelDisplayName, hintText) => {
 
         // Create a new hint text element if it doesn't already exist.
         hintElement = document.createElement('div');
-        hintElement.classList.add('hint-text'); // Add the 'hint-text' class for styling.
+        hintElement.classList.add('sqd-help-text'); // Add the 'sqd-help-text' class for styling.
         hintElement.innerHTML = hintText;       // Set the provided hint text as the content.
 
         // Append the newly created hint text element to the hintContainer.
@@ -66,7 +66,7 @@ const newFieldContainer = (id, labelDisplayName, hintText) => {
     // Create a new `span` element to serve as the hint icon
     const iconElement = document.createElement('span');
     iconElement.id = `${id}-icon`;
-    iconElement.classList.add('sqd-hint-icon-container');
+    iconElement.classList.add('sqd-help-icon-container');
     iconElement.tabIndex = 0;
     iconElement.title = 'More Information';
     iconElement.setAttribute('role', 'img');
@@ -78,12 +78,12 @@ const newFieldContainer = (id, labelDisplayName, hintText) => {
      *
      * Note:
      * - `for` attribute links the label to the input element with the corresponding `id`.
-     * - The `sqd-hint-icon-container` is interactive, indicated by `tabindex="0"`, allowing keyboard navigation.
+     * - The `sqd-help-icon-container` is interactive, indicated by `tabindex="0"`, allowing keyboard navigation.
      * - `role="img"` and `title` provide accessibility enhancements.
      */
     const labelText = `<span class="label-text">${labelDisplayName}</span></label>`;
     const svg = `
-        <svg viewBox="0 -960 960 960" class="hint-icon" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <svg viewBox="0 -960 960 960" class="help-icon" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             <path d="M419-334q1-87 20.5-129t65.5-76q39-31 57.5-61.109T581-666q0-39-25.5-64.5T486-756q-46 0-75 26t-43 67l-120-52q27-74 87-120.5T485.756-882q109.228 0 168.236 62.148Q713-757.703 713-669q0 60-21 105.5T625-478q-46 40-57 65.5T557-334H419Zm66.788 282Q447-52 420-79t-27-65.496q0-38.495 26.92-65.5Q446.841-237 485.92-237 525-237 552-209.996q27 27.005 27 65.5Q579-106 551.788-79q-27.213 27-66 27Z"></path>
         </svg>`;
 
@@ -3159,7 +3159,7 @@ class CustomFields {
          */
         const switchHint = (hintContainer, hintText) => {
             // Query for an existing hint text element within the hintContainer.
-            let hintElement = hintContainer.querySelector('div.hint-text');
+            let hintElement = hintContainer.querySelector('div.sqd-help-text');
 
             // If the hint text element already exists, remove it and exit the function.
             if (hintElement) {
@@ -3169,7 +3169,7 @@ class CustomFields {
 
             // Create a new hint text element if it doesn't already exist.
             hintElement = document.createElement('div');
-            hintElement.classList.add('hint-text'); // Add the 'hint-text' class for styling.
+            hintElement.classList.add('sqd-help-text'); // Add the 'sqd-help-text' class for styling.
             hintElement.innerHTML = hintText;       // Set the provided hint text as the content.
 
             // Append the newly created hint text element to the hintContainer.
@@ -3187,8 +3187,8 @@ class CustomFields {
         const html = `
         <h2 style="display: flex; align-items: center; justify-content: space-between;">
             ${options.titleText}
-            <span class="sqd-hint-icon-container" tabindex="0" title="More Information" role="img" aria-label="More Information">
-                <svg viewBox="0 -960 960 960" class="hint-icon" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <span class="sqd-help-icon-container" tabindex="0" title="More Information" role="img" aria-label="More Information">
+                <svg viewBox="0 -960 960 960" class="help-icon" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                     <path d="M419-334q1-87 20.5-129t65.5-76q39-31 57.5-61.109T581-666q0-39-25.5-64.5T486-756q-46 0-75 26t-43 67l-120-52q27-74 87-120.5T485.756-882q109.228 0 168.236 62.148Q713-757.703 713-669q0 60-21 105.5T625-478q-46 40-57 65.5T557-334H419Zm66.788 282Q447-52 420-79t-27-65.496q0-38.495 26.92-65.5Q446.841-237 485.92-237 525-237 552-209.996q27 27.005 27 65.5Q579-106 551.788-79q-27.213 27-66 27Z"></path>
                 </svg>
             </span>
