@@ -15,7 +15,8 @@
 	<link href="./css/designer-blueprint-appearance.css" rel="stylesheet" />
 </head>
 
-<body>
+<body class="sqd-theme-light">
+
 	<div id="loading-indicator">
 		<div id="spinner">
 			<span></span>
@@ -25,16 +26,25 @@
 			<span></span>
 		</div>
 	</div>
-	<div id="designer"></div>
-	<div id="designer--top">
-		<div>Column 1</div>
-		<div>Column 2</div>
-		<div>Column 3</div>
-	</div>
-	<div id="designer--bottom">
-		<div>Column 1</div>
-		<div>Column 2</div>
-		<div>Column 3</div>
+
+	<div id="app">
+		<div id="designer--header" class="sqd-header">
+			<div>
+				<div class="sqd-title">G4<span style="vertical-align: super; font-size: 0.3em;">TM</span> Engine API</div>
+				<div class="sqd-subtitle">Blueprint Designer</div>
+			</div>
+			<div>Column 2</div>
+			<div>Column 3</div>
+		</div>
+
+		<div id="designer" class="sqd-content"></div>
+
+		<div id="designer--bottom" class="sqd-footer">
+			<div>Column 1</div>
+			<div>Column 2</div>
+			<div>Column 3</div>
+		</div>
+
 	</div>
 
 	<script src="./js/utilities.js"></script>

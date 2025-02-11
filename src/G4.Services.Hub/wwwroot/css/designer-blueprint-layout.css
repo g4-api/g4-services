@@ -1,4 +1,29 @@
-﻿
+﻿/* Reset default margin and padding */
+* {
+	margin: 0;
+	padding: 0;
+	box-sizing: border-box;
+}
+
+#app {
+	display: flex;
+	flex-direction: column;
+	min-height: 100vh;
+}
+
+.sqd-header {
+	height: var(--header-height);
+}
+
+.sqd-content {
+	flex: 1;
+}
+
+.sqd-footer {
+	height: var(--footer-height);
+}
+
+
 html, body {
 	font: var(--base-font);
 	height: var(--base-height);
@@ -63,18 +88,18 @@ textarea {
 	}
 
 #designer {
-	height: var(--middle-row-height);
+	height: var(--content-height);
 	left: 0;
 	position: absolute;
-	top: var(--top-row-height);
+	top: var(--header-height);
 	width: var(--base-width);
 }
 
 #designer--bottom {
 	bottom: 0;
 	display: grid;
-	grid-template-columns: var(--bottom-row-grid-template-columns);
-	height: var(--bottom-row-height);
+	grid-template-columns: var(--footer-grid-template-columns);
+	height: var(--footer-height);
 	position: absolute;
 	left: 0;
 	width: var(--base-width);
@@ -82,8 +107,8 @@ textarea {
 
 #designer--top {
 	display: grid;
-	grid-template-columns: var(--top-row-grid-template-columns);
-	height: var(--top-row-height);
+	grid-template-columns: var(--header-grid-template-columns);
+	height: var(--header-height);
 	left: 0;
 	position: absolute;
 	top: 0;
@@ -126,6 +151,12 @@ textarea {
 		height: 64%;
 		margin: 18%;
 	}
+
+.sqd-smart-editor {
+	top: 10px;
+	right: 10px;
+	height: calc(100% - 20px);
+}
 
 .sqd-smart-editor .sqd-editor details {
 	margin: 0.25em auto;

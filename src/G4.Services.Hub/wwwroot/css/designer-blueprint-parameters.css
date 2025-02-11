@@ -4,11 +4,11 @@
 	--base-height: 100vh;
 	--base-width: 100vw;
 	--border-radius: 0px;
-	--bottom-row-grid-template-columns: 33.33% 33.33% 33.33%;
-	--bottom-row-height: 5vh;
-	--middle-row-height: calc(100vh - var(--top-row-height) - var(--bottom-row-height));
-	--top-row-grid-template-columns: 33.33% 33.33% 33.33%;
-	--top-row-height: 5vh;
+	--footer-grid-template-columns: 33.33% 33.33% 33.33%;
+	--footer-height: 0em;
+	--header-grid-template-columns: 33.33% 33.33% 33.33%;
+	--header-height: 8em;
+	--content-height: calc(100vh - var(--header-height));
 	/* Colors */
 	--black: #000;
 	--black-rgb: 0, 0, 0;
@@ -35,6 +35,11 @@
 	--context-menu-item-hover-border: 1px solid var(--red);
 	--context-menu-item-hover-color: var(--primary-color);
 	--context-menu-item-hover-font: 400 1.0em/1.0em 'Roboto', sans-serif;
+	/* Designer */
+	--designer-header-background: var(--primary-color);
+	--designer-header-border: 2px solid var(--secondary-color);
+	--designer-header-title-color: var(--secondary-color);
+	--designer-header-title-font: 700 1.5em/1.5em 'Roboto', sans-serif;
 	/* Control Bar */
 	--control-bar-background: var(--primary-color);
 	--control-bar-border: 1px solid var(--secondary-color);

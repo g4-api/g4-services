@@ -1,5 +1,16 @@
 ﻿/* stylelint-disable property-no-unknown */
 
+.sqd-theme-light #designer--header {
+	background: var(--designer-header-background);
+	border-bottom: var(--designer-header-border);
+}
+
+	.sqd-theme-light #designer--header .sqd-title {
+		color: var(--designer-header-title-color);
+		font: var(--designer-header-title-font);
+	}
+
+
 .sqd-theme-light .sqd-step-container > g > .sqd-input,
 .sqd-theme-light .sqd-step-switch > g > .sqd-input,
 .sqd-theme-light .sqd-step-task-empty-icon,
@@ -182,7 +193,6 @@
 	background: var(--smart-editor-background);
 	box-shadow: var(--smart-editor-box-shadow);
 	color: var(--smart-editor-color);
-	height: 100%;
 	overflow: auto;
 	width: var(--smart-editor-width);
 }
@@ -242,7 +252,8 @@
 	background: var(--smart-editor-toggle-background);
 	border-radius: var(--border-radius);
 	box-shadow: var(--smart-editor-toggle-box-shadow);
-	right: var(--smart-editor-width);
+	right: calc(var(--smart-editor-width) + 10px);
+	top: 10px;
 }
 
 .sqd-theme-light.sqd-context-menu {
