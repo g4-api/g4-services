@@ -59,6 +59,7 @@
 	/* Smart Editor */
 	--smart-editor-background: var(--secondary-color);
 	--smart-editor-box-shadow: 0 0 8px rgba(var(--secondary-color-rgb), 0.15);
+	--smart-editor-button-font: 400 1.3em/1.3em 'Roboto', sans-serif;
 	--smart-editor-color: var(--primary-color);
 	--smart-editor-details-border: 1px solid var(--primary-color);
 	--smart-editor-details-color: var(--primary-color);
@@ -68,6 +69,7 @@
 	--smart-editor-group-font: 400 1.2em/1.2em 'Roboto', sans-serif;
 	--smart-editor-help-text-background: #EEE;
 	--smart-editor-help-text-border: 1px solid #DDD;
+	--smart-editor-help-text-font: 400 1.0em/1.0em 'Roboto', sans-serif;
 	--smart-editor-input-background: var(--secondary-color);
 	--smart-editor-input-border: 1px solid var(--primary-color);
 	--smart-editor-input-color: var(--primary-color);

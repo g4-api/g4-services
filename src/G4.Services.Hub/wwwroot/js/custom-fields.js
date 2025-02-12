@@ -247,7 +247,7 @@ const newObjectArrayFieldsContainer = (id, options, setCallback) => {
 
         // Create a container for the remove button and append the button to it.
         const buttonContainer = document.createElement('div');
-        buttonContainer.classList.add('text-with-button');
+        buttonContainer.classList.add('sqd-button--with-text');
         buttonContainer.appendChild(buttonController);
 
         // Insert the remove button container after the summary element.
@@ -428,7 +428,7 @@ const newObjectArrayFieldsContainer = (id, options, setCallback) => {
 
     // Create a container for the "Add" button and append the button to it.
     const buttonContainer = document.createElement('div');
-    buttonContainer.classList.add('text-with-button');
+    buttonContainer.classList.add('sqd-button--with-text');
     buttonContainer.appendChild(buttonController);
 
     // Insert the "Add" button container after the summary element.
