@@ -1,9 +1,15 @@
 ﻿:root {
 	/* Application */
+	--a-active: var(--secondary-color);
+	--a-hover: var(--secondary-color);
+	--a-link: var(--secondary-color);
+	--a-visited: var(--secondary-color);
 	--base-font: 400 14px/1.3em 'Roboto', sans-serif;
 	--base-height: 100vh;
+	--base-space: 0.2em;
 	--base-width: 100vw;
 	--border-radius: 0px;
+	--card-border: 1px solid var(--secondary-color);
 	--footer-grid-template-columns: 33.33% 33.33% 33.33%;
 	--footer-height: 0em;
 	--header-grid-template-columns: 33.33% 33.33% 33.33%;
@@ -18,6 +24,7 @@
 	--red: #ED4800;
 	--secondary-color: #FFF;
 	--secondary-color-rgb: 255, 255, 255;
+	--text-tiny: 400 0.8em 'Roboto', sans-serif;
 	--white: #FFF;
 	--yellow: #FFA200;
 	/* Context Menu */
@@ -40,6 +47,8 @@
 	--designer-header-border: 2px solid var(--secondary-color);
 	--designer-header-title-color: var(--secondary-color);
 	--designer-header-title-font: 700 1.5em/1.5em 'Roboto', sans-serif;
+	--designer-header-subtitle-color: var(--secondary-color);
+	--designer-header-subtitle-font: 700 1.2em/1.2em 'Roboto', sans-serif;
 	/* Control Bar */
 	--control-bar-background: var(--primary-color);
 	--control-bar-border: 1px solid var(--secondary-color);

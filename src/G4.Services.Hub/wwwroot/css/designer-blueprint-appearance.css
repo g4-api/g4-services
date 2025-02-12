@@ -1,6 +1,30 @@
 ﻿/* stylelint-disable property-no-unknown */
 html, body {
+	color: var(--secondary-color);
 	font: var(--base-font);
+}
+
+.sqd-theme-light .sqd-text--tiny {
+	font: var(--text-tiny);
+}
+
+.sqd-theme-light a:active {
+	color: var(--a-active);
+}
+
+.sqd-theme-light a:hover {
+	color: var(--a-hover);
+	text-decoration: underline !important;
+}
+
+.sqd-theme-light a:link {
+	color: var(--a-link);
+	text-decoration: none;
+}
+
+.sqd-theme-light a:visited {
+	color: var(--a-visited);
+	text-decoration: none;
 }
 
 .sqd-theme-light button {
@@ -25,6 +49,15 @@ html, body {
 		color: var(--designer-header-title-color);
 		font: var(--designer-header-title-font);
 	}
+
+	.sqd-theme-light #designer--header .sqd-subtitle {
+		color: var(--designer-header-subtitle-color);
+		font: var(--designer-header-subtitle-font);
+	}
+
+.sqd-theme-light .card {
+	border: var(--card-border);
+}
 
 .sqd-theme-light .sqd-step-container > g > .sqd-input,
 .sqd-theme-light .sqd-step-switch > g > .sqd-input,
