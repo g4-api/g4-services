@@ -1,32 +1,32 @@
 ﻿/**
- * Timer class to manage a stopwatch functionality.
+ * Timer class to manage a timer functionality.
  * It updates a provided DOM element with a formatted time string.
  */
 class Timer {
     /**
      * Creates an instance of Timer.
      * 
-     * @param {HTMLElement} stopwatchElement - The DOM element where the stopwatch time will be displayed.
+     * @param {HTMLElement} timerElement - The DOM element where the timer time will be displayed.
      */
-    constructor(stopwatchElement) {
+    constructor(timerElement) {
         // Initialize the time counters.
         this.hours = 0;
         this.minutes = 0;
         this.seconds = 0;
 
         // Store the element to update its text content with the time.
-        this.stopwatchElement = stopwatchElement;
+        this.timerElement = timerElement;
 
-        // Holds the interval timer reference. It's null when the stopwatch is not running.
+        // Holds the interval timer reference. It's null when the timer is not running.
         this.timer = null;
     }
 
     /**
-     * Resets the stopwatch to its initial state.
+     * Resets the timer to its initial state.
      * This method clears the current interval, resets time counters to zero,
      * and updates the display element to show '00:00:00'.
      */
-    resetStopwatch() {
+    resetTimer() {
         // Clear any existing interval to stop the timer.
         clearInterval(this.timer);
 
@@ -37,29 +37,29 @@ class Timer {
         this.seconds = 0;
 
         // Update the display to show the reset time.
-        this.stopwatchElement.textContent = '00:00:00';
+        this.timerElement.textContent = '00:00:00';
     }
 
     /**
-     * Starts the stopwatch.
-     * This method creates an interval that calls updateStopwatch every second.
+     * Starts the timer.
+     * This method creates an interval that calls updateTimer every second.
      * It ensures that only one interval is active at any time.
      */
-    startStopwatch() {
+    startTimer() {
         // Only start the timer if it isn't already running.
         if (this.timer) {
             return;
         }
 
-        // Create an interval to update the stopwatch every second.
-        this.timer = setInterval(() => this.updateStopwatch(), 1000);
+        // Create an interval to update the timer every second.
+        this.timer = setInterval(() => this.updateTimer(), 1000);
     }
 
     /**
-     * Stops the stopwatch.
-     * Clears the interval timer so that the stopwatch stops updating.
+     * Stops the timer.
+     * Clears the interval timer so that the timer stops updating.
      */
-    stopStopwatch() {
+    stopTimer() {
         // Clear the timer interval to stop updates.
         clearInterval(this.timer);
 
@@ -68,11 +68,11 @@ class Timer {
     }
 
     /**
-     * Updates the stopwatch's time.
+     * Updates the timer's time.
      * Increments seconds, and rolls over minutes and hours when necessary.
      * It then updates the display element with the newly formatted time.
      */
-    updateStopwatch() {
+    updateTimer() {
         // Increment the seconds counter.
         this.seconds++;
 
@@ -97,6 +97,6 @@ class Timer {
             String(this.seconds).padStart(2, '0');
 
         // Update the text content of the display element with the formatted time.
-        this.stopwatchElement.textContent = formattedTime;
+        this.timerElement.textContent = formattedTime;
     }
 }
