@@ -31,10 +31,25 @@
 		box-sizing: border-box;
 	}
 
-	.sqd-header .card {
+	.sqd-header .sqd-card {
+		align-items: center;
+		box-sizing: border-box;
+		display: flex;
+		justify-content: center;
 		margin-top: var(--base-space);
 		margin-bottom: var(--base-space);
+		position: relative;
 	}
+
+		.sqd-header .sqd-card .sqd-card--label {
+			position: absolute;
+			top: 10px;
+			left: 10px;
+		}
+
+		.sqd-header .sqd-card .sqd-card--content {
+			margin: 0;
+		}
 
 .sqd-content {
 	flex: 1;
@@ -239,7 +254,7 @@ textarea {
 .sqd-title,
 .sqd-title--with-help-icon,
 .sqd-subtitle {
-	margin: 0.2em 0, 0.2em, 0;
+	margin: 0.2em 0 0.2em 0;
 }
 
 .sqd-toolbox {
