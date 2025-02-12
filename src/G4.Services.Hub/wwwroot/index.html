@@ -35,14 +35,15 @@
 				<div class="sqd-text--tiny sqd-margin-top-03">Powered by <b><a href="https://github.com/nocode-js/sequential-workflow-designer" target="_blank">Sequential Workflow Designer</a></b></div>
 				<div class="sqd-text--tiny sqd-margin-top-03">Powered by <b><a href="https://github.com/g4-api/g4-services" target="_blank">G4&trade; Engine</a></b></div>
 			</div>
-			<div class="column card">
+			<div class="column sqd-card">
 				Total Actions
 			</div>
-			<div class="column card">
+			<div class="column sqd-card">
 				Average
 			</div>
-			<div class="column card">
-				Time and Sich
+			<div class="column sqd-card">
+				<div class="sqd-card--label">Time Elapsed</div>
+				<div id="designer--timer" class="sqd-card--content">00:00:00</div>
 			</div>
 		</div>
 
@@ -56,6 +57,7 @@
 
 	</div>
 
+	<script src="./js/timer.js"></script>
 	<script src="./js/utilities.js"></script>
 	<script src="./js/cli-factory.js"></script>
 	<script src="./js/signalr.min.js" integrity="" crossorigin="anonymous"></script>
