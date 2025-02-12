@@ -46,6 +46,10 @@ class StateMachine {
 			throw new Error("StateMachine is already running.");
 		}
 
+        // Start the timer and reset the time counters to zero before beginning the automation process
+		_timer.resetTimer();
+		_timer.startTimer();
+
 		// Mark the state machine as running
 		this.isRunning = true;
 
@@ -71,6 +75,9 @@ class StateMachine {
 
 			// Release the designer from read-only mode
 			_designer.setIsReadonly(false);
+
+            // Stop the timer and update the display with the final time elapsed after the automation process completes
+			_timer.stopTimer();
 		}
 	}
 
