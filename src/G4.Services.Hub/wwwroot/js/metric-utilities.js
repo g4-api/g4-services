@@ -1,4 +1,59 @@
 ﻿/**
+ * Counter class to manage a numeric counter and update a DOM element with its value.
+ */
+class Counter {
+    /**
+     * Creates a new Counter instance.
+     * 
+     * @param {HTMLElement} counterElement - The DOM element where the counter value will be displayed.
+     */
+    constructor(counterElement) {
+        // Initialize the counter value to 0
+        this.count = 0;
+        // Store the reference to the DOM element for updating the display
+        this.counterElement = counterElement;
+    }
+
+    /**
+     * Increments the counter by one and updates the display.
+     */
+    addOne() {
+        // Increase the count by one
+        this.count++;
+        // Update the display to reflect the new count
+        this.update();
+    }
+
+    /**
+     * Decrements the counter by one and updates the display.
+     */
+    removeOne() {
+        // Decrease the count by one
+        this.count--;
+        // Update the display to reflect the new count
+        this.update();
+    }
+
+    /**
+     * Resets the counter to zero and updates the display.
+     */
+    reset() {
+        // Reset the count to 0
+        this.count = 0;
+        // Update the display to reflect the reset count
+        this.update();
+    }
+
+    /**
+     * Updates the DOM element with the current counter value.
+     */
+    update() {
+        // Set the text content of the counterElement to the current count value
+        this.counterElement.textContent = this.count;
+    }
+}
+
+/**
  * Timer class to manage a timer functionality.
  * It updates a provided DOM element with a formatted time string.
  */
@@ -26,7 +81,7 @@ class Timer {
      * This method clears the current interval, resets time counters to zero,
      * and updates the display element to show '00:00:00'.
      */
-    resetTimer() {
+    reset() {
         // Clear any existing interval to stop the timer.
         clearInterval(this.timer);
 
@@ -42,24 +97,24 @@ class Timer {
 
     /**
      * Starts the timer.
-     * This method creates an interval that calls updateTimer every second.
+     * This method creates an interval that calls update every second.
      * It ensures that only one interval is active at any time.
      */
-    startTimer() {
+    start() {
         // Only start the timer if it isn't already running.
         if (this.timer) {
             return;
         }
 
         // Create an interval to update the timer every second.
-        this.timer = setInterval(() => this.updateTimer(), 1000);
+        this.timer = setInterval(() => this.update(), 1000);
     }
 
     /**
      * Stops the timer.
      * Clears the interval timer so that the timer stops updating.
      */
-    stopTimer() {
+    stop() {
         // Clear the timer interval to stop updates.
         clearInterval(this.timer);
 
@@ -72,7 +127,7 @@ class Timer {
      * Increments seconds, and rolls over minutes and hours when necessary.
      * It then updates the display element with the newly formatted time.
      */
-    updateTimer() {
+    update() {
         // Increment the seconds counter.
         this.seconds++;
 
