@@ -4,14 +4,14 @@
 	--a-hover: var(--secondary-color);
 	--a-link: var(--secondary-color);
 	--a-visited: var(--secondary-color);
-	--base-font: 400 1em 'Roboto', sans-serif;
+	--base-font: 400 1.5vmin 'Roboto', sans-serif;
 	--base-height: 100vh;
 	--base-space: 0.2em;
 	--base-width: 100vw;
 	--border-radius: 0px;
 	--card-border: 1px solid var(--secondary-color);
-	--card-contet-font: 700 2.0em 'Roboto', sans-serif;
-	--card-label-font: 400 0.8em 'Roboto', sans-serif;
+	--card-contet-font: 700 2.7vmin 'Roboto', sans-serif;
+	--card-label-font: 400 1.2vmin 'Roboto', sans-serif;
 	--footer-grid-template-columns: 33.33% 33.33% 33.33%;
 	--footer-height: 0em;
 	--header-grid-template-columns: 33.33% 33.33% 33.33%;
@@ -48,9 +48,9 @@
 	--designer-header-background: var(--primary-color);
 	--designer-header-border: 2px solid var(--secondary-color);
 	--designer-header-title-color: var(--secondary-color);
-	--designer-header-title-font: 700 1.5em/1.5em 'Roboto', sans-serif;
+	--designer-header-title-font: 700 2.5vmin 'Roboto', sans-serif;
 	--designer-header-subtitle-color: var(--secondary-color);
-	--designer-header-subtitle-font: 700 1.2em/1.2em 'Roboto', sans-serif;
+	--designer-header-subtitle-font: 700 1.6vmin 'Roboto', sans-serif;
 	/* Control Bar */
 	--control-bar-background: var(--primary-color);
 	--control-bar-border: 1px solid var(--secondary-color);
