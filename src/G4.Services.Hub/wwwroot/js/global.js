@@ -1,4 +1,5 @@
-﻿let _cache = {};
+﻿let _averageActionTime = 0;
+let _cache = {};
 let _cacheKeys = [];
 let _client = {};
 let _cliFactory = {};
@@ -6,6 +7,8 @@ let _designer;
 let _manifests = {};
 let _manifestsGroups = [];
 let _stateMachine = {};
+let _timer;
+let _totalActions = 0;
 
 const _includeTypes = ["ACTION", "CONTENT", "JOB", "STAGE", "TRANSFORMER"];
 
@@ -36,4 +39,9 @@ _connection
 
 	// Store the cache keys in a global variable for later use.
 	_cacheKeys = Object.keys(_cache).map(key => key.toUpperCase());
+
+	Utilities.waitForElement('#designer--timer', 5000).then(() => {
+		const timerElement = document.getElementById('designer--timer');
+		_timer = new Timer(timerElement);
+	});
 })();
