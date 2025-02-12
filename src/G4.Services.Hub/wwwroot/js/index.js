@@ -136,7 +136,7 @@ async function initializeDesigner() {
 		const messageType = message.type.toUpperCase();
 
 		// Exit early if the message type is not one of the included types.
-		if (!_includeTypes.includes(messageType)) {
+		if (!_flowableTypes.includes(messageType)) {
 			return;
 		}
 
@@ -145,6 +145,12 @@ async function initializeDesigner() {
 
 		// Adjust the viewport to bring the selected step into view.
 		_designer.moveViewportToStep(message.id);
+
+		// Increment the total actions counter.
+		if (_auditableTypes.includes(messageType)) {
+            _averageCounter.addOne();
+			_counter.addOne();
+		}
 	});
 
 	// Listen for the "ReceiveAutomationRequestInitializedEvent" message from the server
@@ -169,8 +175,11 @@ async function initializeDesigner() {
 		// Reset the designer or UI state after all steps have been processed
 		_stateMachine.handler.resetDesigner();
 
+        // Add another action to the average counter
+		_averageCounter.addOne();
+
         // Stop the timer after the automation has completed
-		_timer.stopTimer();
+		_timer.stop();
 	});
 }
 
