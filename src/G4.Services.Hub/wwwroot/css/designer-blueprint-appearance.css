@@ -252,21 +252,6 @@ html, body {
 		.sqd-theme-light .sqd-smart-editor .sqd-editor .label-text {
 			color: var(--smart-editor-label-color);
 			font: var(--smart-editor-label-font);
-			margin-top: 0;
-		}
-
-		.sqd-theme-light .sqd-smart-editor .sqd-editor p {
-			margin: 0;
-			padding: 0 0 10px;
-		}
-
-		.sqd-theme-light .sqd-smart-editor .sqd-editor div[data-g4-role='field'] {
-			margin-top: 1em;
-		}
-
-		.sqd-theme-light .sqd-smart-editor .sqd-editor div[data-g4-role='hint'] {
-			margin-top: 0.35em;
-			margin-bottom: 0.35em;
 		}
 
 		.sqd-theme-light .sqd-smart-editor .sqd-editor .sqd-help-icon-container {
