@@ -116,7 +116,7 @@ async function initializeDesigner() {
 	}
 
 	// Sort groups alphabetically by name.
-	let sortedGroups = groups.sort((a, b) => a.name.localeCompare(b.name));
+	let sortedGroups = groups.toSorted((a, b) => a.name.localeCompare(b.name));
 
 	// Sort steps within each group alphabetically by name.
 	for (const group of sortedGroups) {
@@ -132,14 +132,18 @@ async function initializeDesigner() {
 
 	// Listen for the "ReceiveAutomationEvent" message from the server
 	_connection.on("ReceiveAutomationStartEvent", (message) => {
-		if (!_includeTypes.includes(message.type.toUpperCase())) {
+		// Convert the message type to uppercase for consistent comparison.
+		const messageType = message.type.toUpperCase();
+
+		// Exit early if the message type is not one of the included types.
+		if (!_includeTypes.includes(messageType)) {
 			return;
 		}
 
-		// Select the step in the designer by its ID.
+		// Select the step in the designer using the provided ID.
 		_designer.selectStepById(message.id);
 
-		// Adjust the viewport so the selected step is brought into view.
+		// Adjust the viewport to bring the selected step into view.
 		_designer.moveViewportToStep(message.id);
 	});
 
@@ -148,6 +152,7 @@ async function initializeDesigner() {
 		console.log(message);
 	});
 
+	// TODO: write to log
 	// Listen for the "ReceiveAutomationRequestInitializedEvent" message from the server
 	_connection.on("ReceiveLogCreatedEvent", (message) => {
 		console.log(message);
@@ -163,6 +168,9 @@ async function initializeDesigner() {
 
 		// Reset the designer or UI state after all steps have been processed
 		_stateMachine.handler.resetDesigner();
+
+        // Stop the timer after the automation has completed
+		_timer.stopTimer();
 	});
 }
 
