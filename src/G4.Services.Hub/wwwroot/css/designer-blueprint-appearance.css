@@ -26,7 +26,6 @@ html, body {
 		font: var(--designer-header-title-font);
 	}
 
-
 .sqd-theme-light .sqd-step-container > g > .sqd-input,
 .sqd-theme-light .sqd-step-switch > g > .sqd-input,
 .sqd-theme-light .sqd-step-task-empty-icon,
@@ -42,16 +41,6 @@ html, body {
 	background: var(--toolbox-background);
 	border-radius: var(--border-radius);
 	box-shadow: var(--toolbox-box-shadow);
-	width: var(--toolbox-width);
-}
-
-.sqd-theme-light .sqd-toolbox-group-title,
-.sqd-theme-light .sqd-scrollbox-body,
-.sqd-theme-light .sqd-toolbox-filter,
-.sqd-theme-light .sqd-toolbox-item {
-	box-sizing: border-box;
-	margin: 5px 10px 10px 5px;
-	width: calc(100% - 10px);
 }
 
 .sqd-theme-light .sqd-label--with-help-icon {
@@ -119,7 +108,6 @@ html, body {
 	border: var(--toolbox-filter-border);
 	border-radius: var(--border-radius);
 	color: var(--toolbox-filter-color);
-	margin-right: 10px;
 }
 
 	.sqd-theme-light .sqd-toolbox-filter:focus {
@@ -223,8 +211,6 @@ html, body {
 	background: var(--smart-editor-background);
 	box-shadow: var(--smart-editor-box-shadow);
 	color: var(--smart-editor-color);
-	overflow: auto;
-	width: var(--smart-editor-width);
 }
 
 	.sqd-theme-light .sqd-smart-editor button {
@@ -233,41 +219,36 @@ html, body {
 		font: var(--smart-editor-button-font);
 	}
 
-	.sqd-theme-light .sqd-smart-editor .sqd-editor {
-		padding: 10px;
+	.sqd-theme-light .sqd-smart-editor .sqd-editor details {
+		border: var(--smart-editor-details-border);
+		border-radius: var(--border-radius);
+		color: var(--smart-editor-details-color);
 	}
 
-		.sqd-theme-light .sqd-smart-editor .sqd-editor details {
-			border: var(--smart-editor-details-border);
-			border-radius: var(--border-radius);
-			color: var(--smart-editor-details-color);
-			max-width: var(--smart-editor-width);
+		.sqd-theme-light .sqd-smart-editor .sqd-editor details:hover {
+			border-color: var(--smart-editor-details-hover-color);
 		}
 
-			.sqd-theme-light .sqd-smart-editor .sqd-editor details:hover {
-				border-color: var(--smart-editor-details-hover-color);
-			}
+	.sqd-theme-light .sqd-smart-editor .sqd-editor label,
+	.sqd-theme-light .sqd-smart-editor .sqd-editor .label-text {
+		color: var(--smart-editor-label-color);
+		font: var(--smart-editor-label-font);
+	}
 
-		.sqd-theme-light .sqd-smart-editor .sqd-editor label,
-		.sqd-theme-light .sqd-smart-editor .sqd-editor .label-text {
-			color: var(--smart-editor-label-color);
-			font: var(--smart-editor-label-font);
+	.sqd-theme-light .sqd-smart-editor .sqd-editor .sqd-help-icon-container {
+		background: var(--smart-editor-label-help-icon-container-background);
+		cursor: pointer;
+	}
+
+		.sqd-theme-light .sqd-smart-editor .sqd-editor .sqd-help-icon-container:hover {
+			fill: var(--smart-editor-label-help-icon-container-hover-fill);
 		}
 
-		.sqd-theme-light .sqd-smart-editor .sqd-editor .sqd-help-icon-container {
-			background: var(--smart-editor-label-help-icon-container-background);
-			cursor: pointer;
-		}
-
-			.sqd-theme-light .sqd-smart-editor .sqd-editor .sqd-help-icon-container:hover {
-				fill: var(--smart-editor-label-help-icon-container-hover-fill);
-			}
-
-		.sqd-theme-light .sqd-smart-editor .sqd-editor .sqd-help-text {
-			background: var(--smart-editor-help-text-background);
-			border: var(--smart-editor-help-text-border);
-			border-radius: var(--border-radius);
-		}
+	.sqd-theme-light .sqd-smart-editor .sqd-editor .sqd-help-text {
+		background: var(--smart-editor-help-text-background);
+		border: var(--smart-editor-help-text-border);
+		border-radius: var(--border-radius);
+	}
 
 .sqd-theme-light .sqd-smart-editor-toggle {
 	background: var(--smart-editor-toggle-background);

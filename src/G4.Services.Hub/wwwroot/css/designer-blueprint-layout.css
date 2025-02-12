@@ -141,73 +141,91 @@ textarea {
 .sqd-layout-desktop .sqd-smart-editor {
 	height: calc(100% - 20px);
 	right: 10px;
+	overflow: auto;
 	top: 10px;
+	width: var(--smart-editor-width);
 }
 
-	.sqd-layout-desktop .sqd-smart-editor .sqd-editor button {
-		box-sizing: border-box;
-		line-height: 1;
-		padding: 6px;
-	}
-
-	.sqd-layout-desktop .sqd-smart-editor .sqd-editor details {
-		margin: 0.25em auto;
+	.sqd-layout-desktop .sqd-smart-editor .sqd-editor {
 		padding: 10px;
 	}
 
-	.sqd-layout-desktop .sqd-smart-editor .sqd-editor label,
-	.sqd-layout-desktop .sqd-smart-editor .sqd-editor .sqd-label-text {
-		margin-top: 0;
-	}
-
-	.sqd-layout-desktop .sqd-smart-editor .sqd-editor p {
-		margin: 0;
-		padding: 0 0 10px;
-	}
-
-	.sqd-layout-desktop .sqd-smart-editor .sqd-editor div[data-g4-role='field'] {
-		margin-top: 1em;
-	}
-
-	.sqd-layout-desktop .sqd-smart-editor .sqd-editor div[data-g4-role='hint'] {
-		margin-top: 0.35em;
-		margin-bottom: 0.35em;
-	}
-
-	.sqd-layout-desktop .sqd-smart-editor .sqd-editor div[data-g4-role='input-row'],
-	.sqd-layout-desktop .sqd-smart-editor .sqd-editor div[data-g4-role='keyvalue'],
-	.sqd-layout-desktop .sqd-smart-editor .sqd-editor .sqd-button--with-text {
-		align-items: center;
-		box-sizing: border-box;
-		display: flex;
-		justify-content: space-between;
-		margin: 0.2em 0;
-	}
-
-		.sqd-layout-desktop .sqd-smart-editor .sqd-editor div[data-g4-role='input-row'] input[type="text"],
-		.sqd-layout-desktop .sqd-smart-editor .sqd-editor div[data-g4-role='input-row'] textarea,
-		.sqd-layout-desktop .sqd-smart-editor .sqd-editor div[data-g4-role='keyvalue'] input[type="text"],
-		.sqd-layout-desktop .sqd-smart-editor .sqd-editor .sqd-button--with-text input[type="text"] {
-			margin-left: 0.2em;
+		.sqd-layout-desktop .sqd-smart-editor .sqd-editor button {
+			box-sizing: border-box;
+			line-height: 1;
+			padding: 6px;
 		}
 
-	.sqd-layout-desktop .sqd-smart-editor .sqd-editor textarea {
-		margin: 0px;
-	}
+		.sqd-layout-desktop .sqd-smart-editor .sqd-editor details {
+			margin: 0.25em auto;
+			max-width: var(--smart-editor-width);
+			padding: 10px;
+		}
 
-	.sqd-layout-desktop .sqd-smart-editor .sqd-editor .sqd-help-text {
-		padding: 6px 10px;
-	}
+		.sqd-layout-desktop .sqd-smart-editor .sqd-editor label,
+		.sqd-layout-desktop .sqd-smart-editor .sqd-editor .sqd-label-text {
+			margin-top: 0;
+		}
 
-	.sqd-layout-desktop .sqd-smart-editor .sqd-editor .sqd-help-icon-container {
-		height: var(--smart-editor-label-help-icon-container-size);
-		width: var(--smart-editor-label-help-icon-container-size);
-	}
+		.sqd-layout-desktop .sqd-smart-editor .sqd-editor p {
+			margin: 0;
+			padding: 0 0 10px;
+		}
 
+		.sqd-layout-desktop .sqd-smart-editor .sqd-editor div[data-g4-role='field'] {
+			margin-top: 1em;
+		}
 
+		.sqd-layout-desktop .sqd-smart-editor .sqd-editor div[data-g4-role='hint'] {
+			margin-top: 0.35em;
+			margin-bottom: 0.35em;
+		}
 
+		.sqd-layout-desktop .sqd-smart-editor .sqd-editor div[data-g4-role='input-row'],
+		.sqd-layout-desktop .sqd-smart-editor .sqd-editor div[data-g4-role='keyvalue'],
+		.sqd-layout-desktop .sqd-smart-editor .sqd-editor .sqd-button--with-text {
+			align-items: center;
+			box-sizing: border-box;
+			display: flex;
+			justify-content: space-between;
+			margin: 0.2em 0;
+		}
 
+			.sqd-layout-desktop .sqd-smart-editor .sqd-editor div[data-g4-role='input-row'] input[type="text"],
+			.sqd-layout-desktop .sqd-smart-editor .sqd-editor div[data-g4-role='input-row'] textarea,
+			.sqd-layout-desktop .sqd-smart-editor .sqd-editor div[data-g4-role='keyvalue'] input[type="text"],
+			.sqd-layout-desktop .sqd-smart-editor .sqd-editor .sqd-button--with-text input[type="text"] {
+				margin-left: 0.2em;
+			}
 
+		.sqd-layout-desktop .sqd-smart-editor .sqd-editor textarea {
+			margin: 0px;
+		}
 
+		.sqd-layout-desktop .sqd-smart-editor .sqd-editor .sqd-help-text {
+			padding: 6px 10px;
+		}
 
+		.sqd-layout-desktop .sqd-smart-editor .sqd-editor .sqd-help-icon-container {
+			height: var(--smart-editor-label-help-icon-container-size);
+			width: var(--smart-editor-label-help-icon-container-size);
+		}
 
+.sqd-title,
+.sqd-title--with-help-icon,
+.sqd-subtitle {
+	margin: 0.2em 0, 0.2em, 0;
+}
+
+.sqd-toolbox {
+	width: var(--toolbox-width);
+}
+
+.sqd-toolbox-group-title,
+.sqd-scrollbox-body,
+.sqd-toolbox-filter,
+.sqd-toolbox-item {
+	box-sizing: border-box !important;
+	margin: 5px 10px 10px 5px !important;
+	width: calc(100% - 10px) !important;
+}
