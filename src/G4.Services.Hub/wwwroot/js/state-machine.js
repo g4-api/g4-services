@@ -46,9 +46,15 @@ class StateMachine {
 			throw new Error("StateMachine is already running.");
 		}
 
+        // Resst the average counter before starting the automation process
+		_averageCounter.reset();
+
+		// Reset the total actions counter after the automation has completed
+		_counter.reset();
+
         // Start the timer and reset the time counters to zero before beginning the automation process
-		_timer.resetTimer();
-		_timer.startTimer();
+		_timer.reset();
+		_timer.start();
 
 		// Mark the state machine as running
 		this.isRunning = true;
@@ -77,7 +83,7 @@ class StateMachine {
 			_designer.setIsReadonly(false);
 
             // Stop the timer and update the display with the final time elapsed after the automation process completes
-			_timer.stopTimer();
+			_timer.stop();
 		}
 	}
 
