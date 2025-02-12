@@ -1,4 +1,5 @@
-﻿let _averageActionTime = 0;
+﻿let _averageCounter = 0;
+let _counter;
 let _cache = {};
 let _cacheKeys = [];
 let _client = {};
@@ -8,9 +9,9 @@ let _manifests = {};
 let _manifestsGroups = [];
 let _stateMachine = {};
 let _timer;
-let _totalActions = 0;
 
-const _includeTypes = ["ACTION", "CONTENT", "JOB", "STAGE", "TRANSFORMER"];
+const _flowableTypes = ["ACTION", "CONTENT", "JOB", "STAGE", "TRANSFORMER"];
+const _auditableTypes = ["ACTION", "CONTENT", "TRANSFORMER"];
 
 const _connection = new signalR
 	.HubConnectionBuilder()
@@ -40,8 +41,23 @@ _connection
 	// Store the cache keys in a global variable for later use.
 	_cacheKeys = Object.keys(_cache).map(key => key.toUpperCase());
 
+	// designer--average-action-time
+
+    // Wait for the timer element to load, then create a new Timer instance.
 	Utilities.waitForElement('#designer--timer', 5000).then(() => {
 		const timerElement = document.getElementById('designer--timer');
 		_timer = new Timer(timerElement);
+	});
+
+    // Wait for the counter element to load, then create a new Counter instance.
+	Utilities.waitForElement('#designer--total-actions', 5000).then(() => {
+		const counterElement = document.getElementById('designer--total-actions');
+		_counter = new Counter(counterElement);
+	});
+
+    // Wait for the average element to load, then create a new AverageCounter instance.
+	Utilities.waitForElement('#designer--average-action-time', 5000).then(() => {
+		const averageElement = document.getElementById('designer--average-action-time');
+		_averageCounter = new AverageCounter(averageElement);
 	});
 })();
