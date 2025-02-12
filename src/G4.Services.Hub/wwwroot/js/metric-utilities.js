@@ -1,4 +1,86 @@
 ﻿/**
+ * Class for calculating the average delta time (in seconds) between method calls.
+ */
+class AverageCounter {
+    /**
+     * Creates a new AverageCounter instance.
+     * 
+     * @param {HTMLElement} averageElement - The DOM element where the average delta time will be displayed.
+     */
+    constructor(averageElement) {
+        // Reference to the DOM element for updating the average display.
+        this.averageElement = averageElement;
+
+        // Count of how many times addOne has been called.
+        this.count = 0;
+
+        // Sum of all delta times in milliseconds.
+        this.totalDelta = 0;
+
+        // The timestamp when the counter was started (or last reset).
+        this.lastTimestamp = Date.now();
+    }
+
+    /**
+     * Records a new time delta, increments the counter, and updates the display.
+     *
+     * When called, this method computes the time difference (delta) between now and the last call,
+     * adds it to the total delta time, increments the count, and updates the average display.
+     */
+    addOne() {
+        // Get the current time in milliseconds.
+        const now = Date.now();
+
+        // Calculate the delta time (in milliseconds) since the last recorded timestamp.
+        const delta = now - this.lastTimestamp;
+
+        // Update the last timestamp to the current time for the next delta calculation.
+        this.lastTimestamp = now;
+
+        // Add the new delta time to the total.
+        this.totalDelta += delta;
+
+        // Increment the sample counter.
+        this.count++;
+
+        // Update the display element with the new average delta time in seconds.
+        this.update();
+    }
+
+    /**
+     * Resets the counter and updates the display.
+     *
+     * This method resets the sample count and total delta time, reinitializes the last timestamp,
+     * and then updates the display to show 0.00 s.
+     */
+    reset() {
+        // Reset the count and total delta time.
+        this.count = 0;
+        this.totalDelta = 0;
+
+        // Reset the last timestamp to the current time.
+        this.lastTimestamp = Date.now();
+
+        // Update the display to reflect the reset state.
+        this.update();
+    }
+
+    /**
+     * Updates the DOM element with the current average delta time in seconds.
+     *
+     * The average is computed as the total delta time divided by the number of samples, then
+     * converted from milliseconds to seconds.
+     */
+    update() {
+        // Calculate the average delta time in seconds if at least one sample exists.
+        const averageSeconds = this.count > 0 ? (this.totalDelta / this.count) / 1000 : 0;
+
+        // Update the element's text content with the average, formatted to two decimal places.
+        this.averageElement.textContent = averageSeconds.toFixed(2);
+    }
+}
+
+/**
  * Counter class to manage a numeric counter and update a DOM element with its value.
  */
 class Counter {
