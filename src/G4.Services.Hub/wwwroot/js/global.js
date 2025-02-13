@@ -7,6 +7,7 @@ let _cliFactory = {};
 let _designer;
 let _manifests = {};
 let _manifestsGroups = [];
+let _observer;
 let _stateMachine = {};
 let _timer;
 
@@ -41,23 +42,86 @@ _connection
 	// Store the cache keys in a global variable for later use.
 	_cacheKeys = Object.keys(_cache).map(key => key.toUpperCase());
 
-	// designer--average-action-time
+    /**
+     * Wait for the timer element to be available in the DOM.
+     * Once the element is found or after 5000ms, execute the callback.
+     */
+    Utilities.waitForElement('#designer--timer', 5000).then(() => {
+        // Get the timer element from the DOM.
+		const timerElement = document.querySelector('#designer--timer');
 
-    // Wait for the timer element to load, then create a new Timer instance.
-	Utilities.waitForElement('#designer--timer', 5000).then(() => {
-		const timerElement = document.getElementById('designer--timer');
-		_timer = new Timer(timerElement);
+        // Create a new Timer instance with the timer element.
+        _timer = new Timer(timerElement);
 	});
 
-    // Wait for the counter element to load, then create a new Counter instance.
-	Utilities.waitForElement('#designer--total-actions', 5000).then(() => {
-		const counterElement = document.getElementById('designer--total-actions');
+    /**
+     * Wait for the counter element to be available in the DOM.
+     * Once the element is found or after 5000ms, execute the callback.
+     */
+    Utilities.waitForElement('#designer--total-actions', 5000).then(() => {
+        // Get the counter element from the DOM.
+        const counterElement = document.querySelector('#designer--total-actions');
+
+        // Create a new Counter instance with the counter element.
 		_counter = new Counter(counterElement);
 	});
 
-    // Wait for the average element to load, then create a new AverageCounter instance.
-	Utilities.waitForElement('#designer--average-action-time', 5000).then(() => {
-		const averageElement = document.getElementById('designer--average-action-time');
-		_averageCounter = new AverageCounter(averageElement);
+    /**
+     * Wait for the average counter element to be available in the DOM.
+     * Once the element is found or after 5000ms, execute the callback.
+     */
+    Utilities.waitForElement('#designer--average-action-time', 5000).then(() => {
+        // Get the average counter element from the DOM.
+		const averageElement = document.querySelector('#designer--average-action-time');
+
+        // Create a new AverageCounter instance with the average counter element.
+        _averageCounter = new AverageCounter(averageElement);
+	});
+
+    /**
+     * Wait for the smart editor element to be available in the DOM.
+     * Once the element is found or after 5000ms, execute the callback.
+     */
+	Utilities.waitForElement('#designer .sqd-smart-editor', 5000).then(() => {
+        // Trigger an initial 'input' event on the textarea within the smart editor.
+        Utilities.invokeEvent({
+            bubbles: true,
+            cancelable: true,
+            selector: '#designer .sqd-smart-editor textarea',
+            type: 'input'
+        });
+
+        // Select the target node that we want to observe for DOM changes.
+        const targetNode = document.querySelector('#designer .sqd-smart-editor');
+
+        // Define the configuration for the MutationObserver.
+        // This configuration listens for changes to the child nodes and the entire subtree.
+        const config = {
+            attributes: false,
+            childList: true,
+            subtree: true
+        };
+
+        // Create an Observer instance for the target node.
+        _observer = new Observer(targetNode);
+
+        // Start observing the target node for DOM mutations.
+        _observer.observeDOMChanges(config, (mutationsList, observer) => {
+            // Convert each mutation's addedNodes (a NodeList) into an array and flatten them into a single array.
+            const addedNodes = mutationsList.flatMap(mutation => Array.from(mutation.addedNodes));
+
+            // If no nodes were added during the mutations, exit early.
+            if (addedNodes.length === 0) {
+                return;
+            }
+
+            // Trigger an 'input' event on the textarea to update the smart editor if new nodes were added.
+            Utilities.invokeEvent({
+                bubbles: true,
+                cancelable: true,
+                selector: '#designer .sqd-smart-editor textarea',
+                type: 'input'
+            });
+        });
 	});
 })();

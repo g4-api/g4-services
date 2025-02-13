@@ -900,7 +900,7 @@ function newStartDefinition(sequence) {
 function rootEditorProvider(definition, editorContext, isReadonly) {
 	// Create the main container div element for the root editor.
 	const container = document.createElement('div');
-	container.setAttribute("g4-role", "root-editor");
+	container.setAttribute("data-g4-role", "root-editor");
 
 	// Add a title to the container to indicate the configuration section.
 	CustomFields.newTitle({
@@ -1547,7 +1547,7 @@ function stepEditorProvider(step, editorContext) {
 
 	// Create the main container element for the step editor.
 	const stepEditorContainer = document.createElement('div');
-	stepEditorContainer.setAttribute("g4-role", "step-editor");
+	stepEditorContainer.setAttribute("data-g4-role", "step-editor");
 
 	// Set the tooltip for the container to provide a description of the step.
 	stepEditorContainer.title = step.description;
