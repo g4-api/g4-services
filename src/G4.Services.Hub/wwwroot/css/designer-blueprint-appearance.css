@@ -266,6 +266,10 @@ html, body {
 		color: var(--smart-editor-details-color);
 	}
 
+		.sqd-theme-light .sqd-smart-editor .sqd-editor details[open]:hover {
+			border: var(--smart-editor-details-border);
+		}
+
 		.sqd-theme-light .sqd-smart-editor .sqd-editor details:hover {
 			border-color: var(--smart-editor-details-hover-color);
 		}
