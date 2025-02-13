@@ -161,6 +161,10 @@ const newMultipleFieldsContainer = (id, options) => {
     // Create the main <details> container element.
     const detailsContainer = document.createElement('details');
 
+    if (options.isOpen) {
+        detailsContainer.setAttribute("open", null)
+    }
+
     // Create the <summary> element that serves as the clickable label.
     const summaryContainer = document.createElement('summary');
 

@@ -1576,8 +1576,8 @@ function stepEditorProvider(step, editorContext) {
 			container: stepEditorContainer,
 			initialValue: step.name,
 			isReadonly: false,
-			label: 'Plugin Name',
-			title: 'The name of the plugin',
+			label: 'Dispaly Name',
+			title: 'The name displayed for this step. This is for visual purposes only and is not used for identification.',
 			step: step
 		},
 		(value) => {
@@ -1610,7 +1610,8 @@ function stepEditorProvider(step, editorContext) {
 	const propertiesFieldContainer = newMultipleFieldsContainer(`${inputId}`, {
 		labelDisplayName: 'Properties',
 		role: 'properties-container',
-		hintText: 'Attributes that define the structural and operational behavior of the plugin.'
+		hintText: 'Attributes that define the structural and operational behavior of the plugin.',
+		isOpen: true
 	});
 
 	// Select the specific container within the Properties section where individual property fields will be added.
@@ -1656,7 +1657,8 @@ function stepEditorProvider(step, editorContext) {
 	const parametersFieldContainer = newMultipleFieldsContainer(`${inputId}`, {
 		labelDisplayName: 'Parameters',
 		role: 'parameters-container',
-		hintText: "Configurable inputs that customize and control the plugin's functionality."
+		hintText: "Configurable inputs that customize and control the plugin's functionality.",
+		isOpen: true
 	});
 
 	// Select the specific container within the Parameters section where individual parameter fields will be added.
