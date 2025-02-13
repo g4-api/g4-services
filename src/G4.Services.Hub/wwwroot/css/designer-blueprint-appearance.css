@@ -124,17 +124,6 @@ html, body {
 		border: var(--smart-editor-input-focus-border);
 	}
 
-	.sqd-theme-light input[type="text"]:read-only,
-	.sqd-theme-light input[type="number"]:read-only,
-	.sqd-theme-light input[type="file"]:read-only,
-	.sqd-theme-light input[list]:read-only,
-	.sqd-theme-light select:read-only,
-	.sqd-theme-light textarea:read-only {
-		background: var(--smart-editor-input-readonly-background);
-		border: var(--smart-editor-input-readonly-border);
-		color: var(--smart-editor-input-readonly-color);
-	}
-
 	.sqd-theme-light input[type="text"]::placeholder,
 	.sqd-theme-light input[type="number"]::placeholder,
 	.sqd-theme-light input[type="file"]::placeholder,
