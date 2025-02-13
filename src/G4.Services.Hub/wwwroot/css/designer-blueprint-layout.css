@@ -73,8 +73,9 @@
 }
 
 	.sqd-modal textarea {
-		width: 60vw;
 		height: 30vh;
+		overflow: auto;
+		width: 60vw;
 	}
 
 html, body {
