@@ -2843,10 +2843,7 @@ class CustomFields {
             // Create a container <div> to serve as the modal
             const modalElement = document.createElement('div');
             modalElement.setAttribute('id', `${inputId}-modal`);
-            modalElement.setAttribute(
-                'style',
-                'display: block; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);'
-            );
+            modalElement.setAttribute('class', 'sqd-modal');
             modalElement.setAttribute('data-g4-role', 'input-modal');
 
             // Create a container for the textarea and close button
@@ -2855,7 +2852,6 @@ class CustomFields {
             // Create the textarea element
             const textareaElement = document.createElement('textarea');
             textareaElement.setAttribute('id', `${inputId}-textarea`);
-            textareaElement.setAttribute('style', 'width: 60vw; height: 25vh;');
             textareaElement.setAttribute('wrap', 'off');
             textareaElement.setAttribute('spellcheck', 'false');
 

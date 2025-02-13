@@ -248,6 +248,17 @@ html, body {
 		fill: var(--control-bar-button-delete-icon-path);
 	}
 
+.sqd-theme-light .sqd-modal button {
+	background: var(--modal-button-background) !important;
+	border: var(--modal-button-border) !important;
+	color: var(--modal-button-color) !important;
+	font: var(--modal-button-font) !important;
+}
+
+	.sqd-theme-light .sqd-modal button:hover {
+		border: var(--modal-button-hover-border) !important;
+	}
+
 .sqd-theme-light .sqd-smart-editor {
 	background: var(--smart-editor-background);
 	box-shadow: var(--smart-editor-box-shadow);
@@ -260,6 +271,10 @@ html, body {
 		color: var(--smart-editor-button-color);
 		font: var(--smart-editor-button-font);
 	}
+
+		.sqd-theme-light .sqd-smart-editor button:hover {
+			border: var(--smart-editor-button-hover-border);
+		}
 
 	.sqd-theme-light .sqd-smart-editor .sqd-editor details {
 		border: var(--smart-editor-details-border);

@@ -572,10 +572,7 @@ function newImportModal() {
 		modalElement.setAttribute('data-g4-role', 'import-modal');
 
 		// Apply inline styles to center the modal and set display properties.
-		modalElement.setAttribute(
-			'style',
-			'display: block; gap: 0.2em; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); margin-left: 0; z-index: 9999;'
-		);
+		modalElement.setAttribute('class', 'sqd-modal');
 
 		// Return the configured modal element.
 		return modalElement;

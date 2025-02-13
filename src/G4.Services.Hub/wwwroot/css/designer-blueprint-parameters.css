@@ -67,6 +67,12 @@
 	/* Line Grid */
 	--line-grid-path-stroke: rgba(var(--secondary-color-rgb), 0.3);
 	--line-grid-path-stroke-witdh: 1;
+	/* Modal */
+	--modal-button-background: var(--secondary-color);
+	--modal-button-border: 1px solid var(--primary-color);
+	--modal-button-color: var(--primary-color);
+	--modal-button-font: 400 1.0em 'Roboto', sans-serif;
+	--modal-button-hover-border: 1px solid var(--red);
 	/* Smart Editor */
 	--smart-editor-background: var(--secondary-color);
 	--smart-editor-box-shadow: 0 0 0px rgba(var(--secondary-color-rgb), 0.15);
@@ -74,6 +80,7 @@
 	--smart-editor-button-border: 1px solid var(--primary-color);
 	--smart-editor-button-color: var(--secondary-color);
 	--smart-editor-button-font: 400 1.0em 'Roboto', sans-serif;
+	--smart-editor-button-hover-border: 1px solid var(--red);
 	--smart-editor-color: var(--primary-color);
 	--smart-editor-details-border: 1px solid var(--primary-color);
 	--smart-editor-details-color: var(--primary-color);
