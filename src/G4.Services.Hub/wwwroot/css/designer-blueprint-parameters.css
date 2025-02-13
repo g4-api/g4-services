@@ -70,7 +70,10 @@
 	/* Smart Editor */
 	--smart-editor-background: var(--secondary-color);
 	--smart-editor-box-shadow: 0 0 0px rgba(var(--secondary-color-rgb), 0.15);
-	--smart-editor-button-font: 400 1.3em/1.3em 'Roboto', sans-serif;
+	--smart-editor-button-background: var(--primary-color);
+	--smart-editor-button-border: 1px solid var(--primary-color);
+	--smart-editor-button-color: var(--secondary-color);
+	--smart-editor-button-font: 400 1.0em 'Roboto', sans-serif;
 	--smart-editor-color: var(--primary-color);
 	--smart-editor-details-border: 1px solid var(--primary-color);
 	--smart-editor-details-color: var(--primary-color);

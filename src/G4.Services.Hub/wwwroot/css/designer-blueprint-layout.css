@@ -75,7 +75,8 @@ html, body {
 button {
 	box-sizing: border-box;
 	line-height: 1.3em;
-	min-width: 32.19px;
+	min-height: 2.6em;
+	min-width: 2.6em;
 	padding: 6px;
 }
 
@@ -92,7 +93,7 @@ input[type="number"],
 input[type="file"],
 input[list],
 select {
-	min-height: 1.3em;
+	min-height: 2.6em;
 }
 
 input[type="text"],

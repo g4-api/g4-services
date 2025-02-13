@@ -255,8 +255,9 @@ html, body {
 }
 
 	.sqd-theme-light .sqd-smart-editor button {
-		border-radius: var(--border-radius);
-		cursor: pointer;
+		background: var(--smart-editor-button-background);
+		border: var(--smart-editor-button-border);
+		color: var(--smart-editor-button-color);
 		font: var(--smart-editor-button-font);
 	}
 
