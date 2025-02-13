@@ -1479,7 +1479,8 @@ function stepEditorProvider(step, editorContext) {
 				container: container,
 				label: "Driver Parameters",
 				title: "Provide G4™ driver parameters to configure the automation.",
-				initialValue: step.properties['driverParameters']
+				initialValue: step.properties['driverParameters'],
+				isOpen: true
 			},
 			/**
 			 * Callback function to handle updates to the Driver Parameters field.

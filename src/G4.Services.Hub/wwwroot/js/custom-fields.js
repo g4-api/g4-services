@@ -1086,7 +1086,8 @@ class CustomG4Fields {
         const fieldContainer = newMultipleFieldsContainer(inputId, {
             labelDisplayName: options.label,
             role: 'container',
-            hintText: "Configure driver parameters to optimize automation performance by selecting a web driver, specifying driver binaries, and defining advanced capability groups for precise driver behavior."
+            hintText: "Configure driver parameters to optimize automation performance by selecting a web driver, specifying driver binaries, and defining advanced capability groups for precise driver behavior.",
+            isOpen: options.isOpen
         });
 
         // Select the controller sub-container within the field container using the unique ID.
