@@ -32,7 +32,7 @@
 	/* Context Menu */
 	--context-menu-background: var(--secondary-color);
 	--context-menu-border: none;
-	--context-menu-box-shadow: 0 0 8px rgba(var(--black-rgb), 0.2);
+	--context-menu-box-shadow: 0 0 0px rgba(var(--black-rgb), 0.2);
 	--context-menu-color: var(--primary-color);
 	--context-menu-font: 400 1.0em 'Roboto', sans-serif;
 	--context-menu-group-color: var(--primary-color);
@@ -54,7 +54,7 @@
 	/* Control Bar */
 	--control-bar-background: var(--primary-color);
 	--control-bar-border: 1px solid var(--secondary-color);
-	--control-bar-box-shadow: 0 0 8px rgba(var(--black-rgb), 0.15), 0 2px 4px rgba(var(--black-rgb), 0.15);
+	--control-bar-box-shadow: 0 0 0px rgba(var(--black-rgb), 0.15), 0 0px 0px rgba(var(--black-rgb), 0.15);
 	--control-bar-button-background: var(--primary-color);
 	--control-bar-button-border: 1px solid var(--secondary-color);
 	--control-bar-button-delete-icon-path: var(--red);
@@ -69,7 +69,7 @@
 	--line-grid-path-stroke-witdh: 1;
 	/* Smart Editor */
 	--smart-editor-background: var(--secondary-color);
-	--smart-editor-box-shadow: 0 0 8px rgba(var(--secondary-color-rgb), 0.15);
+	--smart-editor-box-shadow: 0 0 0px rgba(var(--secondary-color-rgb), 0.15);
 	--smart-editor-button-font: 400 1.3em/1.3em 'Roboto', sans-serif;
 	--smart-editor-color: var(--primary-color);
 	--smart-editor-details-border: 1px solid var(--primary-color);
@@ -104,11 +104,11 @@
 	--smart-editor-title-color: var(--primary-color);
 	--smart-editor-title-font: 700 1.5em 'Roboto', sans-serif;
 	--smart-editor-toggle-background: var(--secondary-color);
-	--smart-editor-toggle-box-shadow: 0 0 8px rgba(var(--black-rgb), 0.15);
+	--smart-editor-toggle-box-shadow: 0 0 0px rgba(var(--black-rgb), 0.15);
 	--smart-editor-width: 350px;
 	/* Toolbox */
 	--toolbox-background: var(--secondary-color);
-	--toolbox-box-shadow: 0 0 8px rgba(var(--black-rgb), 0.15), 0 2px 4px rgba(var(--black-rgb), 0.15);
+	--toolbox-box-shadow: 0 0 0px rgba(var(--black-rgb), 0.15), 0 0px 0px rgba(var(--black-rgb), 0.15);
 	--toolbox-filter-background: var(--secondary-color);
 	--toolbox-filter-border: 1px solid var(--primary-color);
 	--toolbox-filter-color: var(--primary-color);
@@ -124,7 +124,7 @@
 	--toolbox-input-placeholder-color: rgba(var(--primary-color-rgb), 0.5);
 	--toolbox-item-background: var(--secondary-color);
 	--toolbox-item-border: 1px solid var(--primary-color);
-	--toolbox-item-box-shadow: 0 2px 2px rgba(var(--black-rgb), 0.15);
+	--toolbox-item-box-shadow: 0 0px 0px rgba(var(--black-rgb), 0.15);
 	--toolbox-item-color: var(--primary-color);
 	--toolbox-item-hover-background: var(--secondary-color);
 	--toolbox-item-hover-border-color: var(--red);
