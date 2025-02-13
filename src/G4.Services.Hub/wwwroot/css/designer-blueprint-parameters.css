@@ -114,6 +114,8 @@
 	--smart-editor-title-color: var(--primary-color);
 	--smart-editor-title-font: 700 1.5em 'Roboto', sans-serif;
 	--smart-editor-toggle-background: var(--secondary-color);
+	--smart-editor-toggle-icon-path: var(--primary-color);
+	--smart-editor-toggle-icon-hover-path: #007BFF;
 	--smart-editor-toggle-box-shadow: 0 0 0px rgba(var(--black-rgb), 0.15);
 	--smart-editor-width: 350px;
 	/* Toolbox */
@@ -131,6 +133,8 @@
 	--toolbox-group-title-font: 700 1.3em/1.3em 'Roboto', sans-serif;
 	--toolbox-header-title-color: var(--primary-color);
 	--toolbox-header-title-font: 700 1.5em/1.5em 'Roboto', sans-serif;
+	--toolbox-icon-path: var(--primary-color);
+	--toolbox-icon-hover-path: #007BFF;
 	--toolbox-input-placeholder-color: rgba(var(--primary-color-rgb), 0.5);
 	--toolbox-item-background: var(--secondary-color);
 	--toolbox-item-border: 1px solid var(--primary-color);

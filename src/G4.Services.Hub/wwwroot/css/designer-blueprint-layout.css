@@ -181,7 +181,7 @@ textarea {
 	width: 100%;
 }
 
-	.sqd-label--with-help-icon .help-icon {
+	.sqd-label--with-help-icon .sqd-help-icon {
 		height: 64%;
 		margin: 18%;
 		text-align: center;

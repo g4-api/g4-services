@@ -163,6 +163,14 @@ html, body {
 		color: var(--toolbox-input-placeholder-color) !important;
 	}
 
+.sqd-theme-light .sqd-toolbox-toggle-icon .sqd-icon-path {
+	fill: var(--toolbox-icon-path);
+}
+
+.sqd-theme-light .sqd-toolbox-toggle-icon:hover .sqd-icon-path {
+	fill: var(--toolbox-icon-hover-path);
+}
+
 .sqd-theme-light .sqd-toolbox-header-title {
 	color: var(--toolbox-header-title-color);
 	font: var(--toolbox-header-title-font);
@@ -317,6 +325,14 @@ html, body {
 	border-radius: var(--border-radius);
 	box-shadow: var(--smart-editor-toggle-box-shadow);
 }
+
+	.sqd-theme-light .sqd-smart-editor-toggle:hover .sqd-icon-path {
+		fill: var(--smart-editor-toggle-icon-hover-path);
+	}
+
+	.sqd-theme-light .sqd-smart-editor-toggle .sqd-icon-path {
+		fill: var(--smart-editor-toggle-icon-path);
+	}
 
 .sqd-theme-light.sqd-context-menu {
 	background: var(--context-menu-background);
