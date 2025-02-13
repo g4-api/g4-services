@@ -161,6 +161,7 @@ const newMultipleFieldsContainer = (id, options) => {
     // Create the main <details> container element.
     const detailsContainer = document.createElement('details');
 
+    // Check if the container should be open by default and set the 'open' attribute if necessary.
     if (options.isOpen) {
         detailsContainer.setAttribute("open", null)
     }
