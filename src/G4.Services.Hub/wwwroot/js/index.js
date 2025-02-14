@@ -366,8 +366,7 @@ function newConfiguration() {
 			 * console.log(isValid); // Outputs: true
 			 */
 			step: step => {
-				// Check that every property key in step.properties has a truthy value
-				return Object.keys(step.properties).every(n => !!step.properties[n]);
+				return !step?.categories?.toUpperCase().includes("G-ERROR");
 			},
 
 			/**
@@ -607,6 +606,43 @@ function newImportModal() {
 	};
 
 	/**
+	 * Observes the canvas for DOM changes and triggers a reset view action when new nodes are added.
+	 *
+	 * This function sets up a MutationObserver on the canvas (via _canvasObserver) to monitor
+	 * changes in its DOM subtree. If new nodes are added, it selects the "Reset view" button in
+	 * the control bar and triggers a click event to adjust the viewport.
+	 */
+	const resetView = (observer) => {
+		// Configuration object for the MutationObserver.
+		const config = {
+			attributes: false,
+			childList: true,
+			subtree: true
+		};
+
+		// Start observing DOM mutations on the target node using observer.
+		observer.observeDOMChanges(config, (mutationsList, observer) => {
+			// Extract added nodes from each mutation record, converting NodeLists to arrays,
+			// and flatten all arrays into a single array of nodes.
+			const addedNodes = mutationsList.flatMap(mutation => Array.from(mutation.addedNodes));
+
+			// If no new nodes were added, exit early.
+			if (addedNodes.length === 0) {
+				return;
+			}
+
+			// Select the reset view button from the control bar using its title attribute.
+			const resetViewButton = document.querySelector(".sqd-control-bar div[title='Reset view']");
+
+			// If the button exists, trigger a click event to reset the view.
+			resetViewButton?.click();
+
+            // Disconnect the observer to prevent further mutations.
+			observer.disconnect();
+		});
+	};
+
+	/**
 	 * Sets the definition for the workflow and initializes the designer state.
 	 *
 	 * This function processes a given workflow definition by constructing a sequence of
@@ -661,7 +697,9 @@ function newImportModal() {
 			const step = StateMachineSteps.newG4Step(manifest);
 
 			// Assign the name of the rule's capabilities to the step if available.
-			step.name = rule?.capabilities?.name || step.name;
+			step.name = step?.pluginName?.toUpperCase() === 'MISSINGPLUGIN'
+				? `Missing Plugin (${rule?.capabilities?.name || step.name})`
+				: rule?.capabilities?.name || step.name;
 
 			// Ensure that the rule has 'rules' and 'branches' properties.
 			rule.rules = rule.rules || [];
@@ -793,6 +831,12 @@ function newImportModal() {
 	// Generate a unique identifier for this modal instance.
 	const inputId = Utilities.newUid();
 
+	// Select the target node that we want to observe for DOM changes.
+	const workspaceElement = document.querySelector('.sqd-workspace');
+
+    // Create a new MutationObserver instance to observe the canvas for DOM changes.
+	const workspaceObserver = new Observer(workspaceElement);
+
 	// Select the field container where the modal will be appended. In this case, it's the <body> element.
 	const fieldContainer = document.querySelector("#designer > div");
 
@@ -813,7 +857,11 @@ function newImportModal() {
 
 	// Create a container with Import, Apply, and Close buttons.
 	const buttonsContainerElement = newButtonsContainerElement(inputId, modalElement, (definition) => {
+        // Set the definition using the parsed JSON value.
 		setDefinition(definition);
+
+		// Reset the view to adjust the viewport after setting the new definition.
+		resetView(workspaceObserver);
 	});
 
 	// Create a container for the textarea and the buttons.

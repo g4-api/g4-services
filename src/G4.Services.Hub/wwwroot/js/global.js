@@ -5,9 +5,9 @@ let _cacheKeys = [];
 let _client = {};
 let _cliFactory = {};
 let _designer;
+let _editorObserver;
 let _manifests = {};
 let _manifestsGroups = [];
-let _observer;
 let _stateMachine = {};
 let _timer;
 
@@ -103,10 +103,10 @@ _connection
         };
 
         // Create an Observer instance for the target node.
-        _observer = new Observer(targetNode);
+        _editorObserver = new Observer(targetNode);
 
         // Start observing the target node for DOM mutations.
-        _observer.observeDOMChanges(config, (mutationsList, observer) => {
+        _editorObserver.observeDOMChanges(config, (mutationsList) => {
             // Convert each mutation's addedNodes (a NodeList) into an array and flatten them into a single array.
             const addedNodes = mutationsList.flatMap(mutation => Array.from(mutation.addedNodes));
 
@@ -123,5 +123,11 @@ _connection
                 type: 'input'
             });
         });
-	});
+    });
+
+    /**
+     * Wait for the canvas element to be available in the DOM.
+     * Once the element is found or after 5000ms, execute the callback.
+     */
+    Utilities.waitForElement('.sqd-workspace', 5000);
 })();

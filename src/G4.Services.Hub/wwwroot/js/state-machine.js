@@ -253,6 +253,24 @@ class StateMachineSteps {
 		const properties = {};
 		const parameters = {};
 
+        // Check if the manifest is missing and return an error step placeholder
+		if (!manifest) {
+			return {
+				aliases: [],
+				categories: "G-ERROR",
+				componentType: "task",
+				context: {},
+				description: "Description not provided.",
+				id: Utilities.newUid(),
+				name: "Missing Plugin",
+				parameters: {},
+				pluginName: "MissingPlugin",
+				pluginType: "Action",
+				properties: {},
+				type: "task"
+			}
+		}
+
 		// Process each property in manifest.properties
 		if (manifest.properties) {
 			for (const property of manifest.properties) {
