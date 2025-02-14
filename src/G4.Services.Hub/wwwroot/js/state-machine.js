@@ -46,6 +46,16 @@ class StateMachine {
 			throw new Error("StateMachine is already running.");
 		}
 
+        // Resst the average counter before starting the automation process
+		_averageCounter.reset();
+
+		// Reset the total actions counter after the automation has completed
+		_counter.reset();
+
+        // Start the timer and reset the time counters to zero before beginning the automation process
+		_timer.reset();
+		_timer.start();
+
 		// Mark the state machine as running
 		this.isRunning = true;
 
@@ -71,6 +81,9 @@ class StateMachine {
 
 			// Release the designer from read-only mode
 			_designer.setIsReadonly(false);
+
+            // Stop the timer and update the display with the final time elapsed after the automation process completes
+			_timer.stop();
 		}
 	}
 
@@ -239,6 +252,24 @@ class StateMachineSteps {
 		// Initialize properties and parameters objects
 		const properties = {};
 		const parameters = {};
+
+        // Check if the manifest is missing and return an error step placeholder
+		if (!manifest) {
+			return {
+				aliases: [],
+				categories: "G-ERROR",
+				componentType: "task",
+				context: {},
+				description: "Description not provided.",
+				id: Utilities.newUid(),
+				name: "Missing Plugin",
+				parameters: {},
+				pluginName: "MissingPlugin",
+				pluginType: "Action",
+				properties: {},
+				type: "task"
+			}
+		}
 
 		// Process each property in manifest.properties
 		if (manifest.properties) {

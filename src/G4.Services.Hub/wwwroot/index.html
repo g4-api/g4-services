@@ -5,372 +5,20 @@
 	<meta charset="UTF-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-	<title>Sequential Workflow Designer</title>
+	<title>G4™ Engine API - Blueprint Designer</title>
 
 	<link rel="icon" href="./images/favicon.ico" />
 	<link href="./css/designer.css" rel="stylesheet">
-	<link href="./css/designer-light.css" rel="stylesheet">
-	<link href="./css/designer-dark.css" rel="stylesheet">
-	<style>
-		#bars3 {
-			display: block;
-			position: absolute;
-			top: 50%;
-			left: 50%;
-			height: 50px;
-			width: 50px;
-			margin: -25px 0 0 -25px;
-		}
-
-			#bars3 span {
-				position: absolute;
-				display: block;
-				bottom: 10px;
-				width: 9px;
-				height: 15px;
-				background: rgba(0, 0, 0, 0.25);
-				-webkit-animation: bars3 2s infinite ease-in;
-				animation: bars3 2s infinite ease-in;
-			}
-
-				#bars3 span:nth-child(2) {
-					left: 11px;
-					-webkit-animation-delay: 0.2s;
-					animation-delay: 0.2s;
-				}
-
-				#bars3 span:nth-child(3) {
-					left: 22px;
-					-webkit-animation-delay: 0.4s;
-					animation-delay: 0.4s;
-				}
-
-				#bars3 span:nth-child(4) {
-					left: 33px;
-					-webkit-animation-delay: 0.6s;
-					animation-delay: 0.6s;
-				}
-
-				#bars3 span:nth-child(5) {
-					left: 44px;
-					-webkit-animation-delay: 0.8s;
-					animation-delay: 0.8s;
-				}
-
-		@keyframes bars3 {
-			0% {
-				background: rgba(0, 0, 0, 0.25);
-			}
-
-			25% {
-				background: #000000;
-			}
-
-			50% {
-				background: rgba(0, 0, 0, 0.25);
-			}
-
-			100% {
-				background: rgba(0, 0, 0, 0.25);
-			}
-		}
-
-		@-webkit-keyframes bars3 {
-			0% {
-				background: rgba(0, 0, 0, 0.25);
-			}
-
-			25% {
-				background: #000000;
-			}
-
-			50% {
-				background: rgba(0, 0, 0, 0.25);
-			}
-
-			100% {
-				background: rgba(0, 0, 0, 0.25);
-			}
-		}
-	</style>
-	<style>
-		body,
-		input,
-		select,
-		button {
-			font: 14px/1.3em 'Open Sans', Arial, Verdana, Serif;
-		}
-
-		button {
-			box-sizing: border-box;
-			border: 1px solid silver;
-			padding: 6px;
-			border-radius: 0px;
-			line-height: 1.3em;
-			min-width: 32.19px;
-			cursor: pointer;
-		}
-
-		html,
-		body {
-			width: 100vw;
-			height: 100vh;
-			margin: 0;
-			padding: 0;
-			overflow: hidden;
-		}
-
-		#designer {
-			position: absolute;
-			left: 0;
-			top: 0;
-			width: 100vw;
-			height: 100vh;
-		}
-
-		.sqd-editor {
-			padding: 10px;
-		}
-
-			.sqd-editor p {
-				margin: 0;
-				padding: 0 0 10px;
-			}
-
-		.sqd-smart-editor {
-			height: 100%;
-			overflow: auto;
-		}
-
-		.sqd-editor label,
-		.label-text {
-			font-weight: 700;
-			font-size: 1.05em;
-			margin-top: 0;
-		}
-
-		.sqd-layout-desktop .sqd-smart-editor {
-			width: 350px;
-		}
-
-		.sqd-layout-desktop .sqd-smart-editor-toggle {
-			right: 350px;
-		}
-
-		.sqd-editor input[type="text"],
-		input[type="number"],
-		input[type="file"],
-		input[list],
-		select,
-		textarea {
-			width: 100%;
-			box-sizing: border-box;
-			border: 1px solid silver;
-			padding: 6px;
-			border-radius: 0px;
-			line-height: 1.3em;
-			min-height: 31.33px;
-		}
-
-		.sqd-editor textarea {
-			margin: 0px;
-			min-height: 55px;
-			resize: none;
-			white-space: pre;
-			overflow-y: hidden;
-			overflow-x: auto;
-		}
-
-		.sqd-editor div[data-g4-role='field'] {
-			margin-top: 1em;
-		}
-
-		.sqd-editor div[data-g4-role='hint'] {
-			margin-top: 0.25em;
-			margin-bottom: 0.25em;
-		}
-
-		.sqd-editor input[type='text']:focus,
-		input[type="number"]:focus,
-		input[list]:focus,
-		select:focus,
-		textarea:focus {
-			border: 1px solid #000;
-			outline: none;
-		}
-
-		.sqd-editor input[type='text']:read-only,
-		input[type="number"]:read-only {
-			background: #f4f4f4;
-			border-color: #ddd;
-			color: #999;
-		}
-	</style>
-
-	<style>
-		/* Box-sizing Reset */
-		*,
-		*::before,
-		*::after {
-			box-sizing: border-box;
-		}
-
-		/* Flexbox Container for Label */
-		.label-with-icon {
-			display: flex;
-			align-items: center;
-			justify-content: space-between;
-			font-family: Arial, sans-serif;
-			width: 100%;
-			font-size: 16px;
-		}
-
-		/* SVG Icon Styling */
-		.hint-icon-container {
-			position: relative;
-			cursor: pointer;
-			align-items: center;
-			font: 14px/1.3em Arial, Verdana, sans-serif;
-			line-height: 1.3em;
-			display: block;
-			width: 18px;
-			height: 18px;
-			background: #ddd;
-			border-radius: 50% 50%;
-			text-align: center;
-			font-size: 11px;
-		}
-
-		.hint-icon {
-			font: 14px/1.3em Arial, Verdana, sans-serif;
-			line-height: 1.3em;
-			text-align: center;
-			font-size: 11px;
-			cursor: pointer;
-			width: 64%;
-			height: 64%;
-			margin: 18%;
-		}
-
-		/* Change icon color on hover/focus */
-		.hint-icon-container:hover .hint-icon,
-		.hint-icon-container:focus .hint-icon {
-			fill: #007BFF;
-		}
-
-		.hint-text {
-			font: 14px/1.3em Arial, Verdana, sans-serif;
-			font-size: 13px;
-			line-height: 1.3em;
-			padding: 6px 10px;
-			border-radius: 0px;
-			background: #eee;
-			border: 1px solid #ddd;
-		}
-
-		div[data-g4-role='input-row'],
-		div[data-g4-role='keyvalue'],
-		.input-row {
-			display: flex;
-			align-items: center;
-			margin: 0.2em 0;
-		}
-
-		.add-button {
-			position: absolute;
-			top: 0;
-			right: 0;
-			background: none;
-			border: none;
-			font-size: 20px;
-			cursor: pointer;
-			line-height: 1;
-		}
-
-		div[data-g4-role='input-row'],
-		div[data-g4-role='keyvalue'],
-		.text-with-button {
-			box-sizing: border-box;
-			display: flex;
-			align-items: center;
-			justify-content: space-between;
-		}
-
-			div[data-g4-role='input-row'] button,
-			div[data-g4-role='keyvalue'] button,
-			.text-with-button button {
-				box-sizing: border-box;
-				border: 1px solid silver;
-				padding: 6px;
-				border-radius: 0px;
-				line-height: 1.3em;
-				min-width: 32.19px;
-				cursor: pointer;
-			}
-
-			div[data-g4-role='input-row'] input[type="text"],
-			div[data-g4-role='input-row'] textarea,
-			div[data-g4-role='keyvalue'] input[type="text"],
-			.text-with-button input[type="text"] {
-				margin-left: 0.2em;
-			}
-
-		button svg {
-			width: 1em;
-			height: 1em;
-			vertical-align: middle;
-		}
-
-		div[data-g4-role='custom-buttons'] {
-			margin-top: 0.2em;
-		}
-
-			div[data-g4-role='custom-buttons'] svg {
-				padding: 1.5px;
-			}
-
-			div[data-g4-role='custom-buttons'] path {
-				fill: none;
-				stroke: black;
-				stroke-width: 6
-			}
-	</style>
-
-	<style>
-		details {
-			border: 1px solid silver;
-			border-radius: 0px;
-			padding: 10px;
-			max-width: 500px;
-			margin: 0.25em auto;
-		}
-
-		summary {
-			font-size: 1.2em;
-			cursor: pointer;
-			outline: none;
-		}
-
-		.content {
-			margin-top: 10px;
-			animation: fadeIn 0.3s ease-in-out;
-		}
-
-		@keyframes fadeIn {
-			from {
-				opacity: 0;
-			}
-
-			to {
-				opacity: 1;
-			}
-		}
-	</style>
+	<link href="./css/designer-blueprint-parameters.css" rel="stylesheet" />
+	<link href="./css/designer-blueprint-spinner.css" rel="stylesheet" />
+	<link href="./css/designer-blueprint-layout.css" rel="stylesheet" />
+	<link href="./css/designer-blueprint-appearance.css" rel="stylesheet" />
 </head>
 
-<body>
+<body class="sqd-theme-light">
+
 	<div id="loading-indicator">
-		<div id="bars3">
+		<div id="spinner">
 			<span></span>
 			<span></span>
 			<span></span>
@@ -378,8 +26,42 @@
 			<span></span>
 		</div>
 	</div>
-	<div id="designer"></div>
+
+	<div id="app">
+		<div id="designer--header" class="sqd-header">
+			<div class="column">
+				<div class="sqd-title">G4&trade; Engine API</div>
+				<div class="sqd-subtitle">Blueprint Designer for Automation Workflows</div>
+				<div class="sqd-text--tiny sqd-margin-top-03">Powered by <b><a href="https://github.com/nocode-js/sequential-workflow-designer" target="_blank">Sequential Workflow Designer</a></b></div>
+				<div class="sqd-text--tiny sqd-margin-top-03">Powered by <b><a href="https://github.com/g4-api/g4-services" target="_blank">G4&trade; Engine</a></b></div>
+			</div>
+			<div class="column sqd-card">
+				<div class="sqd-card--label">Actions Invoked</div>
+				<div id="designer--total-actions" class="sqd-card--content">0</div>
+			</div>
+			<div class="column sqd-card">
+				<div class="sqd-card--label">Avg. Action Time (sec.)</div>
+				<div id="designer--average-action-time" class="sqd-card--content">0.00</div>
+			</div>
+			<div class="column sqd-card">
+				<div class="sqd-card--label">Time Elapsed</div>
+				<div id="designer--timer" class="sqd-card--content">00:00:00</div>
+			</div>
+		</div>
+
+		<div id="designer" class="sqd-content"></div>
+
+		<div id="designer--bottom" class="sqd-footer">
+			<div>Column 1</div>
+			<div>Column 2</div>
+			<div>Column 3</div>
+		</div>
+
+	</div>
+
+	<script src="./js/metric-utilities.js"></script>
 	<script src="./js/utilities.js"></script>
+	<script src="./js/observer.js"></script>
 	<script src="./js/cli-factory.js"></script>
 	<script src="./js/signalr.min.js" integrity="" crossorigin="anonymous"></script>
 	<script src="./js/g4-client.js"></script>
@@ -478,6 +160,7 @@
 					classList: ['sqd-control-bar-button'],
 					container: customButtonsContainer,
 					icon: stopSvg,
+					pathClassList: ['sqd-icon-path', 'sqd-stop-icon-path'],
 					svgClassList: ['sqd-control-bar-button-icon'],
 					title: 'Stop Definition',
 					viewBox: '0 0 100 100',
@@ -495,6 +178,7 @@
 					classList: ['sqd-control-bar-button'],
 					container: customButtonsContainer,
 					icon: startSvg,
+					pathClassList: ['sqd-icon-path', 'sqd-start-icon-path'],
 					svgClassList: ['sqd-control-bar-button-icon'],
 					title: 'Start Definition',
 					viewBox: '0 0 100 100',

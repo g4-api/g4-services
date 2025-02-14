@@ -20,7 +20,7 @@ const newFieldContainer = (id, labelDisplayName, hintText) => {
         const escapedId = CSS.escape(hintContainer.id);
 
         // Query for an existing hint text element within the hintContainer.
-        let hintElement = document.querySelector(`#${escapedId} > div.hint-text`);
+        let hintElement = document.querySelector(`#${escapedId} > div.sqd-help-text`);
 
         // If the hint text element already exists, remove it and exit the function.
         if (hintElement) {
@@ -30,7 +30,7 @@ const newFieldContainer = (id, labelDisplayName, hintText) => {
 
         // Create a new hint text element if it doesn't already exist.
         hintElement = document.createElement('div');
-        hintElement.classList.add('hint-text'); // Add the 'hint-text' class for styling.
+        hintElement.classList.add('sqd-help-text'); // Add the 'sqd-help-text' class for styling.
         hintElement.innerHTML = hintText;       // Set the provided hint text as the content.
 
         // Append the newly created hint text element to the hintContainer.
@@ -61,12 +61,12 @@ const newFieldContainer = (id, labelDisplayName, hintText) => {
 
     // Create a new `label` element
     const labelElement = document.createElement('span');
-    labelElement.classList.add('label-with-icon');
+    labelElement.classList.add('sqd-label--with-help-icon');
 
     // Create a new `span` element to serve as the hint icon
     const iconElement = document.createElement('span');
     iconElement.id = `${id}-icon`;
-    iconElement.classList.add('hint-icon-container');
+    iconElement.classList.add('sqd-help-icon-container');
     iconElement.tabIndex = 0;
     iconElement.title = 'More Information';
     iconElement.setAttribute('role', 'img');
@@ -78,12 +78,12 @@ const newFieldContainer = (id, labelDisplayName, hintText) => {
      *
      * Note:
      * - `for` attribute links the label to the input element with the corresponding `id`.
-     * - The `hint-icon-container` is interactive, indicated by `tabindex="0"`, allowing keyboard navigation.
+     * - The `sqd-help-icon-container` is interactive, indicated by `tabindex="0"`, allowing keyboard navigation.
      * - `role="img"` and `title` provide accessibility enhancements.
      */
     const labelText = `<span class="label-text">${labelDisplayName}</span></label>`;
     const svg = `
-        <svg viewBox="0 -960 960 960" class="hint-icon" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <svg viewBox="0 -960 960 960" class="sqd-help-icon" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             <path d="M419-334q1-87 20.5-129t65.5-76q39-31 57.5-61.109T581-666q0-39-25.5-64.5T486-756q-46 0-75 26t-43 67l-120-52q27-74 87-120.5T485.756-882q109.228 0 168.236 62.148Q713-757.703 713-669q0 60-21 105.5T625-478q-46 40-57 65.5T557-334H419Zm66.788 282Q447-52 420-79t-27-65.496q0-38.495 26.92-65.5Q446.841-237 485.92-237 525-237 552-209.996q27 27.005 27 65.5Q579-106 551.788-79q-27.213 27-66 27Z"></path>
         </svg>`;
 
@@ -160,6 +160,11 @@ const newUnlabeledFieldContainer = (id, role) => {
 const newMultipleFieldsContainer = (id, options) => {
     // Create the main <details> container element.
     const detailsContainer = document.createElement('details');
+
+    // Check if the container should be open by default and set the 'open' attribute if necessary.
+    if (options.isOpen) {
+        detailsContainer.setAttribute("open", null)
+    }
 
     // Create the <summary> element that serves as the clickable label.
     const summaryContainer = document.createElement('summary');
@@ -247,7 +252,7 @@ const newObjectArrayFieldsContainer = (id, options, setCallback) => {
 
         // Create a container for the remove button and append the button to it.
         const buttonContainer = document.createElement('div');
-        buttonContainer.classList.add('text-with-button');
+        buttonContainer.classList.add('sqd-button--with-text');
         buttonContainer.appendChild(buttonController);
 
         // Insert the remove button container after the summary element.
@@ -428,7 +433,7 @@ const newObjectArrayFieldsContainer = (id, options, setCallback) => {
 
     // Create a container for the "Add" button and append the button to it.
     const buttonContainer = document.createElement('div');
-    buttonContainer.classList.add('text-with-button');
+    buttonContainer.classList.add('sqd-button--with-text');
     buttonContainer.appendChild(buttonController);
 
     // Insert the "Add" button container after the summary element.
@@ -1081,7 +1086,8 @@ class CustomG4Fields {
         const fieldContainer = newMultipleFieldsContainer(inputId, {
             labelDisplayName: options.label,
             role: 'container',
-            hintText: "Configure driver parameters to optimize automation performance by selecting a web driver, specifying driver binaries, and defining advanced capability groups for precise driver behavior."
+            hintText: "Configure driver parameters to optimize automation performance by selecting a web driver, specifying driver binaries, and defining advanced capability groups for precise driver behavior.",
+            isOpen: options.isOpen
         });
 
         // Select the controller sub-container within the field container using the unique ID.
@@ -2837,10 +2843,7 @@ class CustomFields {
             // Create a container <div> to serve as the modal
             const modalElement = document.createElement('div');
             modalElement.setAttribute('id', `${inputId}-modal`);
-            modalElement.setAttribute(
-                'style',
-                'display: block; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);'
-            );
+            modalElement.setAttribute('class', 'sqd-modal');
             modalElement.setAttribute('data-g4-role', 'input-modal');
 
             // Create a container for the textarea and close button
@@ -2849,7 +2852,6 @@ class CustomFields {
             // Create the textarea element
             const textareaElement = document.createElement('textarea');
             textareaElement.setAttribute('id', `${inputId}-textarea`);
-            textareaElement.setAttribute('style', 'width: 60vw; height: 25vh;');
             textareaElement.setAttribute('wrap', 'off');
             textareaElement.setAttribute('spellcheck', 'false');
 
@@ -3159,7 +3161,7 @@ class CustomFields {
          */
         const switchHint = (hintContainer, hintText) => {
             // Query for an existing hint text element within the hintContainer.
-            let hintElement = hintContainer.querySelector('div.hint-text');
+            let hintElement = hintContainer.querySelector('div.sqd-help-text');
 
             // If the hint text element already exists, remove it and exit the function.
             if (hintElement) {
@@ -3169,7 +3171,7 @@ class CustomFields {
 
             // Create a new hint text element if it doesn't already exist.
             hintElement = document.createElement('div');
-            hintElement.classList.add('hint-text'); // Add the 'hint-text' class for styling.
+            hintElement.classList.add('sqd-help-text'); // Add the 'sqd-help-text' class for styling.
             hintElement.innerHTML = hintText;       // Set the provided hint text as the content.
 
             // Append the newly created hint text element to the hintContainer.
@@ -3185,15 +3187,15 @@ class CustomFields {
 
         // Define the HTML structure for the title, subtitle, and hint icon.
         const html = `
-        <h2 style="display: flex; align-items: center; justify-content: space-between;">
+        <div class="sqd-title sqd-label--with-help-icon">
             ${options.titleText}
-            <span class="hint-icon-container" tabindex="0" title="More Information" role="img" aria-label="More Information">
-                <svg viewBox="0 -960 960 960" class="hint-icon" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <span class="sqd-help-icon-container" tabindex="0" title="More Information" role="img" aria-label="More Information">
+                <svg viewBox="0 -960 960 960" class="sqd-help-icon" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                     <path d="M419-334q1-87 20.5-129t65.5-76q39-31 57.5-61.109T581-666q0-39-25.5-64.5T486-756q-46 0-75 26t-43 67l-120-52q27-74 87-120.5T485.756-882q109.228 0 168.236 62.148Q713-757.703 713-669q0 60-21 105.5T625-478q-46 40-57 65.5T557-334H419Zm66.788 282Q447-52 420-79t-27-65.496q0-38.495 26.92-65.5Q446.841-237 485.92-237 525-237 552-209.996q27 27.005 27 65.5Q579-106 551.788-79q-27.213 27-66 27Z"></path>
                 </svg>
             </span>
-        </h2>
-        <span class="subtitle">${options.subTitleText}</span>
+        </div>
+        <span class="sqd-subtitle">${options.subTitleText}</span>
         <div data-g4-role="summary"></div>`;
 
         // Insert the HTML structure into the title container.

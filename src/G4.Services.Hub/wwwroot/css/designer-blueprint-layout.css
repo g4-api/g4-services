@@ -1,0 +1,302 @@
+﻿/* Reset default margin and padding */
+:root {
+	/* Application */
+	--base-height: 100vh;
+	--base-space: 0.2em;
+	--base-width: 100vw;
+	--footer-grid-template-columns: 33.33% 33.33% 33.33%;
+	--footer-height: 0em;
+	--header-grid-template-columns: 33.33% 33.33% 33.33%;
+	--header-height: 8em;
+	--content-height: calc(100vh - var(--header-height));
+	/* Smart Editor */
+	--smart-editor-width: 350px;
+	/* Toolbox */
+	--toolbox-width: 150px;
+}
+
+* {
+	margin: 0;
+	padding: 0;
+	box-sizing: border-box;
+}
+
+#app {
+	display: flex;
+	flex-direction: column;
+	min-height: 100vh;
+}
+
+.sqd-header {
+	height: var(--header-height);
+	display: flex;
+	gap: var(--base-space);
+	width: 100%;
+}
+
+	.sqd-header > * {
+		flex: 1;
+	}
+
+		.sqd-header > *:first-child {
+			flex: 0 0 40%;
+		}
+
+	.sqd-header .column {
+		padding: 10px;
+		box-sizing: border-box;
+	}
+
+	.sqd-header .sqd-card {
+		align-items: center;
+		box-sizing: border-box;
+		display: flex;
+		justify-content: center;
+		margin-top: var(--base-space);
+		margin-bottom: var(--base-space);
+		position: relative;
+	}
+
+		.sqd-header .sqd-card .sqd-card--label {
+			position: absolute;
+			top: 10px;
+			left: 10px;
+		}
+
+		.sqd-header .sqd-card .sqd-card--content {
+			margin: 0;
+		}
+
+.sqd-content {
+	flex: 1;
+}
+
+.sqd-footer {
+	height: var(--footer-height);
+}
+
+.sqd-margin-top-03 {
+	margin-top: 0.3em;
+}
+
+.sqd-modal {
+	display: block;
+	position: fixed;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	z-index: 9999;
+}
+
+	.sqd-modal textarea {
+		height: 30vh;
+		overflow: auto;
+		width: 60vw;
+	}
+
+html, body {
+	height: var(--base-height);
+	margin: 0;
+	overflow: hidden;
+	padding: 0;
+	width: var(--base-width);
+}
+
+button {
+	box-sizing: border-box;
+	line-height: 1.3em;
+	min-height: 2.6em;
+	min-width: 2.6em;
+	padding: 6px;
+}
+
+textarea {
+	min-height: 5.2em;
+	overflow-x: auto;
+	overflow-y: hidden;
+	resize: none;
+	white-space: pre;
+}
+
+input[type="text"],
+input[type="number"],
+input[type="file"],
+input[list],
+select {
+	min-height: 2.6em;
+}
+
+input[type="text"],
+input[type="number"],
+input[type="file"],
+input[list],
+select,
+textarea {
+	box-sizing: border-box;
+	line-height: 1.3em;
+	padding: 6px;
+	width: 100%;
+}
+
+	input[type="text"]:focus,
+	input[type="number"]:focus,
+	input[type="file"]:focus,
+	input[list]:focus,
+	select:focus,
+	textarea:focus {
+		outline: none;
+	}
+
+#designer {
+	height: var(--content-height);
+	left: 0;
+	position: absolute;
+	top: var(--header-height);
+	width: var(--base-width);
+}
+
+#designer--bottom {
+	bottom: 0;
+	display: grid;
+	grid-template-columns: var(--footer-grid-template-columns);
+	height: var(--footer-height);
+	position: absolute;
+	left: 0;
+	width: var(--base-width);
+}
+
+#designer--top {
+	display: grid;
+	grid-template-columns: var(--header-grid-template-columns);
+	height: var(--header-height);
+	left: 0;
+	position: absolute;
+	top: 0;
+	width: var(--base-width);
+}
+
+.sqd-control-bar div[data-g4-role='custom-buttons'] {
+	margin-top: 0.2em;
+}
+
+	.sqd-control-bar div[data-g4-role='custom-buttons'] svg {
+		padding: 0;
+	}
+
+.sqd-help-icon-container {
+	border-radius: 50% 50%;
+	display: block;
+	position: relative;
+	text-align: center;
+}
+
+.sqd-label--with-help-icon {
+	align-items: center;
+	display: flex;
+	justify-content: space-between;
+	width: 100%;
+}
+
+	.sqd-label--with-help-icon .sqd-help-icon {
+		height: 64%;
+		margin: 18%;
+		text-align: center;
+		width: 64%;
+	}
+
+.sqd-layout-desktop .sqd-smart-editor-toggle {
+	right: calc(var(--smart-editor-width) + 10px);
+	top: 10px;
+}
+
+.sqd-layout-desktop .sqd-smart-editor {
+	height: calc(100% - 20px);
+	right: 10px;
+	overflow: auto;
+	top: 10px;
+	width: var(--smart-editor-width);
+}
+
+	.sqd-layout-desktop .sqd-smart-editor .sqd-editor {
+		padding: 10px;
+	}
+
+		.sqd-layout-desktop .sqd-smart-editor .sqd-editor button {
+			box-sizing: border-box;
+			line-height: 1;
+			padding: 6px;
+		}
+
+		.sqd-layout-desktop .sqd-smart-editor .sqd-editor details {
+			margin: 0.25em auto;
+			max-width: var(--smart-editor-width);
+			padding: 10px;
+		}
+
+		.sqd-layout-desktop .sqd-smart-editor .sqd-editor label,
+		.sqd-layout-desktop .sqd-smart-editor .sqd-editor .sqd-label-text {
+			margin-top: 0;
+		}
+
+		.sqd-layout-desktop .sqd-smart-editor .sqd-editor p {
+			margin: 0;
+			padding: 0 0 10px;
+		}
+
+		.sqd-layout-desktop .sqd-smart-editor .sqd-editor div[data-g4-role='field'] {
+			margin-top: 1em;
+		}
+
+		.sqd-layout-desktop .sqd-smart-editor .sqd-editor div[data-g4-role='hint'] {
+			margin-top: 0.35em;
+			margin-bottom: 0.35em;
+		}
+
+		.sqd-layout-desktop .sqd-smart-editor .sqd-editor div[data-g4-role='input-row'],
+		.sqd-layout-desktop .sqd-smart-editor .sqd-editor div[data-g4-role='keyvalue'],
+		.sqd-layout-desktop .sqd-smart-editor .sqd-editor .sqd-button--with-text {
+			align-items: center;
+			box-sizing: border-box;
+			display: flex;
+			justify-content: space-between;
+			margin: 0.2em 0;
+		}
+
+			.sqd-layout-desktop .sqd-smart-editor .sqd-editor div[data-g4-role='input-row'] input[type="text"],
+			.sqd-layout-desktop .sqd-smart-editor .sqd-editor div[data-g4-role='input-row'] textarea,
+			.sqd-layout-desktop .sqd-smart-editor .sqd-editor div[data-g4-role='keyvalue'] input[type="text"],
+			.sqd-layout-desktop .sqd-smart-editor .sqd-editor .sqd-button--with-text input[type="text"] {
+				margin-left: 0.2em;
+			}
+
+		.sqd-layout-desktop .sqd-smart-editor .sqd-editor textarea {
+			margin: 0px;
+		}
+
+		.sqd-layout-desktop .sqd-smart-editor .sqd-editor .sqd-help-text {
+			padding: 6px 10px;
+		}
+
+		.sqd-layout-desktop .sqd-smart-editor .sqd-editor .sqd-help-icon-container {
+			height: var(--smart-editor-label-help-icon-container-size);
+			width: var(--smart-editor-label-help-icon-container-size);
+		}
+
+.sqd-title,
+.sqd-title--with-help-icon,
+.sqd-subtitle {
+	margin: 0.2em 0 0.2em 0;
+}
+
+.sqd-toolbox {
+	width: var(--toolbox-width);
+}
+
+.sqd-toolbox-group-title,
+.sqd-scrollbox-body,
+.sqd-toolbox-filter,
+.sqd-toolbox-item {
+	box-sizing: border-box !important;
+	margin: 5px 10px 10px 5px !important;
+	width: calc(100% - 10px) !important;
+}

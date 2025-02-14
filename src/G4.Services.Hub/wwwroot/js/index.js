@@ -116,7 +116,7 @@ async function initializeDesigner() {
 	}
 
 	// Sort groups alphabetically by name.
-	let sortedGroups = groups.sort((a, b) => a.name.localeCompare(b.name));
+	let sortedGroups = groups.toSorted((a, b) => a.name.localeCompare(b.name));
 
 	// Sort steps within each group alphabetically by name.
 	for (const group of sortedGroups) {
@@ -132,15 +132,25 @@ async function initializeDesigner() {
 
 	// Listen for the "ReceiveAutomationEvent" message from the server
 	_connection.on("ReceiveAutomationStartEvent", (message) => {
-		if (!_includeTypes.includes(message.type.toUpperCase())) {
+		// Convert the message type to uppercase for consistent comparison.
+		const messageType = message.type.toUpperCase();
+
+		// Exit early if the message type is not one of the included types.
+		if (!_flowableTypes.includes(messageType)) {
 			return;
 		}
 
-		// Select the step in the designer by its ID.
+		// Select the step in the designer using the provided ID.
 		_designer.selectStepById(message.id);
 
-		// Adjust the viewport so the selected step is brought into view.
+		// Adjust the viewport to bring the selected step into view.
 		_designer.moveViewportToStep(message.id);
+
+		// Increment the total actions counter.
+		if (_auditableTypes.includes(messageType)) {
+            _averageCounter.addOne();
+			_counter.addOne();
+		}
 	});
 
 	// Listen for the "ReceiveAutomationRequestInitializedEvent" message from the server
@@ -148,6 +158,7 @@ async function initializeDesigner() {
 		console.log(message);
 	});
 
+	// TODO: write to log
 	// Listen for the "ReceiveAutomationRequestInitializedEvent" message from the server
 	_connection.on("ReceiveLogCreatedEvent", (message) => {
 		console.log(message);
@@ -163,6 +174,12 @@ async function initializeDesigner() {
 
 		// Reset the designer or UI state after all steps have been processed
 		_stateMachine.handler.resetDesigner();
+
+        // Add another action to the average counter
+		_averageCounter.addOne();
+
+        // Stop the timer after the automation has completed
+		_timer.stop();
 	});
 }
 
@@ -285,7 +302,6 @@ function newConfiguration() {
 		 * @property {Function} iconUrlProvider - Function to determine the icon URL based on component type and step type.
 		 */
 		steps: {
-			// TODO: remove the supportedIcons and check if the file exists. If yes, use it; if not, use icon-task.svg
 			/**
 			 * Provides the URL for the step icon based on its component type and specific type.
 			 *
@@ -299,14 +315,33 @@ function newConfiguration() {
 			 * console.log(iconUrl); // Outputs: './images/icon-loop.svg'
 			 */
 			iconUrlProvider: (_, type) => {
-				// Define the list of supported icon types
-				const supportedIcons = ['if', 'loop', 'text', 'job', 'stage', 'pointer', 'keyboard'];
+				// Extract unique icon providers from the _manifests object.
+				const supportedIcons = Array.from(
+					new Set(
+						Object.values(_manifests).map(manifest =>
+							manifest?.context?.integration?.sequentialWorkflow?.iconProvider || 'task'
+						)
+					)
+				);
 
-				// Determine the filename based on the type; default to 'task' if type is unsupported
-				const fileName = supportedIcons.includes(type) ? type : 'task';
+				// Determine the iconType based on the input 'type'.
+				// If the provided type is not in the list of supportedIcons, default to 'task'.
+				let iconType = supportedIcons.includes(type) ? type : 'task';
 
-				// Return the relative path to the SVG icon
-				return `./images/icon-${fileName}.svg`;
+				// Convert the input type to uppercase for case-insensitive comparisons.
+				const upperType = type.toUpperCase();
+
+				// If the type is 'STAGE', force iconType to 'stage'.
+				if (upperType === 'STAGE') {
+					iconType = 'stage';
+				}
+				// Else if the type is 'JOB', force iconType to 'job'.
+				else if (upperType === 'JOB') {
+					iconType = 'job';
+				}
+
+				// Return the relative path to the SVG icon based on the determined iconType.
+				return `./images/icon-${iconType}.svg`;
 			}
 		},
 
@@ -331,8 +366,7 @@ function newConfiguration() {
 			 * console.log(isValid); // Outputs: true
 			 */
 			step: step => {
-				// Check that every property key in step.properties has a truthy value
-				return Object.keys(step.properties).every(n => !!step.properties[n]);
+				return !step?.categories?.toUpperCase().includes("G-ERROR");
 			},
 
 			/**
@@ -537,10 +571,7 @@ function newImportModal() {
 		modalElement.setAttribute('data-g4-role', 'import-modal');
 
 		// Apply inline styles to center the modal and set display properties.
-		modalElement.setAttribute(
-			'style',
-			'display: block; gap: 0.2em; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); margin-left: 0; z-index: 9999;'
-		);
+		modalElement.setAttribute('class', 'sqd-modal');
 
 		// Return the configured modal element.
 		return modalElement;
@@ -572,6 +603,43 @@ function newImportModal() {
 
 		// Return the configured textarea element.
 		return textareaElement;
+	};
+
+	/**
+	 * Observes the canvas for DOM changes and triggers a reset view action when new nodes are added.
+	 *
+	 * This function sets up a MutationObserver on the canvas (via _canvasObserver) to monitor
+	 * changes in its DOM subtree. If new nodes are added, it selects the "Reset view" button in
+	 * the control bar and triggers a click event to adjust the viewport.
+	 */
+	const resetView = (observer) => {
+		// Configuration object for the MutationObserver.
+		const config = {
+			attributes: false,
+			childList: true,
+			subtree: true
+		};
+
+		// Start observing DOM mutations on the target node using observer.
+		observer.observeDOMChanges(config, (mutationsList, observer) => {
+			// Extract added nodes from each mutation record, converting NodeLists to arrays,
+			// and flatten all arrays into a single array of nodes.
+			const addedNodes = mutationsList.flatMap(mutation => Array.from(mutation.addedNodes));
+
+			// If no new nodes were added, exit early.
+			if (addedNodes.length === 0) {
+				return;
+			}
+
+			// Select the reset view button from the control bar using its title attribute.
+			const resetViewButton = document.querySelector(".sqd-control-bar div[title='Reset view']");
+
+			// If the button exists, trigger a click event to reset the view.
+			resetViewButton?.click();
+
+            // Disconnect the observer to prevent further mutations.
+			observer.disconnect();
+		});
 	};
 
 	/**
@@ -627,6 +695,11 @@ function newImportModal() {
 
 			// Create a new step using the state machine factory and the retrieved manifest.
 			const step = StateMachineSteps.newG4Step(manifest);
+
+			// Assign the name of the rule's capabilities to the step if available.
+			step.name = step?.pluginName?.toUpperCase() === 'MISSINGPLUGIN'
+				? `Missing Plugin (${rule?.capabilities?.name || step.name})`
+				: rule?.capabilities?.name || step.name;
 
 			// Ensure that the rule has 'rules' and 'branches' properties.
 			rule.rules = rule.rules || [];
@@ -758,8 +831,14 @@ function newImportModal() {
 	// Generate a unique identifier for this modal instance.
 	const inputId = Utilities.newUid();
 
+	// Select the target node that we want to observe for DOM changes.
+	const workspaceElement = document.querySelector('.sqd-workspace');
+
+    // Create a new MutationObserver instance to observe the canvas for DOM changes.
+	const workspaceObserver = new Observer(workspaceElement);
+
 	// Select the field container where the modal will be appended. In this case, it's the <body> element.
-	const fieldContainer = document.querySelector("body");
+	const fieldContainer = document.querySelector("#designer > div");
 
 	// Find and remove any existing modals to ensure only one is visible at a time.
 	const existingModals = fieldContainer?.querySelectorAll("[id*=import-modal]");
@@ -778,7 +857,11 @@ function newImportModal() {
 
 	// Create a container with Import, Apply, and Close buttons.
 	const buttonsContainerElement = newButtonsContainerElement(inputId, modalElement, (definition) => {
+        // Set the definition using the parsed JSON value.
 		setDefinition(definition);
+
+		// Reset the view to adjust the viewport after setting the new definition.
+		resetView(workspaceObserver);
 	});
 
 	// Create a container for the textarea and the buttons.
@@ -865,7 +948,7 @@ function newStartDefinition(sequence) {
 function rootEditorProvider(definition, editorContext, isReadonly) {
 	// Create the main container div element for the root editor.
 	const container = document.createElement('div');
-	container.setAttribute("g4-role", "root-editor");
+	container.setAttribute("data-g4-role", "root-editor");
 
 	// Add a title to the container to indicate the configuration section.
 	CustomFields.newTitle({
@@ -1441,7 +1524,8 @@ function stepEditorProvider(step, editorContext) {
 				container: container,
 				label: "Driver Parameters",
 				title: "Provide G4™ driver parameters to configure the automation.",
-				initialValue: step.properties['driverParameters']
+				initialValue: step.properties['driverParameters'],
+				isOpen: true
 			},
 			/**
 			 * Callback function to handle updates to the Driver Parameters field.
@@ -1511,7 +1595,7 @@ function stepEditorProvider(step, editorContext) {
 
 	// Create the main container element for the step editor.
 	const stepEditorContainer = document.createElement('div');
-	stepEditorContainer.setAttribute("g4-role", "step-editor");
+	stepEditorContainer.setAttribute("data-g4-role", "step-editor");
 
 	// Set the tooltip for the container to provide a description of the step.
 	stepEditorContainer.title = step.description;
@@ -1538,8 +1622,8 @@ function stepEditorProvider(step, editorContext) {
 			container: stepEditorContainer,
 			initialValue: step.name,
 			isReadonly: false,
-			label: 'Plugin Name',
-			title: 'The name of the plugin',
+			label: 'Dispaly Name',
+			title: 'The name displayed for this step. This is for visual purposes only and is not used for identification.',
 			step: step
 		},
 		(value) => {
@@ -1572,7 +1656,8 @@ function stepEditorProvider(step, editorContext) {
 	const propertiesFieldContainer = newMultipleFieldsContainer(`${inputId}`, {
 		labelDisplayName: 'Properties',
 		role: 'properties-container',
-		hintText: 'Attributes that define the structural and operational behavior of the plugin.'
+		hintText: 'Attributes that define the structural and operational behavior of the plugin.',
+		isOpen: true
 	});
 
 	// Select the specific container within the Properties section where individual property fields will be added.
@@ -1618,7 +1703,8 @@ function stepEditorProvider(step, editorContext) {
 	const parametersFieldContainer = newMultipleFieldsContainer(`${inputId}`, {
 		labelDisplayName: 'Parameters',
 		role: 'parameters-container',
-		hintText: "Configurable inputs that customize and control the plugin's functionality."
+		hintText: "Configurable inputs that customize and control the plugin's functionality.",
+		isOpen: true
 	});
 
 	// Select the specific container within the Parameters section where individual parameter fields will be added.

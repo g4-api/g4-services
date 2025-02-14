@@ -244,6 +244,9 @@ class G4Client {
 			"pluginName": step.pluginName,
 			"reference": {
 				"id": step.id
+			},
+			"capabilities": {
+				"name": step.name
 			}
 		}
 
@@ -802,6 +805,50 @@ class G4Client {
 		};
 
 		/**
+		 * Formats the external repositories settings by filtering out any repository entries
+		 * that do not have both a URL and a version.
+		 */
+		const formatExternalRepositories = (settings) => {
+			// If settings is falsy, return undefined immediately.
+			if (!settings) {
+				return undefined;
+			}
+
+			// Retrieve the plugins settings; use an empty object if not present.
+			const pluginsSettings = settings?.pluginsSettings || {};
+
+			// Retrieve the externalRepositories from the plugins settings; default to an empty object.
+			const externalRepositories = pluginsSettings.externalRepositories || {};
+
+			// Initialize an array to hold the valid repository objects.
+			const repositories = [];
+
+			// Get all keys from the externalRepositories object.
+			const keys = Object.keys(externalRepositories);
+
+			// Iterate over each key in the externalRepositories object.
+			for (const key of keys) {
+				// Get the repository object corresponding to the current key.
+				const repository = externalRepositories[key];
+
+				// Validate that the repository has both a URL and a version.
+				// If either is missing, skip this repository.
+				if (!repository.url || !repository.version) {
+					continue;
+				}
+
+				// Add the repository to the array if it meets the criteria.
+				repositories.push(repository);
+			}
+
+			// Update the externalRepositories property with the filtered array.
+			settings.pluginsSettings.externalRepositories = repositories;
+
+			// Return the modified settings object.
+			return settings;
+		};
+
+		/**
 		 * Retrieves driver parameters if both driver and driverBinaries are provided.
 		 */
 		const getDriverParameters = (driverParameters) => {
@@ -825,7 +872,7 @@ class G4Client {
 		driverParameters = driverParameters ? formatDriverParameters(driverParameters) : undefined;
 
 		// Extract additional settings (if any) from the definition properties.
-		const settings = definition.properties["settings"] || undefined;
+		const settings = formatExternalRepositories(definition.properties["settings"] || undefined);
 
 		// Prepare an array to collect stages from the definition sequence.
 		const stages = [];

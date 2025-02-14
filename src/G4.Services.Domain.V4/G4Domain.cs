@@ -192,6 +192,22 @@ namespace G4.Services.Domain.V4
             };
 
             // Set up the event handler for when a rule is invoked.
+            client.Automation.RuleInvoked += (sender, e) =>
+            {
+                // Retrieve the connection ID for SignalR from environment variables.
+                var connectionId = GetConnection(e.Automation);
+
+                // Send a notification about the rule invocation to the specified SignalR client.
+                SendMessage(context, connectionId, method: "ReceiveAutomationEndEvent", message: new EventDataModel
+                {
+                    Id = e.Rule.Reference.Id,
+                    ObjectType = e.Rule.GetType().Name,
+                    Type = e.Rule.GetManifest().PluginType,
+                    Value = e.Rule
+                });
+            };
+
+            // Set up the event handler for when a rule is invoked.
             client.Automation.RuleInvoking += (sender, e) =>
             {
                 // Retrieve the connection ID for SignalR from environment variables.
