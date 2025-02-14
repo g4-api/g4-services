@@ -1,4 +1,20 @@
 ﻿/* Reset default margin and padding */
+:root {
+	/* Application */
+	--base-height: 100vh;
+	--base-space: 0.2em;
+	--base-width: 100vw;
+	--footer-grid-template-columns: 33.33% 33.33% 33.33%;
+	--footer-height: 0em;
+	--header-grid-template-columns: 33.33% 33.33% 33.33%;
+	--header-height: 8em;
+	--content-height: calc(100vh - var(--header-height));
+	/* Smart Editor */
+	--smart-editor-width: 350px;
+	/* Toolbox */
+	--toolbox-width: 150px;
+}
+
 * {
 	margin: 0;
 	padding: 0;

@@ -5,23 +5,18 @@
 	--a-link: var(--secondary-color);
 	--a-visited: var(--secondary-color);
 	--base-font: 400 1.5vmin 'Roboto', sans-serif;
-	--base-height: 100vh;
-	--base-space: 0.2em;
-	--base-width: 100vw;
 	--border-radius: 0px;
 	--card-border: 1px solid var(--secondary-color);
 	--card-contet-font: 700 2.7vmin 'Roboto', sans-serif;
 	--card-label-font: 400 1.2vmin 'Roboto', sans-serif;
-	--footer-grid-template-columns: 33.33% 33.33% 33.33%;
-	--footer-height: 0em;
-	--header-grid-template-columns: 33.33% 33.33% 33.33%;
-	--header-height: 8em;
-	--content-height: calc(100vh - var(--header-height));
 	/* Colors */
 	--black: #000;
 	--black-rgb: 0, 0, 0;
 	--green: #39AA40;
+	--gray: #DDD;
+	--light-gray: #EEE;
 	--primary-color: #24497E;
+	--primary-color-hover: #7B91B1;
 	--primary-color-rgb: 36, 73, 126;
 	--red: #ED4800;
 	--secondary-color: #FFF;
@@ -88,8 +83,8 @@
 	--smart-editor-group-background: transparent;
 	--smart-editor-group-color: var(--primary-color);
 	--smart-editor-group-font: 400 1.2em/1.2em 'Roboto', sans-serif;
-	--smart-editor-help-text-background: #EEE;
-	--smart-editor-help-text-border: 1px solid #DDD;
+	--smart-editor-help-text-background: var(--light-gray);
+	--smart-editor-help-text-border: 1px solid var(--gray);
 	--smart-editor-help-text-font: 400 1.0em 'Roboto', sans-serif;
 	--smart-editor-input-background: var(--secondary-color);
 	--smart-editor-input-border: 1px solid var(--primary-color);
@@ -103,8 +98,8 @@
 	--smart-editor-input-readonly-border: 1px solid var(--primary-color);
 	--smart-editor-input-readonly-color: var(--black);
 	--smart-editor-label-font: 700 1.1em/1.1em 'Roboto', sans-serif;
-	--smart-editor-label-help-icon-container-background: #DDD;
-	--smart-editor-label-help-icon-container-hover-fill: #007BFF;
+	--smart-editor-label-help-icon-container-background: var(--gray);
+	--smart-editor-label-help-icon-container-hover-fill: var(--primary-color-hover);
 	--smart-editor-label-help-icon-container-size: 1.2em;
 	--smart-editor-label-color: var(--primary-color);
 	--smart-editor-subtitle-background: var(--secondary-color);
@@ -115,9 +110,8 @@
 	--smart-editor-title-font: 700 1.5em 'Roboto', sans-serif;
 	--smart-editor-toggle-background: var(--secondary-color);
 	--smart-editor-toggle-icon-path: var(--primary-color);
-	--smart-editor-toggle-icon-hover-path: #007BFF;
+	--smart-editor-toggle-icon-hover-path: var(--primary-color-hover);
 	--smart-editor-toggle-box-shadow: 0 0 0px rgba(var(--black-rgb), 0.15);
-	--smart-editor-width: 350px;
 	/* Toolbox */
 	--toolbox-background: var(--secondary-color);
 	--toolbox-box-shadow: 0 0 0px rgba(var(--black-rgb), 0.15), 0 0px 0px rgba(var(--black-rgb), 0.15);
@@ -150,7 +144,6 @@
 	*/
 	--toolbox-item-icon-image-filter: brightness(0) saturate(100%) invert(18%) sepia(29%) saturate(4501%) hue-rotate(202deg) brightness(90%) contrast(78%);
 	--toolbox-item-icon-no-icon-background: var(--secondary-color);
-	--toolbox-width: 150px;
 	/* Workflow */
 	--container-step-input-fill: var(--primary-color);
 	--container-step-input-stroke: var(--secondary-color);
