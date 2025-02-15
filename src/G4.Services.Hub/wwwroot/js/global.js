@@ -82,7 +82,10 @@ _connection
      * Wait for the smart editor element to be available in the DOM.
      * Once the element is found or after 5000ms, execute the callback.
      */
-	Utilities.waitForElement('#designer .sqd-smart-editor', 5000).then(() => {
+    Utilities.waitForElement('#designer .sqd-smart-editor', 5000).then(() => {
+        // Select the target node that we want to observe for DOM changes.
+        const targetNode = document.querySelector('#designer .sqd-smart-editor');
+
         // Trigger an initial 'input' event on the textarea within the smart editor.
         Utilities.invokeEvent({
             bubbles: true,
@@ -90,9 +93,6 @@ _connection
             selector: '#designer .sqd-smart-editor textarea',
             type: 'input'
         });
-
-        // Select the target node that we want to observe for DOM changes.
-        const targetNode = document.querySelector('#designer .sqd-smart-editor');
 
         // Define the configuration for the MutationObserver.
         // This configuration listens for changes to the child nodes and the entire subtree.
