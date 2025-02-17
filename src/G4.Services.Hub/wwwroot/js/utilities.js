@@ -228,6 +228,47 @@
     }
 
     /**
+     * Adjusts the height of a textarea element based on its content while enforcing a maximum number of lines.
+     * 
+     * The function resets the textarea height to 'auto' to calculate the full content height, then adjusts
+     * the height while ensuring that it does not exceed the height corresponding to the maximum allowed lines.
+     * If the content fits within the maximum height, it hides the vertical scrollbar; otherwise, it enables scrolling.
+     *
+     * @param {HTMLTextAreaElement} textarea - The textarea element to be resized.
+     * @param {number} maxLines              - The maximum number of lines the textarea can expand to.
+     */
+    static setTextareaSize(textarea, maxLines) {
+        // Reset the height to 'auto' so the scrollHeight reflects the content's full height.
+        textarea.style.height = 'auto';
+
+        // Determine the full height of the content within the textarea.
+        const contentHeight = textarea.scrollHeight;
+
+        // Retrieve computed styles to calculate line height and minimum height.
+        const computedStyle = window.getComputedStyle(textarea);
+        const lineHeight = parseFloat(computedStyle.lineHeight);
+        const minHeight = parseFloat(computedStyle.minHeight);
+
+        // Calculate the maximum allowed height based on the specified maximum number of lines.
+        const maxHeight = lineHeight * maxLines;
+
+        if (contentHeight <= maxHeight) {
+            // If content fits within the maximum allowed height, adjust the textarea height accordingly.
+            // Ensure that the height is not set below the minimum height.
+            textarea.style.height = contentHeight > minHeight ? `${contentHeight}px` : `${minHeight}px`;
+
+            // Hide the vertical scrollbar as the content does not require scrolling.
+            textarea.style.overflowY = 'hidden';
+        } else {
+            // If content exceeds the maximum allowed height, restrict the textarea height.
+            textarea.style.height = `${maxHeight}px`;
+
+            // Enable the vertical scrollbar to allow the user to scroll through the overflowing content.
+            textarea.style.overflowY = contentHeight === 0 ? 'hidden' : 'scroll';
+        }
+    }
+
+    /**
     * Waits for a DOM element matching the specified selector to appear within a given timeout.
     *
     * This function repeatedly checks for the presence of a DOM element that matches the provided
