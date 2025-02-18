@@ -814,8 +814,12 @@ class G4Client {
 				return undefined;
 			}
 
+            // Ensure the pluginsSettings object exists and is an object.
+			settings.pluginsSettings = settings.pluginsSettings || {};
+            settings.pluginsSettings.externalRepositories = settings.pluginsSettings.externalRepositories || {};
+
 			// Retrieve the plugins settings; use an empty object if not present.
-			const pluginsSettings = settings?.pluginsSettings || {};
+			const pluginsSettings = settings.pluginsSettings || {};
 
 			// Retrieve the externalRepositories from the plugins settings; default to an empty object.
 			const externalRepositories = pluginsSettings.externalRepositories || {};
