@@ -9,6 +9,7 @@ using G4.Services.Domain.V4.Hubs;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -62,7 +63,7 @@ namespace G4.Services.Domain.V4
             builder.Services.AddSingleton(implementationInstance: cache);
 
             // Register a new G4 client using the cache manager
-            builder.Services.AddSingleton((serviceProvider) => NewClient(serviceProvider, cache));
+            builder.Services.AddSingleton((serviceProvider) => NewG4Client(serviceProvider, cache));
 
             // Register the G4 logger instance
             builder.Services.AddSingleton(implementationInstance: G4Logger.Instance);
@@ -81,7 +82,7 @@ namespace G4.Services.Domain.V4
         }
 
         // Creates a new instance of G4Client and sets up event handlers for automation notifications.
-        private static G4Client NewClient(IServiceProvider serviceProvider, CacheManager cache)
+        private static G4Client NewG4Client(IServiceProvider serviceProvider, CacheManager cache)
         {
             // Retrieves the connection ID from the automation model's environment variables.
             static string GetConnection(G4AutomationModel automation)

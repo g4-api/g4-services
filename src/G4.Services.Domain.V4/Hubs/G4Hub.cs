@@ -23,7 +23,7 @@ namespace G4.Services.Domain.V4.Hubs
             _logger.LogInformation("Heartbeat received from Connection ID: {ConnectionId}", Context.ConnectionId);
 
             // Send a heartbeat acknowledgment back to the calling client.
-            return Clients.Caller.SendAsync("SendHeartbeat", "Heartbeat received, connection is active.");
+            return Clients.Caller.SendAsync("ReceiveHeartbeat", "Heartbeat received, connection is active.");
         }
     }
 }
