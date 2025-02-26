@@ -30,7 +30,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
             description: "Successfully invoked the automation session. Returns a dictionary containing detailed information about the automation run.",
             type: typeof(IDictionary<string, G4AutomationResponseModel>),
             contentTypes: MediaTypeNames.Application.Json)]
-        public IActionResult Post([FromBody] G4AutomationModel automation)
+        public IActionResult Invoke([FromBody] G4AutomationModel automation)
         {
             // Invoke the automation session using the provided automation model.
             var response = _domain.G4Client.Automation.Invoke(automation);
