@@ -5,16 +5,20 @@ using G4.Extensions;
 using G4.Models;
 using G4.Models.Events;
 using G4.Services.Domain.V4.Hubs;
+using G4.Settings;
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 using System;
+using System.Linq;
 using System.Text.Json;
+using System.Threading.Tasks;
 
 namespace G4.Services.Domain.V4
 {
@@ -30,7 +34,8 @@ namespace G4.Services.Domain.V4
         G4Client g4Client,
         ILogger logger,
         JsonSerializerOptions jsonOptions,
-        IHubContext<G4AutomationNotificationsHub> notificationsHubContext) : IDomain
+        IHubContext<G4AutomationNotificationsHub> notificationsHubContext,
+        IHubContext<G4Hub> g4HubContext) : IDomain
     {
         #region *** Properties   ***
         /// <inheritdoc />
@@ -46,6 +51,8 @@ namespace G4.Services.Domain.V4
         public ILogger Logger { get; set; } = logger;
 
         public IHubContext<G4AutomationNotificationsHub> NotificationsHubContext { get; set; } = notificationsHubContext;
+
+        public IHubContext<G4Hub> G4HubContext { get; set; } = g4HubContext;
         #endregion
 
         #region *** Methods      ***
@@ -62,7 +69,7 @@ namespace G4.Services.Domain.V4
             builder.Services.AddSingleton(implementationInstance: cache);
 
             // Register a new G4 client using the cache manager
-            builder.Services.AddSingleton((serviceProvider) => NewClient(serviceProvider, cache));
+            builder.Services.AddSingleton((serviceProvider) => NewG4Client(serviceProvider, cache));
 
             // Register the G4 logger instance
             builder.Services.AddSingleton(implementationInstance: G4Logger.Instance);
@@ -76,65 +83,73 @@ namespace G4.Services.Domain.V4
             // Register the LiteDB instance from the cache manager
             builder.Services.AddSingleton(CacheManager.LiteDatabase);
 
+            // TODO: Use QueueManagerFactory to automatically resolve the queue manager implementation.
+            // Register the queue manager as a singleton service implementing IQueueManager interface.
+            builder.Services.AddSingleton<IQueueManager, BasicQueueManager>();
+
             // Register the G4Domain as a transient service implementing IDomain
             builder.Services.AddTransient<IDomain, G4Domain>();
         }
 
         // Creates a new instance of G4Client and sets up event handlers for automation notifications.
-        private static G4Client NewClient(IServiceProvider serviceProvider, CacheManager cache)
+        private static G4Client NewG4Client(IServiceProvider serviceProvider, CacheManager cache)
         {
-            // Retrieves the connection ID from the automation model's environment variables.
-            static string GetConnection(G4AutomationModel automation)
-            {
-                // Check if the EnvironmentVariables collection is not null
-                var isEnvironmentVariables = automation?.Settings?.EnvironmentsSettings?.EnvironmentVariables != null;
+            // Get the queue manager instance from the service provider.
+            var queueManager = serviceProvider.GetRequiredService<IQueueManager>();
 
-                // Attempt to retrieve the "SignalR" environment from EnvironmentVariables
-                var isSignalR = isEnvironmentVariables && automation.Settings.EnvironmentsSettings.EnvironmentVariables.ContainsKey("SignalR");
-
-                // Check if the retrieved environment has a valid Parameters dictionary
-                var isParameters = isSignalR && automation.Settings.EnvironmentsSettings.EnvironmentVariables["SignalR"]?.Parameters != null;
-
-                // Attempt to retrieve "ConnectionId" from the environment's Parameters
-                var isConnectionId = isParameters && automation.Settings.EnvironmentsSettings.EnvironmentVariables["SignalR"].Parameters.ContainsKey("ConnectionId");
-
-                // If all checks pass, return the connectionId; otherwise, return an empty string
-                return isConnectionId
-                    ? $"{automation.Settings.EnvironmentsSettings.EnvironmentVariables["SignalR"].Parameters["ConnectionId"]}"
-                    : string.Empty;
-            }
-
-            // Sends a message to a specific client through SignalR.
-            static void SendMessage(
-                IHubContext<G4AutomationNotificationsHub> context,
-                string connectionId,
-                string method,
-                object message)
-            {
-                // If the connection ID is null or empty, return without sending the message.
-                if (string.IsNullOrEmpty(connectionId))
-                {
-                    return;
-                }
-
-                // Use the SignalR context to send the specified message to the client identified by the connection ID.
-                context.Clients.Client(connectionId).SendAsync(method, message);
-            }
-
-            // Resolve the SignalR notifications hub from the service provider.
-            var context = serviceProvider.GetRequiredService<IHubContext<G4AutomationNotificationsHub>>();
+            // Get the logger instance from the service provider.
+            var logger = serviceProvider.GetRequiredService<ILogger>();
 
             // Initialize the G4Client with the provided cache manager.
-            var client = new G4Client(cache);
+            var client = new G4Client(cache, queueManager, logger);
+
+            // Initialize the SignalR notifications hub context from the service provider.
+            InitializeSyncClient(client, serviceProvider);
+
+            // Initialize the asynchronous SignalR G4 hub context from the service provider.
+            InitializeAsyncClient(client, serviceProvider);
+
+            // Return the fully configured client instance.
+            return client;
+        }
+
+        // Initializes the event handlers for the asynchronous G4 client.
+        private static void InitializeAsyncClient(G4Client client, IServiceProvider serviceProvider)
+        {
+            // Resolve the SignalR notifications hub from the service provider.
+            var context = serviceProvider.GetRequiredService<IHubContext<G4Hub>>();
+
+            // Set up the event handler for when an automation is completed.
+            client.AutomationAsync.AutomationInvoked += (sender, e) =>
+            {
+                // Retrieve the connection ID for SignalR from environment variables.
+                var connectionId = e.Automation.GetConnection();
+
+                // Send a notification about the completion of the automation to the specified SignalR client.
+                context.SendMessage(connectionId, method: "ReceiveAutomationInvokedEvent", message: new EventDataModel
+                {
+                    Id = e.Automation.Reference.Id,
+                    ObjectType = nameof(G4AutomationModel),
+                    Type = "Automation",
+                    Value = e.Automation
+                });
+            };
+        }
+
+        // Initializes the event handlers for the synchronous G4 client.
+        private static void InitializeSyncClient(G4Client client, IServiceProvider serviceProvider)
+        {
+            // Resolve the SignalR notifications hub from the service provider.
+            var context = serviceProvider.GetRequiredService<IHubContext<G4AutomationNotificationsHub>>();
 
             // Set up the event handler for when an automation is completed.
             client.Automation.AutomationInvoked += (sender, e) =>
             {
                 // Retrieve the connection ID for SignalR from environment variables.
-                var connectionId = GetConnection(e.Automation);
+                var connectionId = e.Automation.GetConnection();
 
                 // Send a notification about the completion of the automation to the specified SignalR client.
-                SendMessage(context, connectionId, method: "ReceiveAutomationInvokedEvent", message: new EventDataModel
+                context.SendMessage(connectionId, method: "ReceiveAutomationInvokedEvent", message: new EventDataModel
                 {
                     Id = e.Automation.Reference.Id,
                     ObjectType = nameof(G4AutomationModel),
@@ -147,10 +162,10 @@ namespace G4.Services.Domain.V4
             client.Automation.AutomationInvoking += (sender, e) =>
             {
                 // Retrieve the connection ID for SignalR from environment variables.
-                var connectionId = GetConnection(e.Automation);
+                var connectionId = e.Automation.GetConnection();
 
                 // Send a notification about the automation invocation to the specified SignalR client.
-                SendMessage(context, connectionId, method: "ReceiveAutomationStartEvent", message: new EventDataModel
+                context.SendMessage(connectionId, method: "ReceiveAutomationStartEvent", message: new EventDataModel
                 {
                     Id = e.Automation.Reference.Id,
                     ObjectType = nameof(G4AutomationModel),
@@ -163,10 +178,10 @@ namespace G4.Services.Domain.V4
             client.Automation.StageInvoking += (sender, e) =>
             {
                 // Retrieve the connection ID for SignalR from environment variables.
-                var connectionId = GetConnection(e.Automation);
+                var connectionId = e.Automation.GetConnection();
 
                 // Send a notification about the stage invocation to the specified SignalR client.
-                SendMessage(context, connectionId, method: "ReceiveAutomationStartEvent", message: new EventDataModel
+                context.SendMessage(connectionId, method: "ReceiveAutomationStartEvent", message: new EventDataModel
                 {
                     Id = e.Stage.Reference.Id,
                     ObjectType = nameof(G4StageModel),
@@ -179,10 +194,10 @@ namespace G4.Services.Domain.V4
             client.Automation.JobInvoking += (sender, e) =>
             {
                 // Retrieve the connection ID for SignalR from environment variables.
-                var connectionId = GetConnection(e.Automation);
+                var connectionId = e.Automation.GetConnection();
 
                 // Send a notification about the job invocation to the specified SignalR client.
-                SendMessage(context, connectionId, method: "ReceiveAutomationStartEvent", message: new EventDataModel
+                context.SendMessage(connectionId, method: "ReceiveAutomationStartEvent", message: new EventDataModel
                 {
                     Id = e.Job.Reference.Id,
                     ObjectType = nameof(G4JobModel),
@@ -195,10 +210,10 @@ namespace G4.Services.Domain.V4
             client.Automation.RuleInvoked += (sender, e) =>
             {
                 // Retrieve the connection ID for SignalR from environment variables.
-                var connectionId = GetConnection(e.Automation);
+                var connectionId = e.Automation.GetConnection();
 
                 // Send a notification about the rule invocation to the specified SignalR client.
-                SendMessage(context, connectionId, method: "ReceiveAutomationEndEvent", message: new EventDataModel
+                context.SendMessage(connectionId, method: "ReceiveAutomationEndEvent", message: new EventDataModel
                 {
                     Id = e.Rule.Reference.Id,
                     ObjectType = e.Rule.GetType().Name,
@@ -211,10 +226,10 @@ namespace G4.Services.Domain.V4
             client.Automation.RuleInvoking += (sender, e) =>
             {
                 // Retrieve the connection ID for SignalR from environment variables.
-                var connectionId = GetConnection(e.Automation);
+                var connectionId = e.Automation.GetConnection();
 
                 // Send a notification about the rule invocation to the specified SignalR client.
-                SendMessage(context, connectionId, method: "ReceiveAutomationStartEvent", message: new EventDataModel
+                context.SendMessage(connectionId, method: "ReceiveAutomationStartEvent", message: new EventDataModel
                 {
                     Id = e.Rule.Reference.Id,
                     ObjectType = e.Rule.GetType().Name,
@@ -227,10 +242,10 @@ namespace G4.Services.Domain.V4
             client.Automation.AutomationRequestInitialized += (_, e) =>
             {
                 // Retrieve the connection ID for SignalR from environment variables.
-                var connectionId = GetConnection(e.Status.Automation);
+                var connectionId = e.Status.Automation.GetConnection();
 
                 // Send a notification about the automation request initialization to the specified SignalR client.
-                SendMessage(context, connectionId, method: "ReceiveAutomationRequestInitializedEvent", message: new EventDataModel
+                context.SendMessage(connectionId, method: "ReceiveAutomationRequestInitializedEvent", message: new EventDataModel
                 {
                     Id = e.Status.Automation.Reference.Id,
                     ObjectType = nameof(G4AutomationModel),
@@ -243,10 +258,10 @@ namespace G4.Services.Domain.V4
             client.Automation.LogCreating += (_, e) =>
             {
                 // Retrieve the connection ID for SignalR from environment variables.
-                var connectionId = GetConnection(e.Automation);
+                var connectionId = e.Automation.GetConnection();
 
                 // Send a notification about the log creation to the specified SignalR client.
-                SendMessage(context, connectionId, method: "ReceiveLogCreatingEvent", message: new EventDataModel
+                context.SendMessage(connectionId, method: "ReceiveLogCreatingEvent", message: new EventDataModel
                 {
                     Id = e.Invoker,
                     ObjectType = nameof(LogEventArgs),
@@ -259,10 +274,10 @@ namespace G4.Services.Domain.V4
             client.Automation.LogCreated += (_, e) =>
             {
                 // Retrieve the connection ID for SignalR from environment variables.
-                var connectionId = GetConnection(e.Automation);
+                var connectionId = e.Automation.GetConnection();
 
                 // Send a notification about the log creation to the specified SignalR client.
-                SendMessage(context, connectionId, method: "ReceiveLogCreatedEvent", message: new EventDataModel
+                context.SendMessage(connectionId, method: "ReceiveLogCreatedEvent", message: new EventDataModel
                 {
                     Id = e.Invoker,
                     ObjectType = nameof(LogEventArgs),
@@ -270,9 +285,122 @@ namespace G4.Services.Domain.V4
                     Value = e.LogMessage
                 });
             };
+        }
 
-            // Return the fully configured client instance.
-            return client;
+        public static void StartAutomationListener()
+        {
+            static async Task<HubConnection> NewHubClientAsync(Uri hubUri)
+            {
+                // Continuously attempts to start the hub connection until a successful connection is made.
+                static async Task ConnectAsync(HubConnection connection, Uri hubUri)
+                {
+                    // Continuously attempt to start the connection until successful.
+                    while (true)
+                    {
+                        try
+                        {
+                            // Attempt to start the hub connection.
+                            await connection.StartAsync();
+                            Console.WriteLine("Client is connected and listening for automation jobs.");
+                            Console.WriteLine();
+
+                            // Exit the loop when the connection is successfully started.
+                            break;
+                        }
+                        catch (Exception e)
+                        {
+                            // Log the failure message and retry after a delay.
+                            Console.WriteLine($"Error connecting to the hub {hubUri.AbsoluteUri}: {e.Message}");
+                            await Task.Delay(TimeSpan.FromSeconds(2));
+                        }
+                    }
+                }
+
+                // Define the relative route to the hub endpoint.
+                const string route = "hub/v4/g4/orchestrator";
+
+                // Build the HubConnection without using the built-in automatic reconnect feature.
+                var connection = new HubConnectionBuilder()
+                    .WithUrl($"{hubUri.AbsoluteUri.TrimEnd('/')}/{route}")
+                    .Build();
+
+                // Register a handler for when the connection is closed.
+                // This will attempt to reconnect when the connection is lost.
+                connection.Closed += async (error) =>
+                {
+                    Console.WriteLine($"Connection closed due to error: {error?.Message}. Attempting to reconnect...");
+                    await ConnectAsync(connection, hubUri);
+                };
+
+                // Establish the initial connection.
+                await ConnectAsync(connection, hubUri);
+
+                // Return the established and connected HubConnection.
+                return connection;
+            }
+
+            static void ReceivePendingAutomation(HubConnection hubConnection, G4QueueModel queueModel)
+            {
+                if (queueModel == null)
+                {
+                    return;
+                }
+
+                var id = queueModel.Automation.Reference.Id;
+
+                Console.WriteLine($"{DateTime.Now:yyyy/MM/dd hh:mm:ss}: Running pending automation {id}...");
+                var client = new G4Client();
+                var response = client.Automation.Invoke(queueModel);
+                Console.WriteLine($"{DateTime.Now:yyyy/MM/dd hh:mm:ss}: Automation {id} completed.");
+
+                hubConnection.SendAsync("CompleteAutomation", response.First().Key, response.First().Value);
+            }
+
+            static Uri ResolveHubUri()
+            {
+                // Define the default hub address.
+                const string defaultHubAddress = "http://localhost:9944";
+
+                // Create a Uri instance from the default address.
+                var hubUri = new Uri(defaultHubAddress);
+
+                // Check if an environment variable for the hub address is set.
+                var envHubAddress = Environment.GetEnvironmentVariable("HUB_URI");
+
+                // Retrieve the hub address from the application settings.
+                var settingsHubAddress = AppSettings.Configuration.GetSection("G4:WorkerConfiguration:HubUri").Value;
+
+                try
+                {
+                    // Return the environment variable value if it exists.
+                    if (envHubAddress != null)
+                    {
+                        return new Uri(envHubAddress);
+                    }
+                    // Otherwise, return the settings value if it exists.
+                    else if (settingsHubAddress != null)
+                    {
+                        return new Uri(settingsHubAddress);
+                    }
+                }
+                catch (Exception e)
+                {
+                    Console.Error.WriteLine($"Error resolving hub address: {e.Message}");
+                }
+
+                // If neither are set, return the default hub address.
+                return hubUri;
+            }
+
+            var hubUri = ResolveHubUri();
+
+            //AppSettings.Configuration
+            HubConnection _hubConnection = NewHubClientAsync(hubUri).GetAwaiter().GetResult();
+
+            _hubConnection.On<string>("ReceiveHeartbeat", (response)
+                => Console.WriteLine($"{DateTime.Now:yyyy/MM/dd hh:mm:ss}: {response}"));
+
+            _hubConnection.On<G4QueueModel>("ReceivePendingAutomation", (queueModel) => ReceivePendingAutomation(_hubConnection, queueModel));
         }
         #endregion
 

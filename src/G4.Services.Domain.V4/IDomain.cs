@@ -24,6 +24,8 @@ namespace G4.Services.Domain.V4
         /// </summary>
         G4Client G4Client { get; set; }
 
+        IHubContext<G4Hub> G4HubContext { get; set; }
+
         /// <summary>
         /// Gets or sets the JSON serializer options used for serialization.
         /// </summary>

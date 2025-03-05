@@ -1,3 +1,5 @@
+using CommandBridge;
+
 using G4.Converters;
 using G4.Services.Domain.V4;
 using G4.Services.Domain.V4.Extensions;
@@ -158,7 +160,6 @@ app.UseSwaggerUI(i =>
 app.UseRouting();
 app.MapDefaultControllerRoute();
 app.MapControllers();
-app.UseStaticFiles();
 #endregion
 
 // Retrieve the logger service and log that the application has started.
@@ -169,6 +170,13 @@ using (var scope = app.Services.CreateScope())
         .GetRequiredService<ILogger>()?
         .LogInformation("Service application initialized successfully.");
 }
+
+// Attempt to locate and invoke the command based on the command-line arguments.
+var command = CommandBase.FindCommand(args);
+command?.Invoke(args);
+
+// Create and start a new G4HubListener to handle pending automation tasks in the background.
+new G4HubListener().StartG4HubListener();
 
 // Start the application and wait for it to finish.
 await app.RunAsync();

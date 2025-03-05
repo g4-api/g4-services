@@ -10,8 +10,11 @@ using Swashbuckle.AspNetCore.Annotations;
 
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.IO.Compression;
+using System.IO;
 using System.Linq;
 using System.Net.Mime;
+using System.Text.Json;
 
 namespace G4.Services.Hub.Api.V4.Controllers
 {
@@ -90,6 +93,51 @@ namespace G4.Services.Hub.Api.V4.Controllers
             // Return a 204 No Content response, indicating successful synchronization with no response body.
             return NoContent();
         }
+
+        [HttpGet]
+        [Route("cache/dataset")]
+        public IActionResult GetDataSet()
+        {
+            var d = _domain.Cache.PluginsCache.Values;
+            var j = d.SelectMany(i => i.Values).Select(i => new
+            {
+                source_id = i.Manifest.Key,
+                Details = new
+                {
+                    i.Manifest,
+                    i.Document,
+                    i.Manifest.Examples
+                }
+            });
+
+
+            // Create a memory stream to hold the ZIP archive
+            using (var zipStream = new MemoryStream())
+            {
+                // Create the zip archive
+                using (var archive = new ZipArchive(zipStream, ZipArchiveMode.Create, true))
+                {
+                    foreach (var jsonFile in j)
+                    {
+                        // Create an entry for each JSON file
+                        var entry = archive.CreateEntry($"{jsonFile.source_id}.json", CompressionLevel.Fastest);
+                        using (var entryStream = entry.Open())
+                        using (var streamWriter = new StreamWriter(entryStream))
+                        {
+                            var value = JsonSerializer.Serialize(jsonFile);
+                            streamWriter.Write(value);
+                        }
+                    }
+                }
+
+                // Reset the stream position to the beginning before returning
+                zipStream.Position = 0;
+
+                // Return the zip file as a FileResult
+                return File(zipStream.ToArray(), "application/zip", "jsonFiles.zip");
+            }
+        }
+
 
         [HttpGet]
         [Route("documents/key/{key}")]

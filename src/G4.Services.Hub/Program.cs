@@ -249,7 +249,7 @@ app.UseStaticFiles(new StaticFileOptions
 });
 
 // Add the SignalR hub to the application for real-time communication with clients and other services
-app.MapHub<G4Hub>($"/hub/v{AppSettings.ApiVersion}/g4/orchestrator");
+app.MapHub<G4Hub>($"/hub/v{AppSettings.ApiVersion}/g4/orchestrator").RequireCors("CorsPolicy");
 
 // Add the SignalR hub to send automation notifications to clients and other services in real-time
 app.MapHub<G4AutomationNotificationsHub>($"/hub/v{AppSettings.ApiVersion}/g4/notifications").RequireCors("CorsPolicy");

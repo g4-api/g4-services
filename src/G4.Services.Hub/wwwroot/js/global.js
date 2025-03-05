@@ -82,17 +82,17 @@ _connection
      * Wait for the smart editor element to be available in the DOM.
      * Once the element is found or after 5000ms, execute the callback.
      */
-	Utilities.waitForElement('#designer .sqd-smart-editor', 5000).then(() => {
-        // Trigger an initial 'input' event on the textarea within the smart editor.
-        Utilities.invokeEvent({
-            bubbles: true,
-            cancelable: true,
-            selector: '#designer .sqd-smart-editor textarea',
-            type: 'input'
-        });
-
+    Utilities.waitForElement('#designer .sqd-smart-editor', 5000).then(() => {
         // Select the target node that we want to observe for DOM changes.
         const targetNode = document.querySelector('#designer .sqd-smart-editor');
+
+        // Query all elements in the document that match the provided selector.
+        const elements = document.querySelectorAll('#designer .sqd-smart-editor textarea') || [];
+
+        // Loop through each element and dispatch the event.
+        for (const element of elements) {
+            Utilities.setTextareaSize(element, 8);
+        }
 
         // Define the configuration for the MutationObserver.
         // This configuration listens for changes to the child nodes and the entire subtree.
@@ -115,13 +115,13 @@ _connection
                 return;
             }
 
-            // Trigger an 'input' event on the textarea to update the smart editor if new nodes were added.
-            Utilities.invokeEvent({
-                bubbles: true,
-                cancelable: true,
-                selector: '#designer .sqd-smart-editor textarea',
-                type: 'input'
-            });
+            // Query all elements in the document that match the provided selector.
+            const elements = document.querySelectorAll('#designer .sqd-smart-editor textarea') || [];
+
+            // Loop through each element and dispatch the event.
+            for (const element of elements) {
+                Utilities.setTextareaSize(element, 8);
+            }
         });
     });
 
