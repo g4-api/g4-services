@@ -867,7 +867,10 @@ class G4Client {
 		};
 
 		// Extract the authentication parameters from the definition properties.
-		const authentication = definition.properties["authentication"];
+		const authentication = definition.properties?.authentication;
+
+        // Extract the data source from the definition properties.
+        const dataSource = definition.properties?.dataSource;
 
         // Extract the driver parameters if both driver and driverBinaries are provided.
 		let driverParameters = getDriverParameters(definition.properties?.driverParameters);
@@ -939,8 +942,11 @@ class G4Client {
 
 		// Return a newly constructed automation object containing all relevant data.
 		return {
-			// Store any authentication details passed in.
+            // Include the authentication details in the automation object.
 			authentication,
+
+            // Include the data source details in the automation object.
+			dataSource,
 
 			// Include optional driver parameters (e.g., session data).
 			driverParameters,
