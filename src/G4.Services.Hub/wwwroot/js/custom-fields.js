@@ -1803,6 +1803,7 @@ class CustomG4Fields {
 }
 
 class CustomFields {
+    // TODO: Add support for text fields with data list suggestions.
     /**
      * Creates a new array field that allows users to dynamically add multiple input values.
      * The first input field is initialized with the first value from `options.initialValue` (if any),
@@ -1927,7 +1928,7 @@ class CustomFields {
         const values = options.initialValue || [];
 
         // If there are any initial values, use the first one for the main input; otherwise, use an empty string
-        const mainInputValue = values.length > 0 ? values.shift() : '';
+        const mainInputValue = values.length > 0 ? values[0] : '';
 
         // Convert the label from PascalCase to a space-separated format for better readability
         const labelDisplayName = options.label;
@@ -1961,8 +1962,8 @@ class CustomFields {
         // Select the container where additional input rows will be placed
         const inputContainer = fieldContainer.querySelector(`#${escapedId}-input-container`);
 
-        // For each remaining initial value, create an additional input row in the container
-        for (const value of values) {
+        // For each remaining value (skipping the first one), create an additional input row in the container
+        for (const value of values.slice(1)) {
             newInput({ container: inputContainer, value: value }, setCallback);
         }
 
