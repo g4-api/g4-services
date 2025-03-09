@@ -2992,7 +2992,7 @@ class CustomFields {
          * Validate and sanitize the initial value.
          * If the initial value is not provided, is NaN, or is undefined, default it to `false`.
          */
-        options.initialValue = (!options.initialValue || isNaN(options.initialValue) || options.initialValue === undefined)
+        options.initialValue = (!options.initialValue || options.initialValue === null || Number.isNaN(options.initialValue) || options.initialValue === undefined)
             ? false
             : options.initialValue;
 
