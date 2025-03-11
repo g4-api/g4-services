@@ -9,6 +9,7 @@ using Swashbuckle.AspNetCore.Annotations;
 
 using System.Collections.Generic;
 using System.Net.Mime;
+using System.Text.Json;
 
 namespace G4.Services.Hub.Api.V4.Controllers
 {
@@ -33,6 +34,33 @@ namespace G4.Services.Hub.Api.V4.Controllers
         public IActionResult Invoke([FromBody] G4AutomationModel automation)
         {
             // Invoke the automation session using the provided automation model.
+            var response = _domain.G4Client.Automation.Invoke(automation);
+
+            // Return a 200 OK response with the detailed automation session results.
+            return Ok(response);
+        }
+
+        [HttpPost]
+        [Route("base64/invoke")]
+        [SwaggerOperation(
+            summary: "Invokes an automation session using Base64-encoded input.",
+            description: "Decodes a Base64-encoded automation model, deserializes it into a G4AutomationModel, and " +
+                "triggers the invocation of an automation session. The result includes detailed information about the run, " +
+                "returned in JSON format.",
+            Tags = ["Automation"])]
+        [SwaggerResponse(StatusCodes.Status200OK,
+            description: "Successfully invoked the automation session using Base64 input. Returns a dictionary with detailed run information.",
+            type: typeof(IDictionary<string, G4AutomationResponseModel>),
+            contentTypes: MediaTypeNames.Application.Json)]
+        public IActionResult InvokeBase64([FromBody] string base64Automation)
+        {
+            // Convert the Base64-encoded string to JSON.
+            var json = base64Automation.ConvertFromBase64();
+
+            // Deserialize the JSON string into a G4AutomationModel using the domain's JSON options.
+            var automation = JsonSerializer.Deserialize<G4AutomationModel>(json, _domain.JsonOptions);
+
+            // Invoke the automation session using the deserialized automation model.
             var response = _domain.G4Client.Automation.Invoke(automation);
 
             // Return a 200 OK response with the detailed automation session results.
