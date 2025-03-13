@@ -1,0 +1,204 @@
+﻿:root {
+	/* Application */
+	--a-active: var(--gray);
+	--a-hover: var(--gray);
+	--a-link: var(--gray);
+	--a-visited: var(--gray);
+	--base-font: 400 1.5vmin 'Roboto', sans-serif;
+	--base-font-color: var(--light-gray);
+	--base-font-color-rgb: var(--light-gray-rgb);
+	--border-radius: 10px;
+	--card-border: 1px solid var(--primary-color);
+	--card-background: #1F1F1F;
+	--card-contet-font: 700 2.7vmin 'Roboto', sans-serif;
+	--card-label-font: 400 1.2vmin 'Roboto', sans-serif;
+	/* Colors */
+	--black: #000000;
+	--black-rgb: 0, 0, 0;
+	--green: #009968;
+	--gray: #9B9B9B;
+	--light-gray: #CDCDCD;
+	--light-gray-rgb: 205, 205, 205;
+	--primary-color: #171717;
+	--primary-color-hover: #FFFFFF;
+	--primary-color-rgb: 23, 23, 23;
+	--red: #ED4800;
+	--secondary-color: #0D0D0D;
+	--secondary-color-rgb: 13, 13, 13;
+	--text-tiny: 400 0.8em 'Roboto', sans-serif;
+	--white: #FFFFFF;
+	--white-rgb: 255, 255, 255;
+	--yellow: #F09D2E;
+	/* Context Menu */
+	--context-menu-background: #262626;
+	--context-menu-border: none;
+	--context-menu-box-shadow: 0 0 0px rgba(var(--black-rgb), 0.2);
+	--context-menu-color: var(--white);
+	--context-menu-font: 400 1.0em 'Roboto', sans-serif;
+	--context-menu-group-color: var(--white);
+	--context-menu-group-font: 700 1.0em 'Roboto', sans-serif;
+	--context-menu-item-border: 1px solid #262626;
+	--context-menu-item-color: var(--white);
+	--context-menu-item-font: 400 1.0em 'Roboto', sans-serif;
+	--context-menu-item-hover-background: #333333;
+	--context-menu-item-hover-border: 1px solid #333333;
+	--context-menu-item-hover-color: var(--white);
+	--context-menu-item-hover-font: 400 1.0em 'Roboto', sans-serif;
+	/* Designer */
+	--designer-header-background: var(--primary-color);
+	--designer-header-border: 2px solid var(--primary-color);
+	--designer-header-title-color: var(--white);
+	--designer-header-title-font: 700 2.5vmin 'Roboto', sans-serif;
+	--designer-header-subtitle-color: var(--gray);
+	--designer-header-subtitle-font: 700 1.6vmin 'Roboto', sans-serif;
+	/* Control Bar */
+	--control-bar-background: #1F1F1F;
+	--control-bar-border: 1px solid #1F1F1F;
+	--control-bar-box-shadow: 0 0 0px rgba(var(--black-rgb), 0.15), 0 0px 0px rgba(var(--black-rgb), 0.15);
+	--control-bar-button-background: #1F1F1F;
+	--control-bar-button-border: 1px solid var(--base-font-color);
+	--control-bar-button-delete-icon-path: var(--red);
+	--control-bar-button-hover-background: 1px solid var(--primary-color);
+	--control-bar-button-hover-border-color: var(--red);
+	--control-bar-button-icon-path: var(--base-font-color);
+	--control-bar-button-icon-stroke: #1F1F1F;
+	--control-bar-button-start-icon-path: var(--green);
+	--control-bar-button-stop-icon-path: var(--red);
+	/* Line Grid */
+	--line-grid-path-stroke: rgba(var(--white-rgb), 0.3);
+	--line-grid-path-stroke-witdh: 1;
+	/* TODO: Fix background */
+	/* Modal */
+	--modal-button-background: var(--secondary-color);
+	--modal-button-border: 1px solid var(--primary-color);
+	--modal-button-color: var(--gray);
+	--modal-button-font: 400 1.0em 'Roboto', sans-serif;
+	--modal-button-hover-border: 1px solid var(--red);
+	/* Smart Editor */
+	--smart-editor-background: var(--secondary-color);
+	--smart-editor-box-shadow: 0 0 0px rgba(var(--secondary-color-rgb), 0.15);
+	--smart-editor-button-background: var(--primary-color);
+	--smart-editor-button-border: 1px solid var(--primary-color);
+	--smart-editor-button-color: var(--base-font-color);
+	--smart-editor-button-font: 400 1.0em 'Roboto', sans-serif;
+	--smart-editor-button-hover-border: 1px solid var(--red);
+	--smart-editor-color: var(--base-font-color);
+	--smart-editor-details-border: 1px solid var(--base-font-color);
+	--smart-editor-details-color: var(--base-font-color);
+	--smart-editor-details-hover-color: var(--red);
+	--smart-editor-group-background: transparent;
+	--smart-editor-group-color: var(--base-font-color);
+	--smart-editor-group-font: 400 1.2em/1.2em 'Roboto', sans-serif;
+	--smart-editor-help-text-background: #1F1F1F;
+	--smart-editor-help-text-border: 1px solid var(--secondary-color);
+	--smart-editor-help-text-font: 400 1.0em 'Roboto', sans-serif;
+	--smart-editor-input-background: #1F1F1F;
+	--smart-editor-input-border: 1px solid var(--secondary-color);
+	--smart-editor-input-color: var(--gray);
+	--smart-editor-input-focus-background: #1F1F1F;
+	--smart-editor-input-focus-border: 1px solid var(--red);
+	--smart-editor-input-focus-color: var(--white);
+	--smart-editor-input-hover-border: 1px solid var(--red);
+	--smart-editor-input-placeholder-color: rgba(var(--base-font-color-rgb), 0.5);
+	--smart-editor-input-readonly-background: #1F1F1F;
+	--smart-editor-input-readonly-border: 1px solid var(--secondary-color);
+	--smart-editor-input-readonly-color: var(--base-font-color);
+	--smart-editor-label-font: 700 1.1em/1.1em 'Roboto', sans-serif;
+	--smart-editor-label-help-icon-container-background: #1F1F1F;
+	--smart-editor-label-help-icon-container-fill: var(--base-font-color);
+	--smart-editor-label-help-icon-container-hover-fill: var(--primary-color-hover);
+	--smart-editor-label-help-icon-container-size: 1.2em;
+	--smart-editor-label-color: var(--base-font-color);
+	--smart-editor-subtitle-background: var(--secondary-color);
+	--smart-editor-subtitle-color: var(--base-font-color);
+	--smart-editor-subtitle-font: 400 1.2em 'Roboto', sans-serif;
+	--smart-editor-title-background: var(--secondary-color);
+	--smart-editor-title-color: var(--base-font-color);
+	--smart-editor-title-font: 700 1.5em 'Roboto', sans-serif;
+	--smart-editor-toggle-background: var(--secondary-color);
+	--smart-editor-toggle-icon-path: var(--base-font-color);
+	--smart-editor-toggle-icon-hover-path: var(--primary-color-hover);
+	--smart-editor-toggle-box-shadow: 0 0 0px rgba(var(--black-rgb), 0.15);
+	/* Toolbox */
+	--toolbox-background: var(--secondary-color);
+	--toolbox-box-shadow: 0 0 0px rgba(var(--black-rgb), 0.15), 0 0px 0px rgba(var(--black-rgb), 0.15);
+	--toolbox-filter-background: var(--secondary-color);
+	--toolbox-filter-border: 1px solid var(--primary-color);
+	--toolbox-filter-color: var(--primary-color);
+	--toolbox-filter-focus-background: var(--secondary-color);
+	--toolbox-filter-focus-border-color: var(--red);
+	--toolbox-filter-focus-color: var(--black);
+	--toolbox-filter-hover-border-color: var(--red);
+	--toolbox-group-title-color: var(--base-font-color);
+	--toolbox-group-title-background: var(--secondary-color);
+	--toolbox-group-title-font: 700 1.3em/1.3em 'Roboto', sans-serif;
+	--toolbox-header-title-color: var(--base-font-color);
+	--toolbox-header-title-font: 700 1.5em/1.5em 'Roboto', sans-serif;
+	--toolbox-icon-path: var(--base-font-color);
+	--toolbox-icon-hover-path: var(--primary-color-hover);
+	--toolbox-input-placeholder-color: rgba(var(--primary-color-rgb), 0.5);
+	--toolbox-item-background: var(--secondary-color);
+	--toolbox-item-border: 1px solid var(--base-font-color);
+	--toolbox-item-box-shadow: 0 0px 0px rgba(var(--black-rgb), 0.15);
+	--toolbox-item-color: var(--base-font-color);
+	--toolbox-item-hover-background: var(--secondary-color);
+	--toolbox-item-hover-border-color: var(--red);
+	/*
+		This filter chain is intended for images that are not originally black.
+		It starts by applying brightness(0) saturate(100%) to convert the image to black,
+		then applies a blue filter to produce the color #FFFFFF.
+		To adjust for different target colors, try using https://codepen.io/sosuke/pen/Pjoqqp.
+	*/
+	--toolbox-item-icon-image-filter: brightness(0) saturate(100%) invert(100%) sepia(0%) saturate(67%) hue-rotate(19deg) brightness(110%) contrast(101%);
+	--toolbox-item-icon-no-icon-background: var(--primary-color);
+	/* Workflow */
+	--container-step-input-fill: var(--primary-color);
+	--container-step-input-stroke: var(--base-font-color);
+	--container-step-input-stroke-width: 1;
+	--root-start-stop-circle-fill: var(--base-font-color);
+	--root-start-stop-icon-fill: var(--secondary-color);
+	--step-label-primary-rect-fill: var(--base-font-color);
+	--step-label-primary-rect-stroke: var(--primary-color);
+	--step-label-primary-rect-stroke-width: 0;
+	--step-label-primary-text-fill: var(--secondary-color);
+	--step-label-primary-text-font: 700 1.0em 'Roboto', sans-serif;
+	--step-label-secondary-rect-fill: var(--primary-color);
+	--step-label-secondary-rect-stroke: var(--yellow);
+	--step-label-secondary-rect-stroke-width: 2;
+	--step-label-secondary-text-fill: var(--base-font-color);
+	--step-label-secondary-text-font: 700 1.0em 'Roboto', sans-serif;
+	--step-task-empty-icon-fill: rgba(var(--secondary-color-rgb), 0.5);
+	--step-task-rect-fill: transparent;
+	--step-task-rect-filter: drop-shadow(0 1.5px 1.5px rgba(var(--black-rgb), 0.15));
+	--step-task-rect-stroke: var(--base-font-color);
+	--step-task-rect-stroke-width: 2;
+	--step-task-selected-rect-stroke: var(--red);
+	--step-task-selected-rect-stroke-width: 2;
+	--step-task-text-fill: var(--base-font-color);
+	--step-task-text-font: 400 1.0em 'Roboto', sans-serif;
+	--validation-error-path-fill: var(--yellow);
+	--validation-error-icon-path-fill: var(--black);
+	--workflow-input-fill: var(--secondary-color);
+	--workflow-input-image-filter: brightness(0) invert(100%);
+	--workflow-input-stroke: var(--base-font-color);
+	--workflow-input-stroke-width: 2;
+	--workflow-join-stroke: var(--base-font-color);
+	--workflow-join-stroke-width: 2;
+	--workflow-output-fill: var(--base-font-color);
+	--workflow-output-stroke: var(--secondary-color);
+	--workflow-output-stroke-width: 2;
+	--workflow-placeholder-hover-rect-fill: #1F1F1F;
+	--workflow-placeholder-hover-rect-stroke: var(--red);
+	--workflow-placeholder-hover-rect-stroke-dasharray: 0;
+	--workflow-placeholder-hover-rect-stroke-width: 1;
+	--workflow-placeholder-rect-fill: rgba(31, 31, 31, 0.5);
+	--workflow-placeholder-rect-stroke: rgba(var(--base-font-color-rgb), 0.5);
+	--workflow-placeholder-rect-stroke-dasharray: 0;
+	--workflow-placeholder-rect-stroke-width: 1;
+	--workflow-region-selected-stroke: var(--red);
+	--workflow-region-selected-stroke-dasharray: 0;
+	--workflow-region-selected-stroke-width: 2;
+	--workflow-region-stroke: rgba(var(--base-font-color-rgb), 0.5);
+	--workflow-region-stroke-dasharray: 3;
+	--workflow-region-stroke-width: 2;
+}
