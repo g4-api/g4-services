@@ -5,8 +5,10 @@
 	--a-link: var(--secondary-color);
 	--a-visited: var(--secondary-color);
 	--base-font: 400 1.5vmin 'Roboto', sans-serif;
+	--base-font-color: var(--secondary-color);
 	--border-radius: 0px;
 	--card-border: 1px solid var(--secondary-color);
+	--card-background: var(--primary-color);
 	--card-contet-font: 700 2.7vmin 'Roboto', sans-serif;
 	--card-label-font: 400 1.2vmin 'Roboto', sans-serif;
 	/* Colors */
@@ -99,6 +101,7 @@
 	--smart-editor-input-readonly-color: var(--black);
 	--smart-editor-label-font: 700 1.1em/1.1em 'Roboto', sans-serif;
 	--smart-editor-label-help-icon-container-background: var(--gray);
+	--smart-editor-label-help-icon-container-fill: var(--primary-color);
 	--smart-editor-label-help-icon-container-hover-fill: var(--primary-color-hover);
 	--smart-editor-label-help-icon-container-size: 1.2em;
 	--smart-editor-label-color: var(--primary-color);
