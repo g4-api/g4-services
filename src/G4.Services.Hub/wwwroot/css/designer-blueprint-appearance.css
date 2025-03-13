@@ -1,6 +1,6 @@
 ﻿/* stylelint-disable property-no-unknown */
 html, body {
-	color: var(--secondary-color);
+	color: var(--base-font-color);
 	font: var(--base-font);
 }
 
@@ -56,7 +56,9 @@ html, body {
 	}
 
 .sqd-theme-light .sqd-card {
+	background: var(--card-background);
 	border: var(--card-border);
+	border-radius: var(--border-radius);
 }
 
 	.sqd-theme-light .sqd-card .sqd-card--content {
@@ -258,6 +260,7 @@ html, body {
 
 .sqd-theme-light .sqd-smart-editor {
 	background: var(--smart-editor-background);
+	border-radius: 0 var(--border-radius) var(--border-radius) var(--border-radius);
 	box-shadow: var(--smart-editor-box-shadow);
 	color: var(--smart-editor-color);
 }
@@ -308,6 +311,7 @@ html, body {
 	.sqd-theme-light .sqd-smart-editor .sqd-editor .sqd-help-icon-container {
 		background: var(--smart-editor-label-help-icon-container-background);
 		cursor: pointer;
+		fill: var(--smart-editor-label-help-icon-container-fill);
 	}
 
 		.sqd-theme-light .sqd-smart-editor .sqd-editor .sqd-help-icon-container:hover {
@@ -322,7 +326,7 @@ html, body {
 
 .sqd-theme-light .sqd-smart-editor-toggle {
 	background: var(--smart-editor-toggle-background);
-	border-radius: var(--border-radius);
+	border-radius: var(--border-radius) 0 0 var(--border-radius);
 	box-shadow: var(--smart-editor-toggle-box-shadow);
 }
 
