@@ -146,6 +146,31 @@
     }
 
     /**
+     * Converts a given input to an integer.
+     *
+     * This function takes any input, converts it to a string, and attempts to parse it into an integer.
+     * If the parsed value is not a valid number (NaN) or an error occurs during conversion,
+     * the function returns 0.
+     *
+     * @param {any} value - The input value to convert. It will be coerced to a string.
+     * 
+     * @returns {number} - The resulting integer, or 0 if the conversion fails.
+     */
+    static convertToInt(value) {
+        try {
+            // Convert the input to a string using template literals and parse it as an integer with base 10.
+            const num = parseInt(`${value}`, 10);
+
+            // Check if the result is NaN. If so, return 0; otherwise, return the parsed integer.
+            return isNaN(num) ? 0 : num;
+        } catch (error) {
+            // Although parseInt typically doesn't throw errors, this catch block is a safeguard.
+            // Return 0 if any unexpected error occurs during conversion.
+            return 0;
+        }
+    }
+
+    /**
      * Converts a JavaScript value into a formatted JSON string.
      *
      * This static method attempts to convert the provided value into a JSON string

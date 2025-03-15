@@ -610,7 +610,7 @@ class CustomG4Fields {
             },
             (value) => {
                 const automationSettings = {
-                    loadTimeout: value
+                    loadTimeout: Utilities.convertToInt(value)
                 };
                 setCallback(automationSettings);
             }
@@ -630,7 +630,7 @@ class CustomG4Fields {
             },
             (value) => {
                 const automationSettings = {
-                    maxParallel: value
+                    maxParallel: Utilities.convertToInt(value)
                 };
                 setCallback(automationSettings);
             }
@@ -684,7 +684,7 @@ class CustomG4Fields {
             },
             (value) => {
                 const automationSettings = {
-                    searchTimeout: value
+                    searchTimeout: Utilities.convertToInt(value)
                 };
                 setCallback(automationSettings);
             }
