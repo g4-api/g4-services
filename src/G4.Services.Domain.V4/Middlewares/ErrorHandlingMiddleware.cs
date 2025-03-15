@@ -36,8 +36,7 @@ namespace G4.Services.Domain.V4.Middlewares
             DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
 
             // Use camelCase naming for JSON properties to follow JavaScript conventions.
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            //DictionaryKeyPolicy = JsonNamingPolicy.CamelCase
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
         };
 
         // Represents the next middleware component in the HTTP request pipeline.

@@ -146,6 +146,31 @@
     }
 
     /**
+     * Converts a given input to an integer.
+     *
+     * This function takes any input, converts it to a string, and attempts to parse it into an integer.
+     * If the parsed value is not a valid number (NaN) or an error occurs during conversion,
+     * the function returns 0.
+     *
+     * @param {any} value - The input value to convert. It will be coerced to a string.
+     * 
+     * @returns {number} - The resulting integer, or 0 if the conversion fails.
+     */
+    static convertToInt(value) {
+        try {
+            // Convert the input to a string using template literals and parse it as an integer with base 10.
+            const num = parseInt(`${value}`, 10);
+
+            // Check if the result is NaN. If so, return 0; otherwise, return the parsed integer.
+            return isNaN(num) ? 0 : num;
+        } catch (error) {
+            // Although parseInt typically doesn't throw errors, this catch block is a safeguard.
+            // Return 0 if any unexpected error occurs during conversion.
+            return 0;
+        }
+    }
+
+    /**
      * Converts a JavaScript value into a formatted JSON string.
      *
      * This static method attempts to convert the provided value into a JSON string
@@ -265,6 +290,36 @@
 
             // Enable the vertical scrollbar to allow the user to scroll through the overflowing content.
             textarea.style.overflowY = contentHeight === 0 ? 'hidden' : 'scroll';
+        }
+    }
+
+    /**
+     * Toggles the theme of the application between the default and dark modes.
+     *
+     * This method checks the current theme by inspecting the 'href' attribute of the
+     * <link> element with the ID 'theme-stylesheet'. It then switches the theme
+     * to the opposite mode by updating the 'href' accordingly.
+     */
+    static switchMode() {
+        // Retrieve the <link> element that holds the current theme stylesheet using its ID
+        const themeStylesheet = document.getElementById('theme-stylesheet');
+
+        // Get the current stylesheet path and convert it to lowercase for comparison
+        const theme = themeStylesheet.getAttribute('href').toLowerCase();
+
+        // Define the default (blueprint) theme stylesheet path
+        const defaultTheme = './css/designer-blueprint-parameters.css';
+
+        // Define the dark theme stylesheet path
+        const darkTheme = './css/designer-blueprint-parameters-dark.css';
+
+        // Toggle the theme:
+        // If the current theme is the default theme, switch to the dark theme;
+        // otherwise, switch back to the default theme.
+        if (theme === defaultTheme) {
+            themeStylesheet.setAttribute('href', darkTheme);
+        } else {
+            themeStylesheet.setAttribute('href', defaultTheme);
         }
     }
 

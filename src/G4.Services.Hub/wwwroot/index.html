@@ -9,13 +9,33 @@
 
 	<link rel="icon" href="./images/favicon.ico" />
 	<link href="./css/designer.css" rel="stylesheet">
-	<link href="./css/designer-blueprint-parameters.css" rel="stylesheet" />
+	<link href="./css/designer-blueprint-parameters.css" rel="stylesheet" id="theme-stylesheet" />
 	<link href="./css/designer-blueprint-spinner.css" rel="stylesheet" />
 	<link href="./css/designer-blueprint-layout.css" rel="stylesheet" />
 	<link href="./css/designer-blueprint-appearance.css" rel="stylesheet" />
 </head>
 
 <body class="sqd-theme-light">
+	<script type="text/javascript">
+		/**
+		 * Immediately invoked function to check if the URL query string contains ?mode=dark.
+		 * If so, the dark theme is applied automatically on page load.
+		 */
+		(function () {
+			// Parse the URL parameters from the current window location.
+			const urlParams = new URLSearchParams(window.location.search);
+
+			// Check if the 'mode' parameter is set to 'dark'. If not, exit the function.
+			if (urlParams.get('mode') !== 'dark') {
+				return;
+			}
+
+			// If 'mode' is 'dark', switch the theme by updating the stylesheet's 'href' attribute.
+			document
+				.getElementById('theme-stylesheet')
+				.setAttribute('href', './css/designer-blueprint-parameters-dark.css');
+		})();
+	</script>
 
 	<div id="loading-indicator">
 		<div id="spinner">
@@ -30,6 +50,7 @@
 	<div id="app">
 		<div id="designer--header" class="sqd-header">
 			<div class="column">
+				<!-- Button to toggle the theme -->
 				<div class="sqd-title">G4&trade; Engine API</div>
 				<div class="sqd-subtitle">Blueprint Designer for Automation Workflows</div>
 				<div class="sqd-text--tiny sqd-margin-top-03">Powered by <b><a href="https://github.com/nocode-js/sequential-workflow-designer" target="_blank">Sequential Workflow Designer</a></b></div>
@@ -99,11 +120,30 @@
 				// SVG path data for the Reset button icon
 				const resetSvg = "M960 0v112.941c467.125 0 847.059 379.934 847.059 847.059 0 467.125-379.934 847.059-847.059 847.059-467.125 0-847.059-379.934-847.059-847.059 0-267.106 126.607-515.915 338.824-675.727v393.374h112.94V112.941H0v112.941h342.89C127.058 407.38 0 674.711 0 960c0 529.355 430.645 960 960 960s960-430.645 960-960S1489.355 0 960 0";
 
+				// SVG path data for the Dark Mode button icon
+				const darkModeSvg = "M18.44,34.68a18.22,18.22,0,0,1-2.94-.24,18.18,18.18,0,0,1-15-20.86A18.06,18.06,0,0,1,9.59.63,2.42,2.42,0,0,1,12.2.79a2.39,2.39,0,0,1,1,2.41L11.9,3.1l1.23.22A15.66,15.66,0,0,0,23.34,21h0a15.82,15.82,0,0,0,8.47.53A2.44,2.44,0,0,1,34.47,25,18.18,18.18,0,0,1,18.44,34.68ZM10.67,2.89a15.67,15.67,0,0,0-5,22.77A15.66,15.66,0,0,0,32.18,24a18.49,18.49,0,0,1-9.65-.64A18.18,18.18,0,0,1,10.67,2.89Z";
+
 				// Create a container div for the custom buttons
 				const customButtonsContainer = document.createElement("div");
 
 				// Set a custom data attribute for identification
 				customButtonsContainer.setAttribute('data-g4-role', 'custom-buttons');
+
+				/**
+				 * Creates and configures the Dark Mode button.
+				 */
+				CustomG4Fields.newControlBarButton({
+					classList: ['sqd-control-bar-button'],
+					container: customButtonsContainer,
+					icon: darkModeSvg,
+					pathClassList: ['sqd-icon-path'],
+					svgClassList: ['sqd-control-bar-button-icon'],
+					title: 'Dark Mode',
+					viewBox: '0 0 35 35',
+					onClick: () => {
+						Utilities.switchMode();
+					}
+				});
 
 				/**
 				 * Creates and configures the Reset Definition button.
