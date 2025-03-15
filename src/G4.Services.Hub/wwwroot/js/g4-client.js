@@ -246,7 +246,7 @@ class G4Client {
 				"id": step.id
 			},
 			"capabilities": {
-				"name": step.name
+				"displayName": step.name
 			}
 		}
 
