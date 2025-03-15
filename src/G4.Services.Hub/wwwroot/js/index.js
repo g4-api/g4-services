@@ -698,8 +698,8 @@ function newImportModal() {
 
 			// Assign the name of the rule's capabilities to the step if available.
 			step.name = step?.pluginName?.toUpperCase() === 'MISSINGPLUGIN'
-				? `Missing Plugin (${rule?.capabilities?.name || step.name})`
-				: rule?.capabilities?.name || step.name;
+				? `Missing Plugin (${rule?.capabilities?.displayName || step.name})`
+				: rule?.capabilities?.displayName || step.name;
 
 			// Ensure that the rule has 'rules' and 'branches' properties.
 			rule.rules = rule.rules || [];
