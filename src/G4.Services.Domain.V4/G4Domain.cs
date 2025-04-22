@@ -425,11 +425,6 @@ namespace G4.Services.Domain.V4
             public DateTime CreatedOn { get; set; }
 
             /// <summary>
-            /// Gets or sets a brief description of what the bot does.
-            /// </summary>
-            public string Description { get; set; }
-
-            /// <summary>
             /// Gets or sets the unique identifier of the bot.
             /// </summary>
             public string Id { get; set; }
