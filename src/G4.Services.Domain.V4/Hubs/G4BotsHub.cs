@@ -4,7 +4,6 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 
 using System;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace G4.Services.Domain.V4.Hubs
@@ -25,11 +24,9 @@ namespace G4.Services.Domain.V4.Hubs
             {
                 Id = Context.ConnectionId,        // Unique connection ID assigned by SignalR
                 Name = string.Empty,              // Will be provided later via RegisterBot
-                Description = string.Empty,       // Will be provided later via RegisterBot
                 Machine = string.Empty,           // Will be provided later via RegisterBot
                 Type = string.Empty,              // Will be provided later via RegisterBot
                 Status = "Connected",             // Set initial status to "Connected"
-                IsContainer = false,              // Assume non-container by default (can be updated later)
                 CreatedOn = DateTime.UtcNow,      // Store the creation timestamp in UTC
                 LastModifiedOn = DateTime.UtcNow  // Also initialize last modified timestamp
             };
@@ -72,72 +69,50 @@ namespace G4.Services.Domain.V4.Hubs
         // Handles initial bot registration after connection.
         // Updates metadata such as name, type, machine, and description from the provided client data.
         [HubMethodName(nameof(RegisterBot))]
-        public async Task RegisterBot(Dictionary<string, object> data)
+        public async Task RegisterBot(G4Domain.ConnectedBotModel registrationRequest)
         {
-            // Attempt to retrieve the bot associated with the current connection
-            var isConnected = _domain.ConnectedBots.TryGetValue(Context.ConnectionId, out var bot);
+            // Attempt to retrieve the bot associated with the current connection ID
+            var isConnected = _domain.ConnectedBots.TryGetValue(Context.ConnectionId, out var connectedBot);
 
-            // Connection not found in the connected bot registry — exit early
+            // If the bot is not found in the registry, exit early
             if (!isConnected)
             {
                 return;
             }
 
-            // Update the bot's name if provided
-            if (data.TryGetValue("Name", out var name))
-            {
-                bot.Name = name?.ToString() ?? bot.Name;
-            }
+            // Update the bot's details using the registration request
+            // If values are null, keep existing values unchanged
+            connectedBot.Name = registrationRequest.Name ?? connectedBot.Name;
+            connectedBot.Type = registrationRequest.Type ?? connectedBot.Type;
+            connectedBot.Machine = registrationRequest.Machine ?? connectedBot.Machine;
 
-            // Update the bot's description if provided
-            if (data.TryGetValue("Description", out var desc))
-            {
-                bot.Description = desc?.ToString() ?? bot.Description;
-            }
+            // Set the bot's status to "Ready" after registration
+            connectedBot.Status = "Ready";
 
-            // Update the bot's type if provided
-            if (data.TryGetValue("Type", out var type))
-            {
-                bot.Type = type?.ToString() ?? bot.Type;
-            }
+            // Update the last modified timestamp to reflect this update
+            connectedBot.LastModifiedOn = DateTime.UtcNow;
 
-            // Update the bot's machine name if provided
-            if (data.TryGetValue("Machine", out var machine))
-            {
-                bot.Machine = machine?.ToString() ?? bot.Machine;
-            }
-
-            // Update the bot's IsContainer property if provided
-            if (data.TryGetValue("IsContainer", out var isContainerObj) &&
-                bool.TryParse(isContainerObj?.ToString(), out var isContainer))
-            {
-                bot.IsContainer = isContainer;
-            }
-
-            // Update the modification timestamp to reflect changes
-            bot.LastModifiedOn = DateTime.UtcNow;
-
-            // Log the registration event with key bot details
+            // Log the registration details
             _logger.LogInformation(
                 message: "Bot registered: {ConnectionId} Name:{Name} Type:{Type}",
-                Context.ConnectionId, bot.Name, bot.Type
+                Context.ConnectionId, connectedBot.Name, connectedBot.Type
             );
 
-            // Send an acknowledgment back to the client
+            // Send a success response back to the caller
             await Clients.Caller.SendAsync("ReceiveRegisterBot", new
             {
                 StatusCode = 200,
-                Message = $"Bot '{bot.Name}' registered successfully."
+                Message = $"Bot '{connectedBot.Name}' registered successfully."
             });
         }
 
         // Updates the status of the connected bot.
         // This method is typically used to reflect real-time state changes (e.g., Online, Idle, Busy).
         [HubMethodName(nameof(UpdateBot))]
-        public async Task UpdateBot(string status)
+        public async Task UpdateBot(G4Domain.ConnectedBotModel updateRequest)
         {
             // Attempt to retrieve the bot associated with the current connection
-            var isConnected = _domain.ConnectedBots.TryGetValue(Context.ConnectionId, out var bot);
+            var isConnected = _domain.ConnectedBots.TryGetValue(Context.ConnectionId, out var connectedBot);
 
             if (!isConnected)
             {
@@ -146,20 +121,20 @@ namespace G4.Services.Domain.V4.Hubs
             }
 
             // Update the bot's operational status
-            bot.Status = status;
+            connectedBot.Status = updateRequest.Status;
 
             // Refresh the last modified timestamp
-            bot.LastModifiedOn = DateTime.UtcNow;
+            connectedBot.LastModifiedOn = DateTime.UtcNow;
 
             // Log the update for auditing or monitoring purposes
             _logger.LogInformation(
                 message: "Bot updated: {ConnectionId}, Status:{Status}",
                 Context.ConnectionId,
-                bot.Status
+                connectedBot.Status
             );
 
             // Notify the caller with the updated bot model
-            await Clients.Caller.SendAsync("ReceiveBotUpdated", bot);
+            await Clients.Caller.SendAsync("ReceiveBotUpdated", connectedBot);
         }
     }
 }

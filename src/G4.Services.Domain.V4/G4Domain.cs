@@ -430,11 +430,6 @@ namespace G4.Services.Domain.V4
             public string Id { get; set; }
 
             /// <summary>
-            /// Gets or sets a value indicating whether the bot instance is running inside a container (e.g., Docker, Kubernetes).
-            /// </summary>
-            public bool IsContainer { get; set; }
-
-            /// <summary>
             /// Gets or sets the UTC timestamp when the bot's metadata was last modified.
             /// </summary>
             public DateTime LastModifiedOn { get; set; }
@@ -448,6 +443,11 @@ namespace G4.Services.Domain.V4
             /// Gets or sets the human‑readable name of the bot.
             /// </summary>
             public string Name { get; set; }
+
+            /// <summary>
+            /// Gets or sets the operating system version of the machine where the bot is running.
+            /// </summary>
+            public string OsVersion { get; set; }
 
             /// <summary>
             /// Gets or sets the current operational status of the bot (e.g., "Ready", "Working").
