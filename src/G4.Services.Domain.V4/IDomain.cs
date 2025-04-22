@@ -5,7 +5,10 @@ using G4.Services.Domain.V4.Hubs;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 
+using System.Collections.Concurrent;
 using System.Text.Json;
+
+using static G4.Services.Domain.V4.G4Domain;
 
 namespace G4.Services.Domain.V4
 {
@@ -14,6 +17,11 @@ namespace G4.Services.Domain.V4
     /// </summary>
     public interface IDomain
     {
+        /// <summary>
+        /// Gets or sets the connected bots within the domain.
+        /// </summary>
+        ConcurrentDictionary<string, ConnectedBotModel> ConnectedBots { get; set; }
+
         /// <summary>
         /// Gets or sets the cache manager used within the domain.
         /// </summary>

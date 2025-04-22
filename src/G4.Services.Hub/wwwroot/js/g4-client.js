@@ -165,7 +165,7 @@ class G4Client {
 			// This will hold all parameter tokens, e.g., ["--key:value", "--key2:value2", ...].
 			let parameters = [];
 
-			// We’ll reuse parameterToken for each parameter we process.
+			// We'll reuse parameterToken for each parameter we process.
 			let parameterToken = '';
 
 			// Iterate over each parameter within step.parameters.

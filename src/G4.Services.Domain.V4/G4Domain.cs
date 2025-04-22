@@ -16,6 +16,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 using System;
+using System.Collections.Concurrent;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -35,9 +36,13 @@ namespace G4.Services.Domain.V4
         ILogger logger,
         JsonSerializerOptions jsonOptions,
         IHubContext<G4AutomationNotificationsHub> notificationsHubContext,
-        IHubContext<G4Hub> g4HubContext) : IDomain
+        IHubContext<G4Hub> g4HubContext,
+        ConcurrentDictionary<string, G4Domain.ConnectedBotModel> connectedBots) : IDomain
     {
         #region *** Properties   ***
+        /// <inheritdoc />
+        public ConcurrentDictionary<string, ConnectedBotModel> ConnectedBots { get; set; } = connectedBots;
+
         /// <inheritdoc />
         public CacheManager Cache { get; set; } = cache;
 
@@ -86,6 +91,9 @@ namespace G4.Services.Domain.V4
             // TODO: Use QueueManagerFactory to automatically resolve the queue manager implementation.
             // Register the queue manager as a singleton service implementing IQueueManager interface.
             builder.Services.AddSingleton<IQueueManager, BasicQueueManager>();
+
+            // Register bot cache model as a singleton service
+            builder.Services.AddSingleton(new ConcurrentDictionary<string, ConnectedBotModel>(StringComparer.OrdinalIgnoreCase));
 
             // Register the G4Domain as a transient service implementing IDomain
             builder.Services.AddTransient<IDomain, G4Domain>();
@@ -287,6 +295,7 @@ namespace G4.Services.Domain.V4
             };
         }
 
+        [Obsolete("This method is obsolete and should not be used in new code.", error: true)]
         public static void StartAutomationListener()
         {
             static async Task<HubConnection> NewHubClientAsync(Uri hubUri)
@@ -405,6 +414,57 @@ namespace G4.Services.Domain.V4
         #endregion
 
         #region *** Nested Types ***
+        /// <summary>
+        /// Represents a connected bot instance, including its identity, type, status, and timestamps.
+        /// </summary>
+        public class ConnectedBotModel
+        {
+            /// <summary>
+            /// Gets or sets the UTC timestamp when the bot was first created.
+            /// </summary>
+            public DateTime CreatedOn { get; set; }
+
+            /// <summary>
+            /// Gets or sets a brief description of what the bot does.
+            /// </summary>
+            public string Description { get; set; }
+
+            /// <summary>
+            /// Gets or sets the unique identifier of the bot.
+            /// </summary>
+            public string Id { get; set; }
+
+            /// <summary>
+            /// Gets or sets a value indicating whether the bot instance is running inside a container (e.g., Docker, Kubernetes).
+            /// </summary>
+            public bool IsContainer { get; set; }
+
+            /// <summary>
+            /// Gets or sets the UTC timestamp when the bot's metadata was last modified.
+            /// </summary>
+            public DateTime LastModifiedOn { get; set; }
+
+            /// <summary>
+            /// Gets or sets the machine (hostname or IP) where the bot is running.
+            /// </summary>
+            public string Machine { get; set; }
+
+            /// <summary>
+            /// Gets or sets the human‑readable name of the bot.
+            /// </summary>
+            public string Name { get; set; }
+
+            /// <summary>
+            /// Gets or sets the current operational status of the bot (e.g., "Ready", "Working").
+            /// </summary>
+            public string Status { get; set; }
+
+            /// <summary>
+            /// Gets or sets the type or category of the bot (e.g., "File Listener Bot", "Static Bot").
+            /// </summary>
+            public string Type { get; set; }
+        }
+
         /// <summary>
         /// Represents a data model for an event used in client integrations.
         /// </summary>
