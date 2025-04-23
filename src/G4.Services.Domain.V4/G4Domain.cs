@@ -37,6 +37,7 @@ namespace G4.Services.Domain.V4
         JsonSerializerOptions jsonOptions,
         IHubContext<G4AutomationNotificationsHub> notificationsHubContext,
         IHubContext<G4Hub> g4HubContext,
+        IHubContext<G4BotsHub> botsHubContext,
         ConcurrentDictionary<string, G4Domain.ConnectedBotModel> connectedBots) : IDomain
     {
         #region *** Properties   ***
@@ -58,6 +59,8 @@ namespace G4.Services.Domain.V4
         public IHubContext<G4AutomationNotificationsHub> NotificationsHubContext { get; set; } = notificationsHubContext;
 
         public IHubContext<G4Hub> G4HubContext { get; set; } = g4HubContext;
+
+        public IHubContext<G4BotsHub> BotsHubContext { get; set; } = botsHubContext;
         #endregion
 
         #region *** Methods      ***
@@ -423,6 +426,11 @@ namespace G4.Services.Domain.V4
             /// Gets or sets the UTC timestamp when the bot was first created.
             /// </summary>
             public DateTime CreatedOn { get; set; }
+
+            /// <summary>
+            /// Gets or sets the unique identifier of the connection to the bot.
+            /// </summary>
+            public string ConnectionId { get; set; }
 
             /// <summary>
             /// Gets or sets the unique identifier of the bot.

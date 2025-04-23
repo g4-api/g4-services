@@ -68,12 +68,13 @@ namespace G4.Services.Domain.V4.Hubs
         {
             // Initialize the bot ID based on the provided ID or fallback to the connection ID
             var id = string.IsNullOrEmpty(registrationRequest.Id)
-                ? Context.ConnectionId 
+                ? Context.ConnectionId
                 : $"{registrationRequest.Id}-{Context.ConnectionId}";
 
             // Use the provided ID or fallback to the connection ID
             var connectedBot = new G4Domain.ConnectedBotModel
             {
+                ConnectionId = Context.ConnectionId,
                 Id = id
             };
 

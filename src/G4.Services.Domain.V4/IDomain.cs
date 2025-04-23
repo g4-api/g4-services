@@ -17,6 +17,8 @@ namespace G4.Services.Domain.V4
     /// </summary>
     public interface IDomain
     {
+        IHubContext<G4BotsHub> BotsHubContext { get; set; }
+
         /// <summary>
         /// Gets or sets the connected bots within the domain.
         /// </summary>
@@ -44,6 +46,6 @@ namespace G4.Services.Domain.V4
         /// </summary>
         ILogger Logger { get; set; }
 
-        public IHubContext<G4AutomationNotificationsHub> NotificationsHubContext { get; set; }
+        IHubContext<G4AutomationNotificationsHub> NotificationsHubContext { get; set; }
     }
 }
