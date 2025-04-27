@@ -1,14 +1,14 @@
 ﻿using G4.Api;
 using G4.Cache;
+using G4.Models;
 using G4.Services.Domain.V4.Hubs;
+using G4.Services.Domain.V4.Repositories;
 
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 
 using System.Collections.Concurrent;
 using System.Text.Json;
-
-using static G4.Services.Domain.V4.G4Domain;
 
 namespace G4.Services.Domain.V4
 {
@@ -24,16 +24,12 @@ namespace G4.Services.Domain.V4
         IHubContext<G4BotsHub> BotsHubContext { get; set; }
 
         /// <summary>
-        /// Gets or sets the thread-safe collection of currently connected bot instances,
-        /// keyed by their SignalR connection IDs.
-        /// </summary>
-        ConcurrentDictionary<string, ConnectedBotModel> ConnectedBots { get; set; }
-
-        /// <summary>
         /// Gets or sets the cache manager responsible for storing and retrieving
         /// domain-level cache entries to improve performance and reduce external calls.
         /// </summary>
         CacheManager Cache { get; set; }
+
+        IBotsRepository Bots { get; set; }
 
         /// <summary>
         /// Gets or sets the G4 API client used to interact with external G4 services

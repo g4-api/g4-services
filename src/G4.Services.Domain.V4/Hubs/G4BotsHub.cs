@@ -1,4 +1,5 @@
 ﻿using G4.Extensions;
+using G4.Models;
 
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
@@ -31,7 +32,7 @@ namespace G4.Services.Domain.V4.Hubs
         public override async Task OnDisconnectedAsync(Exception exception)
         {
             // Get all bot IDs associated with the current connection
-            var ids = _domain.ConnectedBots.Keys
+            var ids = _domain.Bots.ConnectedBots.Keys
                 .Where(i => i.Contains(Context.ConnectionId, StringComparison.OrdinalIgnoreCase))
                 .ToList();
 
@@ -39,7 +40,7 @@ namespace G4.Services.Domain.V4.Hubs
             foreach (var id in ids)
             {
                 // Remove the bot from the connected bots dictionary
-                _domain.ConnectedBots.TryRemove(id, out _);
+                _domain.Bots.ConnectedBots.TryRemove(id, out _);
             }
 
             // Log the disconnection event
@@ -64,7 +65,7 @@ namespace G4.Services.Domain.V4.Hubs
         // Handles initial bot registration after connection.
         // Updates metadata such as name, type, machine, and description from the provided client data.
         [HubMethodName(nameof(RegisterBot))]
-        public async Task RegisterBot(G4Domain.ConnectedBotModel registrationRequest)
+        public async Task RegisterBot(ConnectedBotModel registrationRequest)
         {
             // Initialize the bot ID based on the provided ID or fallback to the connection ID
             var id = string.IsNullOrEmpty(registrationRequest.Id)
@@ -72,7 +73,7 @@ namespace G4.Services.Domain.V4.Hubs
                 : $"{registrationRequest.Id}-{Context.ConnectionId}";
 
             // Use the provided ID or fallback to the connection ID
-            var connectedBot = new G4Domain.ConnectedBotModel
+            var connectedBot = new ConnectedBotModel
             {
                 ConnectionId = Context.ConnectionId,
                 Id = id
@@ -97,7 +98,7 @@ namespace G4.Services.Domain.V4.Hubs
             );
 
             // Add the bot to the connected bots dictionary
-            _domain.ConnectedBots[connectedBot.Id] = connectedBot;
+            _domain.Bots.ConnectedBots[connectedBot.Id] = connectedBot;
 
             // Send a success response back to the caller
             await Clients.Caller.SendAsync("ReceiveRegisterBot", new
@@ -110,7 +111,7 @@ namespace G4.Services.Domain.V4.Hubs
         // Updates the status of the connected bot.
         // This method is typically used to reflect real-time state changes (e.g., Online, Idle, Busy).
         [HubMethodName(nameof(UpdateBot))]
-        public async Task UpdateBot(G4Domain.ConnectedBotModel updateRequest)
+        public async Task UpdateBot(ConnectedBotModel updateRequest)
         {
             // Initialize the bot ID based on the provided ID or fallback to the connection ID
             var id = string.IsNullOrEmpty(updateRequest.Id)
@@ -118,7 +119,7 @@ namespace G4.Services.Domain.V4.Hubs
                 : $"{updateRequest.Id}-{Context.ConnectionId}";
 
             // Attempt to retrieve the bot associated with the current connection
-            var isConnected = _domain.ConnectedBots.TryGetValue(id, out var connectedBot);
+            var isConnected = _domain.Bots.ConnectedBots.TryGetValue(id, out var connectedBot);
 
             if (!isConnected)
             {

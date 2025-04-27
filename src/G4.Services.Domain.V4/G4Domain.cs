@@ -5,6 +5,7 @@ using G4.Extensions;
 using G4.Models;
 using G4.Models.Events;
 using G4.Services.Domain.V4.Hubs;
+using G4.Services.Domain.V4.Repositories;
 using G4.Settings;
 
 using Microsoft.AspNetCore.Builder;
@@ -34,17 +35,17 @@ namespace G4.Services.Domain.V4
         IHubContext<G4AutomationNotificationsHub> notificationsHubContext,
         IHubContext<G4Hub> g4HubContext,
         IHubContext<G4BotsHub> botsHubContext,
-        ConcurrentDictionary<string, G4Domain.ConnectedBotModel> connectedBots) : IDomain
+        IBotsRepository connectedBots) : IDomain
     {
         #region *** Properties   ***
         /// <inheritdoc />
         public IHubContext<G4BotsHub> BotsHubContext { get; set; } = botsHubContext;
 
         /// <inheritdoc />
-        public ConcurrentDictionary<string, ConnectedBotModel> ConnectedBots { get; set; } = connectedBots;
+        public CacheManager Cache { get; set; } = cache;
 
         /// <inheritdoc />
-        public CacheManager Cache { get; set; } = cache;
+        public IBotsRepository Bots { get; set; } = connectedBots;
 
         /// <inheritdoc />
         public G4Client G4Client { get; set; } = g4Client;
@@ -71,6 +72,7 @@ namespace G4.Services.Domain.V4
         {
             // Get the singleton instance of the cache manager
             var cache = CacheManager.Instance;
+            var connectedBots = IBotsRepository.InitializeConnectedBots(CacheManager.LiteDatabase, G4Logger.Instance);
 
             // Register the cache manager as a singleton service
             builder.Services.AddSingleton(implementationInstance: cache);
@@ -95,7 +97,9 @@ namespace G4.Services.Domain.V4
             builder.Services.AddSingleton<IQueueManager, BasicQueueManager>();
 
             // Register bot cache model as a singleton service
-            builder.Services.AddSingleton(new ConcurrentDictionary<string, ConnectedBotModel>(StringComparer.OrdinalIgnoreCase));
+            builder.Services.AddSingleton(connectedBots);
+
+            builder.Services.AddSingleton<IBotsRepository, BotsRepository>();
 
             // Register the G4Domain as a transient service implementing IDomain
             builder.Services.AddTransient<IDomain, G4Domain>();
@@ -416,57 +420,6 @@ namespace G4.Services.Domain.V4
         #endregion
 
         #region *** Nested Types ***
-        /// <summary>
-        /// Represents a connected bot instance, including its identity, type, status, and timestamps.
-        /// </summary>
-        public class ConnectedBotModel
-        {
-            /// <summary>
-            /// Gets or sets the UTC timestamp when the bot was first created.
-            /// </summary>
-            public DateTime CreatedOn { get; set; }
-
-            /// <summary>
-            /// Gets or sets the unique identifier of the connection to the bot.
-            /// </summary>
-            public string ConnectionId { get; set; }
-
-            /// <summary>
-            /// Gets or sets the unique identifier of the bot.
-            /// </summary>
-            public string Id { get; set; }
-
-            /// <summary>
-            /// Gets or sets the UTC timestamp when the bot's metadata was last modified.
-            /// </summary>
-            public DateTime LastModifiedOn { get; set; }
-
-            /// <summary>
-            /// Gets or sets the machine (hostname or IP) where the bot is running.
-            /// </summary>
-            public string Machine { get; set; }
-
-            /// <summary>
-            /// Gets or sets the human‑readable name of the bot.
-            /// </summary>
-            public string Name { get; set; }
-
-            /// <summary>
-            /// Gets or sets the operating system version of the machine where the bot is running.
-            /// </summary>
-            public string OsVersion { get; set; }
-
-            /// <summary>
-            /// Gets or sets the current operational status of the bot (e.g., "Ready", "Working").
-            /// </summary>
-            public string Status { get; set; }
-
-            /// <summary>
-            /// Gets or sets the type or category of the bot (e.g., "File Listener Bot", "Static Bot").
-            /// </summary>
-            public string Type { get; set; }
-        }
-
         /// <summary>
         /// Represents a data model for an event used in client integrations.
         /// </summary>

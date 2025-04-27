@@ -171,6 +171,9 @@ builder.Services
             }
         };
     });
+
+// Add IHttpClientFactory to the service collection for making HTTP requests.
+builder.Services.AddHttpClient();
 #endregion
 
 #region *** Dependencies  ***
