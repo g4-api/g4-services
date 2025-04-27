@@ -24,7 +24,6 @@ namespace G4.Services.Hub.Api.V4.Controllers
     [SwaggerTag(description: "Provides access to information about currently connected bots.")]
     public class BotsController(IDomain domain) : ControllerBase
     {
-        private static readonly HttpClient s_httpClient = new();
         private readonly IDomain _domain = domain;
 
         [HttpDelete]
@@ -81,44 +80,62 @@ namespace G4.Services.Hub.Api.V4.Controllers
         }
 
         [HttpGet]
+        [Route("status")]
         [SwaggerOperation(
             summary: "Get the status of all connected bots",
             description: "Retrieves a list of bots currently connected to the system, including their metadata and connection status.",
             Tags = new[] { "Bots" })]
-        [SwaggerResponse(StatusCodes.Status200OK,
-            description: "A list of all currently connected bots with their runtime details.",
-            type: typeof(ConnectedBotModel[]),
-            contentTypes: [MediaTypeNames.Application.Json])]
+        [SwaggerResponse(StatusCodes.Status200OK, description: "A list of all currently connected bots with their runtime details.", type: typeof(ConnectedBotModel[]), contentTypes: [MediaTypeNames.Application.Json])]
         public IActionResult GetStatus()
         {
-            // Return HTTP 200 with all ConnectedBotModel instances
-            return Ok(_domain.Bots.ConnectedBots.Values);
+            // Retrieve and return status for every connected bot
+            return Ok(_domain.Bots.GetStatus());
         }
 
         [HttpGet]
-        [Route("{id}")]
+        [Route("status/{id}")]
         [SwaggerOperation(
-            summary: "",
-            description: "",
+            summary: "Get the status of a specific bot",
+            description: "Retrieves runtime details for a single bot identified by the given Id.",
             Tags = new[] { "Bots" })]
-        [SwaggerResponse(StatusCodes.Status200OK,
-            description: "",
-            type: typeof(ConnectedBotModel[]),
-            contentTypes: [MediaTypeNames.Application.Json])]
-        public IActionResult GetStatus(string id)
+        [SwaggerResponse(StatusCodes.Status200OK, description: "The ConnectedBotModel instance for the requested Id.", type: typeof(ConnectedBotModel), contentTypes: [MediaTypeNames.Application.Json])]
+        public IActionResult GetStatus(
+            [SwaggerParameter(description: "The unique identifier of the bot to retrieve.", Required = true)] string id)
         {
-            // Check for existence in the domain
-            if (!_domain.Bots.ConnectedBots.TryGetValue(id, out var connectedBot))
+            // Attempt to retrieve the specified bot
+            var connectedBot = _domain.Bots.GetStatus(id);
+
+            if (connectedBot == null)
             {
-                // Bot not found: return 404 with a descriptive error
-                return NotFound(new GenericErrorModel(HttpContext)
-                    .AddError("BotNotFound", $"Bot with ID '{id}' not found."));
+                // Return 404 if no bot exists with the given Id
+                var error404 = new GenericErrorModel(HttpContext)
+                    .AddError("BotNotFound", $"Bot with ID '{id}' not found.");
+                return NotFound(error404);
             }
 
+            // Return the found bot with HTTP 200
             return Ok(connectedBot);
         }
 
         [HttpPost]
+        [Route("status")]
+        [SwaggerOperation(
+            summary: "Get status for multiple bots",
+            description: "Retrieves runtime details for each bot specified in the request body.",
+            Tags = new[] { "Bots" })]
+        [SwaggerResponse(StatusCodes.Status200OK, description: "An array of ConnectedBotModel instances for each valid Id.", type: typeof(ConnectedBotModel[]), contentTypes: [MediaTypeNames.Application.Json])]
+        public IActionResult GetStatus(
+                [SwaggerParameter(description: "Array of bot identifiers to retrieve status for.", Required = true)][FromBody] string[] ids)
+        {
+            // Get the status for each bot in the provided list of IDs
+            var results = _domain.Bots.GetStatus(ids);
+
+            // Return the results as an array of ConnectedBotModel instances
+            return Ok(results);
+        }
+
+        [HttpPost]
+        [Route("register")]
         [SwaggerOperation(
             summary: "Register a new bot",
             description: "Adds a new bot to the domain. If no ID is provided, one will be generated. Returns the registered bot model.",
@@ -140,264 +157,264 @@ namespace G4.Services.Hub.Api.V4.Controllers
             return Ok(connectedBot);
         }
 
-        [HttpDelete]
-        [Route("{id}")]
-        [SwaggerOperation(
-            summary: "Unregister a single bot",
-            description: "Removes the bot with the specified ID from the domain, provided it is not currently connected.",
-            Tags = new[] { "Bots" })]
-        [SwaggerResponse(StatusCodes.Status204NoContent, description: "Bot successfully unregistered.")]
-        [SwaggerResponse(StatusCodes.Status404NotFound, description: "No bot found with the given ID.")]
-        public IActionResult Unregister([FromRoute] string id)
-        {
-            // Check for existence in the domain
-            if (!_domain.Bots.ConnectedBots.TryGetValue(id, out var connectedBot))
-            {
-                // Bot not found: return 404 with a descriptive error
-                return NotFound(new GenericErrorModel(HttpContext)
-                    .AddError("BotNotFound", $"Bot with ID '{id}' not found."));
-            }
+        //[HttpDelete]
+        //[Route("{id}")]
+        //[SwaggerOperation(
+        //    summary: "Unregister a single bot",
+        //    description: "Removes the bot with the specified ID from the domain, provided it is not currently connected.",
+        //    Tags = new[] { "Bots" })]
+        //[SwaggerResponse(StatusCodes.Status204NoContent, description: "Bot successfully unregistered.")]
+        //[SwaggerResponse(StatusCodes.Status404NotFound, description: "No bot found with the given ID.")]
+        //public IActionResult Unregister([FromRoute] string id)
+        //{
+        //    // Check for existence in the domain
+        //    if (!_domain.Bots.ConnectedBots.TryGetValue(id, out var connectedBot))
+        //    {
+        //        // Bot not found: return 404 with a descriptive error
+        //        return NotFound(new GenericErrorModel(HttpContext)
+        //            .AddError("BotNotFound", $"Bot with ID '{id}' not found."));
+        //    }
 
-            // Prevent unregistering an actively connected bot
-            if (!string.IsNullOrEmpty(connectedBot.ConnectionId))
-            {
-                throw new InvalidOperationException(
-                    $"Cannot unregister bot '{connectedBot.Name}' (ID='{id}') while it is connected. " +
-                    "Please stop the bot before unregistering."
-                );
-            }
+        //    // Prevent unregistering an actively connected bot
+        //    if (!string.IsNullOrEmpty(connectedBot.ConnectionId))
+        //    {
+        //        throw new InvalidOperationException(
+        //            $"Cannot unregister bot '{connectedBot.Name}' (ID='{id}') while it is connected. " +
+        //            "Please stop the bot before unregistering."
+        //        );
+        //    }
 
-            // Remove the bot from tracking
-            _domain.Bots.ConnectedBots.TryRemove(id, out _);
+        //    // Remove the bot from tracking
+        //    _domain.Bots.ConnectedBots.TryRemove(id, out _);
 
-            // Return HTTP 204 No Content on success
-            return NoContent();
-        }
+        //    // Return HTTP 204 No Content on success
+        //    return NoContent();
+        //}
 
-        [HttpDelete]
-        [SwaggerOperation(
-            summary: "Unregister multiple bots",
-            description: "Removes each bot in the provided list of IDs, skipping those that are connected or not found.",
-            Tags = new[] { "Bots" })]
-        [SwaggerResponse(StatusCodes.Status204NoContent, description: "All valid, disconnected bots have been unregistered.")]
-        public IActionResult Unregister(
-            [FromBody][SwaggerParameter(description: "Array of bot IDs to unregister.")] string[] ids)
-        {
-            // Iterate over each ID and attempt removal
-            foreach (var id in ids)
-            {
-                // Attempt to remove each bot if it is not connected
-                if (_domain.Bots.ConnectedBots.TryGetValue(id, out var bot) && string.IsNullOrEmpty(bot.ConnectionId))
-                {
-                    _domain.Bots.ConnectedBots.TryRemove(id, out _);
-                }
-            }
+        //[HttpDelete]
+        //[SwaggerOperation(
+        //    summary: "Unregister multiple bots",
+        //    description: "Removes each bot in the provided list of IDs, skipping those that are connected or not found.",
+        //    Tags = new[] { "Bots" })]
+        //[SwaggerResponse(StatusCodes.Status204NoContent, description: "All valid, disconnected bots have been unregistered.")]
+        //public IActionResult Unregister(
+        //    [FromBody][SwaggerParameter(description: "Array of bot IDs to unregister.")] string[] ids)
+        //{
+        //    // Iterate over each ID and attempt removal
+        //    foreach (var id in ids)
+        //    {
+        //        // Attempt to remove each bot if it is not connected
+        //        if (_domain.Bots.ConnectedBots.TryGetValue(id, out var bot) && string.IsNullOrEmpty(bot.ConnectionId))
+        //        {
+        //            _domain.Bots.ConnectedBots.TryRemove(id, out _);
+        //        }
+        //    }
 
-            // Always return 204, as non-existent or connected bots are simply skipped
-            return NoContent();
-        }
+        //    // Always return 204, as non-existent or connected bots are simply skipped
+        //    return NoContent();
+        //}
 
-        [HttpDelete]
-        [Route("all")]
-        [SwaggerOperation(
-            summary: "Unregister all bots",
-            description: "Removes every bot in the domain that is not currently connected.",
-            Tags = new[] { "Bots" })]
-        [SwaggerResponse(StatusCodes.Status204NoContent, description: "All valid, disconnected bots have been unregistered.")]
-        public IActionResult Unregister()
-        {
-            // Copy keys to avoid modifying collection during enumeration
-            foreach (var id in _domain.Bots.ConnectedBots.Keys.ToArray())
-            {
-                // Attempt to remove each bot if it is not connected
-                if (_domain.Bots.ConnectedBots.TryGetValue(id, out var bot) && string.IsNullOrEmpty(bot.ConnectionId))
-                {
-                    _domain.Bots.ConnectedBots.TryRemove(id, out _);
-                }
-            }
+        //[HttpDelete]
+        //[Route("all")]
+        //[SwaggerOperation(
+        //    summary: "Unregister all bots",
+        //    description: "Removes every bot in the domain that is not currently connected.",
+        //    Tags = new[] { "Bots" })]
+        //[SwaggerResponse(StatusCodes.Status204NoContent, description: "All valid, disconnected bots have been unregistered.")]
+        //public IActionResult Unregister()
+        //{
+        //    // Copy keys to avoid modifying collection during enumeration
+        //    foreach (var id in _domain.Bots.ConnectedBots.Keys.ToArray())
+        //    {
+        //        // Attempt to remove each bot if it is not connected
+        //        if (_domain.Bots.ConnectedBots.TryGetValue(id, out var bot) && string.IsNullOrEmpty(bot.ConnectionId))
+        //        {
+        //            _domain.Bots.ConnectedBots.TryRemove(id, out _);
+        //        }
+        //    }
 
-            // Return 204 to signal completion
-            return NoContent();
-        }
+        //    // Return 204 to signal completion
+        //    return NoContent();
+        //}
 
-        [HttpPut]
-        [Route("{id}")]
-        public IActionResult Update([FromRoute] string id, [FromBody] ConnectedBotModel botModel)
-        {
-            var isBot = _domain.Bots.ConnectedBots.TryGetValue(id, out var bot);
-            if (!isBot)
-            {
-                var error404 = new GenericErrorModel(HttpContext)
-                    .AddError("BotNotFound", $"Bot with ID '{id}' not found.");
-                return NotFound(error404);
-            }
+        //[HttpPut]
+        //[Route("{id}")]
+        //public IActionResult Update([FromRoute] string id, [FromBody] ConnectedBotModel botModel)
+        //{
+        //    var isBot = _domain.Bots.ConnectedBots.TryGetValue(id, out var bot);
+        //    if (!isBot)
+        //    {
+        //        var error404 = new GenericErrorModel(HttpContext)
+        //            .AddError("BotNotFound", $"Bot with ID '{id}' not found.");
+        //        return NotFound(error404);
+        //    }
 
-            bot.Status = botModel.Status;
-            bot.LastModifiedOn = DateTime.UtcNow;
+        //    bot.Status = botModel.Status;
+        //    bot.LastModifiedOn = DateTime.UtcNow;
 
-            return NoContent();
-        }
+        //    return NoContent();
+        //}
 
-        [HttpGet]
-        [Route("test/{id}")]
-        [SwaggerOperation(
-            summary: "Test connectivity for a specific bot",
-            description: "Checks whether the bot is already connected or can be reached via its callback URI, and updates its status accordingly.",
-            Tags = new[] { "Bots" })]
-        [SwaggerResponse(StatusCodes.Status200OK, description: "Bot is connected or responded successfully to the test request.")]
-        [SwaggerResponse(StatusCodes.Status410Gone, description: "Bot did not respond or is considered offline.")]
-        public async Task<IActionResult> TestConnection(
-            [SwaggerParameter(description: "The unique identifier of the bot to test connectivity for.")]
-            string id)
-        {
-            // Attempt to retrieve the bot model from the connected bots dictionary
-            var isBot = _domain.Bots.ConnectedBots.TryGetValue(id, out var bot);
+        //[HttpGet]
+        //[Route("test/{id}")]
+        //[SwaggerOperation(
+        //    summary: "Test connectivity for a specific bot",
+        //    description: "Checks whether the bot is already connected or can be reached via its callback URI, and updates its status accordingly.",
+        //    Tags = new[] { "Bots" })]
+        //[SwaggerResponse(StatusCodes.Status200OK, description: "Bot is connected or responded successfully to the test request.")]
+        //[SwaggerResponse(StatusCodes.Status410Gone, description: "Bot did not respond or is considered offline.")]
+        //public async Task<IActionResult> TestConnection(
+        //    [SwaggerParameter(description: "The unique identifier of the bot to test connectivity for.")]
+        //    string id)
+        //{
+        //    // Attempt to retrieve the bot model from the connected bots dictionary
+        //    var isBot = _domain.Bots.ConnectedBots.TryGetValue(id, out var bot);
 
-            // Determine if the bot already has an active SignalR connection
-            var isConnected = isBot && !string.IsNullOrEmpty(bot.ConnectionId);
+        //    // Determine if the bot already has an active SignalR connection
+        //    var isConnected = isBot && !string.IsNullOrEmpty(bot.ConnectionId);
 
-            if (isConnected)
-            {
-                // Bot is already connected; return HTTP 200 OK immediately
-                return Ok();
-            }
+        //    if (isConnected)
+        //    {
+        //        // Bot is already connected; return HTTP 200 OK immediately
+        //        return Ok();
+        //    }
 
-            // Build an HTTP GET request to the bot's callback endpoint
-            var error410 = new GenericErrorModel(HttpContext)
-                .AddError("BotGone", $"Bot with ID '{id}' has been permanently removed.");
-            var callbackUri = bot.CallbackUri;
-            using var request = new HttpRequestMessage(HttpMethod.Get, callbackUri);
+        //    // Build an HTTP GET request to the bot's callback endpoint
+        //    var error410 = new GenericErrorModel(HttpContext)
+        //        .AddError("BotGone", $"Bot with ID '{id}' has been permanently removed.");
+        //    var callbackUri = bot.CallbackUri;
+        //    using var request = new HttpRequestMessage(HttpMethod.Get, callbackUri);
 
-            try
-            {
-                // Send the request and await the response
-                using var response = await s_httpClient.SendAsync(request);
+        //    try
+        //    {
+        //        // Send the request and await the response
+        //        using var response = await s_httpClient.SendAsync(request);
 
-                if (response.IsSuccessStatusCode)
-                {
-                    // On success (2xx), set status to Ready unless already Ready/Working
-                    const StringComparison comparison = StringComparison.OrdinalIgnoreCase;
-                    bot.Status = bot.Status.Equals("Ready", comparison) || bot.Status.Equals("Working", comparison)
-                        ? bot.Status
-                        : "Ready";
-                }
-                else
-                {
-                    // Non-success status code indicates the bot is offline
-                    bot.Status = "Offline";
-                }
+        //        if (response.IsSuccessStatusCode)
+        //        {
+        //            // On success (2xx), set status to Ready unless already Ready/Working
+        //            const StringComparison comparison = StringComparison.OrdinalIgnoreCase;
+        //            bot.Status = bot.Status.Equals("Ready", comparison) || bot.Status.Equals("Working", comparison)
+        //                ? bot.Status
+        //                : "Ready";
+        //        }
+        //        else
+        //        {
+        //            // Non-success status code indicates the bot is offline
+        //            bot.Status = "Offline";
+        //        }
 
-                // Return 200 OK if successful, or 410 Gone if not
-                return response.IsSuccessStatusCode
-                    ? Ok()
-                    : StatusCode(StatusCodes.Status410Gone, error410);
-            }
-            catch
-            {
-                // On exception (network error, timeout, etc.), mark offline and return 410 Gone
-                bot.Status = "Offline";
-                return StatusCode(StatusCodes.Status410Gone, error410);
-            }
-        }
+        //        // Return 200 OK if successful, or 410 Gone if not
+        //        return response.IsSuccessStatusCode
+        //            ? Ok()
+        //            : StatusCode(StatusCodes.Status410Gone, error410);
+        //    }
+        //    catch
+        //    {
+        //        // On exception (network error, timeout, etc.), mark offline and return 410 Gone
+        //        bot.Status = "Offline";
+        //        return StatusCode(StatusCodes.Status410Gone, error410);
+        //    }
+        //}
 
-        [HttpGet]
-        [Route("test/all")]
-        [SwaggerOperation(
-            summary: "",
-            description: "",
-            Tags = new[] { "Bots" })]
-        [SwaggerResponse(StatusCodes.Status200OK, description: "")]
-        public async Task<IActionResult> TestConnection()
-        {
-            var testedBots = new List<ConnectedBotModel>();
+        //[HttpGet]
+        //[Route("test/all")]
+        //[SwaggerOperation(
+        //    summary: "",
+        //    description: "",
+        //    Tags = new[] { "Bots" })]
+        //[SwaggerResponse(StatusCodes.Status200OK, description: "")]
+        //public async Task<IActionResult> TestConnection()
+        //{
+        //    var testedBots = new List<ConnectedBotModel>();
 
-            foreach (var id in _domain.Bots.ConnectedBots.Keys)
-            {
-                var isConnected = !string.IsNullOrEmpty(id);
-                if (isConnected)
-                {
-                    continue;
-                }
+        //    foreach (var id in _domain.Bots.ConnectedBots.Keys)
+        //    {
+        //        var isConnected = !string.IsNullOrEmpty(id);
+        //        if (isConnected)
+        //        {
+        //            continue;
+        //        }
 
-                var bot = _domain.Bots.ConnectedBots[id];
-                var callbackUri = bot.CallbackUri;
-                using var request = new HttpRequestMessage(HttpMethod.Get, callbackUri);
+        //        var bot = _domain.Bots.ConnectedBots[id];
+        //        var callbackUri = bot.CallbackUri;
+        //        using var request = new HttpRequestMessage(HttpMethod.Get, callbackUri);
 
-                try
-                {
-                    using var response = await s_httpClient.SendAsync(request);
+        //        try
+        //        {
+        //            using var response = await s_httpClient.SendAsync(request);
 
-                    if (response.IsSuccessStatusCode)
-                    {
-                        const StringComparison comparison = StringComparison.OrdinalIgnoreCase;
-                        bot.Status = bot.Status.Equals("Ready", comparison) || bot.Status.Equals("Working", comparison)
-                            ? bot.Status
-                            : "Ready";
-                    }
-                    else
-                    {
-                        bot.Status = "Offline";
-                        testedBots.Add(bot);
-                    }
-                }
-                catch
-                {
-                    bot.Status = "Offline";
-                    testedBots.Add(bot);
-                }
-            }
+        //            if (response.IsSuccessStatusCode)
+        //            {
+        //                const StringComparison comparison = StringComparison.OrdinalIgnoreCase;
+        //                bot.Status = bot.Status.Equals("Ready", comparison) || bot.Status.Equals("Working", comparison)
+        //                    ? bot.Status
+        //                    : "Ready";
+        //            }
+        //            else
+        //            {
+        //                bot.Status = "Offline";
+        //                testedBots.Add(bot);
+        //            }
+        //        }
+        //        catch
+        //        {
+        //            bot.Status = "Offline";
+        //            testedBots.Add(bot);
+        //        }
+        //    }
 
-            return Ok(testedBots);
-        }
+        //    return Ok(testedBots);
+        //}
 
-        [HttpPost]
-        [Route("test")]
-        [SwaggerOperation(
-            summary: "",
-            description: "",
-            Tags = new[] { "Bots" })]
-        [SwaggerResponse(StatusCodes.Status200OK, description: "")]
-        public async Task<IActionResult> TestConnection(string[] ids)
-        {
-            var testedBots = new List<ConnectedBotModel>();
+        //[HttpPost]
+        //[Route("test")]
+        //[SwaggerOperation(
+        //    summary: "",
+        //    description: "",
+        //    Tags = new[] { "Bots" })]
+        //[SwaggerResponse(StatusCodes.Status200OK, description: "")]
+        //public async Task<IActionResult> TestConnection(string[] ids)
+        //{
+        //    var testedBots = new List<ConnectedBotModel>();
 
-            foreach (var id in ids)
-            {
-                var isBot = _domain.Bots.ConnectedBots.TryGetValue(id, out var bot);
-                var isConnected = isBot && !string.IsNullOrEmpty(id);
-                if (isConnected || !isBot)
-                {
-                    continue;
-                }
+        //    foreach (var id in ids)
+        //    {
+        //        var isBot = _domain.Bots.ConnectedBots.TryGetValue(id, out var bot);
+        //        var isConnected = isBot && !string.IsNullOrEmpty(id);
+        //        if (isConnected || !isBot)
+        //        {
+        //            continue;
+        //        }
 
-                var callbackUri = bot.CallbackUri;
-                using var request = new HttpRequestMessage(HttpMethod.Get, callbackUri);
+        //        var callbackUri = bot.CallbackUri;
+        //        using var request = new HttpRequestMessage(HttpMethod.Get, callbackUri);
 
-                try
-                {
-                    using var response = await s_httpClient.SendAsync(request);
+        //        try
+        //        {
+        //            using var response = await s_httpClient.SendAsync(request);
 
-                    if (response.IsSuccessStatusCode)
-                    {
-                        const StringComparison comparison = StringComparison.OrdinalIgnoreCase;
-                        bot.Status = bot.Status.Equals("Ready", comparison) || bot.Status.Equals("Working", comparison)
-                            ? bot.Status
-                            : "Ready";
-                    }
-                    else
-                    {
-                        bot.Status = "Offline";
-                        testedBots.Add(bot);
-                    }
-                }
-                catch
-                {
-                    bot.Status = "Offline";
-                    testedBots.Add(bot);
-                }
-            }
+        //            if (response.IsSuccessStatusCode)
+        //            {
+        //                const StringComparison comparison = StringComparison.OrdinalIgnoreCase;
+        //                bot.Status = bot.Status.Equals("Ready", comparison) || bot.Status.Equals("Working", comparison)
+        //                    ? bot.Status
+        //                    : "Ready";
+        //            }
+        //            else
+        //            {
+        //                bot.Status = "Offline";
+        //                testedBots.Add(bot);
+        //            }
+        //        }
+        //        catch
+        //        {
+        //            bot.Status = "Offline";
+        //            testedBots.Add(bot);
+        //        }
+        //    }
 
-            return Ok(testedBots);
-        }
+        //    return Ok(testedBots);
+        //}
     }
 }
