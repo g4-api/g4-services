@@ -278,6 +278,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
             description: "Applies the provided metadata and status to the bot identified by the given ID. Returns the updated bot model.",
             Tags = new[] { "Bots" })]
         [SwaggerResponse(StatusCodes.Status200OK, description: "Bot successfully updated; returns the updated bot model.", type: typeof(ConnectedBotModel), contentTypes: [MediaTypeNames.Application.Json])]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, description: "Request payload is missing required parameters or is invalid.", type: typeof(GenericErrorModel), contentTypes: [MediaTypeNames.Application.Json])]
         [SwaggerResponse(StatusCodes.Status404NotFound, description: "No bot found with the provided ID.", type: typeof(GenericErrorModel), contentTypes: [MediaTypeNames.Application.Json])]
         public IActionResult Update(
             [SwaggerParameter(description: "Unique identifier of the bot to update.")][FromRoute] string id,
