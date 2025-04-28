@@ -131,7 +131,7 @@ namespace G4.Services.Domain.V4.Repositories
         /// <returns>
         /// A tuple containing:
         /// <list type="bullet">
-        ///   <item><description><c>StatusCode</c>: HTTP-style status code (2xx if reachable or already connected, 410 if unreachable, 404 if not found).</description></item>
+        ///   <item><description><c>StatusCode</c>: HTTP-style status code (2xx if reachable or already connected, 502 if unreachable, 404 if not found).</description></item>
         ///   <item><description><c>ConnectedBot</c>: The <see cref="ConnectedBotModel"/> with its updated status, or <c>null</c> if not found.</description></item>
         /// </list>
         /// </returns>

@@ -211,6 +211,19 @@ namespace G4.Services.Domain.V4.Repositories
                     connectedBot.Status = "Offline";
                 }
 
+                // Return 200 OK if reachable, otherwise 410 Gone
+                return response.IsSuccessStatusCode
+                    ? (StatusCode: 200, ConnectedBot: connectedBot)
+                    : (StatusCode: 502, ConnectedBot: connectedBot);
+            }
+            catch
+            {
+                // On exception (network failure, timeout, etc.), mark offline and return 410 Gone
+                connectedBot.Status = "Offline";
+                return (StatusCode: 502, ConnectedBot: connectedBot);
+            }
+            finally
+            {
                 // Update the in-memory cache with the new status
                 ConnectedBots[id] = connectedBot;
 
@@ -218,17 +231,6 @@ namespace G4.Services.Domain.V4.Repositories
                 _liteDatabase
                     .GetCollection<ConnectedBotModel>(CollectionName)
                     .Upsert(connectedBot);
-
-                // Return 200 OK if reachable, otherwise 410 Gone
-                return response.IsSuccessStatusCode
-                    ? (StatusCode: 200, ConnectedBot: connectedBot)
-                    : (StatusCode: 410, ConnectedBot: connectedBot);
-            }
-            catch
-            {
-                // On exception (network failure, timeout, etc.), mark offline and return 410 Gone
-                connectedBot.Status = "Offline";
-                return (StatusCode: 410, ConnectedBot: connectedBot);
             }
         }
 

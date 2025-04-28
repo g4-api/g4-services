@@ -10,9 +10,11 @@ using Swashbuckle.AspNetCore.Annotations;
 
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Mime;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace G4.Services.Hub.Api.V4.Controllers
@@ -303,67 +305,32 @@ namespace G4.Services.Hub.Api.V4.Controllers
             return Ok(bot);
         }
 
-        //[HttpGet]
-        //[Route("test/{id}")]
-        //[SwaggerOperation(
-        //    summary: "Test connectivity for a specific bot",
-        //    description: "Checks whether the bot is already connected or can be reached via its callback URI, and updates its status accordingly.",
-        //    Tags = new[] { "Bots" })]
-        //[SwaggerResponse(StatusCodes.Status200OK, description: "Bot is connected or responded successfully to the test request.")]
-        //[SwaggerResponse(StatusCodes.Status410Gone, description: "Bot did not respond or is considered offline.")]
-        //public async Task<IActionResult> TestConnection(
-        //    [SwaggerParameter(description: "The unique identifier of the bot to test connectivity for.")]
-        //    string id)
-        //{
-        //    // Attempt to retrieve the bot model from the connected bots dictionary
-        //    var isBot = _domain.Bots.ConnectedBots.TryGetValue(id, out var bot);
+        [HttpGet]
+        [Route("test/{id}")]
+        [SwaggerOperation(
+            summary: "Test connectivity for a specific bot",
+            description: "Checks if the bot has an active SignalR connection or responds at its callback endpoint; updates and returns its model.",
+            Tags = new[] { "Bots" })]
+        [SwaggerResponse(StatusCodes.Status200OK, description: "Bot model returned with updated status (online or offline).", type: typeof(ConnectedBotModel), contentTypes: [MediaTypeNames.Application.Json])]
+        [SwaggerResponse(StatusCodes.Status404NotFound, description: "No bot found with the provided ID.", type: typeof(GenericErrorModel), contentTypes: [MediaTypeNames.Application.Json])]
+        public async Task<IActionResult> TestConnection(
+            [SwaggerParameter(description: "The unique bot ID to test connectivity for.")][FromRoute, Required] string id)
+        {
+            // Call into the domain service to perform the connectivity check
+            var (statusCode, bot) = await _domain.Bots.TestConnection(id);
 
-        //    // Determine if the bot already has an active SignalR connection
-        //    var isConnected = isBot && !string.IsNullOrEmpty(bot.ConnectionId);
+            // If the bot does not exist, return 404 with an error payload
+            if (statusCode == StatusCodes.Status404NotFound)
+            {
+                var error404 = new GenericErrorModel(HttpContext)
+                    .AddError("BotNotFound", $"Bot with ID '{id}' not found.");
+                return NotFound(error404);
+            }
 
-        //    if (isConnected)
-        //    {
-        //        // Bot is already connected; return HTTP 200 OK immediately
-        //        return Ok();
-        //    }
-
-        //    // Build an HTTP GET request to the bot's callback endpoint
-        //    var error410 = new GenericErrorModel(HttpContext)
-        //        .AddError("BotGone", $"Bot with ID '{id}' has been permanently removed.");
-        //    var callbackUri = bot.CallbackUri;
-        //    using var request = new HttpRequestMessage(HttpMethod.Get, callbackUri);
-
-        //    try
-        //    {
-        //        // Send the request and await the response
-        //        using var response = await s_httpClient.SendAsync(request);
-
-        //        if (response.IsSuccessStatusCode)
-        //        {
-        //            // On success (2xx), set status to Ready unless already Ready/Working
-        //            const StringComparison comparison = StringComparison.OrdinalIgnoreCase;
-        //            bot.Status = bot.Status.Equals("Ready", comparison) || bot.Status.Equals("Working", comparison)
-        //                ? bot.Status
-        //                : "Ready";
-        //        }
-        //        else
-        //        {
-        //            // Non-success status code indicates the bot is offline
-        //            bot.Status = "Offline";
-        //        }
-
-        //        // Return 200 OK if successful, or 410 Gone if not
-        //        return response.IsSuccessStatusCode
-        //            ? Ok()
-        //            : StatusCode(StatusCodes.Status410Gone, error410);
-        //    }
-        //    catch
-        //    {
-        //        // On exception (network error, timeout, etc.), mark offline and return 410 Gone
-        //        bot.Status = "Offline";
-        //        return StatusCode(StatusCodes.Status410Gone, error410);
-        //    }
-        //}
+            // Map the returned status code to the appropriate IActionResult,
+            // always including the bot model in the response body
+            return Ok(bot);
+        }
 
         //[HttpGet]
         //[Route("test/all")]
