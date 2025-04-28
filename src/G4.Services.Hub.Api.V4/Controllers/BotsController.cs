@@ -50,7 +50,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
             Tags = new[] { "Bots" })]
         [SwaggerResponse(StatusCodes.Status204NoContent, description: "StopBot commands successfully dispatched to the specified bots.")]
         public IActionResult Disconnect(
-            [SwaggerParameter(description: "An array of SignalR connection IDs for which to stop monitoring.")][FromBody] string[] connections)
+            [SwaggerParameter(description: "An array of SignalR connection IDs for which to stop monitoring.")][FromBody,Required] string[] connections)
         {
             // Iterate over each connection ID and send the StopBot signal
             foreach (var connection in connections)
@@ -99,9 +99,9 @@ namespace G4.Services.Hub.Api.V4.Controllers
             description: "Retrieves runtime details for a single bot identified by the given Id.",
             Tags = new[] { "Bots" })]
         [SwaggerResponse(StatusCodes.Status200OK, description: "The ConnectedBotModel instance for the requested Id.", type: typeof(ConnectedBotModel), contentTypes: [MediaTypeNames.Application.Json])]
-        [SwaggerResponse(StatusCodes.Status404NotFound, description: "No bot found with the provided Id.", type: typeof(GenericErrorModel))]
+        [SwaggerResponse(StatusCodes.Status404NotFound, description: "No bot found with the provided Id.", type: typeof(GenericErrorModel), contentTypes: [MediaTypeNames.Application.Json])]
         public IActionResult GetStatus(
-            [SwaggerParameter(description: "The unique identifier of the bot to retrieve.", Required = true)] string id)
+            [SwaggerParameter(description: "The unique identifier of the bot to retrieve.", Required = true)][FromRoute, Required] string id)
         {
             // Attempt to retrieve the specified bot
             var connectedBot = _domain.Bots.GetStatus(id);
@@ -126,7 +126,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
             Tags = new[] { "Bots" })]
         [SwaggerResponse(StatusCodes.Status200OK, description: "An array of ConnectedBotModel instances for each valid Id.", type: typeof(ConnectedBotModel[]), contentTypes: [MediaTypeNames.Application.Json])]
         public IActionResult GetStatus(
-                [SwaggerParameter(description: "Array of bot identifiers to retrieve status for.", Required = true)][FromBody] string[] ids)
+                [SwaggerParameter(description: "Array of bot identifiers to retrieve status for.", Required = true)][FromBody, Required] string[] ids)
         {
             // Get the status for each bot in the provided list of IDs
             var results = _domain.Bots.GetStatus(ids);
@@ -142,11 +142,9 @@ namespace G4.Services.Hub.Api.V4.Controllers
             description: "Adds a new bot to the domain. If no ID is provided, one will be generated. Returns the registered bot model.",
             Tags = new[] { "Bots" })]
         [SwaggerResponse(StatusCodes.Status200OK, description: "Bot successfully registered.", type: typeof(ConnectedBotModel), contentTypes: [MediaTypeNames.Application.Json])]
-        [SwaggerResponse(StatusCodes.Status400BadRequest, description: "Invalid registration payload.", type: typeof(GenericErrorModel))]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, description: "Invalid registration payload.", type: typeof(GenericErrorModel), contentTypes: [MediaTypeNames.Application.Json])]
         public IActionResult Register(
-            [FromBody]
-            [SwaggerParameter(description: "The registration request containing optional Id, Name, Type, and Machine values.")]
-            ConnectedBotModel botModel)
+            [SwaggerParameter(description: "The registration request containing optional Id, Name, Type, and Machine values.")][FromBody] ConnectedBotModel botModel)
         {
             // Register the bot in the domain and generate a unique ID if not provided
             var connectedBot = _domain.Bots.Register(botModel);
@@ -166,7 +164,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         [SwaggerResponse(StatusCodes.Status409Conflict, description: "Bot has an active SignalR connection and cannot be unregistered until it disconnects.", type: typeof(GenericErrorModel), contentTypes: [MediaTypeNames.Application.Json])]
         [SwaggerResponse(StatusCodes.Status502BadGateway, description: "Bot unreachable at callback URI; entry has been removed from memory and database.", type: typeof(GenericErrorModel), contentTypes: [MediaTypeNames.Application.Json])]
         public async Task<IActionResult> Unregister(
-            [SwaggerParameter(description: "Unique identifier of the bot to unregister.")][FromRoute] string id)
+            [SwaggerParameter(description: "Unique identifier of the bot to unregister.")][FromRoute, Required] string id)
         {
             // Attempt to unregister the bot; returns status code and the bot model (if found)
             var (statusCode, bot) = await _domain.Bots.Unregister(id);
@@ -214,9 +212,9 @@ namespace G4.Services.Hub.Api.V4.Controllers
             description: "Attempts to unregister each bot in the provided list of IDs. Returns the updated status for each bot—successfully removed, skipped due to active connection, or unreachable.",
             Tags = new[] { "Bots" })]
         [SwaggerResponse(StatusCodes.Status200OK, description: "Returns an array of bot models with their post-unregistration status.", type: typeof(ConnectedBotModel[]), contentTypes: [MediaTypeNames.Application.Json])]
-        [SwaggerResponse(StatusCodes.Status400BadRequest, description: "Request body was invalid (e.g., missing or malformed list of IDs).")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, description: "Request body was invalid (e.g., missing or malformed list of IDs).", type: typeof(GenericErrorModel), contentTypes: [MediaTypeNames.Application.Json])]
         public async Task<IActionResult> Unregister(
-            [SwaggerParameter(description: "An array of bot IDs to attempt unregistration for.")][FromBody] string[] ids)
+            [SwaggerParameter(description: "An array of bot IDs to attempt unregistration for.")][FromBody, Required] string[] ids)
         {
             // Invoke the domain service to unregister each bot and capture the result codes
             var unregisterResults = await _domain.Bots.Unregister(ids);
@@ -280,7 +278,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         [SwaggerResponse(StatusCodes.Status400BadRequest, description: "Request payload is missing required parameters or is invalid.", type: typeof(GenericErrorModel), contentTypes: [MediaTypeNames.Application.Json])]
         [SwaggerResponse(StatusCodes.Status404NotFound, description: "No bot found with the provided ID.", type: typeof(GenericErrorModel), contentTypes: [MediaTypeNames.Application.Json])]
         public IActionResult Update(
-            [SwaggerParameter(description: "Unique identifier of the bot to update.")][FromRoute] string id,
+            [SwaggerParameter(description: "Unique identifier of the bot to update.")][FromRoute, Required] string id,
             [SwaggerParameter(description: "Updated bot metadata payload.")][FromBody] ConnectedBotModel botModel)
         {
             // Delegate the update operation to the domain service, capturing status and bot instance
