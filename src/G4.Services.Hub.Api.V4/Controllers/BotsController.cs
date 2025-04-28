@@ -2,6 +2,7 @@
 using G4.Services.Domain.V4;
 
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 
@@ -207,51 +208,68 @@ namespace G4.Services.Hub.Api.V4.Controllers
             return Ok(bot);
         }
 
-        //[HttpDelete]
-        //[SwaggerOperation(
-        //    summary: "Unregister multiple bots",
-        //    description: "Removes each bot in the provided list of IDs, skipping those that are connected or not found.",
-        //    Tags = new[] { "Bots" })]
-        //[SwaggerResponse(StatusCodes.Status204NoContent, description: "All valid, disconnected bots have been unregistered.")]
-        //public IActionResult Unregister(
-        //    [FromBody][SwaggerParameter(description: "Array of bot IDs to unregister.")] string[] ids)
-        //{
-        //    // Iterate over each ID and attempt removal
-        //    foreach (var id in ids)
-        //    {
-        //        // Attempt to remove each bot if it is not connected
-        //        if (_domain.Bots.ConnectedBots.TryGetValue(id, out var bot) && string.IsNullOrEmpty(bot.ConnectionId))
-        //        {
-        //            _domain.Bots.ConnectedBots.TryRemove(id, out _);
-        //        }
-        //    }
+        [HttpDelete]
+        [Route("register")]
+        [SwaggerOperation(
+            summary: "Batch unregister bots",
+            description: "Attempts to unregister each bot in the provided list of IDs. Returns the updated status for each bot—successfully removed, skipped due to active connection, or unreachable.",
+            Tags = new[] { "Bots" })]
+        [SwaggerResponse(StatusCodes.Status200OK, description: "Returns an array of bot models with their post-unregistration status.", type: typeof(ConnectedBotModel[]), contentTypes: [MediaTypeNames.Application.Json])]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, description: "Request body was invalid (e.g., missing or malformed list of IDs).")]
+        public async Task<IActionResult> Unregister(
+            [SwaggerParameter(description: "An array of bot IDs to attempt unregistration for.")][FromBody] string[] ids)
+        {
+            // Invoke the domain service to unregister each bot and capture the result codes
+            var unregisterResults = await _domain.Bots.Unregister(ids);
 
-        //    // Always return 204, as non-existent or connected bots are simply skipped
-        //    return NoContent();
-        //}
+            // Return 200 OK with the list of bots and their final statuses
+            return Unregister(unregisterResults);
+        }
 
-        //[HttpDelete]
-        //[Route("all")]
-        //[SwaggerOperation(
-        //    summary: "Unregister all bots",
-        //    description: "Removes every bot in the domain that is not currently connected.",
-        //    Tags = new[] { "Bots" })]
-        //[SwaggerResponse(StatusCodes.Status204NoContent, description: "All valid, disconnected bots have been unregistered.")]
-        //public IActionResult Unregister()
-        //{
-        //    // Copy keys to avoid modifying collection during enumeration
-        //    foreach (var id in _domain.Bots.ConnectedBots.Keys.ToArray())
-        //    {
-        //        // Attempt to remove each bot if it is not connected
-        //        if (_domain.Bots.ConnectedBots.TryGetValue(id, out var bot) && string.IsNullOrEmpty(bot.ConnectionId))
-        //        {
-        //            _domain.Bots.ConnectedBots.TryRemove(id, out _);
-        //        }
-        //    }
+        [HttpDelete]
+        [Route("register/all")]
+        [SwaggerOperation(
+            summary: "Batch unregister all disconnected bots",
+            description: "Attempts to unregister every bot that has no active SignalR connection; returns each bot's final status.",
+            Tags = new[] { "Bots" })]
+        [SwaggerResponse(StatusCodes.Status200OK, description: "An array of bot models with updated post-unregistration statuses.", type: typeof(ConnectedBotModel[]), contentTypes: [MediaTypeNames.Application.Json])]
+        public async Task<IActionResult> Unregister()
+        {
+            // Invoke the domain service to unregister all eligible bots and get back (statusCode, bot) tuples
+            var unregisterResults = await _domain.Bots.Unregister();
 
-        //    // Return 204 to signal completion
-        //    return NoContent();
-        //}
+            // Delegate to the existing batch Unregister overload to produce the HTTP 200 response
+            return Unregister(unregisterResults);
+        }
+
+        // Unregister method for batch processing of multiple bots
+        private static JsonResult Unregister(IEnumerable<(int StatusCode, ConnectedBotModel ConnectedBot)> unregisterResults)
+        {
+            // Initialize a list to hold the unregistered bots
+            var unregisteredBots = new List<ConnectedBotModel>();
+
+            // For each tuple of (HTTP status, bot model), set the status property accordingly
+            foreach (var (statusCode, bot) in unregisterResults)
+            {
+                // Set the status property based on the HTTP status code
+                bot.Status = statusCode switch
+                {
+                    StatusCodes.Status200OK => "Removed",
+                    StatusCodes.Status409Conflict => "Conflict",
+                    StatusCodes.Status502BadGateway => "Unreachable",
+                    _ => "Unknown"
+                };
+
+                // Add the bot to the list of unregistered bots
+                unregisteredBots.Add(bot);
+            }
+
+            // Return 200 OK with the list of bots and their final statuses
+            return new JsonResult(unregisteredBots)
+            {
+                StatusCode = StatusCodes.Status200OK
+            };
+        }
 
         //[HttpPut]
         //[Route("{id}")]

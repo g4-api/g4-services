@@ -295,7 +295,11 @@ namespace G4.Services.Domain.V4.Repositories
             if (connectedBot == null)
             {
                 // Bot not found → return 404 Not Found with no model
-                return (StatusCode: 404, ConnectedBot: null);
+                return (StatusCode: 404, ConnectedBot: new ConnectedBotModel
+                {
+                    Id = id,
+                    Status = "NotFound"
+                });
             }
 
             // If the bot has an active socket connection, do not proceed
