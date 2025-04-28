@@ -173,7 +173,11 @@ namespace G4.Services.Domain.V4.Repositories
             // If the bot isn’t found, return 404 Not Found
             if (connectedBot == null)
             {
-                return (StatusCode: 404, ConnectedBot: null);
+                return (StatusCode: 404, ConnectedBot: new ConnectedBotModel
+                {
+                    Id = id,
+                    Status = "NotFound"
+                });
             }
 
             // Determine if the bot already has an active SignalR connection

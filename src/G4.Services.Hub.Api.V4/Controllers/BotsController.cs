@@ -2,7 +2,6 @@
 using G4.Services.Domain.V4;
 
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 
@@ -12,9 +11,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
-using System.Net.Http;
 using System.Net.Mime;
-using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace G4.Services.Hub.Api.V4.Controllers
@@ -30,19 +27,18 @@ namespace G4.Services.Hub.Api.V4.Controllers
         private readonly IDomain _domain = domain;
 
         [HttpDelete]
-        [Route("disconnect/{connection}")]
+        [Route("disconnect/all")]
         [SwaggerOperation(
-            summary: "Stop monitor for a specific bot",
-            description: "Sends a StopMonitor command to the connected client identified by the given connection ID.",
+            summary: "Stop monitors for all bots",
+            description: "Broadcasts a StopBot command to every connected client.",
             Tags = new[] { "Bots" })]
-        [SwaggerResponse(StatusCodes.Status204NoContent, description: "StopMonitor command successfully dispatched to the specified bot.")]
-        public IActionResult Disconnect(
-            [SwaggerParameter(description: "The SignalR connection ID of the bot monitor instance to stop.")] string connection)
+        [SwaggerResponse(StatusCodes.Status204NoContent, description: "StopBot commands successfully dispatched to all connected bots.")]
+        public IActionResult Disconnect()
         {
-            // Send the StopMonitor signal to the client with this connection ID
-            _domain.BotsHubContext.Clients.Client(connection).SendAsync("StopMonitor");
+            // Broadcast the StopBot signal to all connected clients
+            _domain.BotsHubContext.Clients.All.SendAsync("StopBot");
 
-            // Return 204 No Content to indicate the command was sent
+            // Return 204 No Content to indicate the broadcast was sent
             return NoContent();
         }
 
@@ -50,16 +46,16 @@ namespace G4.Services.Hub.Api.V4.Controllers
         [Route("disconnect")]
         [SwaggerOperation(
             summary: "Stop monitors for multiple bots",
-            description: "Sends a StopMonitor command to each client identified by the provided connection IDs array.",
+            description: "Sends a StopBot command to each client identified by the provided connection IDs array.",
             Tags = new[] { "Bots" })]
-        [SwaggerResponse(StatusCodes.Status204NoContent, description: "StopMonitor commands successfully dispatched to the specified bots.")]
+        [SwaggerResponse(StatusCodes.Status204NoContent, description: "StopBot commands successfully dispatched to the specified bots.")]
         public IActionResult Disconnect(
             [SwaggerParameter(description: "An array of SignalR connection IDs for which to stop monitoring.")][FromBody] string[] connections)
         {
-            // Iterate over each connection ID and send the StopMonitor signal
+            // Iterate over each connection ID and send the StopBot signal
             foreach (var connection in connections)
             {
-                _domain.BotsHubContext.Clients.Client(connection).SendAsync("StopMonitor");
+                _domain.BotsHubContext.Clients.Client(connection).SendAsync("StopBot");
             }
 
             // Return 204 No Content once all commands have been sent
@@ -67,18 +63,19 @@ namespace G4.Services.Hub.Api.V4.Controllers
         }
 
         [HttpDelete]
-        [Route("disconnect/all")]
+        [Route("disconnect/{connection}")]
         [SwaggerOperation(
-            summary: "Stop monitors for all bots",
-            description: "Broadcasts a StopMonitor command to every connected client.",
+            summary: "Stop monitor for a specific bot",
+            description: "Sends a StopBot command to the connected client identified by the given connection ID.",
             Tags = new[] { "Bots" })]
-        [SwaggerResponse(StatusCodes.Status204NoContent, description: "StopMonitor commands successfully dispatched to all connected bots.")]
-        public IActionResult Disconnect()
+        [SwaggerResponse(StatusCodes.Status204NoContent, description: "StopBot command successfully dispatched to the specified bot.")]
+        public IActionResult Disconnect(
+            [SwaggerParameter(description: "The SignalR connection ID of the bot monitor instance to stop.")][FromRoute, Required] string connection)
         {
-            // Broadcast the StopMonitor signal to all connected clients
-            _domain.BotsHubContext.Clients.All.SendAsync("StopMonitor");
+            // Send the StopBot signal to the client with this connection ID
+            _domain.BotsHubContext.Clients.Client(connection).SendAsync("StopBot");
 
-            // Return 204 No Content to indicate the broadcast was sent
+            // Return 204 No Content to indicate the command was sent
             return NoContent();
         }
 
@@ -306,6 +303,39 @@ namespace G4.Services.Hub.Api.V4.Controllers
         }
 
         [HttpGet]
+        [Route("test/all")]
+        [SwaggerOperation(
+            summary: "Test connectivity for all bots",
+            description: "Checks connectivity for every registered bot and returns the updated bot models with their current status.",
+            Tags = new[] { "Bots" })]
+        [SwaggerResponse(StatusCodes.Status200OK, description: "A list of all bots with their latest connectivity status.", type: typeof(ConnectedBotModel[]), contentTypes: [MediaTypeNames.Application.Json])]
+        public async Task<IActionResult> TestConnection()
+        {
+            // Call the domain service to perform connectivity checks on all bots
+            var bots = await _domain.Bots.TestConnection();
+
+            // Select and return only the ConnectedBotModel from each result
+            return Ok(bots.Select(result => result.ConnectedBot));
+        }
+
+        [HttpPost]
+        [Route("test")]
+        [SwaggerOperation(
+            summary: "Test connectivity for specific bots",
+            description: "Checks the connection status of each bot with the given IDs and returns their updated models.",
+            Tags = new[] { "Bots" })]
+        [SwaggerResponse(StatusCodes.Status200OK, description: "A list of bot models with their latest connectivity status.", type: typeof(ConnectedBotModel[]), contentTypes: [MediaTypeNames.Application.Json])]
+        public async Task<IActionResult> TestConnection(
+            [SwaggerParameter(description: "An array of unique bot identifiers to test connectivity for.")][FromBody, Required] string[] ids)
+        {
+            // Invoke the domain service to perform connectivity checks for the specified bot IDs
+            var bots = await _domain.Bots.TestConnection(ids);
+
+            // Extract and return only the ConnectedBotModel from each result tuple
+            return Ok(bots.Select(result => result.ConnectedBot));
+        }
+
+        [HttpGet]
         [Route("test/{id}")]
         [SwaggerOperation(
             summary: "Test connectivity for a specific bot",
@@ -331,105 +361,5 @@ namespace G4.Services.Hub.Api.V4.Controllers
             // always including the bot model in the response body
             return Ok(bot);
         }
-
-        //[HttpGet]
-        //[Route("test/all")]
-        //[SwaggerOperation(
-        //    summary: "",
-        //    description: "",
-        //    Tags = new[] { "Bots" })]
-        //[SwaggerResponse(StatusCodes.Status200OK, description: "")]
-        //public async Task<IActionResult> TestConnection()
-        //{
-        //    var testedBots = new List<ConnectedBotModel>();
-
-        //    foreach (var id in _domain.Bots.ConnectedBots.Keys)
-        //    {
-        //        var isConnected = !string.IsNullOrEmpty(id);
-        //        if (isConnected)
-        //        {
-        //            continue;
-        //        }
-
-        //        var bot = _domain.Bots.ConnectedBots[id];
-        //        var callbackUri = bot.CallbackUri;
-        //        using var request = new HttpRequestMessage(HttpMethod.Get, callbackUri);
-
-        //        try
-        //        {
-        //            using var response = await s_httpClient.SendAsync(request);
-
-        //            if (response.IsSuccessStatusCode)
-        //            {
-        //                const StringComparison comparison = StringComparison.OrdinalIgnoreCase;
-        //                bot.Status = bot.Status.Equals("Ready", comparison) || bot.Status.Equals("Working", comparison)
-        //                    ? bot.Status
-        //                    : "Ready";
-        //            }
-        //            else
-        //            {
-        //                bot.Status = "Offline";
-        //                testedBots.Add(bot);
-        //            }
-        //        }
-        //        catch
-        //        {
-        //            bot.Status = "Offline";
-        //            testedBots.Add(bot);
-        //        }
-        //    }
-
-        //    return Ok(testedBots);
-        //}
-
-        //[HttpPost]
-        //[Route("test")]
-        //[SwaggerOperation(
-        //    summary: "",
-        //    description: "",
-        //    Tags = new[] { "Bots" })]
-        //[SwaggerResponse(StatusCodes.Status200OK, description: "")]
-        //public async Task<IActionResult> TestConnection(string[] ids)
-        //{
-        //    var testedBots = new List<ConnectedBotModel>();
-
-        //    foreach (var id in ids)
-        //    {
-        //        var isBot = _domain.Bots.ConnectedBots.TryGetValue(id, out var bot);
-        //        var isConnected = isBot && !string.IsNullOrEmpty(id);
-        //        if (isConnected || !isBot)
-        //        {
-        //            continue;
-        //        }
-
-        //        var callbackUri = bot.CallbackUri;
-        //        using var request = new HttpRequestMessage(HttpMethod.Get, callbackUri);
-
-        //        try
-        //        {
-        //            using var response = await s_httpClient.SendAsync(request);
-
-        //            if (response.IsSuccessStatusCode)
-        //            {
-        //                const StringComparison comparison = StringComparison.OrdinalIgnoreCase;
-        //                bot.Status = bot.Status.Equals("Ready", comparison) || bot.Status.Equals("Working", comparison)
-        //                    ? bot.Status
-        //                    : "Ready";
-        //            }
-        //            else
-        //            {
-        //                bot.Status = "Offline";
-        //                testedBots.Add(bot);
-        //            }
-        //        }
-        //        catch
-        //        {
-        //            bot.Status = "Offline";
-        //            testedBots.Add(bot);
-        //        }
-        //    }
-
-        //    return Ok(testedBots);
-        //}
     }
 }
