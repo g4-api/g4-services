@@ -276,6 +276,18 @@ namespace G4.Services.Domain.V4.Repositories
         /// <inheritdoc />
         public async Task<(int StatusCode, ConnectedBotModel ConnectedBot)> Unregister(string id)
         {
+            // Attempt to remove the bot from the in-memory dictionary and database
+            static void RemoveBot(string id, ConcurrentDictionary<string, ConnectedBotModel> connectedBots, ILiteDatabase liteDatabase)
+            {
+                // Remove the bot from the in-memory dictionary
+                connectedBots.TryRemove(id, out _);
+
+                // Remove the bot document from the LiteDB collection
+                liteDatabase
+                    .GetCollection<ConnectedBotModel>(CollectionName)
+                    .Delete(id);
+            }
+
             // Attempt to retrieve the bot from the in-memory dictionary or database collection
             var connectedBot = GetBot(ConnectedBots, _liteDatabase, id);
 
@@ -310,19 +322,19 @@ namespace G4.Services.Domain.V4.Repositories
             {
                 // On error, update bot status with the error message and return 500 Internal Server Error
                 connectedBot.Status = $"Error; {e.GetBaseException().Message}";
-                return (StatusCode: 500, ConnectedBot: connectedBot);
+
+                // Remove the bot from the in-memory dictionary and from the LiteDB collection
+                RemoveBot(id, ConnectedBots, _liteDatabase);
+
+                // Return 500 Internal Server Error with the updated bot model
+                return (StatusCode: 502, ConnectedBot: connectedBot);
             }
 
-            // Remove the bot from the in-memory dictionary
-            ConnectedBots.TryRemove(id, out _);
+            // Remove the bot from the in-memory dictionary and from the LiteDB collection
+            RemoveBot(id, ConnectedBots, _liteDatabase);
 
-            // Remove the bot document from the LiteDB collection
-            _liteDatabase
-                .GetCollection<ConnectedBotModel>(CollectionName)
-                .Delete(connectedBot.Id);
-
-            // Successful deletion → return 204 No Content with the removed bot model
-            return (StatusCode: 204, ConnectedBot: connectedBot);
+            // Successful deletion → return 200 OK with the removed bot model
+            return (StatusCode: 200, ConnectedBot: connectedBot);
         }
 
         /// <inheritdoc />

@@ -99,6 +99,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
             description: "Retrieves runtime details for a single bot identified by the given Id.",
             Tags = new[] { "Bots" })]
         [SwaggerResponse(StatusCodes.Status200OK, description: "The ConnectedBotModel instance for the requested Id.", type: typeof(ConnectedBotModel), contentTypes: [MediaTypeNames.Application.Json])]
+        [SwaggerResponse(StatusCodes.Status404NotFound, description: "No bot found with the provided Id.", type: typeof(GenericErrorModel))]
         public IActionResult GetStatus(
             [SwaggerParameter(description: "The unique identifier of the bot to retrieve.", Required = true)] string id)
         {
@@ -140,11 +141,8 @@ namespace G4.Services.Hub.Api.V4.Controllers
             summary: "Register a new bot",
             description: "Adds a new bot to the domain. If no ID is provided, one will be generated. Returns the registered bot model.",
             Tags = new[] { "Bots" })]
-        [SwaggerResponse(StatusCodes.Status200OK,
-            description: "Bot successfully registered.",
-            type: typeof(ConnectedBotModel),
-            contentTypes: [MediaTypeNames.Application.Json])]
-        [SwaggerResponse(StatusCodes.Status400BadRequest, description: "Invalid registration payload.")]
+        [SwaggerResponse(StatusCodes.Status200OK, description: "Bot successfully registered.", type: typeof(ConnectedBotModel), contentTypes: [MediaTypeNames.Application.Json])]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, description: "Invalid registration payload.", type: typeof(GenericErrorModel))]
         public IActionResult Register(
             [FromBody]
             [SwaggerParameter(description: "The registration request containing optional Id, Name, Type, and Machine values.")]
@@ -157,39 +155,57 @@ namespace G4.Services.Hub.Api.V4.Controllers
             return Ok(connectedBot);
         }
 
-        //[HttpDelete]
-        //[Route("{id}")]
-        //[SwaggerOperation(
-        //    summary: "Unregister a single bot",
-        //    description: "Removes the bot with the specified ID from the domain, provided it is not currently connected.",
-        //    Tags = new[] { "Bots" })]
-        //[SwaggerResponse(StatusCodes.Status204NoContent, description: "Bot successfully unregistered.")]
-        //[SwaggerResponse(StatusCodes.Status404NotFound, description: "No bot found with the given ID.")]
-        //public IActionResult Unregister([FromRoute] string id)
-        //{
-        //    // Check for existence in the domain
-        //    if (!_domain.Bots.ConnectedBots.TryGetValue(id, out var connectedBot))
-        //    {
-        //        // Bot not found: return 404 with a descriptive error
-        //        return NotFound(new GenericErrorModel(HttpContext)
-        //            .AddError("BotNotFound", $"Bot with ID '{id}' not found."));
-        //    }
+        [HttpDelete]
+        [Route("register/{id}")]
+        [SwaggerOperation(
+            summary: "Unregister a single bot",
+            description: "Unregisters the bot with the specified ID; on success updates its status to 'Removed' and returns the bot model.",
+            Tags = new[] { "Bots" })]
+        [SwaggerResponse(StatusCodes.Status200OK, description: "Bot successfully unregistered; returns the updated bot model.", type: typeof(ConnectedBotModel), contentTypes: [MediaTypeNames.Application.Json])]
+        [SwaggerResponse(StatusCodes.Status404NotFound, description: "No bot found with the provided ID.", type: typeof(GenericErrorModel), contentTypes: [MediaTypeNames.Application.Json])]
+        [SwaggerResponse(StatusCodes.Status409Conflict, description: "Bot has an active SignalR connection and cannot be unregistered until it disconnects.", type: typeof(GenericErrorModel), contentTypes: [MediaTypeNames.Application.Json])]
+        [SwaggerResponse(StatusCodes.Status502BadGateway, description: "Bot unreachable at callback URI; entry has been removed from memory and database.", type: typeof(GenericErrorModel), contentTypes: [MediaTypeNames.Application.Json])]
+        public async Task<IActionResult> Unregister(
+            [SwaggerParameter(description: "Unique identifier of the bot to unregister.")][FromRoute] string id)
+        {
+            // Attempt to unregister the bot; returns status code and the bot model (if found)
+            var (statusCode, bot) = await _domain.Bots.Unregister(id);
 
-        //    // Prevent unregistering an actively connected bot
-        //    if (!string.IsNullOrEmpty(connectedBot.ConnectionId))
-        //    {
-        //        throw new InvalidOperationException(
-        //            $"Cannot unregister bot '{connectedBot.Name}' (ID='{id}') while it is connected. " +
-        //            "Please stop the bot before unregistering."
-        //        );
-        //    }
+            // 404: Bot not found in domain
+            // If the bot does not exist, return 404 Not Found with error details
+            if (statusCode == StatusCodes.Status404NotFound)
+            {
+                var error404 = new GenericErrorModel(HttpContext)
+                    .AddError("BotNotFound", $"Bot with ID '{id}' not found.");
+                return NotFound(error404);
+            }
 
-        //    // Remove the bot from tracking
-        //    _domain.Bots.ConnectedBots.TryRemove(id, out _);
+            // 409: Bot has an active SignalR connection and cannot be unregistered yet
+            if (statusCode == StatusCodes.Status409Conflict)
+            {
+                var error409 = new GenericErrorModel(HttpContext)
+                    .AddError("ActiveSignalRConnection", "Cannot unregister bot while its SignalR connection is active; disconnect first.");
+                return Conflict(error409);
+            }
 
-        //    // Return HTTP 204 No Content on success
-        //    return NoContent();
-        //}
+            // 502: Server could not reach the bot at its callback URI (bot may be down).
+            // Bot entry has been removed from both in-memory cache and database.
+            if (statusCode == StatusCodes.Status502BadGateway)
+            {
+                var error502 = new GenericErrorModel(HttpContext)
+                    .AddError("BotUnreachable", "Bot callback endpoint is unreachable; bot entry removed from memory and database.");
+                return new JsonResult(error502)
+                {
+                    StatusCode = statusCode
+                };
+            }
+
+            // Successful unregistration: update the model's status
+            bot.Status = "Removed";
+
+            // 200: Return the updated bot model
+            return Ok(bot);
+        }
 
         //[HttpDelete]
         //[SwaggerOperation(

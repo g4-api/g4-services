@@ -105,7 +105,7 @@ namespace G4.Services.Domain.V4.Repositories
         /// <returns>
         /// A collection of tuples for each bot ID processed:
         /// <list type="bullet">
-        ///   <item><description><c>StatusCode</c>: HTTP-style status code indicating reachability (e.g., 200, 404, 410).</description></item>
+        ///   <item><description><c>StatusCode</c>: HTTP-style status code indicating reachability (e.g., 2xx, 404, 410).</description></item>
         ///   <item><description><c>ConnectedBot</c>: The <see cref="ConnectedBotModel"/> with its updated status, or <c>null</c> if not found.</description></item>
         /// </list>
         /// </returns>
@@ -118,7 +118,7 @@ namespace G4.Services.Domain.V4.Repositories
         /// <returns>
         /// A collection of tuples, each containing:
         /// <list type="bullet">
-        ///   <item><description><c>StatusCode</c>: HTTP-style status code result for that bot (e.g., 200, 404, 410).</description></item>
+        ///   <item><description><c>StatusCode</c>: HTTP-style status code result for that bot (e.g., 2xx, 404, 410).</description></item>
         ///   <item><description><c>ConnectedBot</c>: The <see cref="ConnectedBotModel"/> with its updated status, or <c>null</c> if not found.</description></item>
         /// </list>
         /// </returns>
@@ -131,7 +131,7 @@ namespace G4.Services.Domain.V4.Repositories
         /// <returns>
         /// A tuple containing:
         /// <list type="bullet">
-        ///   <item><description><c>StatusCode</c>: HTTP-style status code (200 if reachable or already connected, 410 if unreachable, 404 if not found).</description></item>
+        ///   <item><description><c>StatusCode</c>: HTTP-style status code (2xx if reachable or already connected, 410 if unreachable, 404 if not found).</description></item>
         ///   <item><description><c>ConnectedBot</c>: The <see cref="ConnectedBotModel"/> with its updated status, or <c>null</c> if not found.</description></item>
         /// </list>
         /// </returns>
@@ -143,7 +143,7 @@ namespace G4.Services.Domain.V4.Repositories
         /// <returns>
         /// A collection of tuples for each bot ID processed:
         /// <list type="bullet">
-        ///   <item><description><c>StatusCode</c>: HTTP-style status code indicating the result (e.g., 204, 404, 409, 500).</description></item>
+        ///   <item><description><c>StatusCode</c>: HTTP-style status code indicating the result (e.g., 2xx, 404, 409, 500).</description></item>
         ///   <item><description><c>ConnectedBot</c>: The <see cref="ConnectedBotModel"/> involved, or <c>null</c> if not found.</description></item>
         /// </list>
         /// </returns>
@@ -156,7 +156,7 @@ namespace G4.Services.Domain.V4.Repositories
         /// <returns>
         /// A collection of tuples, each containing:
         /// <list type="bullet">
-        ///   <item><description><c>StatusCode</c>: HTTP-style status code indicating the result for that ID (e.g. 204, 404, 409, 500).</description></item>
+        ///   <item><description><c>StatusCode</c>: HTTP-style status code indicating the result for that ID (e.g. 2xx, 404, 409, 500).</description></item>
         ///   <item><description><c>ConnectedBot</c>: The associated <see cref="ConnectedBotModel"/> instance, or <c>null</c> if not found.</description></item>
         /// </list>
         /// </returns>
@@ -169,7 +169,7 @@ namespace G4.Services.Domain.V4.Repositories
         /// <returns>
         /// A tuple containing:
         /// <list type="bullet">
-        ///   <item><description><c>StatusCode</c>: HTTP-like status code indicating outcome (404 if not found, 409 if still connected, 500 on callback failure, 204 on success).</description></item>
+        ///   <item><description><c>StatusCode</c>: HTTP-like status code indicating outcome (404 if not found, 409 if still connected, 500 on callback failure, 2xx on success).</description></item>
         ///   <item><description><c>ConnectedBot</c>: The bot model involved in the operation, or <c>null</c> if none was found.</description></item>
         /// </list>
         /// </returns>
@@ -183,7 +183,7 @@ namespace G4.Services.Domain.V4.Repositories
         /// <returns>
         /// A tuple containing:
         /// <list type="bullet">
-        ///   <item><description><c>StatusCode</c>: HTTP-style status code (404 if not found, 204 on success).</description></item>
+        ///   <item><description><c>StatusCode</c>: HTTP-style status code (404 if not found, 2xx on success).</description></item>
         ///   <item><description><c>ConnectedBot</c>: The updated <see cref="ConnectedBotModel"/>, or <c>null</c> if not found.</description></item>
         /// </list>
         /// </returns>
