@@ -365,8 +365,8 @@ namespace G4.Services.Domain.V4.Repositories
             // Sync the in-memory dictionary with the latest model
             ConnectedBots[id] = connectedBot;
 
-            // Return 204 No Content to indicate a successful update with no response body
-            return (StatusCode: 204, connectedBot);
+            // Return 200 OK to indicate a successful update with no response body
+            return (StatusCode: 200, connectedBot);
         }
 
         // Retrieves a connected bot by its identifier, first checking the in-memory cache, then falling back to the database if needed.

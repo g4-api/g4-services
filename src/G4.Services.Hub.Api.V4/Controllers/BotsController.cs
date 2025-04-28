@@ -271,23 +271,36 @@ namespace G4.Services.Hub.Api.V4.Controllers
             };
         }
 
-        //[HttpPut]
-        //[Route("{id}")]
-        //public IActionResult Update([FromRoute] string id, [FromBody] ConnectedBotModel botModel)
-        //{
-        //    var isBot = _domain.Bots.ConnectedBots.TryGetValue(id, out var bot);
-        //    if (!isBot)
-        //    {
-        //        var error404 = new GenericErrorModel(HttpContext)
-        //            .AddError("BotNotFound", $"Bot with ID '{id}' not found.");
-        //        return NotFound(error404);
-        //    }
+        [HttpPut]
+        [Route("register/{id}")]
+        [SwaggerOperation(
+            summary: "Update bot metadata and status",
+            description: "Applies the provided metadata and status to the bot identified by the given ID. Returns the updated bot model.",
+            Tags = new[] { "Bots" })]
+        [SwaggerResponse(StatusCodes.Status200OK, description: "Bot successfully updated; returns the updated bot model.", type: typeof(ConnectedBotModel), contentTypes: [MediaTypeNames.Application.Json])]
+        [SwaggerResponse(StatusCodes.Status404NotFound, description: "No bot found with the provided ID.", type: typeof(GenericErrorModel), contentTypes: [MediaTypeNames.Application.Json])]
+        public IActionResult Update(
+            [SwaggerParameter(description: "Unique identifier of the bot to update.")][FromRoute] string id,
+            [SwaggerParameter(description: "Updated bot metadata payload.")][FromBody] ConnectedBotModel botModel)
+        {
+            // Delegate the update operation to the domain service, capturing status and bot instance
+            var (statusCode, bot) = _domain.Bots.Update(id, botModel);
 
-        //    bot.Status = botModel.Status;
-        //    bot.LastModifiedOn = DateTime.UtcNow;
+            // If the bot does not exist, return 404 Not Found with an error payload
+            if (statusCode == StatusCodes.Status404NotFound)
+            {
+                var error404 = new GenericErrorModel(HttpContext)
+                    .AddError("BotNotFound", $"Bot with ID '{id}' not found.");
+                return NotFound(error404);
+            }
 
-        //    return NoContent();
-        //}
+            // Apply the new status and update the modification timestamp
+            bot.Status = botModel.Status;
+            bot.LastModifiedOn = DateTime.UtcNow;
+
+            // Return 200 OK with the updated bot model
+            return Ok(bot);
+        }
 
         //[HttpGet]
         //[Route("test/{id}")]
