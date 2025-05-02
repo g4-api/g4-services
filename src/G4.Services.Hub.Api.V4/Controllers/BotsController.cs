@@ -7,7 +7,6 @@ using Microsoft.AspNetCore.SignalR;
 
 using Swashbuckle.AspNetCore.Annotations;
 
-using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
@@ -291,10 +290,6 @@ namespace G4.Services.Hub.Api.V4.Controllers
                     .AddError("BotNotFound", $"Bot with ID '{id}' not found.");
                 return NotFound(error404);
             }
-
-            // Apply the new status and update the modification timestamp
-            bot.Status = botModel.Status;
-            bot.LastModifiedOn = DateTime.UtcNow;
 
             // Return 200 OK with the updated bot model
             return Ok(bot);

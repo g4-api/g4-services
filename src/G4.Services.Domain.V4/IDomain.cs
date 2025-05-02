@@ -1,13 +1,11 @@
 ﻿using G4.Api;
 using G4.Cache;
-using G4.Models;
 using G4.Services.Domain.V4.Hubs;
 using G4.Services.Domain.V4.Repositories;
 
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 
-using System.Collections.Concurrent;
 using System.Text.Json;
 
 namespace G4.Services.Domain.V4
