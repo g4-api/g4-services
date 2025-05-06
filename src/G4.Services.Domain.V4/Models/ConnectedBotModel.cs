@@ -25,6 +25,13 @@ namespace G4.Models
         public string CallbackHost { get; set; }
 
         /// <summary>
+        /// Gets or sets the callback ingress URI used by the background job's HTTP listener.
+        /// </summary>
+        [Url(ErrorMessage = "CallbackIngress must be a valid HTTP or HTTPS URL.")]
+        [StringSyntax(StringSyntaxAttribute.Uri)]
+        public string CallbackIngress { get; set; }
+
+        /// <summary>
         /// Gets or sets the port number used for callback communication with the bot.
         /// </summary>
         public int CallbackPort { get; set; }
