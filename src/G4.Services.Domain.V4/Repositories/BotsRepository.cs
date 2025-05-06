@@ -95,6 +95,7 @@ namespace G4.Services.Domain.V4.Repositories
             var connectedBot = new ConnectedBotModel
             {
                 CallbackHost = callbackHost,
+                CallbackIngress = botModel.CallbackIngress,
                 CallbackPort = callbackPort,
                 CallbackUri = botModel.CallbackUri,
                 ConnectionId = string.Empty,
@@ -143,22 +144,28 @@ namespace G4.Services.Domain.V4.Repositories
             return await TestConnection(ids);
         }
 
-        // TODO: Implement parallel processing for multiple IDs
         /// <inheritdoc />
         public async Task<IEnumerable<(int StatusCode, ConnectedBotModel ConnectedBot)>> TestConnection(string[] ids)
         {
             // Create a list to accumulate results for each bot ID
-            var bots = new List<(int StatusCode, ConnectedBotModel ConnectedBot)>();
+            var bots = new ConcurrentBag<(int StatusCode, ConnectedBotModel ConnectedBot)>();
 
-            // Iterate over each provided identifier
-            foreach (var id in ids)
+            // Calculate the degree of parallelism based on the number of available processors
+            var degreeOfParallelism = Environment.ProcessorCount / 2;
+
+            // Use a Task to run the parallel processing in the background
+            await Task.Factory.StartNew(() =>
             {
-                // Invoke the single-ID TestConnection overload and await its result
-                var (statusCode, connectedBot) = await TestConnection(id);
+                // For each ID, invoke the single-ID TestConnection method and await its result
+                Parallel.ForEach(ids, new ParallelOptions { MaxDegreeOfParallelism = degreeOfParallelism }, id =>
+                {
+                    // For each ID, invoke the single-ID TestConnection method and await its result
+                    var (statusCode, connectedBot) = TestConnection(id).Result;
 
-                // Store the outcome tuple in our result list
-                bots.Add((statusCode, connectedBot));
-            }
+                    // Store the outcome tuple in our result list
+                    bots.Add((statusCode, connectedBot));
+                });
+            });
 
             // Return the full set of connectivity results
             return bots;
@@ -190,10 +197,13 @@ namespace G4.Services.Domain.V4.Repositories
 
             try
             {
+                // Determine the callback URI to use for unregistration
+                var requestUri = !string.IsNullOrEmpty(connectedBot.CallbackIngress)
+                    ? connectedBot.CallbackIngress
+                    : connectedBot.CallbackUri;
+
                 // Build an HTTP GET request to the bot's callback endpoint
-                using var request = new HttpRequestMessage(
-                    method: HttpMethod.Get,
-                    requestUri: connectedBot.CallbackUri);
+                using var request = new HttpRequestMessage(method: HttpMethod.Get, requestUri);
 
                 // Send the request to the bot and await its response
                 using var response = await _httpClient.SendAsync(request);
@@ -258,22 +268,28 @@ namespace G4.Services.Domain.V4.Repositories
             return await Unregister(ids);
         }
 
-        // TODO: Implement parallel processing for multiple IDs
         /// <inheritdoc />
         public async Task<IEnumerable<(int StatusCode, ConnectedBotModel ConnectedBot)>> Unregister(string[] ids)
         {
             // Prepare a list to collect results for each ID
-            var bots = new List<(int StatusCode, ConnectedBotModel ConnectedBot)>();
+            var bots = new ConcurrentBag<(int StatusCode, ConnectedBotModel ConnectedBot)>();
 
-            // Process each provided bot identifier
-            foreach (var id in ids)
+            // Calculate the degree of parallelism based on the number of available processors
+            var degreeOfParallelism = Environment.ProcessorCount / 2;
+
+            // Use a Task to run the parallel processing in the background
+            await Task.Factory.StartNew(() =>
             {
-                // Invoke the single-ID unregister method and capture its outcome
-                var (statusCode, connectedBot) = await Unregister(id);
+                // For each ID, invoke the single-ID Unregister method and await its result
+                Parallel.ForEach(ids, new ParallelOptions { MaxDegreeOfParallelism = degreeOfParallelism }, id =>
+                {
+                    // For each ID, invoke the single-ID Unregister method and await its result
+                    var (statusCode, connectedBot) = Unregister(id).Result;
 
-                // Add the result tuple to our collection
-                bots.Add((statusCode, connectedBot));
-            }
+                    // Store the outcome tuple in our result list
+                    bots.Add((statusCode, connectedBot));
+                });
+            });
 
             // Return all accumulated results
             return bots;
@@ -317,10 +333,13 @@ namespace G4.Services.Domain.V4.Repositories
 
             try
             {
+                // Determine the callback URI to use for unregistration
+                var requestUri = !string.IsNullOrEmpty(connectedBot.CallbackIngress)
+                    ? connectedBot.CallbackIngress
+                    : connectedBot.CallbackUri;
+
                 // Build an HTTP DELETE request to the bot's callback URI
-                using var request = new HttpRequestMessage(
-                    method: HttpMethod.Delete,
-                    requestUri: connectedBot.CallbackUri);
+                using var request = new HttpRequestMessage(method: HttpMethod.Delete, requestUri);
 
                 // Send HTTP DELETE request to the bot's callback URI to notify it of unregistration
                 var response = await _httpClient.SendAsync(request);
