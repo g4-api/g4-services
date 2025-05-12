@@ -199,7 +199,7 @@ namespace G4.Services.Domain.V4.Repositories
             {
                 // Determine the callback URI to use for unregistration
                 var requestUri = !string.IsNullOrEmpty(connectedBot.CallbackIngress)
-                    ? connectedBot.CallbackIngress
+                    ? NewCallbackIngress(connectedBot).AbsoluteUri.TrimEnd('/')
                     : connectedBot.CallbackUri;
 
                 // Build an HTTP GET request to the bot's callback endpoint
@@ -335,7 +335,7 @@ namespace G4.Services.Domain.V4.Repositories
             {
                 // Determine the callback URI to use for unregistration
                 var requestUri = !string.IsNullOrEmpty(connectedBot.CallbackIngress)
-                    ? connectedBot.CallbackIngress
+                    ? NewCallbackIngress(connectedBot).AbsoluteUri.TrimEnd('/')
                     : connectedBot.CallbackUri;
 
                 // Build an HTTP DELETE request to the bot's callback URI
@@ -392,6 +392,25 @@ namespace G4.Services.Domain.V4.Repositories
 
             // Return 200 OK to indicate a successful update with no response body
             return (StatusCode: 200, connectedBot);
+        }
+
+        // Constructs a new <see cref="Uri"/> representing the ingress endpoint for a connected bot.
+        private static Uri NewCallbackIngress(ConnectedBotModel connectedBot)
+        {
+            // Parse the original callback URI string into a Uri instance
+            var callbackUri = new Uri(connectedBot.CallbackUri);
+
+            // Obtain the full absolute URI (scheme + host [+ port] + path + query), then remove any trailing slash
+            var callbackAbsoluteUri = connectedBot.CallbackIngress.TrimEnd('/');
+
+            // Extract only the path component (e.g., "/bot/v1/monitor/{id}") and remove any trailing slash
+            var callbackPath = callbackUri.AbsolutePath.TrimStart('/').TrimEnd('/');
+
+            // Combine the cleaned absolute URI and path, ensuring exactly one slash between them
+            var callbackIngress = $"{callbackAbsoluteUri}/{callbackPath}";
+
+            // Return the constructed callback ingress URI
+            return new Uri(callbackIngress);
         }
 
         // Retrieves a connected bot by its identifier, first checking the in-memory cache, then falling back to the database if needed.
