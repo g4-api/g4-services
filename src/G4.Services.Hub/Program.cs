@@ -141,7 +141,7 @@ builder.Services
         // How often the server sends a keep-alive ping. Default is 15 seconds.
         i.KeepAliveInterval = TimeSpan.FromSeconds(15);
 
-        // If the server hasn’t heard from a client in this much time, it might consider the client disconnected.
+        // If the server hasn't heard from a client in this much time, it might consider the client disconnected.
         // Usually the clientTimeout is set higher than KeepAliveInterval.
         i.ClientTimeoutInterval = TimeSpan.FromSeconds(60);
     })
@@ -171,6 +171,9 @@ builder.Services
             }
         };
     });
+
+// Add IHttpClientFactory to the service collection for making HTTP requests.
+builder.Services.AddHttpClient();
 #endregion
 
 #region *** Dependencies  ***
@@ -253,6 +256,9 @@ app.MapHub<G4Hub>($"/hub/v{AppSettings.ApiVersion}/g4/orchestrator").RequireCors
 
 // Add the SignalR hub to send automation notifications to clients and other services in real-time
 app.MapHub<G4AutomationNotificationsHub>($"/hub/v{AppSettings.ApiVersion}/g4/notifications").RequireCors("CorsPolicy");
+
+// Add the signalR hub the bots endpoint to send and receive messages in real-time
+app.MapHub<G4BotsHub>($"/hub/v{AppSettings.ApiVersion}/g4/bots").RequireCors("CorsPolicy");
 #endregion
 
 // Retrieve the logger service and log that the application has started.

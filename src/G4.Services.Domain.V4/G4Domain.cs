@@ -5,6 +5,7 @@ using G4.Extensions;
 using G4.Models;
 using G4.Models.Events;
 using G4.Services.Domain.V4.Hubs;
+using G4.Services.Domain.V4.Repositories;
 using G4.Settings;
 
 using Microsoft.AspNetCore.Builder;
@@ -25,24 +26,31 @@ namespace G4.Services.Domain.V4
     /// <summary>
     /// Represents the G4 domain, providing access to core services and clients.
     /// </summary>
-    /// <param name="cache">The cache manager instance.</param>
-    /// <param name="g4Client">The G4 client instance.</param>
-    /// <param name="logger">The logger instance.</param>
-    /// <param name="jsonOptions">The JSON serializer options.</param>
     public class G4Domain(
         CacheManager cache,
         G4Client g4Client,
         ILogger logger,
         JsonSerializerOptions jsonOptions,
         IHubContext<G4AutomationNotificationsHub> notificationsHubContext,
-        IHubContext<G4Hub> g4HubContext) : IDomain
+        IHubContext<G4Hub> g4HubContext,
+        IHubContext<G4BotsHub> botsHubContext,
+        IBotsRepository connectedBots) : IDomain
     {
         #region *** Properties   ***
+        /// <inheritdoc />
+        public IHubContext<G4BotsHub> BotsHubContext { get; set; } = botsHubContext;
+
         /// <inheritdoc />
         public CacheManager Cache { get; set; } = cache;
 
         /// <inheritdoc />
+        public IBotsRepository Bots { get; set; } = connectedBots;
+
+        /// <inheritdoc />
         public G4Client G4Client { get; set; } = g4Client;
+
+        /// <inheritdoc />
+        public IHubContext<G4Hub> G4HubContext { get; set; } = g4HubContext;
 
         /// <inheritdoc />
         public JsonSerializerOptions JsonOptions { get; set; } = jsonOptions;
@@ -50,9 +58,8 @@ namespace G4.Services.Domain.V4
         /// <inheritdoc />
         public ILogger Logger { get; set; } = logger;
 
+        /// <inheritdoc />
         public IHubContext<G4AutomationNotificationsHub> NotificationsHubContext { get; set; } = notificationsHubContext;
-
-        public IHubContext<G4Hub> G4HubContext { get; set; } = g4HubContext;
         #endregion
 
         #region *** Methods      ***
@@ -64,6 +71,7 @@ namespace G4.Services.Domain.V4
         {
             // Get the singleton instance of the cache manager
             var cache = CacheManager.Instance;
+            var connectedBots = IBotsRepository.InitializeConnectedBots(CacheManager.LiteDatabase, G4Logger.Instance);
 
             // Register the cache manager as a singleton service
             builder.Services.AddSingleton(implementationInstance: cache);
@@ -86,6 +94,11 @@ namespace G4.Services.Domain.V4
             // TODO: Use QueueManagerFactory to automatically resolve the queue manager implementation.
             // Register the queue manager as a singleton service implementing IQueueManager interface.
             builder.Services.AddSingleton<IQueueManager, BasicQueueManager>();
+
+            // Register bot cache model as a singleton service
+            builder.Services.AddSingleton(connectedBots);
+
+            builder.Services.AddSingleton<IBotsRepository, BotsRepository>();
 
             // Register the G4Domain as a transient service implementing IDomain
             builder.Services.AddTransient<IDomain, G4Domain>();
@@ -287,6 +300,7 @@ namespace G4.Services.Domain.V4
             };
         }
 
+        [Obsolete("This method is obsolete and should not be used in new code.", error: true)]
         public static void StartAutomationListener()
         {
             static async Task<HubConnection> NewHubClientAsync(Uri hubUri)

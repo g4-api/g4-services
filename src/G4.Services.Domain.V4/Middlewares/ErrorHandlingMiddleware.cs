@@ -1,4 +1,5 @@
-﻿using G4.Extensions;
+﻿using G4.Exceptions;
+using G4.Extensions;
 using G4.Models;
 
 using Microsoft.AspNetCore.Http;
@@ -155,15 +156,16 @@ namespace G4.Services.Domain.V4.Middlewares
             // Set the Content-Type header to indicate a JSON response with problem details
             context.Response.ContentType = MediaTypeNames.Application.ProblemJson;
 
-            // Set the HTTP status code to 500 Internal Server Error
-            context.Response.StatusCode = exception.GetBaseException() is InvalidCredentialException
-                ? StatusCodes.Status401Unauthorized
-                : (int)HttpStatusCode.InternalServerError;
+            // Determine the HTTP status code and error title based on the exception type
+            (int statusCode, string title) = exception.GetBaseException().GetType().Name switch
+            {
+                "InvalidCredentialException" => (StatusCodes.Status401Unauthorized, "Invalid credentials provided."),
+                "NoAvailableRunningTimeException" => (StatusCodes.Status403Forbidden, "No available running time."),
+                _ => (StatusCodes.Status500InternalServerError, "An unexpected error occurred.")
+            };
 
-            // Set the error title based on the HTTP status code
-            var title = context.Response.StatusCode == StatusCodes.Status401Unauthorized
-                ? "Invalid credentials provided."
-                : "An unexpected error occurred.";
+            // Set the HTTP status code in the response
+            context.Response.StatusCode = statusCode;
 
             // Retrieve the base exception to get the root cause of the exception
             var baseException = exception.GetBaseException();

@@ -1,7 +1,7 @@
 {
 	"info": {
-		"_postman_id": "229d8eb8-6d51-4c0b-86c6-ab5e781a898c",
-		"name": "G4 API Reference Guide v4",
+		"_postman_id": "7c3561b2-fc3a-4f71-81c8-4e3bb4910c50",
+		"name": "G4 API Reference Guide v4 Release",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "4883021"
 	},
@@ -12,18 +12,6 @@
 				{
 					"name": "Setup Parameters",
 					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Status code is 200\", function () {\r",
-									"    pm.response.to.have.status(200);\r",
-									"});"
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						},
 						{
 							"listen": "prerequest",
 							"script": {
@@ -44,6 +32,18 @@
 									"//-----------------------------------------------------\r",
 									"pm.collectionVariables.set('DriverBinaries', '$(Grid.Endpoint)');\r",
 									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});"
 								],
 								"type": "text/javascript",
 								"packages": {}
@@ -293,6 +293,73 @@
 					"response": []
 				},
 				{
+					"name": "Invoke Automation Base64",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"// Retrieve the raw request body as a string\r",
+									"let rawBody = pm.request.body.raw;\r",
+									"\r",
+									"console.log(rawBody);\r",
+									"console.log(pm.collectionVariables.get('ApiUser'))\r",
+									"console.log(pm.collectionVariables.get('DriverBinaries'))\r",
+									"\r",
+									"rawBody = rawBody.replace(/{{ApiUser}}/g, pm.collectionVariables.get('ApiUser'));\r",
+									"rawBody = rawBody.replace(/{{DriverBinaries}}/g, pm.collectionVariables.get('DriverBinaries'));\r",
+									"\r",
+									"// Convert the raw body to a Base64-encoded string using Node's Buffer API\r",
+									"const base64Body = Buffer.from(rawBody).toString('base64');\r",
+									"    \r",
+									"// Update the request body with the Base64-encoded string\r",
+									"pm.request.body.raw = base64Body;"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"authentication\": {\r\n        \"username\": \"{{ApiUser}}\"\r\n    },\r\n    \"driverParameters\": {\r\n        \"driver\": \"MicrosoftEdgeDriver\",\r\n        \"driverBinaries\": \"{{DriverBinaries}}\",\r\n        \"capabilities\": {\r\n            \"alwaysMatch\": {\r\n                \"browserName\": \"MicrosoftEdge\"\r\n            },\r\n            \"firstMatch\": [\r\n                {}\r\n            ]\r\n        }\r\n    },\r\n    \"stages\": [\r\n        {\r\n            \"description\": \"Main stage for invoking integration tests.\",\r\n            \"jobs\": [\r\n                {\r\n                    \"reference\": {\r\n                        \"description\": \"Job responsible for invoking integration a single integration test.\",\r\n                        \"name\": \"Invoking Test G4.IntegrationTests.Plugins.Common.WriteLog.C0001\"\r\n                    },\r\n                    \"rules\": [\r\n                        {\r\n                            \"$type\": \"Action\",\r\n                            \"argument\": \"about:blank\",\r\n                            \"pluginName\": \"GoToUrl\",\r\n                            \"regularExpression\": \"(?s).*\"\r\n                        },\r\n                        {\r\n                            \"$type\": \"Action\",\r\n                            \"argument\": \"The first 8 alphanumeric characters of the GUID are {{$New-Guid --Pattern:^\\\\w{8}}}\",\r\n                            \"pluginName\": \"WriteLog\"\r\n                        },\r\n                        {\r\n                            \"$type\": \"Action\",\r\n                            \"pluginName\": \"CloseBrowser\"\r\n                        }\r\n                    ],\r\n                    \"stopOnError\": false\r\n                }\r\n            ],\r\n            \"name\": \"Integration Tests\"\r\n        }\r\n    ]\r\n}",
+							"options": {
+								"raw": {
+									"language": "text"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{Endpoint}}/automation/base64/invoke",
+							"host": [
+								"{{Endpoint}}"
+							],
+							"path": [
+								"automation",
+								"base64",
+								"invoke"
+							]
+						},
+						"description": "### Endpoint\n\n`POST /api/v4/g4/automation/base64/invoke`\n\n---\n\n### Description\n\nThis endpoint triggers the invocation of an automation session based on the provided Base64-encoded automation model. The Base64 string is first decoded into a JSON string, then deserialized into a `G4AutomationModel`. The automation session is executed using the parameters defined in the model, and detailed information about the entire automation run (including plugin execution details, driver sessions, and performance metrics) is returned in JSON format. **Note:** Each stage in the model must contain at least one job.\n\n---\n\n### Request Body\n\nThe request body must be a plain text (`text/plain`) Base64-encoded string representing a JSON automation model (`G4AutomationModel`). This model specifies details such as authentication, driver parameters, stages, jobs, and rules.\n\n#### Fields (within the decoded JSON):\n\n| Field | Type | Required | Description |\n| --- | --- | --- | --- |\n| authentication | object | Yes | Specifies the credentials (e.g., username) required for API authentication. |\n| driverParameters | object | Yes | Provides details about the browser driver and capabilities used during automation. |\n| stages | array | Yes | Contains the stages of the automation session; each stage must have at least one job. |\n| jobs | array | Yes | Defines the jobs to be executed within each stage (each stage must include at least one job). |\n\n---\n\n#### Example Decoded JSON (before Base64 encoding)\n\n``` json\n{\n    \"authentication\": {\n        \"username\": \"{{ApiUser}}\"\n    },\n    \"driverParameters\": {\n        \"driver\": \"MicrosoftEdgeDriver\",\n        \"driverBinaries\": \"{{DriverBinariesPath}}\",\n        \"capabilities\": {\n            \"alwaysMatch\": {\n                \"browserName\": \"MicrosoftEdge\"\n            },\n            \"firstMatch\": [\n                {}\n            ]\n        }\n    },\n    \"stages\": [\n        {\n            \"description\": \"Main stage for invoking integration tests.\",\n            \"jobs\": [\n                {\n                    \"reference\": {\n                        \"description\": \"Job responsible for invoking a single integration test.\",\n                        \"name\": \"Invoking Test G4.IntegrationTests.Plugins.Common.WriteLog.C0001\"\n                    },\n                    \"rules\": [\n                        {\n                            \"$type\": \"Action\",\n                            \"argument\": \"{{TestPageUrl}}\",\n                            \"pluginName\": \"GoToUrl\"\n                        },\n                        {\n                            \"$type\": \"Action\",\n                            \"argument\": \"The first 8 alphanumeric characters of the GUID are {{$New-Guid --Pattern:^\\\\w{8}}}\",\n                            \"pluginName\": \"WriteLog\"\n                        },\n                        {\n                            \"$type\": \"Action\",\n                            \"pluginName\": \"CloseBrowser\"\n                        }\n                    ],\n                    \"stopOnError\": false\n                }\n            ],\n            \"name\": \"Integration Tests\"\n        }\n    ]\n}\n\n ```\n\n> **Note:** The actual request body must be the Base64-encoded version of the JSON above. \n  \n\n---\n\n### Responses\n\n**200 OK**  \n_Description_: Successfully invoked the automation session.  \n_Content-Type_: `application/json`\n\n**Example Success Response**\n\n``` json\n{\n    \"sessionId\": \"b3f3b290-5e03-471e-908e-a2c7bd02f01d\",\n    \"performancePoint\": {\n        \"$type\": \"Automation\",\n        \"authenticationTime\": 18781,\n        \"driverSetupTime\": 0,\n        \"sessionTime\": 2317560,\n        \"start\": \"2024-10-11T09:02:36.285907Z\",\n        \"end\": \"2024-10-11T09:02:38.616122Z\",\n        \"setupDelegationTime\": 756,\n        \"setupTime\": 1404,\n        \"teardownDelegationTime\": 25107,\n        \"teardownTime\": 294995,\n        \"runTime\": 23302147,\n        \"timeouts\": 0\n    },\n    \"sessions\": {\n        \"f9b7a0958ea9fdb988b737f70f8867c5\": {\n            \"performancePoints\": [\n                {\n                    \"$type\": \"Plugin\",\n                    \"reference\": {\n                        \"alias\": \"GoToUrl\",\n                        \"description\": \"Automates the navigation to specified URLs within the browser.\",\n                        \"name\": \"OpenUrl\"\n                    },\n                    \"driverSession\": \"f9b7a0958ea9fdb988b737f70f8867c5\",\n                    \"start\": \"2024-10-11T09:02:38.293867Z\",\n                    \"end\": \"2024-10-11T09:02:38.453346Z\",\n                    \"runTime\": 1409205,\n                    \"setupTime\": 179879,\n                    \"teardownTime\": 3605\n                }\n            ]\n        }\n    }\n}\n\n ```\n\n**404 Not Found**  \n_Description_: The specified automation model was not found.  \n_Content-Type_: `application/problem+json`\n\n**Example Error Response**\n\n``` json\n{\n    \"status\": 404,\n    \"traceId\": \"0HN729FN8M3ET:00000001\",\n    \"errors\": {\n        \"modelName\": [\n            \"Automation model 'SampleAutomationModel' not found.\"\n        ]\n    }\n}\n\n ```\n\n---\n\n### Example Request (using Postman)\n\n**Method**: POST  \n**URL**: `https://api.yourdomain.com/api/v4/g4/automation/base64/invoke`  \n**Headers**:\n\n- Content-Type: `text/plain`\n    \n\n**Body** (raw):\n\n``` json\n\"eyJhdXRoZW50aWNhdGlvbiI6IHsidXNlcm5hbWUiOiAiX3tBcGlVc2VyfSJ9LCAiZHJpdmVyUGFyYW1ldGVycyI6IHsiZHJpdmVyIjogIk1pY3Jvc29mdEVkZ2VXaWRlckRyaXZlciIsICJkcml2ZXJCaW5hcmllcyI6ICJ7e0RyZXZpZXJCaW5hcmllc1BhdGh9fSJ9LCAic3RhZ2VzIjogW3siZGVzY3JpcHRpb24iOiAiTWFpbiBzdGFnZSBmb3IgaW52b2tpbmcgaW50ZWdyYXRpb24gdGVzdHMuIiwgImpvYnMiOiBbeyJyZWZlcmVuY2UiOiB7ImRlc2NyaXB0aW9uIjogIkpvYiByZXNwb25zaWJsZSBmb3IgaW52b2tpbmcgYSBzaW5nbGUgaW50ZWdyYXRpb24gdGVzdC4iLCAibmFtZSI6ICJJbnZva2luZyBUZXN0IEc0LkludGVncmF0aW9uVGVzdHMuUGx1Z2lucy5Db21tb24uV3JpdGVMb2cuQzAwMDEifX0sICJydWxlcyI6IFt7IiR0eXBlIjogIkFjdGlvbiIsICJhcmd1bWVudCI6ICJ7fSIsICJwbHVnaW5OYW1lIjogIkdvVG9VcmwiIH1dLCAic3RvcE9uRXJyb3IiOiBmYWxzZX1dLCAibmFtZSI6ICJJbnRlZ3JhdGlvbiBUZXN0cyJ9\"\n\n ```\n\n---\n\n### Notes\n\n- **Jobs**: Each stage must contain at least one job for execution.\n    \n- **Authentication**: The `authentication` field is required for API authentication.\n    \n- **Driver Parameters**: These details specify the browser driver and its configuration for the automation session.\n    \n- **Base64 Encoding**: The request body must be a Base64-encoded string representing a JSON automation model. Ensure that the JSON is correctly encoded and sent with a `text/plain` content type."
+					},
+					"response": []
+				},
+				{
 					"name": "Initialize Automation",
 					"event": [
 						{
@@ -331,6 +398,441 @@
 							]
 						},
 						"description": "**Endpoint**\n\n`POST /api/v4/g4/automation/init`\n\n**Description**\n\nThis endpoint initializes an automation request by setting up all necessary references and action connections in the provided `G4AutomationModel`. The result is an initialized model that is ready for invocation.\n\n**Request Body**\n\nThe request body must contain a `G4AutomationModel`, which specifies the configuration and parameters for initializing the automation session. This includes authentication details, driver settings, and stage definitions, each containing one or more jobs to be executed.\n\n**Fields:**\n\n| Field | Type | Required | Description |\n| --- | --- | --- | --- |\n| authentication | object | Yes | Specifies authentication details, including username for API access. |\n| driverParameters | object | Yes | Configurations related to the browser driver and capabilities for the automation session. |\n| stages | array | Yes | List of stages, each containing at least one job. |\n| jobs | array | Yes | Jobs to be executed within each stage, with rules and configurations for automation. |\n\n**Example Request Body**\n\n``` json\n{\n    \"authentication\": {\n        \"username\": \"{{ApiUser}}\"\n    },\n    \"driverParameters\": {\n        \"driver\": \"MicrosoftEdgeDriver\",\n        \"driverBinaries\": \"{{DriverBinariesPath}}\",\n        \"capabilities\": {\n            \"alwaysMatch\": {\n                \"browserName\": \"MicrosoftEdge\"\n            },\n            \"firstMatch\": [\n                {}\n            ]\n        }\n    },\n    \"stages\": [\n        {\n            \"description\": \"Setup stage for initializing automation.\",\n            \"jobs\": [\n                {\n                    \"reference\": {\n                        \"description\": \"Setup job to initialize automation environment.\",\n                        \"name\": \"SetupEnvironment\"\n                    },\n                    \"rules\": [\n                        {\n                            \"$type\": \"Action\",\n                            \"argument\": \"{{SetupPageUrl}}\",\n                            \"pluginName\": \"OpenUrl\",\n                            \"regularExpression\": \"(?s).*\"\n                        },\n                        {\n                            \"$type\": \"Action\",\n                            \"argument\": \"Initialization of resources\",\n                            \"pluginName\": \"InitializeResources\"\n                        }\n                    ],\n                    \"stopOnError\": true\n                }\n            ],\n            \"name\": \"Initialization\"\n        }\n    ]\n}\n\n ```\n\n**Responses**\n\n**200 OK**\n\n- **Description**: Successfully initialized the automation request.\n    \n- **Content-Type**: `application/json`\n    \n\n**Example Success Response**\n\n``` json\n{\n    \"authentication\": {\n        \"username\": \"*****\"\n    },\n    \"driverParameters\": {\n        \"driver\": \"MicrosoftEdgeDriver\",\n        \"driverBinaries\": \"*****\",\n        \"capabilities\": {\n            \"alwaysMatch\": {\n                \"browserName\": \"MicrosoftEdge\"\n            },\n            \"firstMatch\": [\n                {}\n            ]\n        }\n    },\n    \"iteration\": 0,\n    \"reference\": {\n        \"description\": \"Default Automation Pipeline in the G4™ automation engine.\",\n        \"name\": \"2024-11-08T08:37:12.615951Z: Untitled Automation\",\n        \"id\": \"610b58e6-2638-4cf0-a81f-d855ab15425e\",\n        \"iteration\": 0\n    },\n    \"settings\": {\n        \"automationSettings\": {\n            \"loadTimeout\": 60000,\n            \"maxParallel\": 1,\n            \"returnFlatResponse\": true,\n            \"returnStructuredResponse\": true,\n            \"searchTimeout\": 15000\n        },\n        \"environmentsSettings\": {\n            \"defaultEnvironment\": \"SystemParameters\",\n            \"returnEnvironment\": false\n        },\n        \"exceptionsSettings\": {\n            \"returnExceptions\": true\n        },\n        \"queueManagerSettings\": {},\n        \"performancePointsSettings\": {\n            \"returnPerformancePoints\": true\n        },\n        \"pluginsSettings\": {\n            \"forceRuleReference\": true\n        },\n        \"screenshotsSettings\": {\n            \"convertToBase64\": false,\n            \"onExceptionOnly\": false,\n            \"outputFolder\": \"*****\",\n            \"returnScreenshots\": false\n        }\n    },\n    \"stages\": [\n        {\n            \"description\": \"Main stage for invoking integration tests.\",\n            \"failOnException\": false,\n            \"jobs\": [\n                {\n                    \"reference\": {\n                        \"description\": \"Job responsible for invoking a single integration test.\",\n                        \"name\": \"Invoking Test G4.IntegrationTests.Plugins.Common.WriteLog.C0001\",\n                        \"id\": \"8d1037c1-e6a4-4b2c-9339-0a21a1cd0f0b\",\n                        \"stageReference\": {\n                            \"automationReference\": {\n                                \"description\": \"Default Automation Pipeline in the G4™ automation engine.\",\n                                \"name\": \"2024-11-08T08:37:12.615951Z: Untitled Automation\",\n                                \"id\": \"610b58e6-2638-4cf0-a81f-d855ab15425e\",\n                                \"iteration\": 0\n                            },\n                            \"description\": \"Default Stage within an automation pipeline in the G4™ automation engine.\",\n                            \"id\": \"ec935ee0-53ed-4eab-a604-0d6d2a45a514\",\n                            \"name\": \"2024-11-08T08:37:12.616809Z: Untitled Stage\"\n                        }\n                    },\n                    \"rules\": [\n                        {\n                            \"$type\": \"Action\",\n                            \"argument\": \"about:blank\",\n                            \"pluginName\": \"GoToUrl\",\n                            \"reference\": {\n                                \"alias\": \"GoToUrl\",\n                                \"description\": \"Automates the navigation to specified URLs within the browser, enabling seamless integration into multi-page workflows and testing scenarios.\",\n                                \"name\": \"OpenUrl\",\n                                \"type\": \"Action\"\n                            }\n                        },\n                        {\n                            \"$type\": \"Action\",\n                            \"argument\": \"The first 8 alphanumeric characters of the GUID are {{$New-Guid --Pattern:^\\\\w{8}}}\",\n                            \"pluginName\": \"WriteLog\",\n                            \"reference\": {\n                                \"alias\": \"WriteLog\",\n                                \"description\": \"Logs information during the execution of automation scripts, providing insights into the automation process.\",\n                                \"name\": \"WriteLog\",\n                                \"type\": \"Action\"\n                            }\n                        },\n                        {\n                            \"$type\": \"Action\",\n                            \"argument\": \"\",\n                            \"pluginName\": \"CloseBrowser\",\n                            \"reference\": {\n                                \"alias\": \"CloseBrowser\",\n                                \"description\": \"Closes the active browser window and disposes of the WebDriver instance.\",\n                                \"name\": \"CloseBrowser\",\n                                \"type\": \"Action\"\n                            }\n                        }\n                    ],\n                    \"stopOnError\": false\n                }\n            ],\n            \"name\": \"Integration Tests\"\n        }\n    ]\n}\n\n ```\n\n**404 Not Found**\n\n- **Description**: The specified automation model could not be initialized.\n    \n- **Content-Type**: `application/problem+json`\n    \n\n**Example Error Response**\n\n``` json\n{\n    \"status\": 404,\n    \"traceId\": \"0HN729FN8M3ET:00000001\",\n    \"errors\": {\n        \"modelName\": [\n            \"Automation model 'SampleAutomationModel' not found.\"\n        ]\n    }\n}\n\n ```\n\n**Example Request (using Postman)**\n\n- **Method**: POST\n    \n- **URL**: `https://api.yourdomain.com/api/v4/g4/automation/init`\n    \n- **Headers**:\n    - Content-Type: `application/json`\n        \n\n**Body:**\n\n``` json\n{\n    \"authentication\": {\n        \"username\": \"{{ApiUser}}\"\n    },\n    \"driverParameters\": {\n        \"driver\": \"MicrosoftEdgeDriver\",\n        \"driverBinaries\": \"{{DriverBinariesPath}}\",\n        \"capabilities\": {\n            \"alwaysMatch\": {\n                \"browserName\": \"MicrosoftEdge\"\n            },\n            \"firstMatch\": [\n                {}\n            ]\n        }\n    },\n    \"stages\": [\n        {\n            \"description\": \"Setup stage for initializing automation.\",\n            \"jobs\": [\n                {\n                    \"reference\": {\n                        \"description\": \"Setup job to initialize automation environment.\",\n                        \"name\": \"SetupEnvironment\"\n                    },\n                    \"rules\": [\n                        {\n                            \"$type\": \"Action\",\n                            \"argument\": \"{{SetupPageUrl}}\",\n                            \"pluginName\": \"OpenUrl\",\n                            \"regularExpression\": \"(?s).*\"\n                        },\n                        {\n                            \"$type\": \"Action\",\n                            \"argument\": \"Initialization of resources\",\n                            \"pluginName\": \"InitializeResources\"\n                        }\n                    ],\n                    \"stopOnError\": true\n                }\n            ],\n            \"name\": \"Initialization\"\n        }\n    ]\n}\n\n ```\n\n**Notes**\n\n- **Jobs**: Each stage must contain at least one job to execute.\n    \n- **Authentication**: The `authentication` field is required for authorized access to the automation setup.\n    \n- **Driver Parameters**: Provides details about the browser driver and configuration necessary for initializing the automation session.\n    \n- **Sensitive Information**: In the response examples, sensitive information such as usernames and file paths have been masked for security purposes."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Documentation: Automation Async",
+			"item": [
+				{
+					"name": "Start Automation",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 202\", function () {\r",
+									"    pm.response.to.have.status(202);\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"authentication\": {\r\n        \"username\": \"{{ApiUser}}\"\r\n    },\r\n    \"driverParameters\": {\r\n        \"driver\": \"MicrosoftEdgeDriver\",\r\n        \"driverBinaries\": \"{{DriverBinaries}}\",\r\n        \"capabilities\": {\r\n            \"alwaysMatch\": {\r\n                \"browserName\": \"MicrosoftEdge\"\r\n            }\r\n        },\r\n        \"firstMatch\": [\r\n            {}\r\n        ]\r\n    },\r\n    \"stages\": [\r\n        {\r\n            \"description\": \"Main stage for invoking integration tests.\",\r\n            \"jobs\": [\r\n                {\r\n                    \"reference\": {\r\n                        \"description\": \"Job responsible for invoking integration a single integration test.\",\r\n                        \"name\": \"Invoking Test G4.IntegrationTests.Plugins.Common.WriteLog.C0001\"\r\n                    },\r\n                    \"rules\": [\r\n                        {\r\n                            \"$type\": \"Action\",\r\n                            \"argument\": \"about:blank\",\r\n                            \"pluginName\": \"GoToUrl\",\r\n                            \"regularExpression\": \"(?s).*\"\r\n                        },\r\n                        {\r\n                            \"$type\": \"Action\",\r\n                            \"argument\": \"The first 8 alphanumeric characters of the GUID are {{$New-Guid --Pattern:^\\\\w{8}}}\",\r\n                            \"pluginName\": \"WriteLog\"\r\n                        },\r\n                        {\r\n                            \"$type\": \"Action\",\r\n                            \"pluginName\": \"WaitFlow\",\r\n                            \"argument\": \"5000\"\r\n                        },\r\n                        {\r\n                            \"$type\": \"Action\",\r\n                            \"pluginName\": \"CloseBrowser\"\r\n                        }\r\n                    ],\r\n                    \"stopOnError\": false\r\n                }\r\n            ],\r\n            \"name\": \"Integration Tests\"\r\n        }\r\n    ]\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{Endpoint}}/automation/async/start",
+							"host": [
+								"{{Endpoint}}"
+							],
+							"path": [
+								"automation",
+								"async",
+								"start"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Completed",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{Endpoint}}/automation/async/completed",
+							"host": [
+								"{{Endpoint}}"
+							],
+							"path": [
+								"automation",
+								"async",
+								"completed"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Documentation: Bots",
+			"item": [
+				{
+					"name": "Disconnect Bot - Single Bot",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{Endpoint}}/bots/disconnect/bXs7KzYw3QnRt4_vJ5L8Hg",
+							"host": [
+								"{{Endpoint}}"
+							],
+							"path": [
+								"bots",
+								"disconnect",
+								"bXs7KzYw3QnRt4_vJ5L8Hg"
+							]
+						},
+						"description": "### Endpoint\n\n`DELETE /api/v4/g4/bots/disconnect/{connection}`\n\n### Description\n\nSends a `StopBot` command to the connected client identified by the given SignalR connection ID.\n\n### Responses\n\n**204 No Content**  \n_Description_: `StopBot` command successfully dispatched to the specified bot.  \n_Content-Type_: _none_\n\n### Example Request (using Postman)\n\n**Method**: DELETE  \n**URL**: `https://api.yourdomain.com/api/v4/g4/bots/disconnect/bXs7KzYw3QnRt4_vJ5L8Hg`  \n**Headers**:\n\n- `Accept: application/json`  \n- `Authorization: Bearer <your_api_token>`\n\n### Notes\n\n- No request body is required.  \n- Uses SignalR to target the client by its connection ID.  \n- The specified bot client should listen for the `StopBot` event and cease monitoring operations gracefully.  \n- Requires a valid bearer token in the `Authorization` header when authentication is enabled."
+					},
+					"response": []
+				},
+				{
+					"name": "Disconnect Bot - Multiple Bots",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "[\r\n    \"bXs7KzYw3QnRt4_vJ5L8Hg\",\r\n    \"H9mJv4Pe2NsQ1fTy_6WzRo\",\r\n    \"X0tCpV8Rq3EsN5bY7kZuLf\"\r\n]",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{Endpoint}}/bots/disconnect",
+							"host": [
+								"{{Endpoint}}"
+							],
+							"path": [
+								"bots",
+								"disconnect"
+							]
+						},
+						"description": "### Endpoint\n\n`DELETE /api/v4/g4/bots/disconnect`\n\n### Description\n\nSends a `StopBot` command to each client identified by the provided SignalR connection IDs array, instructing those bots to stop their monitors.\n\n### Request Body\n\nThe request body must be a JSON array of SignalR connection identifiers (`string[]`) for which to send the `StopBot` command.\n\n| Field       | Type     | Required | Description                                                         |\n|-------------|----------|----------|---------------------------------------------------------------------|\n| connections | string[] | Yes      | Array of SignalR connection IDs to which `StopBot` should be sent.  |\n\n#### Example Request Body\n\n```json\n[\n    \"bXs7KzYw3QnRt4_vJ5L8Hg\",\n    \"H9mJv4Pe2NsQ1fTy_6WzRo\",\n    \"X0tCpV8Rq3EsN5bY7kZuLf\"\n]\n```\n\n### Responses\n\n**204 No Content**  \n_Description_: `StopBot` commands successfully dispatched to the specified bots.  \n_Content-Type_: _none_\n\n### Example Request (using Postman)\n\n**Method**: DELETE  \n**URL**: `https://api.yourdomain.com/api/v4/g4/bots/disconnect`  \n**Headers**:\n\n- `Accept: application/json`  \n- `Content-Type: application/json`  \n- `Authorization: Bearer <your_api_token>`\n\n**Body**:\n\n```json\n[\n    \"bXs7KzYw3QnRt4_vJ5L8Hg\",\n    \"H9mJv4Pe2NsQ1fTy_6WzRo\",\n    \"X0tCpV8Rq3EsN5bY7kZuLf\"\n]\n```\n\n### Notes\n\n- No response body is returned.  \n- Uses SignalR to target individual clients by their connection ID.  \n- Each specified bot client should listen for the `StopBot` event and cease monitoring operations gracefully.  \n- Requires a valid bearer token in the `Authorization` header when authentication is enabled."
+					},
+					"response": []
+				},
+				{
+					"name": "Disconnect Bot - No Filter",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{Endpoint}}/bots/disconnect/all",
+							"host": [
+								"{{Endpoint}}"
+							],
+							"path": [
+								"bots",
+								"disconnect",
+								"all"
+							]
+						},
+						"description": "### Endpoint\n\n`DELETE /api/v4/g4/bots/disconnect/all`\n\n### Description\n\nBroadcasts a `StopBot` command to every connected client, instructing all bots to stop their monitors.\n\n### Responses\n\n**204 No Content**  \n_Description_: `StopBot` commands successfully dispatched to all connected bots.  \n\n### Example Request (using Postman)\n\n**Method**: DELETE  \n**URL**: `https://api.yourdomain.com/api/v4/g4/bots/disconnect/all`  \n**Headers**:\n\n- `Accept: application/json`  \n- `Authorization: Bearer <your_api_token>`\n\n### Notes\n\n- No request body is required.  \n- The endpoint uses SignalR to send a `StopBot` event to all active bot connections.  \n- Each bot client should listen for `StopBot` and cease monitoring operations gracefully.  \n- Requires a valid bearer token in the `Authorization` header when authentication is enabled."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Status - No Filter",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{Endpoint}}/bots/status",
+							"host": [
+								"{{Endpoint}}"
+							],
+							"path": [
+								"bots",
+								"status"
+							]
+						},
+						"description": "### Endpoint\n\n`GET /api/v4/g4/bots/status`\n\n### Description\n\nRetrieves a list of bots currently connected to the system, including their metadata, callback configuration, and timestamps for creation and last modification.\n\n### Responses\n\n**200 OK**  \n_Description_: A list of all currently connected bots with their runtime details.  \n_Content-Type_: `application/json`\n\n#### Schema (`ConnectedBotModel`)\n\n| Field | Type | Description |\n| --- | --- | --- |\n| `id` | string | Unique identifier of the bot. |\n| `name` | string | Human‐readable name of the bot. |\n| `status` | string | Current connection status (e.g., `Ready`, `Connected`, `Disconnected`). |\n| `type` | string | Bot type or category. |\n| `machine` | string | Hostname or machine name where the bot is running. |\n| `osVersion` | string | Operating system version of the host machine. |\n| `callbackHost` | string | Host used for callback communications. |\n| `callbackPort` | integer | Port used for callback communications. |\n| `callbackUri` | string | Full callback monitor URL, following the template: `http://:/bot/v1//monitor/` |\n| `createdOn` | string | ISO 8601 timestamp when the bot record was created (with offset). |\n| `lastModifiedOn` | string | ISO 8601 timestamp when the bot record was last updated (with offset). |\n\n**Example Success Response**\n\n``` json\n[\n  {\n    \"createdOn\": \"2025-04-27T19:42:30.258000+03:00\",\n    \"callbackHost\": \"localhost\",\n    \"callbackPort\": 9944,\n    \"callbackUri\": \"http://localhost:9944/bot/v1/order-processor-bot/monitor/bot-1234\",\n    \"id\": \"bot-1234\",\n    \"lastModifiedOn\": \"2025-04-27T19:45:10.123000+03:00\",\n    \"machine\": \"BOT-SERVER-1\",\n    \"name\": \"invoice-generator-bot\",\n    \"osVersion\": \"Windows 10 Pro\",\n    \"status\": \"Ready\",\n    \"type\": \"FileListenerBot\"\n  },\n  {\n    \"createdOn\": \"2025-04-27T18:00:00.000000+03:00\",\n    \"callbackHost\": \"localhost\",\n    \"callbackPort\": 9945,\n    \"callbackUri\": \"http://localhost:9945/bot/v1/invoice-generator-bot/monitor/bot-5678\",\n    \"id\": \"bot-5678\",\n    \"lastModifiedOn\": \"2025-04-27T18:30:45.000000+03:00\",\n    \"machine\": \"BOT-SERVER-2\",\n    \"name\": \"invoice-generator-bot\",\n    \"osVersion\": \"Ubuntu 24.04\",\n    \"status\": \"Ready\",\n    \"type\": \"FileListenerBot\"\n  }\n]\n\n ```\n\n### Example Request (using Postman)\n\n**Method**: GET  \n**URL**: `https://api.yourdomain.com/api/v4/g4/bots`  \n**Headers**:\n\n- `Accept: application/json`\n    \n\n### Notes\n\n- No request body is required.\n    \n- If no bots are connected, an empty array (`[]`) is returned.\n    \n- If authentication is enabled, include your API token in the `Authorization` header, e.g.:\n    \n    `Authorization: Bearer`\n    \n- The `callbackUri` field always follows the pattern:\n    \n    `http://:/bot/v1//monitor/`"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Status - Single Bot",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{Endpoint}}/bots/status/bot-1234",
+							"host": [
+								"{{Endpoint}}"
+							],
+							"path": [
+								"bots",
+								"status",
+								"bot-1234"
+							]
+						},
+						"description": "### Endpoint\n\n`GET /api/v4/g4/bots/status/{id}`\n\n### Description\n\nRetrieves runtime details for a single bot identified by the given `id`.\n\n### Responses\n\n**200 OK**  \n_Description_: A single `ConnectedBotModel` instance for the requested Id.  \n_Content-Type_: `application/json`\n\n#### Schema (`ConnectedBotModel`)\n\n| Field | Type | Description |\n| --- | --- | --- |\n| `id` | string | Unique identifier of the bot. |\n| `name` | string | Human-readable name of the bot. |\n| `status` | string | Current connection status (e.g., `Ready`, `Connected`, `Disconnected`). |\n| `type` | string | Bot type or category. |\n| `machine` | string | Hostname or machine name where the bot is running. |\n| `osVersion` | string | Operating system version of the host machine. |\n| `callbackHost` | string | Host used for callback communications. |\n| `callbackPort` | integer | Port used for callback communications. |\n| `callbackUri` | string | Full callback monitor URL, following the template: `http://:/bot/v1//monitor/` |\n| `createdOn` | string | ISO 8601 timestamp when the bot record was created (with offset). |\n| `lastModifiedOn` | string | ISO 8601 timestamp when the bot record was last updated (with offset). |\n\n**Example Success Response**\n\n``` json\n{\n  \"createdOn\": \"2025-04-27T19:42:30.258000+03:00\",\n  \"callbackHost\": \"localhost\",\n  \"callbackPort\": 9944,\n  \"callbackUri\": \"http://localhost:9944/bot/v1/order-processor-bot/monitor/bot-1234\",\n  \"id\": \"bot-1234\",\n  \"lastModifiedOn\": \"2025-04-27T19:45:10.123000+03:00\",\n  \"machine\": \"BOT-SERVER-1\",\n  \"name\": \"order-processor-bot\",\n  \"osVersion\": \"Windows 10 Pro\",\n  \"status\": \"Ready\",\n  \"type\": \"OrderProcessor\"\n}\n\n ```\n\n**404 Not Found**  \n_Description_: Bot with the specified Id not found.  \n_Content-Type_: `application/problem+json`\n\n**Example Error Response**\n\n``` json\n{\n  \"status\": 404,\n  \"errors\": {\n    \"BotNotFound\": [\n      \"Bot with ID 'bot-id' not found.\"\n    ]\n  },\n  \"request\": \"GET /api/v4/g4/bots/bot-id HTTP/1.1\",\n  \"routeData\": {\n    \"action\": \"GetStatus\",\n    \"controller\": \"Bots\",\n    \"id\": \"bot-id\"\n  },\n  \"traceId\": \"20250427-224124-7488342\"\n}\n\n ```\n\n### Example Request (using Postman)\n\n**Method**: GET  \n**URL**: `https://api.yourdomain.com/api/v4/g4/bots/{id}`  \n**Headers**:\n\n- `Accept: application/json`\n    \n- `Authorization: Bearer`\n    \n\n### Notes\n\n- No request body is required.\n    \n- If the specified `id` does not exist, a 404 response with the error schema is returned.\n    \n- The `callbackUri` field always follows the pattern:  \n    `http://:/bot/v1//monitor/`"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Status - Multiple Bots",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "[\r\n    \"bot-id-1\",\r\n    \"bot-id-2\",\r\n    \"bot-id-3\"\r\n]",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{Endpoint}}/bots/status",
+							"host": [
+								"{{Endpoint}}"
+							],
+							"path": [
+								"bots",
+								"status"
+							]
+						},
+						"description": "### Endpoint\n\n`POST /api/v4/g4/status/bots`\n\n### Description\n\nRetrieves runtime details for each bot specified in the request body.\n\n### Request Body\n\nThe request body must be an array of bot identifiers (`string[]`) to retrieve status for.\n\n#### Fields:\n\n| Field | Type | Required | Description |\n| --- | --- | --- | --- |\n| `ids` | string\\[\\] | Yes | Array of bot identifiers to retrieve status for. |\n\n#### Example Request Body\n\n``` json\n[\n  \"bot-1234\",\n  \"bot-5678\"\n]\n\n ```\n\n### Responses\n\n**200 OK**  \n_Description_: An array of `ConnectedBotModel` instances for each valid Id.  \n_Content-Type_: `application/json`\n\n#### Schema (`ConnectedBotModel`)\n\n| Field | Type | Description |\n| --- | --- | --- |\n| `id` | string | Unique identifier of the bot. |\n| `name` | string | Human‐readable name of the bot. |\n| `status` | string | Current connection status (e.g., `Ready`, `Connected`, `Disconnected`). |\n| `type` | string | Bot type or category. |\n| `machine` | string | Hostname or machine name where the bot is running. |\n| `osVersion` | string | Operating system version of the host machine. |\n| `callbackHost` | string | Host used for callback communications. |\n| `callbackPort` | integer | Port used for callback communications. |\n| `callbackUri` | string | Full callback monitor URL, following the template: `http://:/bot/v1//monitor/` |\n| `createdOn` | string | ISO 8601 timestamp when the bot record was created (with offset). |\n| `lastModifiedOn` | string | ISO 8601 timestamp when the bot record was last updated (with offset). |\n\n**Example Success Response**\n\n``` json\n[\n  {\n    \"createdOn\": \"2025-04-27T19:42:30.258000+03:00\",\n    \"callbackHost\": \"localhost\",\n    \"callbackPort\": 9944,\n    \"callbackUri\": \"http://localhost:9944/bot/v1/order-processor-bot/monitor/bot-1234\",\n    \"id\": \"bot-1234\",\n    \"lastModifiedOn\": \"2025-04-27T19:45:10.123000+03:00\",\n    \"machine\": \"BOT-SERVER-1\",\n    \"name\": \"order-processor-bot\",\n    \"osVersion\": \"Windows 10 Pro\",\n    \"status\": \"Ready\",\n    \"type\": \"OrderProcessor\"\n  },\n  {\n    \"createdOn\": \"2025-04-27T18:00:00.000000+03:00\",\n    \"callbackHost\": \"localhost\",\n    \"callbackPort\": 9945,\n    \"callbackUri\": \"http://localhost:9945/bot/v1/invoice-generator-bot/monitor/bot-5678\",\n    \"id\": \"bot-5678\",\n    \"lastModifiedOn\": \"2025-04-27T18:30:45.000000+03:00\",\n    \"machine\": \"BOT-SERVER-2\",\n    \"name\": \"invoice-generator-bot\",\n    \"osVersion\": \"Ubuntu 24.04\",\n    \"status\": \"Ready\",\n    \"type\": \"FileListenerBot\"\n  }\n]\n\n ```\n\n### Example Request (using Postman)\n\n**Method**: POST  \n**URL**: `https://api.yourdomain.com/api/v4/g4/bots`  \n**Headers**:\n\n- `Accept: application/json`\n    \n- `Content-Type: application/json`\n    \n- `Authorization: Bearer`\n    \n\n**Body**:\n\n``` json\n[\n  \"bot-1234\",\n  \"bot-5678\"\n]\n\n ```\n\n### Notes\n\n- The request body must be a JSON array of bot IDs.\n    \n- If none of the specified IDs exist, an empty array (`[]`) is returned.\n    \n- The `callbackUri` field always follows the pattern:  \n    `http://:/bot/v1//monitor/`\n    \n- Ensure your API token is included in the `Authorization` header when authentication is enabled."
+					},
+					"response": []
+				},
+				{
+					"name": "Register Bot",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"callbackUri\": \"http://localhost:8080/bot/v1/order-processor-bot/monitor/bot-1234\",\r\n  \"id\": \"bot-1234\",\r\n  \"machine\": \"BOT-M-01\",\r\n  \"name\": \"order-processor-bot\",\r\n  \"osVersion\": \"Microsoft Windows NT 10.0.19044.0\",\r\n  \"type\": \"FileListenerBot\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{Endpoint}}/bots/register",
+							"host": [
+								"{{Endpoint}}"
+							],
+							"path": [
+								"bots",
+								"register"
+							]
+						},
+						"description": "### Endpoint\n\n`POST /api/v4/g4/bots/register`\n\n### Description\n\nAdds a new bot to the domain. If no `id` is provided, one will be generated. Returns the registered `ConnectedBotModel`.\n\n### Request Body\n\nThe request body must be a JSON object with the bot registration details.\n\n| Field        | Type   | Required | Description                                                                            |\n|--------------|------- |----------|----------------------------------------------------------------------------------------|\n| `id`         | string | No       | Unique identifier for the bot. If omitted, the server will generate one.               |\n| `name`       | string | Yes      | Human‐readable name of the bot. Must match `^[a-z0-9\\-]+$`.                            |\n| `machine`    | string | Yes      | Hostname or machine name where the bot is running.                                     |\n| `osVersion`  | string | Yes      | Operating system version of the host machine.                                          |\n| `type`       | string | Yes      | Bot type or category.                                                                  |\n| `callbackUri`| string | Yes      | Full callback monitor URL. Must be a valid HTTP/HTTPS URL following the pattern below. |\n\n#### Example Request Body\n\n```json\n{\n  \"callbackUri\": \"http://localhost:8080/bot/v1/order-processor-bot/monitor/bot-1234\",\n  \"id\": \"bot-1234\",\n  \"machine\": \"BOT-M-01\",\n  \"name\": \"order-processor-bot\",\n  \"osVersion\": \"Microsoft Windows NT 10.0.19044.0\",\n  \"type\": \"FileListenerBot\"\n}\n```\n\n### Responses\n\n**200 OK**  \n_Description_: Bot successfully registered.  \n_Content-Type_: `application/json`\n\n#### Schema (`ConnectedBotModel`)\n\n| Field            | Type    | Description                                                                                 |\n|------------------|---------|---------------------------------------------------------------------------------------------|\n| `createdOn`      | string  | UTC timestamp when the bot was first created (ISO 8601, with offset).                       |\n| `connectionId`   | string  | Unique identifier of the connection to the bot (may be empty if not connected immediately). |\n| `callbackHost`   | string  | Host name or IP used for callback communications.                                           |\n| `callbackPort`   | integer | Port number used for callback communications.                                               |\n| `callbackUri`    | string  | Callback monitor URL for the bot.                                                           |\n| `id`             | string  | Unique identifier of the bot.                                                               |\n| `lastModifiedOn` | string  | UTC timestamp when the bot’s metadata was last modified (ISO 8601, with offset).            |\n| `machine`        | string  | Hostname or machine name where the bot is running.                                          |\n| `name`           | string  | Human‐readable name of the bot.                                                             |\n| `osVersion`      | string  | Operating system version of the host machine.                                               |\n| `status`         | string  | Current operational status of the bot (e.g., `Ready`, `Working`).                           |\n| `type`           | string  | Bot type or category.                                                                       |\n\n**Example Success Response**\n\n```json\n{\n  \"createdOn\": \"2025-04-27T20:13:38.585667Z\",\n  \"connectionId\": \"\",\n  \"callbackHost\": \"localhost\",\n  \"callbackPort\": 8080,\n  \"callbackUri\": \"http://localhost:8080/bot/v1/order-processor-bot/monitor/bot-1234\",\n  \"id\": \"bot-1234\",\n  \"lastModifiedOn\": \"2025-04-27T20:13:38.596648Z\",\n  \"machine\": \"BOT-M-01\",\n  \"name\": \"order-processor-bot\",\n  \"osVersion\": \"Microsoft Windows NT 10.0.19044.0\",\n  \"status\": \"Ready\",\n  \"type\": \"FileListenerBot\"\n}\n```\n\n### Example Request (using Postman)\n\n**Method**: POST  \n**URL**: `https://api.yourdomain.com/api/v4/g4/bots/register`  \n**Headers**:\n\n- `Accept: application/json`  \n- `Content-Type: application/json`  \n- `Authorization: Bearer <your_api_token>`\n\n**Body**:\n\n```json\n{\n  \"callbackUri\": \"http://localhost:8080/bot/v1/order-processor-bot/monitor/bot-1234\",\n  \"id\": \"bot-1234\",\n  \"machine\": \"BOT-M-01\",\n  \"name\": \"order-processor-bot\",\n  \"osVersion\": \"Microsoft Windows NT 10.0.19044.0\",\n  \"type\": \"FileListenerBot\"\n}\n```\n\n### Notes\n\n- If no `id` is provided, the server will generate a unique identifier.  \n- `connectionId` may be empty if the bot hasn’t established a live connection yet.  \n- Required fields: `name`, `machine`, `osVersion`, `type`, `callbackUri`.  \n- `callbackUri` must be a valid HTTP/HTTPS URL and follow the pattern:  \n  `http://<host>:<port>/bot/v1/<bot-name>/monitor/<bot-id>`\n- `name` must conform to the regex `^[a-z0-9\\-]+$`."
+					},
+					"response": []
+				},
+				{
+					"name": "Test Connection - No Filter",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{Endpoint}}/bots/test/all",
+							"host": [
+								"{{Endpoint}}"
+							],
+							"path": [
+								"bots",
+								"test",
+								"all"
+							]
+						},
+						"description": "### Endpoint\n\n`GET /api/v4/g4/bots/test/all`\n\n### Description\n\nChecks connectivity for every registered bot and returns the updated bot models with their current status.\n\n### Responses\n\n**200 OK**  \n_Description_: A list of all bots with their latest connectivity status.  \n_Content-Type_: `application/json`  \n\n#### Schema (`ConnectedBotModel`)\n\n| Field            | Type    | Description                                                                                                   |\n| ---------------- | ------- | -------------------------------------------------------------------------------------------------------------- |\n| `id`             | string  | Unique identifier of the bot.                                                                                 |\n| `name`           | string  | Human‐readable name of the bot.                                                                               |\n| `status`         | string  | Connectivity status: `Online` (active connection or successful callback) or `Offline` (no response).           |\n| `type`           | string  | Bot type or category.                                                                                         |\n| `machine`        | string  | Hostname or machine name where the bot is running.                                                            |\n| `osVersion`      | string  | Operating system version of the host machine.                                                                 |\n| `callbackHost`   | string  | Host used for callback communications.                                                                        |\n| `callbackPort`   | integer | Port used for callback communications.                                                                        |\n| `callbackUri`    | string  | Callback monitor URL, following the template:  \n  `http://<host>:<port>/bot/v1/<bot-name>/monitor/<bot-id>`                                                     |\n| `createdOn`      | string  | ISO 8601 timestamp when the bot record was created (with offset).                                               |\n| `lastModifiedOn` | string  | ISO 8601 timestamp when the bot record was last updated (with offset).                                         |\n\n**Example Success Response**\n\n```json\n[\n  {\n    \"createdOn\": \"2025-04-27T19:42:30.258000+03:00\",\n    \"connectionId\": \"conn-7890\",\n    \"callbackHost\": \"localhost\",\n    \"callbackPort\": 9944,\n    \"callbackUri\": \"http://localhost:9944/bot/v1/order-processor-bot/monitor/bot-1234\",\n    \"id\": \"bot-1234\",\n    \"lastModifiedOn\": \"2025-04-28T07:15:00.000000+03:00\",\n    \"machine\": \"BOT-SERVER-1\",\n    \"name\": \"order-processor-bot\",\n    \"osVersion\": \"Windows 10 Pro\",\n    \"status\": \"Online\",\n    \"type\": \"OrderProcessor\"\n  },\n  {\n    \"createdOn\": \"2025-04-27T18:30:00.000000+03:00\",\n    \"connectionId\": \"\",\n    \"callbackHost\": \"localhost\",\n    \"callbackPort\": 9945,\n    \"callbackUri\": \"http://localhost:9945/bot/v1/invoice-generator-bot/monitor/bot-5678\",\n    \"id\": \"bot-5678\",\n    \"lastModifiedOn\": \"2025-04-28T07:16:00.000000+03:00\",\n    \"machine\": \"BOT-SERVER-2\",\n    \"name\": \"invoice-generator-bot\",\n    \"osVersion\": \"Ubuntu 24.04\",\n    \"status\": \"Offline\",\n    \"type\": \"FileListenerBot\"\n  }\n]\n```\n\n### Example Request (using Postman)\n\n**Method**: GET  \n**URL**: `https://api.yourdomain.com/api/v4/g4/bots/test/all`  \n**Headers**:\n\n- `Accept: application/json`  \n- `Authorization: Bearer <your_api_token>`\n\n### Notes\n\n- No request body is required.  \n- If no bots are registered, an empty array (`[]`) is returned.  \n- Each model’s `status` field will be either:  \n  - `Online` if the bot is connected or responded at its callback URI  \n  - `Offline` if it did not respond  \n- The `callbackUri` field always follows the pattern:  \n  `http://<host>:<port>/bot/v1/<bot-name>/monitor/<bot-id>`  \n- Requires a valid bearer token in the `Authorization` header when authentication is enabled."
+					},
+					"response": []
+				},
+				{
+					"name": "Test Connection - Single Bot",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{Endpoint}}/bots/test/bot-1234",
+							"host": [
+								"{{Endpoint}}"
+							],
+							"path": [
+								"bots",
+								"test",
+								"bot-1234"
+							]
+						},
+						"description": "### Endpoint\n\n`GET /api/v4/g4/bots/test/{id}`\n\n### Description\n\nChecks if the bot has an active SignalR connection or responds at its callback endpoint; updates and returns its model.\n\n### Responses\n\n**200 OK**  \n_Description_: Bot model returned with updated `status` indicating connectivity (`Online` or `Offline`).  \n_Content-Type_: `application/json`  \n\n#### Schema (`ConnectedBotModel`)\n\n| Field            | Type    | Description                                                                                                   |\n| ---------------- | ------- | -------------------------------------------------------------------------------------------------------------- |\n| `id`             | string  | Unique identifier of the bot.                                                                                 |\n| `name`           | string  | Human-readable name of the bot.                                                                               |\n| `status`         | string  | Connectivity status: `Online` (active connection or successful callback) or `Offline` (no response).          |\n| `type`           | string  | Bot type or category.                                                                                         |\n| `machine`        | string  | Hostname or machine name where the bot is running.                                                            |\n| `osVersion`      | string  | Operating system version of the host machine.                                                                 |\n| `callbackHost`   | string  | Host used for callback communications.                                                                        |\n| `callbackPort`   | integer | Port used for callback communications.                                                                        |\n| `callbackUri`    | string  | Callback monitor URL, following the template:  \n  `http://<host>:<port>/bot/v1/<bot-name>/monitor/<bot-id>`                                                     |\n| `createdOn`      | string  | ISO 8601 timestamp when the bot record was created (with offset).                                              |\n| `lastModifiedOn` | string  | ISO 8601 timestamp when the bot record was last updated (with offset).                                         |\n\n**Example Success Response**\n\n```json\n{\n  \"createdOn\": \"2025-04-27T19:42:30.258000+03:00\",\n  \"connectionId\": \"conn-7890\",\n  \"callbackHost\": \"localhost\",\n  \"callbackPort\": 9944,\n  \"callbackUri\": \"http://localhost:9944/bot/v1/order-processor-bot/monitor/bot-1234\",\n  \"id\": \"bot-1234\",\n  \"lastModifiedOn\": \"2025-04-28T07:15:00.000000+03:00\",\n  \"machine\": \"BOT-SERVER-1\",\n  \"name\": \"order-processor-bot\",\n  \"osVersion\": \"Windows 10 Pro\",\n  \"status\": \"Online\",\n  \"type\": \"OrderProcessor\"\n}\n```\n\n---\n\n**404 Not Found**  \n_Description_: No bot found with the provided `id`.  \n_Content-Type_: `application/problem+json`  \n\n**Example Error Response**\n\n```json\n{\n  \"status\": 404,\n  \"errors\": {\n    \"BotNotFound\": [\n      \"Bot with ID 'bot-1234' not found.\"\n    ]\n  },\n  \"request\": \"GET /api/v4/g4/bots/test/bot-1234 HTTP/1.1\",\n  \"routeData\": {\n    \"action\": \"TestConnection\",\n    \"controller\": \"Bots\",\n    \"id\": \"bot-1234\"\n  },\n  \"traceId\": \"20250428-081500-abcdef0\"\n}\n```\n\n### Example Request (using Postman)\n\n**Method**: GET  \n**URL**: `https://api.yourdomain.com/api/v4/g4/bots/test/{id}`  \n**Headers**:\n\n- `Accept: application/json`  \n- `Authorization: Bearer <your_api_token>`\n\n### Notes\n\n- No request body is required.  \n- If the specified `id` does not exist, a **404 Not Found** is returned.  \n- The returned model’s `status` field will be either:  \n  - `Online` if the bot is connected or responded at its callback URI  \n  - `Offline` if it did not respond  \n- The `callbackUri` field always follows the pattern:  \n  `http://<host>:<port>/bot/v1/<bot-name>/monitor/<bot-id>`\n- Requires a valid bearer token in the `Authorization` header when authentication is enabled."
+					},
+					"response": []
+				},
+				{
+					"name": "Test Connection - Multiple Bots",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "[\r\n    \"bot-id-1\",\r\n    \"bot-id-2\",\r\n    \"bot-id-3\"\r\n]",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{Endpoint}}/bots/test",
+							"host": [
+								"{{Endpoint}}"
+							],
+							"path": [
+								"bots",
+								"test"
+							]
+						},
+						"description": "### Endpoint\n\n`POST /api/v4/g4/bots/test`\n\n### Description\n\nChecks the connection status of each bot with the given IDs and returns their updated models.\n\n### Request Body\n\nThe request body must be a JSON array of bot identifiers (`string[]`) to test connectivity for.\n\n| Field | Type     | Required | Description                                        |\n| ----- | -------- | -------- | -------------------------------------------------- |\n| `ids` | string[] | Yes      | Array of unique bot identifiers to test.           |\n\n#### Example Request Body\n\n```json\n[\n  \"bot-1234\",\n  \"bot-5678\",\n  \"bot-9012\"\n]\n```\n\n### Responses\n\n**200 OK**  \n_Description_: A list of `ConnectedBotModel` instances with their latest connectivity status.  \n_Content-Type_: `application/json`  \n\n#### Schema (`ConnectedBotModel`)\n\n| Field            | Type    | Description                                                                                             |\n|------------------|---------|---------------------------------------------------------------------------------------------------------|\n| `id`             | string  | Unique identifier of the bot.                                                                           |\n| `name`           | string  | Human‐readable name of the bot.                                                                         |\n| `status`         | string  | Connectivity status: `Online` (active connection or successful callback) or `Offline` (no response).    |\n| `type`           | string  | Bot type or category.                                                                                   |\n| `machine`        | string  | Hostname or machine name where the bot is running.                                                      |\n| `osVersion`      | string  | Operating system version of the host machine.                                                           |\n| `callbackHost`   | string  | Host used for callback communications.                                                                  |\n| `callbackPort`   | integer | Port used for callback communications.                                                                  |\n| `callbackUri`    | string  | Callback monitor URL, following the template: `http://<host>:<port>/bot/v1/<bot-name>/monitor/<bot-id>` |\n| `createdOn`      | string  | ISO 8601 timestamp when the bot record was created (with offset).                                       |\n| `lastModifiedOn` | string  | ISO 8601 timestamp when the bot record was last updated (with offset).                                  |\n\n**Example Success Response**\n\n```json\n[\n  {\n    \"createdOn\": \"2025-04-27T19:42:30.258000+03:00\",\n    \"connectionId\": \"conn-7890\",\n    \"callbackHost\": \"localhost\",\n    \"callbackPort\": 9944,\n    \"callbackUri\": \"http://localhost:9944/bot/v1/order-processor-bot/monitor/bot-1234\",\n    \"id\": \"bot-1234\",\n    \"lastModifiedOn\": \"2025-04-28T07:15:00.000000+03:00\",\n    \"machine\": \"BOT-SERVER-1\",\n    \"name\": \"order-processor-bot\",\n    \"osVersion\": \"Windows 10 Pro\",\n    \"status\": \"Online\",\n    \"type\": \"OrderProcessor\"\n  },\n  {\n    \"createdOn\": \"2025-04-27T18:30:00.000000+03:00\",\n    \"connectionId\": \"\",\n    \"callbackHost\": \"localhost\",\n    \"callbackPort\": 9945,\n    \"callbackUri\": \"http://localhost:9945/bot/v1/invoice-generator-bot/monitor/bot-5678\",\n    \"id\": \"bot-5678\",\n    \"lastModifiedOn\": \"2025-04-28T07:16:00.000000+03:00\",\n    \"machine\": \"BOT-SERVER-2\",\n    \"name\": \"invoice-generator-bot\",\n    \"osVersion\": \"Ubuntu 24.04\",\n    \"status\": \"Offline\",\n    \"type\": \"FileListenerBot\"\n  },\n  {\n    \"createdOn\": \"2025-04-27T19:30:00.000000+03:00\",\n    \"connectionId\": \"\",\n    \"callbackHost\": \"localhost\",\n    \"callbackPort\": 9946,\n    \"callbackUri\": \"http://localhost:9946/bot/v1/reporting-bot/monitor/bot-9012\",\n    \"id\": \"bot-9012\",\n    \"lastModifiedOn\": \"2025-04-28T07:17:00.000000+03:00\",\n    \"machine\": \"BOT-SERVER-3\",\n    \"name\": \"reporting-bot\",\n    \"osVersion\": \"Microsoft Windows NT 10.0.19044.0\",\n    \"status\": \"Offline\",\n    \"type\": \"ReportingBot\"\n  }\n]\n```\n\n### Example Request (using Postman)\n\n**Method**: POST  \n**URL**: `https://api.yourdomain.com/api/v4/g4/bots/test`  \n**Headers**:\n\n- `Accept: application/json`  \n- `Content-Type: application/json`  \n- `Authorization: Bearer <your_api_token>`\n\n**Body**:\n\n```json\n[\n  \"bot-1234\",\n  \"bot-5678\",\n  \"bot-9012\"\n]\n```\n\n### Notes\n\n- The request body must be a JSON array of bot IDs.  \n- If an ID does not correspond to a registered bot, it will be omitted from the response.  \n- Each model’s `status` field will be either:\n  - `Online` if the bot is connected or responded at its `callbackUri`\n  - `Offline` if it did not respond  \n- The `callbackUri` field always follows the pattern:  \n  `http://<host>:<port>/bot/v1/<bot-name>/monitor/<bot-id>`\n- Requires a valid bearer token in the `Authorization` header when authentication is enabled."
+					},
+					"response": []
+				},
+				{
+					"name": "Unregister Bot - Single Bot",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{Endpoint}}/bots/register/bot-1234",
+							"host": [
+								"{{Endpoint}}"
+							],
+							"path": [
+								"bots",
+								"register",
+								"bot-1234"
+							]
+						},
+						"description": "### Endpoint\n\n`DELETE /api/v4/g4/bots/register/{id}`\n\n### Description\n\nUnregisters the bot with the specified `id`; on success updates its status to `Removed` and returns the updated `ConnectedBotModel`.\n\n### Responses\n\n**200 OK**  \n_Description_: Bot successfully unregistered; returns the updated bot model.  \n_Content-Type_: `application/json`  \n\n#### Schema (`ConnectedBotModel`)\n\n| Field            | Type    | Description                                                                                                   |\n| ---------------- | ------- | -------------------------------------------------------------------------------------------------------------- |\n| `createdOn`      | string  | UTC timestamp when the bot was first created (ISO 8601, with offset).                                          |\n| `connectionId`   | string  | Unique identifier of the connection to the bot (may be empty if not connected).                                |\n| `callbackHost`   | string  | Host name or IP used for callback communications.                                                             |\n| `callbackPort`   | integer | Port number used for callback communications.                                                                 |\n| `callbackUri`    | string  | Callback monitor URL: `http://<host>:<port>/bot/v1/<bot-name>/monitor/<bot-id>`.                              |\n| `id`             | string  | Unique identifier of the bot.                                                                                 |\n| `lastModifiedOn` | string  | UTC timestamp when the bot’s metadata was last modified (ISO 8601, with offset).                               |\n| `machine`        | string  | Hostname or machine name where the bot is running.                                                            |\n| `name`           | string  | Human-readable name of the bot.                                                                               |\n| `osVersion`      | string  | Operating system version of the host machine.                                                                 |\n| `status`         | string  | Current operational status of the bot (e.g., `Removed`, `Ready`, `Working`).                                   |\n| `type`           | string  | Bot type or category.                                                                                         |\n\n**Example Success Response**\n\n```json\n{\n  \"createdOn\": \"2025-04-27T20:13:38.585667Z\",\n  \"connectionId\": \"\",\n  \"callbackHost\": \"localhost\",\n  \"callbackPort\": 8080,\n  \"callbackUri\": \"http://localhost:8080/bot/v1/order-processor-bot/monitor/bot-1234\",\n  \"id\": \"bot-1234\",\n  \"lastModifiedOn\": \"2025-04-27T20:15:00.000000Z\",\n  \"machine\": \"BOT-M-01\",\n  \"name\": \"order-processor-bot\",\n  \"osVersion\": \"Microsoft Windows NT 10.0.19044.0\",\n  \"status\": \"Removed\",\n  \"type\": \"FileListenerBot\"\n}\n```\n\n**404 Not Found**  \n_Description_: No bot found with the provided ID.  \n_Content-Type_: `application/problem+json`  \n\n```json\n{\n  \"status\": 404,\n  \"errors\": {\n    \"BotNotFound\": [\n      \"Bot with ID 'bot-id' not found.\"\n    ]\n  },\n  \"request\": \"DELETE /api/v4/g4/bots/register/bot-id HTTP/1.1\",\n  \"routeData\": {\n    \"action\": \"Unregister\",\n    \"controller\": \"Bots\",\n    \"id\": \"bot-id\"\n  },\n  \"traceId\": \"20250427-224124-7488342\"\n}\n```\n\n**409 Conflict**  \n_Description_: Bot has an active SignalR connection and cannot be unregistered until it disconnects.  \n_Content-Type_: `application/problem+json`  \n\n```json\n{\n  \"status\": 409,\n  \"errors\": {\n    \"ActiveSignalRConnection\": [\n      \"Cannot unregister bot while its SignalR connection is active; disconnect first.\"\n    ]\n  },\n  \"request\": \"DELETE /api/v4/g4/bots/register/bot-id HTTP/1.1\",\n  \"routeData\": {\n    \"action\": \"Unregister\",\n    \"controller\": \"Bots\",\n    \"id\": \"bot-id\"\n  },\n  \"traceId\": \"20250427-224130-7488342\"\n}\n```\n\n**502 Bad Gateway**  \n_Description_: Bot unreachable at callback URI; entry has been removed from memory and database.  \n_Content-Type_: `application/problem+json`  \n\n```json\n{\n  \"status\": 502,\n  \"errors\": {\n    \"BotUnreachable\": [\n      \"Bot callback endpoint is unreachable; bot entry removed from memory and database.\"\n    ]\n  },\n  \"request\": \"DELETE /api/v4/g4/bots/register/bot-id HTTP/1.1\",\n  \"routeData\": {\n    \"action\": \"Unregister\",\n    \"controller\": \"Bots\",\n    \"id\": \"bot-id\"\n  },\n  \"traceId\": \"20250427-224135-7488342\"\n}\n```\n\n### Example Request (using Postman)\n\n**Method**: DELETE  \n**URL**: `https://api.yourdomain.com/api/v4/g4/bots/register/{id}`  \n**Headers**:\n\n- `Accept: application/json`  \n- `Authorization: Bearer <your_api_token>`\n\n### Notes\n\n- No request body is required.  \n- If the specified `id` does not exist, a 404 response is returned.  \n- If the bot has an active SignalR connection, a 409 response is returned.  \n- If the bot cannot be reached at its `callbackUri`, a 502 response is returned and the bot entry is removed.  \n- The `callbackUri` field follows the pattern:  \n  `http://<host>:<port>/bot/v1/<bot-name>/monitor/<bot-id>`"
+					},
+					"response": []
+				},
+				{
+					"name": "Unregister Bot - Multiple Bots",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "[\r\n    \"bot-id-1\",\r\n    \"bot-id-2\",\r\n    \"bot-id-3\"\r\n]",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{Endpoint}}/bots/register",
+							"host": [
+								"{{Endpoint}}"
+							],
+							"path": [
+								"bots",
+								"register"
+							]
+						},
+						"description": "### Endpoint\n\n`DELETE /api/v4/g4/bots/register`\n\n### Description\n\nAttempts to unregister each bot in the provided list of IDs. Returns the updated status for each bot—successfully removed, skipped due to active connection, unreachable, or unknown.\n\n### Request Body\n\nThe request body must be a JSON array of bot identifiers (`string[]`) to attempt unregistration for.\n\n| Field | Type     | Required | Description                             |\n|-------|----------|----------|-----------------------------------------|\n| `ids` | string[] | Yes      | Array of bot identifiers to unregister. |\n\n#### Example Request Body\n\n```json\n[\n  \"bot-1234\",\n  \"bot-5678\",\n  \"bot-9012\"\n]\n```\n\n### Responses\n\n**200 OK**  \n_Description_: Returns an array of `ConnectedBotModel` instances for each provided Id, with their post-unregistration status in the `status` field.  \n_Content-Type_: `application/json`\n\n#### Schema (`ConnectedBotModel`)\n\n| Field            | Type    | Description                                                                                                         |\n|------------------|---------|---------------------------------------------------------------------------------------------------------------------|\n| `createdOn`      | string  | UTC timestamp when the bot was first created (ISO 8601, with offset).                                               |\n| `connectionId`   | string  | Unique identifier of the connection to the bot (may be empty if not connected).                                     |\n| `callbackHost`   | string  | Host name or IP used for callback communications.                                                                   |\n| `callbackPort`   | integer | Port number used for callback communications.                                                                       |\n| `callbackUri`    | string  | Callback monitor URL for the bot, following the pattern: `http://<host>:<port>/bot/v1/<bot-name>/monitor/<bot-id>`. |\n| `id`             | string  | Unique identifier of the bot.                                                                                       |\n| `lastModifiedOn` | string  | UTC timestamp when the bot’s metadata was last modified (ISO 8601, with offset).                                    |\n| `machine`        | string  | Hostname or machine name where the bot is running.                                                                  |\n| `name`           | string  | Human‐readable name of the bot.                                                                                     |\n| `osVersion`      | string  | Operating system version of the host machine.                                                                       |\n| `status`         | string  | Post-unregistration status: `Removed`, `Conflict`, `Unreachable` and `Unknown`                                      |\n| `type`           | string  | Bot type or category.                                                                                               |\n\n**Example Success Response**\n\n```json\n[\n  {\n    \"createdOn\": \"2025-04-27T20:00:00.000000Z\",\n    \"connectionId\": \"\",\n    \"callbackHost\": \"localhost\",\n    \"callbackPort\": 8080,\n    \"callbackUri\": \"http://localhost:8080/bot/v1/order-processor-bot/monitor/bot-1234\",\n    \"id\": \"bot-1234\",\n    \"lastModifiedOn\": \"2025-04-27T20:00:10.000000Z\",\n    \"machine\": \"BOT-M-01\",\n    \"name\": \"order-processor-bot\",\n    \"osVersion\": \"Microsoft Windows NT 10.0.19044.0\",\n    \"status\": \"Removed\",\n    \"type\": \"FileListenerBot\"\n  },\n  {\n    \"createdOn\": \"2025-04-27T19:50:00.000000Z\",\n    \"connectionId\": \"abc-conn-001\",\n    \"callbackHost\": \"localhost\",\n    \"callbackPort\": 8081,\n    \"callbackUri\": \"http://localhost:8081/bot/v1/invoice-generator-bot/monitor/bot-5678\",\n    \"id\": \"bot-5678\",\n    \"lastModifiedOn\": \"2025-04-27T19:50:05.000000Z\",\n    \"machine\": \"BOT-M-02\",\n    \"name\": \"invoice-generator-bot\",\n    \"osVersion\": \"Ubuntu 24.04\",\n    \"status\": \"Conflict\",\n    \"type\": \"FileListenerBot\"\n  },\n  {\n    \"createdOn\": \"2025-04-27T19:30:00.000000Z\",\n    \"connectionId\": \"\",\n    \"callbackHost\": \"localhost\",\n    \"callbackPort\": 8082,\n    \"callbackUri\": \"http://localhost:8082/bot/v1/reporting-bot/monitor/bot-9012\",\n    \"id\": \"bot-9012\",\n    \"lastModifiedOn\": \"2025-04-27T19:30:10.000000Z\",\n    \"machine\": \"BOT-M-03\",\n    \"name\": \"reporting-bot\",\n    \"osVersion\": \"Microsoft Windows NT 10.0.19044.0\",\n    \"status\": \"Unreachable\",\n    \"type\": \"ReportingBot\"\n  }\n]\n```\n\n**400 Bad Request**  \n_Description_: The request body was invalid (e.g., missing or malformed list of IDs).  \n_Content-Type_: `application/problem+json`\n\n### Example Request (using Postman)\n\n**Method**: DELETE  \n**URL**: `https://api.yourdomain.com/api/v4/g4/bots/register`  \n**Headers**:\n\n- `Accept: application/json`  \n- `Content-Type: application/json`  \n- `Authorization: Bearer <your_api_token>`\n\n**Body**:\n\n```json\n[\n  \"bot-1234\",\n  \"bot-5678\",\n  \"bot-9012\"\n]\n```\n\n### Notes\n\n- The request body must be a JSON array of bot IDs.  \n- If the body is invalid or not provided, a 400 response is returned.  \n- Each returned model’s `status` field indicates the outcome:  \n  - `Removed` for successful unregistration  \n  - `Conflict` if the bot’s SignalR connection is still active  \n  - `Unreachable` if the bot could not be reached at its `callbackUri`  \n  - `Unknown` for any other status code  \n- The `callbackUri` field always follows the pattern:  \n  `http://<host>:<port>/bot/v1/<bot-name>/monitor/<bot-id>`"
+					},
+					"response": []
+				},
+				{
+					"name": "Unregister Bot - No Filter",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{Endpoint}}/bots/register/all",
+							"host": [
+								"{{Endpoint}}"
+							],
+							"path": [
+								"bots",
+								"register",
+								"all"
+							]
+						},
+						"description": "### Endpoint\n\n`DELETE /api/v4/g4/bots/register/all`\n\n### Description\n\nAttempts to unregister every bot that has no active SignalR connection; returns each bot’s final post-unregistration status.\n\n### Responses\n\n**200 OK**  \n_Description_: An array of `ConnectedBotModel` instances with their updated post-unregistration statuses.  \n_Content-Type_: `application/json`  \n\n#### Schema (`ConnectedBotModel`)\n\n| Field            | Type    | Description                                                                                             |\n|------------------|---------|---------------------------------------------------------------------------------------------------------|\n| `createdOn`      | string  | UTC timestamp when the bot was first created (ISO 8601, with offset).                                   |\n| `connectionId`   | string  | Unique identifier of the connection to the bot (may be empty if not connected).                         |\n| `callbackHost`   | string  | Host name or IP used for callback communications.                                                       |\n| `callbackPort`   | integer | Port number used for callback communications.                                                           |\n| `callbackUri`    | string  | Callback monitor URL, following the pattern: `http://<host>:<port>/bot/v1/<bot-name>/monitor/<bot-id>`. |\n| `id`             | string  | Unique identifier of the bot.                                                                           |\n| `lastModifiedOn` | string  | UTC timestamp when the bot’s metadata was last modified (ISO 8601, with offset).                        |\n| `machine`        | string  | Hostname or machine name where the bot is running.                                                      |\n| `name`           | string  | Human‐readable name of the bot.                                                                         |\n| `osVersion`      | string  | Operating system version of the host machine.                                                           |\n| `status`         | string  | Post-unregistration status (e.g., `Removed`, `Conflict`, `Unreachable`, or `Unknown`).                  |\n| `type`           | string  | Bot type or category.                                                                                   |\n\n**Example Success Response**\n\n```json\n[\n  {\n    \"createdOn\": \"2025-04-27T19:00:00.000000Z\",\n    \"connectionId\": \"\",\n    \"callbackHost\": \"localhost\",\n    \"callbackPort\": 8080,\n    \"callbackUri\": \"http://localhost:8080/bot/v1/order-processor-bot/monitor/bot-1234\",\n    \"id\": \"bot-1234\",\n    \"lastModifiedOn\": \"2025-04-27T19:05:00.000000Z\",\n    \"machine\": \"BOT-M-01\",\n    \"name\": \"order-processor-bot\",\n    \"osVersion\": \"Microsoft Windows NT 10.0.19044.0\",\n    \"status\": \"Removed\",\n    \"type\": \"FileListenerBot\"\n  },\n  {\n    \"createdOn\": \"2025-04-27T18:00:00.000000Z\",\n    \"connectionId\": \"\",\n    \"callbackHost\": \"localhost\",\n    \"callbackPort\": 8081,\n    \"callbackUri\": \"http://localhost:8081/bot/v1/reporting-bot/monitor/bot-5678\",\n    \"id\": \"bot-5678\",\n    \"lastModifiedOn\": \"2025-04-27T18:10:00.000000Z\",\n    \"machine\": \"BOT-M-02\",\n    \"name\": \"reporting-bot\",\n    \"osVersion\": \"Ubuntu 24.04\",\n    \"status\": \"Removed\",\n    \"type\": \"ReportingBot\"\n  }\n]\n```\n\n### Example Request (using Postman)\n\n**Method**: DELETE  \n**URL**: `https://api.yourdomain.com/api/v4/g4/bots/register/all`  \n**Headers**:\n\n- `Accept: application/json`  \n- `Authorization: Bearer <your_api_token>`\n\n### Notes\n\n- No request body is required.  \n- If no disconnected bots are found, an empty array (`[]`) is returned.  \n- Each returned model’s `status` field indicates the outcome:\n  - `Removed` for successful unregistration  \n  - `Conflict` if a bot still has an active SignalR connection  \n  - `Unreachable` if the bot callback endpoint could not be reached  \n  - `Unknown` for any other status code  \n- The `callbackUri` field always follows the pattern:  \n  `http://<host>:<port>/bot/v1/<bot-name>/monitor/<bot-id>`"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Registered Bot",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"createdOn\": \"2025-04-28T09:13:15.084095Z\",\r\n    \"connectionId\": \"\",\r\n    \"callbackHost\": \"localhost\",\r\n    \"callbackPort\": 8080,\r\n    \"callbackUri\": \"http://localhost:8080/bot/v1/order-processor-bot/monitor/bot-1234\",\r\n    \"id\": \"bot-1234\",\r\n    \"lastModifiedOn\": \"2025-04-28T09:13:15.084095Z\",\r\n    \"machine\": \"BOT-M-01\",\r\n    \"name\": \"order-processor-bot\",\r\n    \"osVersion\": \"Microsoft Windows NT 10.0.19044.0\",\r\n    \"status\": \"Working\",\r\n    \"type\": \"FileListenerBot\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{Endpoint}}/bots/register/bot-1234",
+							"host": [
+								"{{Endpoint}}"
+							],
+							"path": [
+								"bots",
+								"register",
+								"bot-1234"
+							]
+						},
+						"description": "### Endpoint\n\n`PUT /api/v4/g4/bots/register/{id}`\n\n### Description\n\nApplies the provided metadata and status to the bot identified by the given `id`. Returns the updated `ConnectedBotModel`.\n\n### Request Body\n\nThe request body must be the full `ConnectedBotModel` payload as returned by the **Get by Id** endpoint, with any fields you wish to update.\n\n#### Schema (`ConnectedBotModel`)\n\n| Field            | Type    | Required | Description                                                                      |\n|------------------|---------|----------| ---------------------------------------------------------------------------------|\n| `createdOn`      | string  | Yes      | UTC timestamp when the bot was first created (ISO 8601 with offset).             |\n| `connectionId`   | string  | No       | Unique identifier of the connection to the bot (may be empty).                   |\n| `callbackHost`   | string  | Yes      | Host name or IP used for callback communications.                                |\n| `callbackPort`   | integer | Yes      | Port number used for callback communications.                                    |\n| `callbackUri`    | string  | Yes      | Callback monitor URL: `http://<host>:<port>/bot/v1/<bot-name>/monitor/<bot-id>`. |\n| `id`             | string  | Yes      | Unique identifier of the bot.                                                    |\n| `lastModifiedOn` | string  | Yes      | UTC timestamp when the bot’s metadata was last modified (ISO 8601 with offset).  |\n| `machine`        | string  | Yes      | Hostname or machine name where the bot is running.                               |\n| `name`           | string  | Yes      | Human-readable name of the bot.                                                  |\n| `osVersion`      | string  | Yes      | Operating system version of the host machine.                                    |\n| `status`         | string  | Yes      | Current operational status of the bot (e.g., `Ready`, `Working`, `Removed`).     |\n| `type`           | string  | Yes      | Bot type or category.                                                            |\n\n#### Example Request Body\n\n```json\n{\n  \"createdOn\": \"2025-04-27T20:13:38.585667Z\",\n  \"connectionId\": \"abc-conn-123\",\n  \"callbackHost\": \"localhost\",\n  \"callbackPort\": 8080,\n  \"callbackUri\": \"http://localhost:8080/bot/v1/order-processor-bot/monitor/bot-1234\",\n  \"id\": \"bot-1234\",\n  \"lastModifiedOn\": \"2025-04-27T20:13:38.596648Z\",\n  \"machine\": \"BOT-M-01\",\n  \"name\": \"order-processor-bot\",\n  \"osVersion\": \"Microsoft Windows NT 10.0.19044.0\",\n  \"status\": \"Working\",\n  \"type\": \"FileListenerBot\"\n}\n```\n\n### Responses\n\n**200 OK**  \n_Description_: Bot successfully updated; returns the updated bot model.  \n_Content-Type_: `application/json`  \n\n```json\n{\n  \"createdOn\": \"2025-04-27T20:13:38.585667Z\",\n  \"connectionId\": \"abc-conn-123\",\n  \"callbackHost\": \"localhost\",\n  \"callbackPort\": 8080,\n  \"callbackUri\": \"http://localhost:8080/bot/v1/order-processor-bot/monitor/bot-1234\",\n  \"id\": \"bot-1234\",\n  \"lastModifiedOn\": \"2025-04-28T10:00:00.000000Z\",\n  \"machine\": \"BOT-M-01\",\n  \"name\": \"order-processor-bot\",\n  \"osVersion\": \"Microsoft Windows NT 10.0.19044.0\",\n  \"status\": \"Working\",\n  \"type\": \"FileListenerBot\"\n}\n```\n\n**400 Bad Request**  \n_Description_: One or more validation errors occurred in the payload.  \n_Content-Type_: `application/problem+json`  \n\n```json\n{\n  \"type\": \"https://tools.ietf.org/html/rfc9110#section-15.5.1\",\n  \"title\": \"One or more validation errors occurred.\",\n  \"status\": 400,\n  \"errors\": {\n    \"id\": [\n      \"The Id field is required.\"\n    ],\n    \"Name\": [\n      \"The Name field is required.\"\n    ],\n    \"Type\": [\n      \"The Type field is required.\"\n    ],\n    \"Machine\": [\n      \"The Machine field is required.\"\n    ],\n    \"OsVersion\": [\n      \"The OsVersion field is required.\"\n    ],\n    \"CallbackUri\": [\n      \"The CallbackUri field is required.\"\n    ]\n  },\n  \"routeData\": {\n    \"action\": \"Update\",\n    \"controller\": \"Bots\",\n    \"id\": \"bot-1234\"\n  },\n  \"traceId\": \"20250428-121002-6654627\"\n}\n```\n\n**404 Not Found**  \n_Description_: No bot found with the provided `id`.  \n_Content-Type_: `application/problem+json`  \n\n```json\n{\n  \"status\": 404,\n  \"errors\": {\n    \"BotNotFound\": [\n      \"Bot with ID 'bot-id' not found.\"\n    ]\n  },\n  \"request\": \"PUT /api/v4/g4/bots/register/bot-id HTTP/1.1\",\n  \"routeData\": {\n    \"action\": \"Update\",\n    \"controller\": \"Bots\",\n    \"id\": \"bot-id\"\n  },\n  \"traceId\": \"20250428-100501-1234567\"\n}\n```\n\n### Example Request (using Postman)\n\n**Method**: PUT  \n**URL**: `https://api.yourdomain.com/api/v4/g4/bots/register/{id}`  \n**Headers**:\n\n- `Accept: application/json`  \n- `Content-Type: application/json`  \n- `Authorization: Bearer <your_api_token>`\n\n**Body**: The complete `ConnectedBotModel` JSON as shown above.\n\n### Notes\n\n- If the payload is missing required fields or malformed, a **400 Bad Request** is returned with validation error details.  \n- If the specified `id` does not exist, a **404 Not Found** is returned.  \n- The response’s `lastModifiedOn` timestamp reflects when the update was processed.  \n- The `callbackUri` must follow the pattern:  \n  `http://<host>:<port>/bot/v1/<bot-name>/monitor/<bot-id>`\n- Requires a valid bearer token in the `Authorization` header when authentication is enabled."
 					},
 					"response": []
 				}
@@ -1307,7 +1809,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n    \"aliases\": [\r\n        \"ConnectDemoApp\"\r\n    ],\r\n    \"author\": {\r\n        \"link\": \"https://www.linkedin.com/in/roei-sabag-247aa18/\",\r\n        \"name\": \"Roei Sabag\"\r\n    },\r\n    \"categories\": [\r\n        \"UserInterface\",\r\n        \"Authentication\"\r\n    ],\r\n    \"source\": \"Template\",\r\n    \"description\": [\r\n        \"### Purpose\",\r\n        \"\",\r\n        \"The `Login` plugin is designed to automate the process of logging into a web application by interacting with the necessary username and password fields and clicking the login button.\",\r\n        \"\",\r\n        \"### Key Features and Functionality\",\r\n        \"\",\r\n        \"| Feature                 | Description                                                                                            |\",\r\n        \"|-------------------------|--------------------------------------------------------------------------------------------------------|\",\r\n        \"| Dynamic Field Detection | Automatically locates the username, password fields, and login button based on provided locators.      |\",\r\n        \"| Secure Input Handling   | Ensures secure handling of sensitive data like passwords during automation workflows.                  |\",\r\n        \"| Error Handling          | Incorporates error handling to manage exceptions, such as incorrect login details or missing elements. |\",\r\n        \"\",\r\n        \"### Usages in RPA\",\r\n        \"\",\r\n        \"| Usage                | Description                                                                                                     |\",\r\n        \"|----------------------|-----------------------------------------------------------------------------------------------------------------|\",\r\n        \"| Web Login Automation | Automates the login process by filling in the username and password fields and clicking the login button.       |\",\r\n        \"| Form Submission      | Automates the submission of login forms in web applications.                                                    |\",\r\n        \"| Error Handling       | Detects and handles scenarios where the login process fails, such as incorrect credentials or missing elements. |\"\r\n    ],\r\n    \"examples\": [\r\n        {\r\n            \"description\": [\r\n                \"Perform a login action by sending the username and password to the respective input fields and clicking the login button.\"\r\n            ],\r\n            \"rule\": {\r\n                \"$type\": \"Action\",\r\n                \"pluginName\": \"Login\",\r\n                \"argument\": \"{{$ --Username:Foo --Password:bar}}\"\r\n            }\r\n        }\r\n    ],\r\n    \"key\": \"Login\",\r\n    \"manifestVersion\": 4,\r\n    \"parameters\": [\r\n        {\r\n            \"description\": [\r\n                \"Specifies the username that should be entered into the username input field during the login process.\"\r\n            ],\r\n            \"mandatory\": true,\r\n            \"name\": \"Username\",\r\n            \"type\": \"String\"\r\n        },\r\n        {\r\n            \"description\": [\r\n                \"Specifies the password that should be entered into the password input field during the login process.\"\r\n            ],\r\n            \"mandatory\": true,\r\n            \"name\": \"Password\",\r\n            \"type\": \"String\"\r\n        }\r\n    ],\r\n    \"pluginType\": \"Action\",\r\n    \"properties\": [\r\n        {\r\n            \"description\": [\r\n                \"Specifies the credentials used for logging in. The argument accepts both the username and password in the format '@Username' and '@Password'.\"\r\n            ],\r\n            \"mandatory\": true,\r\n            \"name\": \"Argument\",\r\n            \"type\": \"String|Expression\"\r\n        }\r\n    ],\r\n    \"rules\": [\r\n        {\r\n            \"$type\": \"Action\",\r\n            \"locator\": \"CssSelector\",\r\n            \"onElement\": \"#usernameField\",\r\n            \"pluginName\": \"SendKeys\",\r\n            \"argument\": \"@Username\"\r\n        },\r\n        {\r\n            \"$type\": \"Action\",\r\n            \"locator\": \"CssSelector\",\r\n            \"onElement\": \"#passwordField\",\r\n            \"pluginName\": \"SendKeys\",\r\n            \"argument\": \"@Password\"\r\n        },\r\n        {\r\n            \"$type\": \"Action\",\r\n            \"locator\": \"CssSelector\",\r\n            \"onElement\": \"#loginButton\",\r\n            \"pluginName\": \"Click\"\r\n        }\r\n    ],\r\n    \"scope\": [\r\n        \"Web\",\r\n        \"MobileWeb\"\r\n    ],\r\n    \"summary\": [\r\n        \"The `Login` plugin automates the process of logging into a web application by filling in username and password fields and clicking the login button.\"\r\n    ]\r\n}",
+							"raw": "{\r\n    \"aliases\": [\r\n        \"ConnectDemoApp\"\r\n    ],\r\n    \"author\": {\r\n        \"link\": \"https://www.linkedin.com/in/roei-sabag-247aa18/\",\r\n        \"name\": \"Roei Sabag\"\r\n    },\r\n    \"categories\": [\r\n        \"UserInterface\",\r\n        \"Authentication\"\r\n    ],\r\n    \"source\": \"Template\",\r\n    \"description\": [\r\n        \"### Purpose\",\r\n        \"\",\r\n        \"The `Login` plugin is designed to automate the process of logging into a web application by interacting with the necessary username and password fields and clicking the login button.\",\r\n        \"\",\r\n        \"### Key Features and Functionality\",\r\n        \"\",\r\n        \"| Feature                 | Description                                                                                            |\",\r\n        \"|-------------------------|--------------------------------------------------------------------------------------------------------|\",\r\n        \"| Dynamic Field Detection | Automatically locates the username, password fields, and login button based on provided locators.      |\",\r\n        \"| Secure Input Handling   | Ensures secure handling of sensitive data like passwords during automation workflows.                  |\",\r\n        \"| Error Handling          | Incorporates error handling to manage exceptions, such as incorrect login details or missing elements. |\",\r\n        \"\",\r\n        \"### Usages in RPA\",\r\n        \"\",\r\n        \"| Usage                | Description                                                                                                     |\",\r\n        \"|----------------------|-----------------------------------------------------------------------------------------------------------------|\",\r\n        \"| Web Login Automation | Automates the login process by filling in the username and password fields and clicking the login button.       |\",\r\n        \"| Form Submission      | Automates the submission of login forms in web applications.                                                    |\",\r\n        \"| Error Handling       | Detects and handles scenarios where the login process fails, such as incorrect credentials or missing elements. |\"\r\n    ],\r\n    \"examples\": [\r\n        {\r\n            \"description\": [\r\n                \"Perform a login action by sending the username and password to the respective input fields and clicking the login button.\"\r\n            ],\r\n            \"rule\": {\r\n                \"$type\": \"Action\",\r\n                \"pluginName\": \"Login\",\r\n                \"argument\": \"{{$ --Username:Foo --Password:bar}}\"\r\n            }\r\n        }\r\n    ],\r\n    \"key\": \"Login\",\r\n    \"manifestVersion\": 4,\r\n    \"parameters\": [\r\n        {\r\n            \"description\": [\r\n                \"Specifies the username that should be entered into the username input field during the login process.\"\r\n            ],\r\n            \"mandatory\": true,\r\n            \"name\": \"Username\",\r\n            \"type\": \"String\"\r\n        },\r\n        {\r\n            \"description\": [\r\n                \"Specifies the password that should be entered into the password input field during the login process.\"\r\n            ],\r\n            \"mandatory\": true,\r\n            \"name\": \"Password\",\r\n            \"type\": \"String\"\r\n        }\r\n    ],\r\n    \"pluginType\": \"Action\",\r\n    \"properties\": [\r\n        {\r\n            \"description\": [\r\n                \"Specifies the credentials used for logging in. The argument accepts both the username and password in the format 'Username' and 'Password'.\"\r\n            ],\r\n            \"mandatory\": true,\r\n            \"name\": \"Argument\",\r\n            \"type\": \"String|Expression\"\r\n        }\r\n    ],\r\n    \"rules\": [\r\n        {\r\n            \"$type\": \"Action\",\r\n            \"locator\": \"CssSelector\",\r\n            \"onElement\": \"#usernameField\",\r\n            \"pluginName\": \"SendKeys\",\r\n            \"argument\": \"{{$ Parameters.Username }}\"\r\n        },\r\n        {\r\n            \"$type\": \"Action\",\r\n            \"locator\": \"CssSelector\",\r\n            \"onElement\": \"#passwordField\",\r\n            \"pluginName\": \"SendKeys\",\r\n            \"argument\": \"{{$ Parameters.Password }}\"\r\n        },\r\n        {\r\n            \"$type\": \"Action\",\r\n            \"locator\": \"CssSelector\",\r\n            \"onElement\": \"#loginButton\",\r\n            \"pluginName\": \"Click\"\r\n        }\r\n    ],\r\n    \"scope\": [\r\n        \"Web\",\r\n        \"MobileWeb\"\r\n    ],\r\n    \"summary\": [\r\n        \"The `Login` plugin automates the process of logging into a web application by filling in username and password fields and clicking the login button.\"\r\n    ]\r\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -1589,16 +2091,15 @@
 									"    pm.response.to.have.status(200);\r",
 									"});\r",
 									"\r",
-									"// TODO: check why this is not passing on CI/CD container.\r",
-									"// pm.test(\"Verify session parameter 'roman' from external macro is saved\", function () {\r",
-									"//     var jsonData = Object.values(pm.response.json())[0];\r",
+									"pm.test(\"Verify session parameter 'roman' from external macro is saved\", function () {\r",
+									"    var jsonData = Object.values(pm.response.json())[0];\r",
 									"    \r",
-									"//     // Get the first value from the `sessions` dictionary\r",
-									"//     var firstSession = Object.values(jsonData.sessions)[0];\r",
+									"    // Get the first value from the `sessions` dictionary\r",
+									"    var firstSession = Object.values(jsonData.sessions)[0];\r",
 									"    \r",
-									"//     // Access session parameters and check the value\r",
-									"//     pm.expect(firstSession.environment.sessionParameters[\"Roman\"]).to.eql(\"TU1YWElW\");\r",
-									"// });\r",
+									"    // Access session parameters and check the value\r",
+									"    pm.expect(firstSession.environment.sessionParameters[\"Roman\"]).to.eql(\"TU1YWElW\");\r",
+									"});\r",
 									""
 								],
 								"type": "text/javascript",

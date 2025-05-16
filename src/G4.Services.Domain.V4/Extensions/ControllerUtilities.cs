@@ -30,6 +30,9 @@ namespace G4.Services.Domain.V4.Extensions
                 "                                       "
              };
 
+            // Clear the console before writing the logo to ensure a clean display.
+            Console.Clear();
+
             // Set the console output encoding to UTF-8 to support Unicode characters.
             Console.OutputEncoding = System.Text.Encoding.UTF8;
 
@@ -59,6 +62,9 @@ namespace G4.Services.Domain.V4.Extensions
                 "  Project: https://github.com/g4-api                       ",
                 "                                                           "
              };
+
+            // Clear the console before writing the logo to ensure a clean display.
+            Console.Clear();
 
             // Set the console output encoding to UTF-8 to support Unicode characters.
             Console.OutputEncoding = System.Text.Encoding.UTF8;
