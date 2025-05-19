@@ -17,7 +17,7 @@
 
 	<ItemGroup>
 		<PackageReference Include="G4.Api" Version="2025.3.29.35" />
-		<PackageReference Include="G4.Plugins" Version="2025.3.30.37" />
+		<PackageReference Include="G4.Plugins" Version="2025.5.19.38" />
 		<PackageReference Include="G4.Plugins.Common" Version="2025.3.28.107" />
 		<PackageReference Include="G4.Plugins.Ui" Version="2025.3.28.107" />
 		<PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="8.0.10" />
