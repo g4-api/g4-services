@@ -32,7 +32,7 @@
 		<!-- Please refrain from upgrading LiteDB until the locking bug is addressed.
 			 The latest known version without this issue is version 5.0.17. 
 			 https://github.com/mbdavid/LiteDB/issues/1976#issuecomment-1968006775 -->
-		<PackageReference Include="G4.Converters" Version="2025.3.28.36" />
+		<PackageReference Include="G4.Converters" Version="2025.5.19.38" />
 		<PackageReference Include="LiteDB" Version="5.0.17" />
 		<PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
 		<PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="8.0.0" />
