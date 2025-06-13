@@ -1,0 +1,6 @@
+@G4.Services.Mcp_HostAddress = http://localhost:5133
+
+GET {{G4.Services.Mcp_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
