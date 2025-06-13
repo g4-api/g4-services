@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
 	<PropertyGroup>
 		<!-- Assembly -->
@@ -10,7 +10,7 @@
 		<LangVersion>latest</LangVersion>
 		<UserSecretsId>1f5fabba-72bd-4769-b41f-807b0214092b</UserSecretsId>
 		<DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
-		<DockerfileFile>../G4.Services.Hub.Dockerfile</DockerfileFile>
+		<DockerfileFile>../docker/G4.Services.Hub.Dockerfile</DockerfileFile>
 		<IsPackable>false</IsPackable>
 		<ErrorOnDuplicatePublishOutputFiles>false</ErrorOnDuplicatePublishOutputFiles>
 
@@ -24,7 +24,7 @@
 
 	<ItemGroup>
 		<PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.21.2" />
-		<PackageReference Include="Swashbuckle.AspNetCore" Version="8.1.2" />
+		<PackageReference Include="Swashbuckle.AspNetCore" Version="8.1.4" />
 	</ItemGroup>
 
 	<ItemGroup>

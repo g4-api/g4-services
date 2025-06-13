@@ -21,7 +21,7 @@
 		<PackageReference Include="G4.Plugins.Common" Version="2025.5.27.109" />
 		<PackageReference Include="G4.Plugins.Ui" Version="2025.5.27.109" />
 		<PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="8.0.10" />
-		<PackageReference Include="Swashbuckle.AspNetCore.Annotations" Version="8.1.2" />
+		<PackageReference Include="Swashbuckle.AspNetCore.Annotations" Version="8.1.4" />
 	</ItemGroup>
 
 	<ItemGroup>
