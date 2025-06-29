@@ -316,6 +316,36 @@ class G4Client {
 	 */
 	syncStep(step, rule) {
 		/**
+		 * Converts an array (or object of values) of strings in "key=value" format into a dictionary object.
+		 */
+		const convertArrayToDictionary = (input) => {
+			// Normalize input into an array: if it's already an array, use it; otherwise, take the object's values.
+			const array = Array.isArray(input) ? input : Object.values(input);
+
+			// This will hold the final key/value mappings.
+			const result = {};
+
+			// Process each string item in the array
+			for (const item of array) {
+				// Locate the first "=" character
+				const firstEqualIndex = item.indexOf('=');
+
+				if (firstEqualIndex === -1) {
+					// No "=" found: use the whole string as a key and assign an empty value
+					result[item] = '';
+				} else {
+					// Split at the first "=" into key and value parts
+					const key = item.substring(0, firstEqualIndex);
+					const value = item.substring(firstEqualIndex + 1);
+					result[key] = value;
+				}
+			}
+
+			// Return the populated dictionary
+			return result;
+		};
+
+		/**
 		 * Formats an argument string into a dictionary if it contains templated variables.
 		 */
 		const formatArgumentString = (arg) =>
@@ -333,13 +363,13 @@ class G4Client {
 		 * of each parameter to ensure immutability, and returns an array of these copied parameters.
 		 * By doing so, it safeguards the original manifest parameters from accidental modification
 		 */
-		const formatParameters = (manifest) => {
+		const formatParameters = (parameters) => {
 			// Initialize an empty array to hold the copied parameters
 			const copiedParameters = [];
 
 			// Iterate over each parameter in the manifest's parameters array
 			// If manifest or manifest.parameters is undefined, default to an empty array to prevent errors
-			for (const parameter of manifest?.parameters || []) {
+			for (const parameter of parameters) {
 				// Create a deep copy of the current parameter to ensure immutability
 				// Replace the following line with a deep copy method if parameters contain nested objects
 				const parameterJson = JSON.stringify(parameter);
@@ -407,9 +437,23 @@ class G4Client {
 			for (const parameterKey of parameterKeys) {
 				const key = parameterKey.toUpperCase();
 				const value = parameters[key];
+				const parameterType = step.parameters[parameterKey].type?.toUpperCase() || 'STRING';
+
+				// Assert if the parameter type is dictionary or key/value
+				const isDictionary = parameters[key] && parameterType === 'DICTIONARY'
+					|| parameterType === 'KEY/VALUE'
+					|| parameterType === 'KEYVALUE'
+					|| parameterType === 'OBJECT';
 
 				// Use the value from the parsed argument if available; otherwise, retain the existing value
-				step.parameters[parameterKey].value = value || step.parameters[parameterKey].value;
+				if (!isDictionary) {
+					
+					step.parameters[parameterKey].value = value || step.parameters[parameterKey].value;
+                    continue;
+				}
+
+				// Handle the case where the parameter is a dictionary type
+				step.parameters[parameterKey].value = convertArrayToDictionary(value);
 			}
 		}
 
