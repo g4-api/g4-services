@@ -180,6 +180,7 @@ class G4Client {
 				const isArray = value && parameterType === 'ARRAY';
 				const isDictionary = value && (parameterType === 'DICTIONARY'
 					|| parameterType === 'KEY/VALUE'
+					|| parameterType === 'KEYVALUE'
 					|| parameterType === 'OBJECT');
 				const isBoolean = parameterType === 'SWITCH';
 				const isValue = !isDictionary && !isArray && value && value.length > 0;
