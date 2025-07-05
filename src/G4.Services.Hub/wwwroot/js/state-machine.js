@@ -267,6 +267,14 @@ class StateMachineSteps {
 			optionsList: _extractionScopes.itemSource
 		};
 
+        // Define the context for the ExportData container for integration with the G4 framework
+		container.context = {
+			"$type": "Extraction",
+			"componentType": "export",
+			"iconProvider": "assert",
+			"model": "ExtractionRuleModel"
+		}
+
         // Return the configured ExportData container object
 		return container;
 	}
