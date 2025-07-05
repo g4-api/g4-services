@@ -795,6 +795,7 @@ class CustomG4Fields {
         return options.container ? options.container : buttonContainer;
     }
 
+    // TODO: Add support for dynamic data source values.
     /**
      * Creates a new Data Source field container with multiple subfields for filtering,
      * repository selection, source input, data source type, and capabilities.
@@ -802,10 +803,10 @@ class CustomG4Fields {
      * This field is designed to allow users to configure how data should be retrieved
      * and filtered in automation or data-driven scenarios.
      *
-     * @param {Object}       options            - Configuration options for the Data Source field.
-     * @param {HTMLElement} [options.container] - The DOM element to which this field will be appended.
-     * @param {string}       options.label      - A label identifier for this field container.
-     * @param {string}      [options.title]     - An optional title (tooltip) for the field container.
+     * @param {Object}       options                               - Configuration options for the Data Source field.
+     * @param {HTMLElement} [options.container]                    - The DOM element to which this field will be appended.
+     * @param {string}       options.label                         - A label identifier for this field container.
+     * @param {string}      [options.title]                        - An optional title (tooltip) for the field container.
      * @param {Object}      [options.initialValue={}]              - An object containing initial field values.
      * @param {string}      [options.initialValue.filter='']       - The row filter criteria (DataView RowFilter syntax).
      * @param {string}      [options.initialValue.repository='']   - The data container (e.g. DataTable, DataView, List, etc.).
@@ -924,6 +925,128 @@ class CustomG4Fields {
                 ],
                 label: 'Type',
                 title: 'Specifies the format or type of the data source (e.g., CSV, XML, or JSON).'
+            },
+            (value) => {
+                // Build an object containing the updated data source type
+                const dataSource = {
+                    type: value
+                };
+
+                // Invoke the main callback function with the updated data source
+                setCallback(dataSource);
+            }
+        );
+
+        /**
+         * Create a key-value field for "Capabilities".
+         * - Defaults to an empty object if not provided in initialValue.
+         * - Allows specifying additional capabilities or properties for the data source.
+         */
+        CustomFields.newKeyValueField(
+            {
+                container: controller,
+                initialValue: options.initialValue?.capabilities || {},
+                label: 'Capabilities',
+                title: 'Specifies additional capabilities or properties for the data source in a key-value format (e.g., enabling caching, custom parameters, etc.).'
+            },
+            (value) => {
+                // Build an object containing the updated capabilities
+                const dataSource = {
+                    capabilities: value
+                };
+
+                // Invoke the main callback function with the updated data source
+                setCallback(dataSource);
+            }
+        );
+
+        // If an external container is provided, append the field container to it
+        if (options.container) {
+            options.container.appendChild(fieldContainer);
+        }
+
+        // Return the parent container holding the Data Source field
+        return options.container ? options.container : fieldContainer;
+    }
+
+    static newDataCollectorField(options, setCallback) {
+        // Generate a unique identifier for the Data Source field.
+        const inputId = Utilities.newUid();
+
+        // Escape the unique identifier to ensure it's safe for use in CSS selectors.
+        const id = CSS.escape(inputId);
+
+        // Create a main container for the Data Source field using a helper function.
+        const fieldContainer = newMultipleFieldsContainer(inputId, {
+            labelDisplayName: options.label,
+            role: 'container',
+            hintText: "",
+            isOpen: true
+        });
+
+        // Select the controller sub-container within the field container using the unique ID.
+        const controller = fieldContainer.querySelector(`#${id}-container`);
+
+        /**
+         * Create a string input field for the "Repository" property.
+         * - Defaults to an empty string if not provided in initialValue.
+         * - Represents the data container (DataTable, DataView, List, etc.).
+         */
+        CustomFields.newStringField(
+            {
+                container: controller,
+                initialValue: options.initialValue?.repository || '',
+                isReadonly: false,
+                label: 'Repository',
+                title: 'Specifies the data container (e.g., DataTable, DataView, or List) used as the data source.'
+            },
+            (value) => {
+                // Build an object containing the updated repository value
+                const dataSource = {
+                    repository: value
+                };
+
+                // Invoke the main callback function with the updated data source
+                setCallback(dataSource);
+            }
+        );
+
+        /**
+         * Create a string input field for the "source" property.
+         * - Defaults to an empty string if not provided in initialValue.
+         * - May represent a connection string, file path, or URL to locate the repository.
+         */
+        CustomFields.newStringField(
+            {
+                container: controller,
+                initialValue: options.initialValue?.source || '',
+                isReadonly: false,
+                label: 'Source',
+                title: 'Specifies the connection string, file path, or URL needed to locate the repository.'
+            },
+            (value) => {
+                // Build an object containing the updated source value
+                const dataSource = {
+                    source: value
+                };
+
+                // Invoke the main callback function with the updated data source
+                setCallback(dataSource);
+            }
+        );
+
+        /**
+         * Create a data list field for selecting the "Type" of data source.
+         * - Defaults to an empty string if not provided in initialValue.
+         * - itemSource array is provided with an example for JSON.
+         */
+        CustomFields.newDataListField(
+            {
+                container: controller,
+                initialValue: options.initialValue?.type || '',
+                itemSource: options.itemSource || [],
+                label: 'Type',
+                title: 'Specifies the format or type of the data source (e.g., CSV, XML, JSON, SQLite, etc.).'
             },
             (value) => {
                 // Build an object containing the updated data source type

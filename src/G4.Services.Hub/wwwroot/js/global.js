@@ -4,14 +4,16 @@ let _cache = {};
 let _cacheKeys = [];
 let _client = {};
 let _cliFactory = {};
+let _dataCollectors = {};
 let _designer;
 let _editorObserver;
+let _extractionScopes = {};
 let _manifests = {};
 let _manifestsGroups = [];
 let _stateMachine = {};
 let _timer;
 
-const _flowableTypes = ["ACTION", "CONTENT", "JOB", "STAGE", "TRANSFORMER"];
+const _flowableTypes = ["ACTION", "CONTENT", "EXPORT", "JOB", "STAGE", "TRANSFORMER"];
 const _auditableTypes = ["ACTION", "CONTENT", "TRANSFORMER"];
 
 const _connection = new signalR
@@ -40,7 +42,25 @@ _connection
 	_cache = await _client.getCache();
 
 	// Store the cache keys in a global variable for later use.
-	_cacheKeys = Object.keys(_cache).map(key => key.toUpperCase());
+    _cacheKeys = Object.keys(_cache).map(key => key.toUpperCase());
+
+    // Store extraction scopes in a global variable for later use.
+    _extractionScopes = {
+        providers: _cache["ExtractionScope"],
+        itemSource: Object.values(_cache["ExtractionScope"]).map(i => ({
+            name: i.manifest.key,
+            description: i.manifest.summary,
+        })),
+    }
+
+    // Store data collectors in a global variable for later use.
+    _dataCollectors = {
+        providers: _cache["DataCollector"],
+        itemSource: Object.values(_cache["DataCollector"]).map(i => ({
+            name: i.manifest.key,
+            description: i.manifest.summary,
+        })),
+    }
 
     /**
      * Wait for the timer element to be available in the DOM.

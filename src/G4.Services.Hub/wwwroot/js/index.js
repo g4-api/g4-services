@@ -106,9 +106,10 @@ async function initializeDesigner() {
 	// Create default container types for "Stage" and "Job".
 	const stage = StateMachineSteps.newG4Stage('Stage', {}, {}, []);
 	const job = StateMachineSteps.newG4Job('Job', {}, {}, []);
+	const exportDataContainer = StateMachineSteps.newExportDataContainer('Export Data', {}, {}, []);
 
 	// Add the containers to the "Containers" group.
-	containersGroup.steps.push(...[stage, job]);
+	containersGroup.steps.push(...[stage, job, exportDataContainer]);
 
 	// If "Containers" group doesn't exist, add it to the groups array.
 	if (!containers) {
@@ -338,6 +339,10 @@ function newConfiguration() {
 				// Else if the type is 'JOB', force iconType to 'job'.
 				else if (upperType === 'JOB') {
 					iconType = 'job';
+				}
+				// Else if the type is 'JOB', force iconType to 'job'.
+				else if (upperType === 'EXPORT') {
+					iconType = 'export';
 				}
 
 				// Return the relative path to the SVG icon based on the determined iconType.
@@ -1587,6 +1592,34 @@ function stepEditorProvider(step, editorContext) {
 		);
 	}
 
+	/**
+	 * Initializes the export data editor by rendering a custom G4 data collector field.
+	 */
+	const initializeExportDataEditorProvider = (container, step) => {
+		// Create a new custom data collector field inside the given container
+		CustomG4Fields.newDataCollectorField(
+			{
+				container: container,
+				itemSource: _dataCollectors.itemSource,
+				label: "Data Collector",
+				title: "Provide G4™ data collector to configure the automation.",
+				initialValue: step.properties['dataCollector'].value || {}
+			},
+			(value) => {
+				// Ensure the 'dataCollector' property exists in the step properties.
+				step.properties['dataCollector'].value = step.properties['dataCollector'].value || {};
+
+                // Update the 'dataCollector' property with the new values from the input.
+				for (const key of Object.keys(value)) {
+					step.properties['dataCollector'].value[key] = value[key];
+				}
+
+				// Notify the editor of the updated properties.
+				editorContext.notifyPropertiesChanged();
+			}
+		);
+	};
+
 	// Generate a unique identifier for input elements within the editor.
 	const inputId = Utilities.newUid();
 
@@ -1641,9 +1674,12 @@ function stepEditorProvider(step, editorContext) {
 		return stepEditorContainer;
 	}
 
-	/**
-	 * Sort the properties of the step alphabetically for consistent display.
-	 */
+    // If the step is of type 'EXPORT', initialize the export data editor provider.
+	if (step.type?.toUpperCase() === 'EXPORT') {
+		initializeExportDataEditorProvider(stepEditorContainer, step);
+	}
+
+	// Sort the properties of the step alphabetically for consistent display.
 	let sortedProperties = Object.keys(step.properties).sort((a, b) => a.localeCompare(b));
 
 	// Determine if the step has any parameters defined.
@@ -1672,7 +1708,8 @@ function stepEditorProvider(step, editorContext) {
 		// Determine if the current property should be skipped.
 		const skip = (hasParameters && key.toUpperCase() === 'ARGUMENT')
 			|| key.toUpperCase() === 'RULES'
-			|| key.toUpperCase() === 'TRANSFORMERS';
+			|| key.toUpperCase() === 'TRANSFORMERS'
+			|| key.toUpperCase() === 'DATACOLLECTOR';
 
 		// Update the sorted properties list to exclude the skipped property.
 		//sortedProperties = skip ? sortedProperties.filter((property) => property !== key) : sortedProperties;
