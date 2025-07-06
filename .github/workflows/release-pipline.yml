@@ -1,5 +1,5 @@
 # Workflow to build, test, and release OcrInspector for production
-name: Build, Test & Release G4™ API
+name: Build, Test & Release G4â„¢ API
 
 # Define permissions for the workflow
 permissions:
@@ -15,6 +15,7 @@ on:
       - main
     paths-ignore:
       - 'README.md'
+  workflow_dispatch:
 
 # Set environment variables
 env:
@@ -50,7 +51,7 @@ jobs:
         echo "valid=$($version -match '^\d+(\.\d+){3}$')" >> $env:GITHUB_OUTPUT
   
   invoke-api-tests:
-    name: G4™ API - Docker Deployment & Integration Tests
+    name: G4â„¢ API - Docker Deployment & Integration Tests
     runs-on: ubuntu-latest
 
     steps:
@@ -272,7 +273,7 @@ jobs:
         uses: EnricoMi/publish-unit-test-result-action@v2
         if: always()
         with:
-          check_name: G4™ API - Integration Tests Results
+          check_name: G4â„¢ API - Integration Tests Results
           files: |
             test-results.xml
 
