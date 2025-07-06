@@ -1,9 +1,9 @@
-# G4™ Hub API
+# G4â„¢ Hub API
 
-[![Build, Test & Release G4™ API](https://github.com/g4-api/g4-services/actions/workflows/release-pipline.yml/badge.svg)](https://github.com/g4-api/g4-services/actions/workflows/release-pipline.yml)
+[![Build, Test & Release G4â„¢ API](https://github.com/g4-api/g4-services/actions/workflows/release-pipline.yml/badge.svg)](https://github.com/g4-api/g4-services/actions/workflows/release-pipline.yml)
 ![Docker Image Version](https://img.shields.io/docker/v/g4api/g4-hub?style=flat&logo=docker&logoColor=959da5&label=Docker%20Version&labelColor=24292f)
 
-The **G4 Hub API** provides a comprehensive interface for managing templates, environments, integration metadata, and automation workflows within the G4™ Engine. This repository contains the source code and configuration necessary to deploy and interact with the API service.
+The **G4 Hub API** provides a comprehensive interface for managing templates, environments, integration metadata, and automation workflows within the G4â„¢ Engine. This repository contains the source code and configuration necessary to deploy and interact with the API service.
 
 ---
 
@@ -33,10 +33,10 @@ The **G4 Hub API** provides a comprehensive interface for managing templates, en
 >  
 > This token expires 90 days after the latest release date. Please return here to update your token when it expires.
 
-The unlimited version of the G4™ Hub API is available for personal or an open source non-profit use, provided it is not deployed in enterprise, governmental, or military environments. To enable full functionality, use the license token provided below. When invoking automation workflows, include this token in the `token` field under the `authentication` property.
+The unlimited version of the G4â„¢ Hub API is available for personal or an open source non-profit use, provided it is not deployed in enterprise, governmental, or military environments. To enable full functionality, use the license token provided below. When invoking automation workflows, include this token in the `token` field under the `authentication` property.
 
 ```none
-3xezq5Yc33laNOPNP8yCsK33vQcQZ87E/zyLNNscYNeqvKTHAm9C3wAEDQV7X9+fuuHPhafDNXbSFgsbKmCncCKm7DRE5A6JtFSd90DNujujbQ3vLG4/4uSVCR76Z6VguIDSvRZ/pJTHCzBc9NNI/eb5fLHcjXyYrilm9NC7VTD/HOlgGC5CL+oFhHoR8s10YuI9QpRioZbyDHysFumpAAv3/PG/p/QBKNoQpjtsUgMytrnqr3m1bgyXITG0u5AUR2VpZLCXQO6MxU7kwLwvdNGXUDfajBVT29KyjXUEWN9dK0R38XmgZFQ7orkKfN2z0x2SMfC5mvTDM6as+/kYWFAvpqOZDhZ95sgQWp/zGig=
+z5lJhu8BzgvuRp161OAkWDiJPVN0SIUJaOBHxm0/jNwlnKF2/tYOMIih+4fM8u1uWB5jqD1bbu/OJBP2KPf6H7cYSUcRMCELtDRGSkgnWcj292W8O/TKPn37V7255k1b+bf9hSCALnw6curMcMb6EhH5mBYYPILgMMNbbLmzeUgV9NWdXrmbL17Dwq2VUncv2f9elh5mQPhnhTMHaHTV6MiLN0swy6QXaNItLsKUfjLjTZzt/Ezdbxr6UufjChS/LiIj0vuIgRb0Xq4j9bx6tmnvOijHPS6cyAqT9v4szbTSMDd17XtZxtjOtV0Y1IZD08edNjMZQSvAc46feKLEQ+7S2F2TRAsKLbyo6FfNA9k=
 ```
 
 ---
