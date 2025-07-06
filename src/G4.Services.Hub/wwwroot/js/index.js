@@ -1384,7 +1384,7 @@ function stepEditorProvider(step, editorContext) {
 		const isOptionsField = parameter.optionsList && parameter.optionsList.length > 0;
 		const isArray = parameterType === 'ARRAY';
 		const isSwitch = ['SWITCH', 'BOOLEAN', 'BOOL'].includes(parameterType);
-		const isKeyValue = ['KEY/VALUE', 'KEYVALUE', 'DICTIONARY'].includes(parameterType);
+		const isKeyValue = ['KEY/VALUE', 'KEYVALUE', 'DICTIONARY', 'OBJECT'].includes(parameterType);
 
 		/**
 		 * Handles the creation and configuration of a Key-Value input field.

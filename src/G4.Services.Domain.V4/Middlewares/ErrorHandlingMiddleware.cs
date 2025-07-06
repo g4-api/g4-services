@@ -1,5 +1,4 @@
-﻿using G4.Exceptions;
-using G4.Extensions;
+﻿using G4.Extensions;
 using G4.Models;
 
 using Microsoft.AspNetCore.Http;
@@ -10,9 +9,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Net;
 using System.Net.Mime;
-using System.Security.Authentication;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;

@@ -2918,7 +2918,7 @@ class CustomFields {
         // Listen for double-click events to open a modal for editing the textarea content.
         textareaElement.addEventListener("dblclick", () => {
             // Create a modal for the textarea using a helper function.
-            const modalElement = newModal(inputId, fieldContainer);
+            const modalElement = newModal(inputId, document.body);
 
             // Disable the original textarea to prevent editing while the modal is open
             textareaElement.disabled = true;
