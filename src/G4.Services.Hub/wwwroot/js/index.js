@@ -1620,6 +1620,60 @@ function stepEditorProvider(step, editorContext) {
 		);
 	};
 
+	/**
+	 * Initializes the “containerable” toggle on a step editor.
+	 * This adds a switch that lets you convert a step between a task and a container.
+	 */
+	const initializeContainerableEditorProvider = (container, step) => {
+		// Ensure we have a context object to store our “containerable” flag
+		step.context = step.context || {};
+
+        // Create a switch field for toggling container mode
+		CustomFields.newSwitchField(
+			{
+				container: container,
+				initialValue: step.context.containerable || false,
+				label: 'Convert to Container',
+				// Tooltip explaining container mode behavior and revert conditions
+				title: 'Toggle Container Mode:\n' +
+					'- When enabled, you can add child rules to this step.\n' +
+					'- To revert back to Task Mode, first remove all child rules.',
+				step: step,
+				sequence: step.sequence || []
+			},
+			(value) => {
+				// Normalize the switch value to a boolean
+				step.context.containerable = String(value).toUpperCase() === 'TRUE';
+
+                // If the switch is turned off, we need to check the current state of the step
+				const isSequenceEmpty = Array.isArray(step.sequence) && step.sequence.length === 0;
+
+				// Prevent disabling container mode if there are existing child steps
+				if (!isSequenceEmpty && !step.context.containerable) {
+					step.context.containerable = true;
+					editorContext.notifyPropertiesChanged();
+					return;
+				}
+
+				// If there are no child steps and container mode is turned off,
+				// convert this step into a standalone task
+				if (isSequenceEmpty && !step.context.containerable) {
+					step.componentType = 'task';
+					delete step.sequence;
+					editorContext.notifyNameChanged();
+					return;
+				}
+
+				// Otherwise, ensure we are in container mode:
+				// clear any existing sequence and set the component type
+				step.componentType = 'container';
+				step.sequence = [];
+
+				editorContext.notifyNameChanged();
+			}
+		);
+	};
+
 	// Generate a unique identifier for input elements within the editor.
 	const inputId = Utilities.newUid();
 
@@ -1759,6 +1813,11 @@ function stepEditorProvider(step, editorContext) {
 	 */
 	if (sortedParameters.length > 0) {
 		stepEditorContainer.appendChild(parametersFieldContainer);
+	}
+
+    // TODO: When available, change to assert only if step context allows "Convert to Container" capability (context.isContainerable).
+	if (step.pluginType === "Content" || step.context.isContainerable) {
+		initializeContainerableEditorProvider(stepEditorContainer, step);
 	}
 
 	/**
