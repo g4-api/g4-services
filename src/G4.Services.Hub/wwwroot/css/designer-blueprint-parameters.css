@@ -119,12 +119,12 @@
 	--toolbox-background: var(--secondary-color);
 	--toolbox-box-shadow: 0 0 0px rgba(var(--black-rgb), 0.15), 0 0px 0px rgba(var(--black-rgb), 0.15);
 	--toolbox-filter-background: var(--secondary-color);
-	--toolbox-filter-border: 1px solid var(--primary-color);
+	--toolbox-filter-border: 1px solid var(--secondary-color);
 	--toolbox-filter-color: var(--primary-color);
 	--toolbox-filter-focus-background: var(--secondary-color);
 	--toolbox-filter-focus-border-color: var(--red);
 	--toolbox-filter-focus-color: var(--black);
-	--toolbox-filter-hover-border-color: var(--red);
+	--toolbox-filter-hover-border-color: var(--secondary-color);
 	--toolbox-group-title-color: var(--primary-color);
 	--toolbox-group-title-background: var(--secondary-color);
 	--toolbox-group-title-font: 700 1.3em/1.3em 'Roboto', sans-serif;

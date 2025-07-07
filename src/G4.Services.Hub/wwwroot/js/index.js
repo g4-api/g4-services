@@ -371,7 +371,20 @@ function newConfiguration() {
 			 * console.log(isValid); // Outputs: true
 			 */
 			step: step => {
+				if (step.pluginType === "Content" && step.sequence && step.sequence.length > 0 && !step.context.containerable) {
+					return false;
+				}
 				return !step?.categories?.toUpperCase().includes("G-ERROR");
+			},
+
+			container: step => {
+				// Validate that the step is a container and has a sequence of steps
+				if (step.pluginType === "Content" && step.sequence && step.sequence.length > 0 && !step.context.containerable) {
+					return false;
+				}
+
+				// Ensure that all steps within the container are valid
+                return step.sequence.every(subStep => _configuration.validator.step(subStep));
 			},
 
 			/**

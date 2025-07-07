@@ -128,7 +128,7 @@
 	--toolbox-filter-focus-background: var(--secondary-color);
 	--toolbox-filter-focus-border-color: var(--red);
 	--toolbox-filter-focus-color: var(--black);
-	--toolbox-filter-hover-border-color: var(--red);
+	--toolbox-filter-hover-border-color: var(--primary-color);
 	--toolbox-group-title-color: var(--base-font-color);
 	--toolbox-group-title-background: var(--secondary-color);
 	--toolbox-group-title-font: 700 1.3em/1.3em 'Roboto', sans-serif;
