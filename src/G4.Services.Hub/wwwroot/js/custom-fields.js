@@ -2259,6 +2259,48 @@ class CustomFields {
         return options.container ? options.container : fieldContainer;
     }
 
+    static newError(options, setCallback) {
+        const newErrorMessage = (title, content) => {
+            // Define the HTML structure for the title, subtitle, and hint icon.
+            return `
+            <div class="sqd-error">
+                <div class="sqd-error-title">
+                    ${title || 'Error'}
+                </div>
+                <div class="sqd-error-description"">
+                    ${content || 'Something went wrong. Please try again later.'}
+                </div>
+            </div>`
+        }
+
+        const errors = Object.values(options.step.context.errors || []);
+
+        if (!errors || errors.length === 0) {
+            return;
+        }
+
+        let html = '';
+        for (const error of errors) {
+            html += newErrorMessage(error.title, error.description);
+        }
+
+        // Create a new div element to contain the title and subtitle.
+        const errorContainer = document.createElement('div');
+        errorContainer.setAttribute('data-g4-error', 'error');
+
+        // Insert the HTML structure into the title container.
+        errorContainer.insertAdjacentHTML('beforeend', html);
+
+        // Append the populated title container to the provided parent container if specified.
+        if (options.container) {
+            options.container.appendChild(errorContainer);
+        }
+
+        // Return the updated container for potential further use by the calling code.
+        return options.container ? options.container : errorContainer;
+
+    }
+
     /**
      * Creates and appends a new key-value field to the specified container based on the provided options.
      * This field allows users to dynamically add multiple key-value pairs, with each pair consisting of:

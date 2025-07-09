@@ -370,21 +370,14 @@ function newConfiguration() {
 			 * const isValid = validator.step(step);
 			 * console.log(isValid); // Outputs: true
 			 */
-			step: step => {
-				if (step.pluginType === "Content" && step.sequence && step.sequence.length > 0 && !step.context.containerable) {
-					return false;
+			step: (step, parentSequence, definition) => {
+				if (step.pluginType === 'Content') {
+					if (!Validators.assertIsContainer(step, definition)) {
+                        return false;
+					}
 				}
+
 				return !step?.categories?.toUpperCase().includes("G-ERROR");
-			},
-
-			container: step => {
-				// Validate that the step is a container and has a sequence of steps
-				if (step.pluginType === "Content" && step.sequence && step.sequence.length > 0 && !step.context.containerable) {
-					return false;
-				}
-
-				// Ensure that all steps within the container are valid
-                return step.sequence.every(subStep => _configuration.validator.step(subStep));
 			},
 
 			/**
@@ -1645,7 +1638,7 @@ function stepEditorProvider(step, editorContext) {
 		CustomFields.newSwitchField(
 			{
 				container: container,
-				initialValue: step.context.containerable || false,
+				initialValue: step.context.convertToContainer || false,
 				label: 'Convert to Container',
 				// Tooltip explaining container mode behavior and revert conditions
 				title: 'Toggle Container Mode:\n' +
@@ -1656,21 +1649,21 @@ function stepEditorProvider(step, editorContext) {
 			},
 			(value) => {
 				// Normalize the switch value to a boolean
-				step.context.containerable = String(value).toUpperCase() === 'TRUE';
+				step.context.convertToContainer = String(value).toUpperCase() === 'TRUE';
 
                 // If the switch is turned off, we need to check the current state of the step
 				const isSequenceEmpty = Array.isArray(step.sequence) && step.sequence.length === 0;
 
 				// Prevent disabling container mode if there are existing child steps
-				if (!isSequenceEmpty && !step.context.containerable) {
-					step.context.containerable = true;
+				if (!isSequenceEmpty && !step.context.convertToContainer) {
+					step.context.convertToContainer = true;
 					editorContext.notifyPropertiesChanged();
 					return;
 				}
 
 				// If there are no child steps and container mode is turned off,
 				// convert this step into a standalone task
-				if (isSequenceEmpty && !step.context.containerable) {
+				if (isSequenceEmpty && !step.context.convertToContainer) {
 					step.componentType = 'task';
 					delete step.sequence;
 					editorContext.notifyNameChanged();
@@ -1710,6 +1703,17 @@ function stepEditorProvider(step, editorContext) {
 		titleText: Utilities.convertPascalToSpaceCase(step.pluginName),
 		subTitleText: step.pluginType,
 		helpText: step.description
+	});
+
+	/**
+	 * Add an error field to the container.
+	 * This field is used to display any errors related to the step.
+	 * It is initialized with the step's error state.
+	 * This allows users to see if there are any issues with the step configuration.
+	 */
+	CustomFields.newError({
+		container: stepEditorContainer,
+        step: step
 	});
 
 	/**
