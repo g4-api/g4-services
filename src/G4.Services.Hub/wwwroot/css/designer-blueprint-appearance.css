@@ -265,6 +265,24 @@ html, body {
 	color: var(--smart-editor-color);
 }
 
+	.sqd-theme-light .sqd-smart-editor .sqd-error {
+		background: var(--smart-editor-error-background);
+		border: var(--smart-editor-error-border);
+		border-radius: 0 var(--border-radius) var(--border-radius) var(--border-radius);
+		color: var(--smart-editor-error-color);
+		font: var(--smart-editor-error-font);
+	}
+
+		.sqd-theme-light .sqd-smart-editor .sqd-error .sqd-error-title {
+			color: var(--smart-editor-error-title-color);
+			font: var(--smart-editor-error-title-font);
+		}
+
+		.sqd-theme-light .sqd-smart-editor .sqd-error .sqd-error-description {
+			color: var(--smart-editor-error-description-color);
+			font: var(--smart-editor-error-description-font);
+		}
+
 	.sqd-theme-light .sqd-smart-editor button {
 		background: var(--smart-editor-button-background);
 		border: var(--smart-editor-button-border);

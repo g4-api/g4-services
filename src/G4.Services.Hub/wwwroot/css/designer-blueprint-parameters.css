@@ -85,6 +85,13 @@
 	--smart-editor-group-background: transparent;
 	--smart-editor-group-color: var(--primary-color);
 	--smart-editor-group-font: 400 1.2em/1.2em 'Roboto', sans-serif;
+	--smart-editor-error-background: #FDECEA;
+	--smart-editor-error-border: 1px solid #E74C3C;
+	--smart-editor-error-description-color: var(--black);
+	--smart-editor-error-description-font: var(--smart-editor-font);
+	--smart-editor-error-title-color: #C0392B;
+	--smart-editor-error-title-font: var(--smart-editor-label-font);
+	--smart-editor-font: 400 1.0em 'Roboto', sans-serif;
 	--smart-editor-help-text-background: var(--light-gray);
 	--smart-editor-help-text-border: 1px solid var(--gray);
 	--smart-editor-help-text-font: 400 1.0em 'Roboto', sans-serif;
