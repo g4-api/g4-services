@@ -268,7 +268,7 @@ html, body {
 	.sqd-theme-light .sqd-smart-editor .sqd-error {
 		background: var(--smart-editor-error-background);
 		border: var(--smart-editor-error-border);
-		border-radius: 0 var(--border-radius) var(--border-radius) var(--border-radius);
+		border-radius: var(--border-radius);
 		color: var(--smart-editor-error-color);
 		font: var(--smart-editor-error-font);
 	}
