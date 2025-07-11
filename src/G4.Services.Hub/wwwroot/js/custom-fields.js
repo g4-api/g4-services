@@ -2319,7 +2319,7 @@ class CustomFields {
 
         // Prepare the error container element
         const errorContainer = document.createElement('div');
-        errorContainer.setAttribute('data-g4-role', `${options.step.id}_error`);
+        errorContainer.setAttribute('data-g4-role', `error`);
 
         // Insert all error blocks inside the container
         errorContainer.insertAdjacentHTML('beforeend', html);
