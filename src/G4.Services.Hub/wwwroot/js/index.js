@@ -371,6 +371,16 @@ function newConfiguration() {
 			 * console.log(isValid); // Outputs: true
 			 */
 			step: (step, _, definition) => {
+                // Get the ID of the currently selected step in the designer
+				const id = _designer.getSelectedStepId();
+
+				// If the step is not selected, return true (no validation needed)
+				if ((!id || id !== step.id) && step.sequence && step.sequence.length > 0) {
+                    step.context.errors = step.context.errors || {};
+					return Object.keys(step.context.errors).length === 0
+						&& !step?.categories?.toUpperCase().includes("G-ERROR");
+				}
+
 				// Array to collect each validation result (true = pass, false = fail)
 				const assertions = [];
 
@@ -1369,8 +1379,13 @@ async function startDefinition() {
 	// Check if the designer is valid before proceeding
 	// If it is not, display an alert and exit the function
 	if (!_designer.isValid()) {
-		window.alert('The workflow definition is invalid. Please review and correct any errors.');
-		return;
+		console.error(
+			"⚠️ Workflow validation failed! " +
+			"Your definition contains errors that must be addressed. " +
+			"The sequence might still run, but leaving these issues uncorrected " +
+			"risks outright failures or unpredictable behavior. " +
+			"Please review and fix the highlighted steps now."
+		);
 	}
 
 	// Set the designer to read-only mode to prevent further editing while the workflow is running
