@@ -969,6 +969,24 @@ class CustomG4Fields {
         return options.container ? options.container : fieldContainer;
     }
 
+    /**
+     * Creates and renders a Data Collector field group, encompassing inputs for repository, source,
+     * type, and capabilities, and wires up callbacks for each sub-field.
+     *
+     * @static
+     * @param {Object} options                             - Configuration options for the Data Collector field.
+     * @param {HTMLElement} [options.container]            - Optional parent element to which the field group will be appended.
+     * @param {string} options.label                       - Display label for the data collector field group.
+     * @param {Object} [options.initialValue]              - Initial values for the fields.
+     * @param {string} [options.initialValue.repository]   - Initial repository identifier.
+     * @param {string} [options.initialValue.source]       - Initial connection string, file path, or URL.
+     * @param {string} [options.initialValue.type]         - Initial data source type (e.g., CSV, JSON).
+     * @param {Object} [options.initialValue.capabilities] - Initial key-value map of additional capabilities.
+     * @param {Array} [options.itemSource]                 - Array of allowed values for the "Type" data list input.
+     * @param {Function} setCallback                       - Callback invoked whenever any sub-field value changes. Receives an object with the updated property.
+     * 
+     * @returns {HTMLElement} The container element that holds the rendered Data Collector fields.
+     */
     static newDataCollectorField(options, setCallback) {
         // Generate a unique identifier for the Data Source field.
         const inputId = Utilities.newUid();
@@ -2259,46 +2277,69 @@ class CustomFields {
         return options.container ? options.container : fieldContainer;
     }
 
+    /**
+     * Renders error messages for a given step into the specified container.
+     * 
+     * @param {Object} options
+     * @param {Object} options.step           - The step object containing context and errors
+     * @param {string} options.step.id        - Unique identifier of the step
+     * @param {Object} options.step.context   - Context object holding error details
+     * @param {Object.<string, {title: string, description: string}>} options.step.context.errors
+     * @param {HTMLElement} options.container - The DOM element to render errors into
+     * @param {Function} [setCallback]        - Optional callback function invoked with the error container
+     * 
+     * @returns {HTMLElement|undefined} The updated container or the newly created error container
+     */
     static newError(options, setCallback) {
-        const newErrorMessage = (title, content) => {
-            // Define the HTML structure for the title, subtitle, and hint icon.
+        // Helper: build HTML string for a single error block
+        const newErrorMessage = (id, title, content) => {
             return `
-            <div class="sqd-error">
-                <div class="sqd-error-title">
-                    ${title || 'Error'}
-                </div>
-                <div class="sqd-error-description"">
-                    ${content || 'Something went wrong. Please try again later.'}
-                </div>
-            </div>`
-        }
+        <div class="sqd-error" data-g4-error-id="${id}">
+            <div class="sqd-error-title">${title || 'Error'}</div>
+            <div class="sqd-error-description">${content || 'Something went wrong. Please try again later.'}</div>
+        </div>`;
+        };
 
-        const errors = Object.values(options.step.context.errors || []);
+        // Extract context and error keys safely
+        const context = options.step?.context || {};
+        const errorKeys = Object.keys(context.errors || {});
 
-        if (!errors || errors.length === 0) {
+        // If there are no errors, nothing to render
+        if (errorKeys.length === 0) {
             return;
         }
 
+        // Build combined HTML for all errors
         let html = '';
-        for (const error of errors) {
-            html += newErrorMessage(error.title, error.description);
+        for (const key of errorKeys) {
+            const errorDetail = context.errors[key];
+            const messageId = `${options.step.id}_${key}`;
+            html += newErrorMessage(messageId, errorDetail.title, errorDetail.description);
         }
 
-        // Create a new div element to contain the title and subtitle.
+        // Prepare the error container element
         const errorContainer = document.createElement('div');
-        errorContainer.setAttribute('data-g4-error', 'error');
+        errorContainer.setAttribute('data-g4-role', 'error');
 
-        // Insert the HTML structure into the title container.
+        // Insert all error blocks inside the container
         errorContainer.insertAdjacentHTML('beforeend', html);
 
-        // Append the populated title container to the provided parent container if specified.
-        if (options.container) {
+        // Insert the error container into the DOM after the first existing child
+        const refElement = options.container.firstElementChild;
+        if (refElement) {
+            refElement.insertAdjacentElement('afterend', errorContainer);
+        } else {
+            // Fallback: append if no reference child exists
             options.container.appendChild(errorContainer);
         }
 
-        // Return the updated container for potential further use by the calling code.
-        return options.container ? options.container : errorContainer;
+        // If a callback is provided, call it with the error container reference
+        if (typeof setCallback === 'function') {
+            setCallback(errorContainer);
+        }
 
+        // Return the relevant container for chaining or further manipulation
+        return options.container || errorContainer;
     }
 
     /**

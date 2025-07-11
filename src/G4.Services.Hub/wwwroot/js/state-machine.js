@@ -410,6 +410,7 @@ class StateMachineSteps {
 		step.pluginType = manifest.pluginType;
 		step.properties = properties;
 		step.context = context;
+		step.context.errors = step.context.errors || {};
 
 		// Return the new G4 step object
 		return step;

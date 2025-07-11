@@ -370,14 +370,38 @@ function newConfiguration() {
 			 * const isValid = validator.step(step);
 			 * console.log(isValid); // Outputs: true
 			 */
-			step: (step, parentSequence, definition) => {
-				if (step.pluginType === 'Content') {
-					if (!Validators.assertIsContainer(step, definition)) {
-                        return false;
-					}
-				}
+			step: (step, _, definition) => {
+				// Array to collect each validation result (true = pass, false = fail)
+				const assertions = [];
 
-				return !step?.categories?.toUpperCase().includes("G-ERROR");
+				// Check that the rule step is placed under a Job container somewhere
+				assertions.push(
+					Validators.confirmRulePlacement(step, definition)
+				);
+
+				// Ensure all required step properties are present and valid
+				assertions.push(
+					Validators.confirmStepProperties(step)
+				);
+
+				// Verify that Content rules are correctly nested under an ExportData plugin
+				assertions.push(
+					Validators.confirmContentRule(step, definition)
+				);
+
+				// Confirm that the step appears in a valid Stage context if needed
+				assertions.push(
+					Validators.confirmStagePlacement(step, definition)
+				);
+
+				// Validate that Job-specific placement rules are satisfied
+				assertions.push(
+					Validators.confirmJobPlacement(step, definition)
+				);
+
+				// Only return true if every assertion passed AND the step is not marked with a "G-ERROR" category
+				return assertions.every(assertion => assertion)
+					&& !step?.categories?.toUpperCase().includes("G-ERROR");
 			},
 
 			/**
@@ -1693,6 +1717,27 @@ function stepEditorProvider(step, editorContext) {
 	// Set the tooltip for the container to provide a description of the step.
 	stepEditorContainer.title = step.description;
 
+    // Add event listener for the STEP_VALIDATED event. This event is triggered when the step is validated.
+	document.addEventListener(STEP_VALIDATED, e => {
+        // Clean up any existing error elements in the container.
+		const errorElement = document.querySelector('div[data-g4-role="error"]');
+		if (errorElement) {
+			errorElement.remove();
+		}
+
+		/**
+		 * Add an error field to the container.
+		 * This field is used to display any errors related to the step.
+		 * It is initialized with the step's error state.
+		 * This allows users to see if there are any issues with the step configuration.
+		 */
+		CustomFields.newError({
+			container: stepEditorContainer,
+			editorContext: editorContext,
+            step: e.detail.step
+		});
+	});
+
 	/**
 	 * Add a title section to the container.
 	 * This includes the plugin's name converted from PascalCase to space-separated words,
@@ -1713,6 +1758,7 @@ function stepEditorProvider(step, editorContext) {
 	 */
 	CustomFields.newError({
 		container: stepEditorContainer,
+        editorContext: editorContext,
         step: step
 	});
 

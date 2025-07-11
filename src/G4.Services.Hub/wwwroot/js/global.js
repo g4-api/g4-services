@@ -1,4 +1,6 @@
-﻿let _averageCounter = 0;
+﻿const STEP_VALIDATED = 'stepValidated';
+
+let _averageCounter = 0;
 let _counter;
 let _cache = {};
 let _cacheKeys = [];
