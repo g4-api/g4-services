@@ -1719,8 +1719,8 @@ function stepEditorProvider(step, editorContext) {
 
     // Add event listener for the STEP_VALIDATED event. This event is triggered when the step is validated.
 	document.addEventListener(STEP_VALIDATED, e => {
-        // Clean up any existing error elements in the container.
-		const errorElement = document.querySelector('div[data-g4-role="error"]');
+		// Clean up any existing error elements in the container.
+		const errorElement = document.querySelector(`div[data-g4-role="${e.detail.step.id}_error"]`);
 		if (errorElement) {
 			errorElement.remove();
 		}

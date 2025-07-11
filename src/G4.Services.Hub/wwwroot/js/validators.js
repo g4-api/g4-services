@@ -20,6 +20,11 @@
             // Clear any previous error messages related to container placement
             delete step.context.errors.contentPlacement;
 
+            // emit after validating
+            document.dispatchEvent(new CustomEvent(STEP_VALIDATED, {
+                detail: { step, definition: null, isValid: true }
+            }));
+
             // Return true to indicate validation success
             return true;
         }
@@ -31,6 +36,11 @@
                 "move the Content rule under a parent step that uses the ExportData plugin. This ensures it functions correctly within the extraction flow.",
             level: "ERR"
         };
+
+        // emit after validating
+        document.dispatchEvent(new CustomEvent(STEP_VALIDATED, {
+            detail: { step, definition: null, isValid: false }
+        }));
 
         // Return false to indicate validation failure
         return false;
@@ -57,6 +67,11 @@
             // Remove any previous placement error.
             delete step.context.errors.jobPlacement;
 
+            // emit after validating
+            document.dispatchEvent(new CustomEvent(STEP_VALIDATED, {
+                detail: { step, definition: null, isValid: true }
+            }));
+
             // Validation succeeded.
             return true;
         }
@@ -69,6 +84,11 @@
                 "To fix this, move the Job step into a parent step whose pluginName is “G4™ Stage.”",
             level: "ERR"
         };
+
+        // emit after validating
+        document.dispatchEvent(new CustomEvent(STEP_VALIDATED, {
+            detail: { step, definition: null, isValid: false }
+        }));
 
         // Validation failed.
         return false;
@@ -96,6 +116,11 @@
                 // 5a. Valid placement: remove previous error and succeed.
                 delete step.context.errors.rulePlacement;
 
+                // emit after validating
+                document.dispatchEvent(new CustomEvent(STEP_VALIDATED, {
+                    detail: { step, definition: null, isValid: true }
+                }));
+
                 // Validation succeeded.
                 return true;
             }
@@ -111,6 +136,11 @@
                 "whose pluginName is “G4™ Job.”",
             level: "ERR"
         };
+
+        // emit after validating
+        document.dispatchEvent(new CustomEvent(STEP_VALIDATED, {
+            detail: { step, definition: null, isValid: false }
+        }));
 
         // Validation failed.
         return false;
@@ -134,10 +164,10 @@
             // Remove any previous placement error key.
             delete step.context.errors.stagePlacement;
 
-            //// emit after validating
-            //document.dispatchEvent(new CustomEvent(STEP_VALIDATED, {
-            //    detail: { step, definition, isValid: true }
-            //}));
+            // emit after validating
+            document.dispatchEvent(new CustomEvent(STEP_VALIDATED, {
+                detail: { step, definition: null, isValid: true }
+            }));
 
             // Validation succeeded.
             return true;
@@ -151,6 +181,11 @@
                 "To fix this, move the Stage step out of any parent and place it directly under the root sequence.",
             level: "ERR"
         };
+
+        // emit after validating
+        document.dispatchEvent(new CustomEvent(STEP_VALIDATED, {
+            detail: { step, definition: null, isValid: false }
+        }));
 
         // Validation failed.
         return false;
