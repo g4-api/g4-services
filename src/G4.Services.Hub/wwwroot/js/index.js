@@ -399,9 +399,17 @@ function newConfiguration() {
 					Validators.confirmJobPlacement(step, definition)
 				);
 
-				// Only return true if every assertion passed AND the step is not marked with a "G-ERROR" category
-				return assertions.every(assertion => assertion)
+				// Validate the step.
+				const isValid = assertions.every(assertion => assertion)
 					&& !step?.categories?.toUpperCase().includes("G-ERROR");
+
+				// emit after validating
+				document.dispatchEvent(new CustomEvent(STEP_VALIDATED, {
+					detail: { step, definition, isValid }
+				}));
+
+				// Only return true if every assertion passed AND the step is not marked with a "G-ERROR" category
+				return isValid;
 			},
 
 			/**
