@@ -1,4 +1,151 @@
 ﻿// Client for sending requests to the G4 API.
+const _exportDataManifest = {
+	"author": {
+		"link": "https://www.linkedin.com/in/roei-sabag-247aa18/",
+		"name": "Roei Sabag"
+	},
+	"categories": [
+		"DataExtraction"
+	],
+	"context": {
+		"integration": {
+			"sequentialWorkflow": {
+				"$type": "Extraction",
+				"componentType": "container",
+				"iconProvider": "export",
+				"model": "ExtractionRuleModel"
+			}
+		}
+	},
+	"description": [
+		"### Purpose",
+		"",
+		"The ExportData plugin gathers data by running one or more ContentRule steps and writes the combined results to your chosen destination via a G4DataProviderModel.",
+		"It makes it easy to organize data extraction tasks by breaking them into modular steps.",
+		"The plugin handles errors consistently, letting you choose to continue or stop the workflow on failures.",
+		"It ensures that extracted data flows smoothly into files, variables, or databases.",
+		"",
+		"### Key Features and Functionality",
+		"",
+		"| Feature           | Description                                                                                      |",
+		"|-------------------|--------------------------------------------------------------------------------------------------|",
+		"| Meta-Invocation   | Calls multiple ContentRule plugins by their static key in sequence.                              |",
+		"| Aggregation       | Combines outputs of each invocation into a single dataset.                                       |",
+		"| Flexible Delivery | Sends the combined payload through any G4DataProviderModel (file, memory, database, etc.).       |",
+		"| Error Handling    | Clears extraction state and logs exceptions on error, with options to continue or halt workflow. |",
+		"",
+		"### Usages in RPA",
+		"",
+		"| Use Case                   | Description                                                                                              |",
+		"|----------------------------|----------------------------------------------------------------------------------------------------------|",
+		"| Export to CSV              | Extracts data from web pages or applications and writes it to CSV files for reporting or analysis.       |",
+		"| Load into Database         | Runs content rules to pull data and loads results directly into a database table for further processing. |",
+		"| In-Memory Variable Passing | Gathers multiple datasets and stores them in workflow variables for downstream steps to consume.         |",
+		"| Combined File Generation   | Aggregates outputs and writes a consolidated file (JSON, XML) for archival or integration tasks.         |",
+		"",
+		"### Usages in Automation Testing",
+		"",
+		"| Use Case                         | Description                                                                                             |",
+		"|----------------------------------|---------------------------------------------------------------------------------------------------------|",
+		"| Validate Extraction Accuracy     | Runs content rules in test flows and compares output against expected datasets to ensure correctness.   |",
+		"| Mock Data Provider Integration   | Simulates different G4DataProviderModel implementations to test delivery logic without real endpoints.  |",
+		"| Error Scenario Testing           | Forces extraction errors to verify that the plugin logs exceptions and respects continue/halt settings. |",
+		"| End-to-End Workflow Verification | Uses ExportData in test cases to confirm that data moves correctly from extraction to storage layers.   |"
+	],
+	"examples": [
+
+	],
+	"key": "ExportData",
+	"manifestVersion": 4,
+	"parameters": [
+		{
+			"description": [
+				"Defines which portion of a web page or HTML source to extract.",
+				"Choosing the correct scope ensures your automation retrieves the specific content you need."
+			],
+			"mandatory": true,
+			"name": "Scope",
+			"type": "ExtractionScope"
+		}
+	],
+	"platforms": [
+		"Any"
+	],
+	"pluginType": "Action",
+	"properties": [
+		{
+			"description": [
+				"Argument allows adding extra command-line information and options.",
+				"It supports specifying parameters such as scope to control command behavior.",
+				"Use this parameter to pass additional flags and customize execution."
+			],
+			"mandatory": false,
+			"name": "Argument",
+			"type": "String|Expression"
+		},
+		{
+			"description": [
+				"Defines configuration settings for data delivery using a provider that follows the G4DataProviderModel schema.",
+				"It specifies the provider type, data source, repository details, and processing flags.",
+				"Including authentication credentials and capability settings ensures secure and tailored data collection.",
+				"The forEntity flag controls whether data is processed as a single entity."
+			],
+			"mandatory": false,
+			"name": "DataCollector",
+			"type": "Any"
+		},
+		{
+			"description": [
+				"Specifies a unique static identifier for a rule within the current automation context.",
+				"Identifiers enable reliable referencing and management of rules.",
+				"Using a consistent key prevents naming conflicts and simplifies rule tracking."
+			],
+			"mandatory": false,
+			"name": "Key",
+			"type": "String"
+		},
+		{
+			"description": [
+				"Specifies the method used to locate an element or source for extraction, such as XPath, CSS selector, or element ID.",
+				"Accurate locator strategies ensure the automation targets the correct content on the page.",
+				"Selecting the appropriate locator improves reliability and maintainability of extraction tasks."
+			],
+			"mandatory": false,
+			"name": "Locator",
+			"type": "String"
+		},
+		{
+			"description": [
+				"Defines the HTML element or selector to which the content rule will be applied.",
+				"Accurate targeting ensures the rule only affects the intended part of the page.",
+				"Choosing precise selectors reduces errors and improves the reliability of content extraction."
+			],
+			"mandatory": true,
+			"name": "OnElement",
+			"type": "String"
+		},
+		{
+			"description": [
+				"Rules defines a list of content rule objects that will be executed in sequence.",
+				"Each rule extracts a specific field and maps it into the output schema.",
+				"Use this list to specify all extraction steps needed for structured data."
+			],
+			"mandatory": false,
+			"name": "Rules",
+			"type": "Array"
+		}
+	],
+	"protocol": {
+		"apiDocumentation": "None",
+		"w3c": "None"
+	},
+	"summary": [
+		"The ExportData plugin applies a named content rule to extract data from a web page.",
+		"It uses a G4DataProviderModel to deliver the extracted data to files, databases, or other targets.",
+		"Users can narrow the extraction by setting the scope to BodyHtml, specific elements, or the full page source.",
+		"Optional locator and onElement parameters let you focus on individual elements and keep extraction rules and delivery settings separate for easier maintenance."
+	]
+};
 
 class G4Client {
 	/**
@@ -392,6 +539,8 @@ class G4Client {
 		// Define the list of keys to include when updating step properties
 		const includeKeys = [
 			"argument",
+			"dataCollector",
+			"key",
 			"locator",
 			"locatorType",
 			"onAttribute",
@@ -574,6 +723,12 @@ class G4Client {
 			// Parse the JSON data from the response.
 			const data = await response.json();
 
+            // Attach the ExportData manifest to the cache data under the "Action" key.
+			data["Action"]["ExportData"] = {
+				document: "# ExportData",
+				manifest: _exportDataManifest
+			}
+
 			// Return the parsed cache data.
 			return data;
 		} catch (error) {
@@ -683,6 +838,9 @@ class G4Client {
 					cache[manifest.key] = manifest;
 					return cache;
 				}, {});
+
+			// Push the ExportData manifest into the manifests array.
+			this.manifests["ExportData"] = _exportDataManifest;
 
 			// Return the cached manifests.
 			return this.manifests;

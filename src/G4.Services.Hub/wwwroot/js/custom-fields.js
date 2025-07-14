@@ -3156,9 +3156,11 @@ class CustomFields {
          * - Invokes the `setCallback` function with the new value whenever the selection changes.
          */
         if (typeof setCallback === 'function') {
-            fieldContainer.addEventListener('input', () => {
-                textareaElement.title = textareaElement.value;
-                callback(textareaElement);
+            ['input', 'paste', 'cut', 'drop'].forEach(e => {
+                fieldContainer.addEventListener(e, () => {
+                    textareaElement.title = textareaElement.value;
+                    callback(textareaElement);
+                });
             });
         }
 

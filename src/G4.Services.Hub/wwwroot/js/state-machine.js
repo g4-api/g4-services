@@ -197,87 +197,87 @@ class StateMachineSteps {
 		return container;
 	}
 
-	/**
-	 * Creates a new ExportData container for automation workflows.
-	 * This container defines how data should be extracted and exported from web elements.
-	 * 
-	 * @param {string} name - Display name for the container
-	 * @param {Object} properties - Initial properties for the container
-	 * @param {Object} parameters - Initial parameters for the container
-	 * @param {Array} steps - Child steps to be executed in sequence
-	 * @returns {Object} Configured ExportData container object
-	 */
-	static newExportDataContainer(name, properties, parameters, steps) {
-		// Initialize with empty description (can be customized later)
-		const exportDataDescription = `Defines a data extraction workflow that collects structured information from web elements.
-		Executes nested rules sequentially against each root element identified by the locator.`;
+	///**
+	// * Creates a new ExportData container for automation workflows.
+	// * This container defines how data should be extracted and exported from web elements.
+	// * 
+	// * @param {string} name - Display name for the container
+	// * @param {Object} properties - Initial properties for the container
+	// * @param {Object} parameters - Initial parameters for the container
+	// * @param {Array} steps - Child steps to be executed in sequence
+	// * @returns {Object} Configured ExportData container object
+	// */
+	//static newExportDataContainer(name, properties, parameters, steps) {
+	//	// Initialize with empty description (can be customized later)
+	//	const exportDataDescription = `Defines a data extraction workflow that collects structured information from web elements.
+	//	Executes nested rules sequentially against each root element identified by the locator.`;
 
-		// Create base container using framework method
-		let container = StateMachineSteps.newG4Container(
-			name,
-			'export',
-			exportDataDescription,
-			properties,
-			parameters,
-			steps
-		);
+	//	// Create base container using framework method
+	//	let container = StateMachineSteps.newG4Container(
+	//		name,
+	//		'export',
+	//		exportDataDescription,
+	//		properties,
+	//		parameters,
+	//		steps
+	//	);
 
-		// Configure plugin metadata
-		container["pluginType"] = 'Container';
-		container["pluginName"] = 'ExportData';
+	//	// Configure plugin metadata
+	//	container["pluginType"] = 'Container';
+	//	container["pluginName"] = 'ExportData';
 
-		// Define container-specific properties
-		container.properties.key = {
-			description: "Unique static identifier for the rule within the current automation context.",
-			name: "Key",
-			required: false,
-			type: "String"
-		};
+	//	// Define container-specific properties
+	//	container.properties.key = {
+	//		description: "Unique static identifier for the rule within the current automation context.",
+	//		name: "Key",
+	//		required: false,
+	//		type: "String"
+	//	};
 
-		container.properties.dataCollector = {
-			description: "The data collector to use for the export.",
-			name: "DataCollector",
-			required: false,
-			value: {}
-		};
+	//	container.properties.dataCollector = {
+	//		description: "The data collector to use for the export.",
+	//		name: "DataCollector",
+	//		required: false,
+	//		value: {}
+	//	};
 
-		container.properties.locator = {
-			description: "Location strategy for identifying root elements. Determines how OnElement values are interpreted.",
-			name: "Locator",
-			required: false,
-			type: "String",
-			value: "Xpath"
-		};
+	//	container.properties.locator = {
+	//		description: "Location strategy for identifying root elements. Determines how OnElement values are interpreted.",
+	//		name: "Locator",
+	//		required: false,
+	//		type: "String",
+	//		value: "Xpath"
+	//	};
 
-		container.properties.onElement = {
-			description: "Sets root element(s) for extraction iteration. Each matching element becomes context for nested rules.",
-			name: "OnElement",
-			required: true,
-			type: "String|Expression",
-			value: ""
-		};
+	//	container.properties.onElement = {
+	//		description: "Sets root element(s) for extraction iteration. Each matching element becomes context for nested rules.",
+	//		name: "OnElement",
+	//		required: true,
+	//		type: "String|Expression",
+	//		value: ""
+	//	};
 
-		// Define execution scope parameter
-		container.parameters.scope = {
-			description: "Defines execution context for extraction rules and data processing behavior.",
-			name: "Scope",
-			required: false,
-			type: "String",
-			value: "Elements",
-			optionsList: _extractionScopes.itemSource
-		};
+	//	// Define execution scope parameter
+	//	container.parameters.scope = {
+	//		description: "Defines execution context for extraction rules and data processing behavior.",
+	//		name: "Scope",
+	//		required: false,
+	//		type: "String",
+	//		value: "Elements",
+	//		optionsList: _extractionScopes.itemSource
+	//	};
 
-        // Define the context for the ExportData container for integration with the G4 framework
-		container.context = {
-			"$type": "Extraction",
-			"componentType": "export",
-			"iconProvider": "assert",
-			"model": "ExtractionRuleModel"
-		}
+ //       // Define the context for the ExportData container for integration with the G4 framework
+	//	container.context = {
+	//		"$type": "Extraction",
+	//		"componentType": "export",
+	//		"iconProvider": "assert",
+	//		"model": "ExtractionRuleModel"
+	//	}
 
-        // Return the configured ExportData container object
-		return container;
-	}
+ //       // Return the configured ExportData container object
+	//	return container;
+	//}
 
 	/**
 	 * Creates a new G4 container object for use in a workflow.

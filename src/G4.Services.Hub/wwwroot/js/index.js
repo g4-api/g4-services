@@ -106,10 +106,9 @@ async function initializeDesigner() {
 	// Create default container types for "Stage" and "Job".
 	const stage = StateMachineSteps.newG4Stage('Stage', {}, {}, []);
 	const job = StateMachineSteps.newG4Job('Job', {}, {}, []);
-	const exportDataContainer = StateMachineSteps.newExportDataContainer('Export Data', {}, {}, []);
 
 	// Add the containers to the "Containers" group.
-	containersGroup.steps.push(...[stage, job, exportDataContainer]);
+	containersGroup.steps.push(...[stage, job]);
 
 	// If "Containers" group doesn't exist, add it to the groups array.
 	if (!containers) {
@@ -743,6 +742,11 @@ function newImportModal() {
 		 * rules or branches.
 		 */
 		const newStep = (rule) => {
+            // Normalize extraction rules to use 'ExportData' as the plugin name if not specified.
+			if (rule["$type"].toUpperCase() === "EXTRACTION" && !rule.pluginName) {
+				rule.pluginName = 'ExportData'
+			}
+
 			// Retrieve the manifest for the rule's plugin from the cache.
 			const manifest = getManifest(_cache, rule.pluginName);
 
@@ -1416,6 +1420,11 @@ async function startDefinition() {
  * @returns {HTMLElement} The fully populated step editor container element.
  */
 function stepEditorProvider(step, editorContext) {
+	const confirmEmpty = (obj) => Object
+		.values(obj)
+		.every(value => value == null || (Array.isArray(value) && val.length === 0) || !Array.isArray(value)
+		);
+
 	/**
 	 * Initializes and appends the appropriate input field to the container based on the parameter type.
 	 *
@@ -1702,7 +1711,7 @@ function stepEditorProvider(step, editorContext) {
 				const isSequenceEmpty = Array.isArray(step.sequence) && step.sequence.length === 0;
 
 				// Prevent disabling container mode if there are existing child steps
-				if (!isSequenceEmpty && !step.context.convertToContainer) {
+				if (!isSequenceEmpty) {
 					step.context.convertToContainer = true;
 					editorContext.notifyPropertiesChanged();
 					return;
@@ -1722,6 +1731,78 @@ function stepEditorProvider(step, editorContext) {
 				step.componentType = 'container';
 				step.sequence = [];
 
+				editorContext.notifyNameChanged();
+			}
+		);
+	};
+
+	/**
+	 * Initializes a switchable editor provider on a given container for a workflow step.
+	 * This adds a toggle that lets the step switch between “Task Mode” (single action)
+	 * and “Branching Mode” (multiple Actions & Transformers).
+	 */
+	const initializeSwitchableEditorProvider = (container, step) => {
+		// Ensure we have a `context` object on the step to store the toggle flag
+		step.context = step.context || {};
+
+		// Create a switch field UI for toggling between Task and Branching modes
+		CustomFields.newSwitchField(
+			{
+				// Host element for the switch
+				container: container,
+				// Load saved state or default off
+				initialValue: step.context.convertToSwitch || false,
+				// Visible label next to the toggle
+				label: 'Convert to Switch',
+				// Tooltip guiding the user on what enabling/disabling will do
+				title:
+					'Activate Branching Mode:\n' +
+					'- Allows adding Actions and Transformers to this step.\n' +
+					'- To revert to Task Mode, remove all existing branches first.',
+				step: step,
+				// Pass existing branch names, if any
+				branches: step.branches || []
+			},
+			(value) => {
+				// Normalize the incoming value (“true”/“false” or boolean) into a boolean flag
+				step.context.convertToSwitch = String(value).toUpperCase() === 'TRUE';
+
+				// Check whether any branch holds child steps (non-null, non-empty arrays)
+				const isSequenceEmpty = Object
+					.values(step.branches || {})
+					.every(i => i == null || (Array.isArray(i) && i.length === 0));
+
+				// If disabling branching but branches still exist, revert the toggle back on
+				if (!isSequenceEmpty) {
+					step.context.convertToSwitch = true;
+
+					// Refresh the switch UI
+					editorContext.notifyPropertiesChanged();
+					return;
+				}
+
+				// If toggle is off (Task Mode) and there are no branches, convert to a standalone task
+				if (!step.context.convertToSwitch && isSequenceEmpty) {
+					step.componentType = 'task';
+
+					// Remove any leftover branches data
+					delete step.branches;
+
+					// Update step’s displayed name/icon
+					editorContext.notifyNameChanged();
+					return;
+				}
+
+				// Otherwise (enabling branching), set up Branching Mode:
+				step.componentType = 'switch';
+				step.branches = {};
+
+				// For each branch name stored in context, create an empty child-step list
+				(step.context.branches || []).forEach(branchName => {
+					step.branches[branchName] = [];
+				});
+
+				// Refresh the step display
 				editorContext.notifyNameChanged();
 			}
 		);
@@ -1910,7 +1991,13 @@ function stepEditorProvider(step, editorContext) {
 	}
 
     // TODO: When available, change to assert only if step context allows "Convert to Container" capability (context.isContainerable).
-	if (step.pluginType === "Content" || step.context.isContainerable) {
+	if (step.pluginType === "Content" || step.context.switchable) {
+		step.context.branches = step.context.branches || ["Actions", "Transformers"]
+		initializeSwitchableEditorProvider(stepEditorContainer, step);
+	}
+
+	// TODO: When available, change to assert only if step context allows "Convert to Container" capability (context.isContainerable).
+	if (step.context.containerable) {
 		initializeContainerableEditorProvider(stepEditorContainer, step);
 	}
 

@@ -38,6 +38,8 @@ _connection
 
 	// Fetch manifests and manifest groups from the G4Client.
 	_manifests = await _client.getManifests();
+
+    // Collect all manifests groups from the G4Client.
 	_manifestsGroups = await _client.getGroups();
 
 	// Store the cache in a global variable for later use.
