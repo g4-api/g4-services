@@ -386,9 +386,12 @@ class G4Client {
 			return type;
 		}
 
+        // Get the rule type from the step's context.
+        const ruleType = getRuleType(step);
+
 		// Construct the base rule object with type, pluginName, and a reference ID.
 		const rule = {
-			"$type": getRuleType(step),
+			"$type": ruleType,
 			"pluginName": step.pluginName,
 			"reference": {
 				"id": step.id
@@ -428,23 +431,51 @@ class G4Client {
 			return rule;
 		}
 
+        // Handle the CONTENTRULEMODEL case, which has a specific structure for switches.
+		if (model === "CONTENTRULEMODEL" && step.componentType.toUpperCase() === "SWITCH") {
+			step.sequence = step.branches["Actions"];
+			step.transformers = step.branches["Transformers"];
+			
+		}
+
+        // Check if the step has a sequence of rules or transformers.
+		const isRules = step.sequence && step.sequence.length > 0;
+        const isTransformers = step.transformers && step.transformers.length > 0;
+
 		// If there's no sequence in the step, we can return the rule here.
-		if (!step.sequence || step.sequence.length === 0) {
+		if (!isRules && !isTransformers) {
 			return rule;
 		}
 
-		// Otherwise, process each step in the sequence recursively (assuming 'this.convert' is defined elsewhere).
-		const rules = []
-		for (const nestedStep of step.sequence) {
-			// Convert the nested step to a rule object.
-			const childRule = this.convertToRule(nestedStep);
+        // Convert the sequence of steps into rules if 'rules' is present.
+		if (isRules) {
+			const rules = []
+			for (const nestedStep of step.sequence) {
+				// Convert the nested step to a rule object.
+				const childRule = this.convertToRule(nestedStep);
 
-			// If the child rule is not null, add it to the rules array.
-			rules.push(childRule);
+				// If the child rule is not null, add it to the rules array.
+				rules.push(childRule);
+			}
+
+			// Assign the array of child rules to our main rule under 'rules'.
+			rule.rules = rules;
 		}
 
-		// Assign the array of child rules to our main rule under 'rules'.
-		rule.rules = rules;
+        // Convert the transformers if 'transformers' is present.
+		if (isTransformers) {
+			const transformers = [];
+			for (const transformer of step.transformers) {
+                // Convert the transformer to a rule object.
+				const childTransformer = this.convertToRule(transformer);
+
+				// If the child transformer is not null, add it to the transformers array.
+				transformers.push(childTransformer);
+			}
+
+            // Assign the array of transformers to our main rule under 'transformers'.
+            rule.transformers = transformers;
+		}
 
 		// Finally, return the fully-constructed rule object.
 		return rule;
@@ -545,7 +576,7 @@ class G4Client {
 			"locatorType",
 			"onAttribute",
 			"onElement",
-			"regularExpression",
+			"regularExpression"
 		];
 
 		// Ensure the step has a parameters object

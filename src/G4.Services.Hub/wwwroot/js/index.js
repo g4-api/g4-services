@@ -761,44 +761,104 @@ function newImportModal() {
 			// Ensure that the rule has 'rules' and 'branches' properties.
 			rule.rules = rule.rules || [];
 			rule.branches = rule.branches || {};
+            rule.transformers = rule.transformers || [];
 
 			// Determine if the rule contains nested rules or branch entries.
 			const branchesKeys = Object.keys(rule.branches);
 			const isRules = rule.rules.length > 0;
+            const isTransformers = rule.transformers.length > 0;
 			const isBranches = branchesKeys.length > 0;
 
 			// Synchronize the current step with the rule configuration.
 			_client.syncStep(step, rule);
 
 			// If no nested rules or branches exist, return the current step.
-			if (!isRules && !isBranches) {
+			if (!isRules && !isBranches && !isTransformers) {
 				return step;
 			}
 
-			// Process nested rules recursively if they exist.
+			// If the rule contains nested child rules, process them recursively
 			if (isRules) {
+				// Initialize an empty array to hold the sequence of sub-steps
 				step.sequence = [];
+
+				// Iterate over each child rule in the "rules" array
 				for (const subRule of rule.rules) {
+					// Create a new step object based on the sub-rule definition
 					const subStep = newStep(subRule);
+
+					// Synchronize the new sub-step with its original rule data
 					_client.syncStep(subStep, subRule);
+
+					// Add the synced sub-step to the sequence array
 					step.sequence.push(subStep);
 				}
 			}
 
-			// Process branch rules if they exist.
+			// If there are transformer rules defined, process them recursively
+			if (isTransformers) {
+				// Initialize an empty array to hold the transformer sub-steps
+				step.transformers = [];
+
+				// Iterate over each transformer definition on the rule
+				for (const transformer of rule.transformers) {
+					// Create a new step object from this transformer definition
+					const subStep = newStep(transformer);
+
+					// Sync the new sub-step with its source transformer data
+					_client.syncStep(subStep, transformer);
+
+					// Add the synced sub-step into the step's transformers array
+					step.transformers.push(subStep);
+				}
+			}
+
+			// Process branch rules if any branches are defined on this rule
 			if (isBranches) {
+				// Iterate over each branch key (e.g., "Actions", "Transformers")
 				for (const branchKey of branchesKeys) {
-					// Initialize the branch array if not already present.
-					for (const subRule of rule.branches[branchKey]) {
+					// Safely retrieve the array of sub-rules for this branch
+					const subRules = rule.branches[branchKey];
+
+					// For each sub-rule in the current branch
+					for (const subRule of subRules) {
+						// Create a new step object from the sub-rule definition
 						const subStep = newStep(subRule);
+
+						// Ensure the step.branches array exists for this branch
 						step.branches[branchKey] = step.branches[branchKey] || [];
+
+						// Synchronize the newly created step with its source rule data
 						_client.syncStep(subStep, subRule);
+
+						// Add the synchronized sub-step into the branch array
 						step.branches[branchKey].push(subStep);
 					}
 				}
 			}
 
-			// Return the constructed step with nested rules or branches.
+			// Check if the current step is a ContentRule (actions or transformers)
+			const isContentRule = step.pluginType.toUpperCase() === "CONTENT";
+
+			if (isContentRule && (isRules || isTransformers)) {
+				// Change the component type to a switcher when rules/transformers apply
+				step.componentType = 'switch';
+
+				// Initialize an empty branches object to hold sub-flows
+				step.branches = {};
+
+				// Assign the existing sequence of actions into an "Actions" branch
+				step.branches["Actions"] = step.sequence;
+
+				// Assign any transformers into a "Transformers" branch
+				step.branches["Transformers"] = step.transformers;
+
+				// Remove the old flat sequence and transformers properties
+				delete step.sequence;
+				delete step.transformers;
+			}
+
+			// Return the modified step object, now with nested branches if applicable
 			return step;
 		};
 
