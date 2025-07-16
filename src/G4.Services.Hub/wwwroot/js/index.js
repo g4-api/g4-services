@@ -848,10 +848,10 @@ function newImportModal() {
 				step.branches = {};
 
 				// Assign the existing sequence of actions into an "Actions" branch
-				step.branches["Actions"] = step.sequence;
+				step.branches["Actions"] = step.sequence || [];
 
 				// Assign any transformers into a "Transformers" branch
-				step.branches["Transformers"] = step.transformers;
+				step.branches["Transformers"] = step.transformers || [];
 
 				// Remove the old flat sequence and transformers properties
 				delete step.sequence;
