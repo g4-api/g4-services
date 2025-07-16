@@ -432,15 +432,17 @@ class G4Client {
 		}
 
         // Handle the CONTENTRULEMODEL case, which has a specific structure for switches.
+		let stepSequence = step.sequence || [];
+        let stepTransformers = [];
+
 		if (model === "CONTENTRULEMODEL" && step.componentType.toUpperCase() === "SWITCH") {
-			step.sequence = step.branches["Actions"];
-			step.transformers = step.branches["Transformers"];
-			
+			stepSequence = step.branches["Actions"];
+			stepTransformers = step.branches["Transformers"];
 		}
 
         // Check if the step has a sequence of rules or transformers.
-		const isRules = step.sequence && step.sequence.length > 0;
-        const isTransformers = step.transformers && step.transformers.length > 0;
+		const isRules = stepSequence && stepSequence.length > 0;
+		const isTransformers = stepTransformers && stepTransformers.length > 0;
 
 		// If there's no sequence in the step, we can return the rule here.
 		if (!isRules && !isTransformers) {
@@ -450,7 +452,7 @@ class G4Client {
         // Convert the sequence of steps into rules if 'rules' is present.
 		if (isRules) {
 			const rules = []
-			for (const nestedStep of step.sequence) {
+			for (const nestedStep of stepSequence) {
 				// Convert the nested step to a rule object.
 				const childRule = this.convertToRule(nestedStep);
 
@@ -465,7 +467,7 @@ class G4Client {
         // Convert the transformers if 'transformers' is present.
 		if (isTransformers) {
 			const transformers = [];
-			for (const transformer of step.transformers) {
+			for (const transformer of stepTransformers) {
                 // Convert the transformer to a rule object.
 				const childTransformer = this.convertToRule(transformer);
 

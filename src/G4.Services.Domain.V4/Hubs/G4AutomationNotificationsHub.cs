@@ -26,7 +26,7 @@ namespace G4.Services.Domain.V4.Hubs
         // Asynchronously handles an automation request by preparing environment variables,
         // invoking the automation session using the provided model, and sending the result
         [HubMethodName("StartAutomation")]
-        public Task Post([FromBody] G4AutomationModel automation)
+        public Task StartAutomation([FromBody] G4AutomationModel automation)
         {
             // Obtain or create the environment settings from the automation model.
             // If automation.Settings.EnvironmentsSettings is null, create a new EnvironmentsSettingsModel.

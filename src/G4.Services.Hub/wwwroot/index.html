@@ -205,15 +205,12 @@
 					svgClassList: ['sqd-control-bar-button-icon'],
 					title: 'Stop Definition',
 					viewBox: '0 0 100 100',
-					onClick: () => {
-						console.log('Stop Definition');
-					}
+					// Event handler for stopping the definition process
+					onClick: stopDefinition
 				});
 
 				/**
 				 * Creates and configures the Start Definition button.
-				 *
-				 * Assumes that the `startDefinition` function is defined elsewhere in the script.
 				 */
 				CustomG4Fields.newControlBarButton({
 					classList: ['sqd-control-bar-button'],

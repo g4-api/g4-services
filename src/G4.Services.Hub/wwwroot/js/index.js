@@ -1436,7 +1436,6 @@ async function startDefinition() {
 	// Check if the designer is in read-only mode - indicating the workflow is running
 	// If it is, exit the function early
 	if (_designer.isReadonly()) {
-
 		return;
 	}
 
@@ -1464,6 +1463,21 @@ async function startDefinition() {
 	// Start the workflow execution using the state machine instance
 	// created above and wait for it to complete
 	await _stateMachine.start();
+}
+
+/**
+ * Asynchronously stops the current state machine execution.
+ *
+ * Sends an interrupt signal to the state machine, causing it to
+ * halt its current workflow gracefully.
+ *
+ * @async
+ * @function stopDefinition
+ * @returns {Promise<void>} Resolves once the interrupt has been issued.
+ */
+async function stopDefinition() {
+	// Send an interrupt to the state machine to stop its execution flow
+	_stateMachine.interrupt();
 }
 
 /**

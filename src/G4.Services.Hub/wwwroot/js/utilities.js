@@ -249,6 +249,23 @@
                     return found;
                 }
             }
+
+            const branches = step.branches || {};
+            for (const branch in branches) {
+                // If this step has its own child sequence, recurse into it
+                if (Array.isArray(step.branches[branch])) {
+                    // pass current step as the new parent
+                    const found = Utilities.findParentContainer(
+                        target,
+                        step.branches[branch],
+                        step);
+
+                    // If recursion found the target, bubble it up immediately
+                    if (found) {
+                        return found;
+                    }
+                }
+            }
         }
 
         // If we exhaust the array without finding the target, return null
