@@ -155,27 +155,27 @@
         /**
          * Validates that a required property exists and has a value, logging a descriptive error if not.
          */
-        const newPropertyError = (step, propertyName) => {
-            const propertyData = step.properties[propertyName];
+        const newPropertyError = (properties, key, propertyType) => {
+            const propertyData = properties[key];
             const isRequired = Boolean(propertyData.required);
             const hasValue = propertyData.value != null && propertyData.value !== "";
 
             // Step is valid — clear any existing error and return success
             if (!isRequired || hasValue) {
-                delete step.context.errors[propertyName];
+                delete step.context.errors[key];
                 return null;
             }
 
             // Step is invalid — set a descriptive, user-friendly error
-            const friendlyName = Utilities.convertToPascalCase(propertyName);
+            const friendlyName = Utilities.convertToPascalCase(key);
 
             // Return an error object with a title and description
             return {
-                key: propertyName,
+                key: key,
                 value: {
-                    title: `Missing Required Property: ${Utilities.convertPascalToSpaceCase(friendlyName)}`,
-                    description: `The "${friendlyName}" property is required but is currently missing. To fix this, ` +
-                        `add the "${friendlyName}" property to your step configuration with a valid value.`,
+                    title: `Missing Required ${propertyType}: ${Utilities.convertPascalToSpaceCase(friendlyName)}`,
+                    description: `The "${friendlyName}" ${propertyType.toLowerCase()} is required but is currently missing. To fix this, ` +
+                        `add the "${friendlyName}" ${propertyType.toLowerCase() } to your step configuration with a valid value.`,
                     level: "ERR"
                 }
             };
@@ -195,10 +195,36 @@
 
         // Initialize an object to hold any property errors found during validation.
         const propertyErrors = {};
+        const stepProperties = step.properties || {};
+        const stepParameters = step.parameters || {};
 
         // Create an object to hold any errors found during validation.
-        for (const property in step.properties) {
-            const propertyError = newPropertyError(step, property);
+        for (const key in stepProperties) {
+            // Skip validation for certain keys that should not be validated.
+            const isArgument = key.toUpperCase() === "ARGUMENT";
+            const isParameters = Object.keys(stepParameters).length > 0;
+            const isRules = key.toUpperCase() === "RULES";
+
+            if ((isArgument && isParameters) || isRules) {
+                continue;
+            }
+
+            // Validate each property using the newPropertyError function.
+            const propertyError = newPropertyError(stepProperties, key, "Property");
+
+            // If no error was found for this property, continue to the next one.
+            if (!propertyError) {
+                continue;
+            }
+
+            // Add the error to the propertyErrors object and the step context errors.
+            propertyErrors[propertyError.key] = propertyError.value;
+            step.context.errors[propertyError.key] = propertyError.value;
+        }
+
+        // Create an object to hold any errors found during validation.
+        for (const key in stepParameters) {
+            const propertyError = newPropertyError(stepParameters, key, "Parameter");
 
             // If no error was found for this property, continue to the next one.
             if (!propertyError) {

@@ -1494,11 +1494,6 @@ async function stopDefinition() {
  * @returns {HTMLElement} The fully populated step editor container element.
  */
 function stepEditorProvider(step, editorContext) {
-	const confirmEmpty = (obj) => Object
-		.values(obj)
-		.every(value => value == null || (Array.isArray(value) && val.length === 0) || !Array.isArray(value)
-		);
-
 	/**
 	 * Initializes and appends the appropriate input field to the container based on the parameter type.
 	 *
