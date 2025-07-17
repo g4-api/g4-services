@@ -739,28 +739,33 @@ class CustomG4Fields {
 
         // Create the SVG element for the button icon.
         const svgElement = document.createElement("svg");
+
+        svgElement.innerHTML = options.svgElementHtml ? options.svgElementHtml : svgElement.innerHTML;
         svgElement.classList.add(...options.svgClassList);
-        svgElement.setAttribute('viewBox', options.viewBox);
 
-        // Apply any additional attributes to the SVG element if provided.
-        options.svgAttributes = options.svgAttributes || {};
-        for (const attribute of Object.keys(options.svgAttributes)) {
-            svgElement.setAttribute(attribute, options.svgAttributes[attribute]);
+        if (!options.svgElementHtml) {
+            svgElement.setAttribute('viewBox', options.viewBox);
+
+            // Apply any additional attributes to the SVG element if provided.
+            options.svgAttributes = options.svgAttributes || {};
+            for (const attribute of Object.keys(options.svgAttributes)) {
+                svgElement.setAttribute(attribute, options.svgAttributes[attribute]);
+            }
+
+            // Create the path element within the SVG.
+            const pathElement = document.createElement("path");
+            pathElement.classList.add(...options.pathClassList);
+            pathElement.setAttribute('d', options.icon);
+
+            // Apply any additional attributes to the path element if provided.
+            options.pathAttributes = options.pathAttributes || {};
+            for (const attribute of Object.keys(options.pathAttributes)) {
+                pathElement.setAttribute(attribute, options.pathAttributes[attribute]);
+            }
+
+            // Append the path element to the SVG.
+            svgElement.appendChild(pathElement);
         }
-
-        // Create the path element within the SVG.
-        const pathElement = document.createElement("path");
-        pathElement.classList.add(...options.pathClassList);
-        pathElement.setAttribute('d', options.icon);
-
-        // Apply any additional attributes to the path element if provided.
-        options.pathAttributes = options.pathAttributes || {};
-        for (const attribute of Object.keys(options.pathAttributes)) {
-            pathElement.setAttribute(attribute, options.pathAttributes[attribute]);
-        }
-
-        // Append the path element to the SVG.
-        svgElement.appendChild(pathElement);
 
         // Optional: Add an onclick handler to the SVG for debugging purposes.
         // This can be removed or modified as needed.
