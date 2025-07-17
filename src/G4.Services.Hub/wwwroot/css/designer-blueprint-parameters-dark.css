@@ -86,6 +86,12 @@
 	--smart-editor-details-border: 1px solid var(--base-font-color);
 	--smart-editor-details-color: var(--base-font-color);
 	--smart-editor-details-hover-color: var(--red);
+	--smart-editor-error-background: #FDECEA;
+	--smart-editor-error-border: 1px solid #E74C3C;
+	--smart-editor-error-description-color: var(--black);
+	--smart-editor-error-description-font: var(--smart-editor-font);
+	--smart-editor-error-title-color: #C0392B;
+	--smart-editor-error-title-font: var(--smart-editor-label-font);
 	--smart-editor-group-background: transparent;
 	--smart-editor-group-color: var(--base-font-color);
 	--smart-editor-group-font: 400 1.2em/1.2em 'Roboto', sans-serif;
@@ -128,7 +134,7 @@
 	--toolbox-filter-focus-background: var(--secondary-color);
 	--toolbox-filter-focus-border-color: var(--red);
 	--toolbox-filter-focus-color: var(--black);
-	--toolbox-filter-hover-border-color: var(--red);
+	--toolbox-filter-hover-border-color: var(--primary-color);
 	--toolbox-group-title-color: var(--base-font-color);
 	--toolbox-group-title-background: var(--secondary-color);
 	--toolbox-group-title-font: 700 1.3em/1.3em 'Roboto', sans-serif;

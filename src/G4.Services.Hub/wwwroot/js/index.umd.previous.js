@@ -203,25 +203,32 @@
 	}
 
 	class ControlBarApi {
-		static create(state, historyController, stateModifier) {
-			const api = new ControlBarApi(state, historyController, stateModifier);
+		static create(state, historyController, stateModifier, viewportApi) {
+			const api = new ControlBarApi(state, historyController, stateModifier, viewportApi);
 			race(0, state.onIsReadonlyChanged, state.onSelectedStepIdChanged, state.onIsDragDisabledChanged, api.isUndoRedoSupported() ? state.onDefinitionChanged : undefined).subscribe(api.onStateChanged.forward);
 			return api;
 		}
-		constructor(state, historyController, stateModifier) {
+		constructor(state, historyController, stateModifier, viewportApi) {
 			this.state = state;
 			this.historyController = historyController;
 			this.stateModifier = stateModifier;
+			this.viewportApi = viewportApi;
 			this.onStateChanged = new SimpleEvent();
+		}
+		resetViewport() {
+			this.viewportApi.resetViewport();
+		}
+		zoomIn() {
+			this.viewportApi.zoom(true);
+		}
+		zoomOut() {
+			this.viewportApi.zoom(false);
 		}
 		isDragDisabled() {
 			return this.state.isDragDisabled;
 		}
-		setIsDragDisabled(isDragDisabled) {
-			this.state.setIsDragDisabled(isDragDisabled);
-		}
 		toggleIsDragDisabled() {
-			this.setIsDragDisabled(!this.isDragDisabled());
+			this.state.toggleIsDragDisabled();
 		}
 		isUndoRedoSupported() {
 			return !!this.historyController;
@@ -399,19 +406,16 @@
 
 	class DragStepView {
 		static create(step, theme, componentContext) {
-			var _a;
-			const body = (_a = componentContext.shadowRoot) !== null && _a !== void 0 ? _a : document.body;
 			const layer = Dom.element('div', {
 				class: `sqd-drag sqd-theme-${theme}`
 			});
-			body.appendChild(layer);
+			document.body.appendChild(layer);
 			const component = componentContext.services.draggedComponent.create(layer, step, componentContext);
-			return new DragStepView(component, layer, body);
+			return new DragStepView(component, layer);
 		}
-		constructor(component, layer, body) {
+		constructor(component, layer) {
 			this.component = component;
 			this.layer = layer;
-			this.body = body;
 		}
 		setPosition(position) {
 			this.layer.style.top = position.y + 'px';
@@ -419,23 +423,21 @@
 		}
 		remove() {
 			this.component.destroy();
-			this.body.removeChild(this.layer);
+			document.body.removeChild(this.layer);
 		}
 	}
 
 	class PlaceholderFinder {
 		static create(placeholders, state) {
 			const checker = new PlaceholderFinder(placeholders, state);
-			state.onViewportChanged.subscribe(checker.clearCache);
-			window.addEventListener('scroll', checker.clearCache, false);
+			state.onViewportChanged.subscribe(checker.clearCacheHandler);
+			window.addEventListener('scroll', checker.clearCacheHandler, false);
 			return checker;
 		}
 		constructor(placeholders, state) {
 			this.placeholders = placeholders;
 			this.state = state;
-			this.clearCache = () => {
-				this.cache = undefined;
-			};
+			this.clearCacheHandler = () => this.clearCache();
 		}
 		find(vLt, vWidth, vHeight) {
 			var _a;
@@ -443,16 +445,13 @@
 				const scroll = new Vector(window.scrollX, window.scrollY);
 				this.cache = this.placeholders.map(placeholder => {
 					const rect = placeholder.getClientRect();
-					const lt = new Vector(rect.x, rect.y).add(scroll);
-					const br = new Vector(rect.x + rect.width, rect.y + rect.height).add(scroll);
 					return {
 						placeholder,
-						lt,
-						br,
-						diagSq: lt.x * lt.x + lt.y * lt.y
+						lt: new Vector(rect.x, rect.y).add(scroll),
+						br: new Vector(rect.x + rect.width, rect.y + rect.height).add(scroll)
 					};
 				});
-				this.cache.sort((a, b) => a.diagSq - b.diagSq);
+				this.cache.sort((a, b) => a.lt.y - b.lt.y);
 			}
 			const vR = vLt.x + vWidth;
 			const vB = vLt.y + vHeight;
@@ -461,8 +460,11 @@
 			})) === null || _a === void 0 ? void 0 : _a.placeholder;
 		}
 		destroy() {
-			this.state.onViewportChanged.unsubscribe(this.clearCache);
-			window.removeEventListener('scroll', this.clearCache, false);
+			this.state.onViewportChanged.unsubscribe(this.clearCacheHandler);
+			window.removeEventListener('scroll', this.clearCacheHandler, false);
+		}
+		clearCache() {
+			this.cache = undefined;
 		}
 	}
 
@@ -604,7 +606,7 @@
 		}
 		activateStep(step) {
 			const newStep = ObjectCloner.deepClone(step);
-			newStep.id = this.uidGenerator();
+			newStep.id = this.uidGenerator ? this.uidGenerator() : Uid.next();
 			return newStep;
 		}
 	}
@@ -619,9 +621,9 @@
 	}
 
 	class ToolboxDataProvider {
-		constructor(i18n, iconProvider, configuration) {
-			this.i18n = i18n;
+		constructor(iconProvider, i18n, configuration) {
 			this.iconProvider = iconProvider;
+			this.i18n = i18n;
 			this.configuration = configuration;
 			this.createItemData = (step) => {
 				StepTypeValidator.validate(step.type);
@@ -668,6 +670,1143 @@
 		}
 	}
 
+	class ViewportApi {
+		constructor(workspaceController, viewportController) {
+			this.workspaceController = workspaceController;
+			this.viewportController = viewportController;
+		}
+		resetViewport() {
+			this.viewportController.setDefault();
+		}
+		zoom(direction) {
+			this.viewportController.zoom(direction);
+		}
+		moveViewportToStep(stepId) {
+			const component = this.workspaceController.getComponentByStepId(stepId);
+			const canvasPosition = this.workspaceController.getCanvasPosition();
+			const clientPosition = component.view.getClientPosition();
+			const componentPosition = clientPosition.subtract(canvasPosition);
+			const componentSize = new Vector(component.view.width, component.view.height);
+			this.viewportController.focusOnComponent(componentPosition, componentSize);
+		}
+	}
+
+	class WorkspaceApi {
+		constructor(state, workspaceController) {
+			this.state = state;
+			this.workspaceController = workspaceController;
+		}
+		getCanvasPosition() {
+			return this.workspaceController.getCanvasPosition();
+		}
+		getCanvasSize() {
+			return this.workspaceController.getCanvasSize();
+		}
+		getRootComponentSize() {
+			return this.workspaceController.getRootComponentSize();
+		}
+		getViewport() {
+			return this.state.viewport;
+		}
+		setViewport(viewport) {
+			this.state.setViewport(viewport);
+		}
+		updateRootComponent() {
+			this.workspaceController.updateRootComponent();
+		}
+		updateBadges() {
+			this.workspaceController.updateBadges();
+		}
+		updateCanvasSize() {
+			this.workspaceController.updateCanvasSize();
+		}
+	}
+
+	class DesignerApi {
+		static create(context) {
+			const workspace = new WorkspaceApi(context.state, context.workspaceController);
+			const viewportController = context.services.viewportController.create(workspace);
+			const viewport = new ViewportApi(context.workspaceController, viewportController);
+			const toolboxDataProvider = new ToolboxDataProvider(context.componentContext.iconProvider, context.i18n, context.configuration.toolbox);
+			return new DesignerApi(ControlBarApi.create(context.state, context.historyController, context.stateModifier, viewport), new ToolboxApi(context.state, context, context.behaviorController, toolboxDataProvider, context.configuration.uidGenerator), new EditorApi(context.state, context.definitionWalker, context.stateModifier), workspace, viewport, new PathBarApi(context.state, context.definitionWalker), context.definitionWalker, context.i18n);
+		}
+		constructor(controlBar, toolbox, editor, workspace, viewport, pathBar, definitionWalker, i18n) {
+			this.controlBar = controlBar;
+			this.toolbox = toolbox;
+			this.editor = editor;
+			this.workspace = workspace;
+			this.viewport = viewport;
+			this.pathBar = pathBar;
+			this.definitionWalker = definitionWalker;
+			this.i18n = i18n;
+		}
+	}
+
+	class DefinitionValidator {
+		constructor(configuration, state) {
+			this.configuration = configuration;
+			this.state = state;
+		}
+		validateStep(step, parentSequence) {
+			var _a;
+			if ((_a = this.configuration) === null || _a === void 0 ? void 0 : _a.step) {
+				return this.configuration.step(step, parentSequence, this.state.definition);
+			}
+			return true;
+		}
+		validateRoot() {
+			var _a;
+			if ((_a = this.configuration) === null || _a === void 0 ? void 0 : _a.root) {
+				return this.configuration.root(this.state.definition);
+			}
+			return true;
+		}
+	}
+
+	class IconProvider {
+		constructor(configuration) {
+			this.configuration = configuration;
+		}
+		getIconUrl(step) {
+			if (this.configuration.iconUrlProvider) {
+				return this.configuration.iconUrlProvider(step.componentType, step.type);
+			}
+			return null;
+		}
+	}
+
+	const BADGE_GAP = 4;
+	class Badges {
+		static createForStep(stepContext, view, componentContext) {
+			const g = createG(view.g);
+			const badges = componentContext.services.badges.map(ext => ext.createForStep(g, view, stepContext, componentContext));
+			const position = new Vector(view.width, 0);
+			return new Badges(g, position, badges);
+		}
+		static createForRoot(parentElement, position, componentContext) {
+			const g = createG(parentElement);
+			const badges = componentContext.services.badges.map(ext => {
+				return ext.createForRoot ? ext.createForRoot(g, componentContext) : null;
+			});
+			return new Badges(g, position, badges);
+		}
+		constructor(g, position, badges) {
+			this.g = g;
+			this.position = position;
+			this.badges = badges;
+		}
+		update(result) {
+			const count = this.badges.length;
+			for (let i = 0; i < count; i++) {
+				const badge = this.badges[i];
+				if (badge) {
+					result[i] = badge.update(result[i]);
+				}
+			}
+			let offsetX = 0;
+			let maxHeight = 0;
+			let j = 0;
+			for (let i = 0; i < count; i++) {
+				const badge = this.badges[i];
+				if (badge && badge.view) {
+					offsetX += j === 0 ? badge.view.width / 2 : badge.view.width;
+					maxHeight = Math.max(maxHeight, badge.view.height);
+					Dom.translate(badge.view.g, -offsetX, 0);
+					offsetX += BADGE_GAP;
+					j++;
+				}
+			}
+			Dom.translate(this.g, this.position.x, this.position.y + -maxHeight / 2);
+		}
+		resolveClick(click) {
+			for (const badge of this.badges) {
+				const command = badge && badge.resolveClick(click);
+				if (command) {
+					return command;
+				}
+			}
+			return null;
+		}
+	}
+	function createG(parentElement) {
+		const g = Dom.svg('g', {
+			class: 'sqd-badges'
+		});
+		parentElement.appendChild(g);
+		return g;
+	}
+
+	exports.ClickCommandType = void 0;
+	(function (ClickCommandType) {
+		ClickCommandType[ClickCommandType["selectStep"] = 1] = "selectStep";
+		ClickCommandType[ClickCommandType["rerenderStep"] = 2] = "rerenderStep";
+		ClickCommandType[ClickCommandType["openFolder"] = 3] = "openFolder";
+		ClickCommandType[ClickCommandType["triggerCustomAction"] = 4] = "triggerCustomAction";
+	})(exports.ClickCommandType || (exports.ClickCommandType = {}));
+	exports.PlaceholderDirection = void 0;
+	(function (PlaceholderDirection) {
+		PlaceholderDirection[PlaceholderDirection["none"] = 0] = "none";
+		PlaceholderDirection[PlaceholderDirection["in"] = 1] = "in";
+		PlaceholderDirection[PlaceholderDirection["out"] = 2] = "out";
+	})(exports.PlaceholderDirection || (exports.PlaceholderDirection = {}));
+
+	class StepComponent {
+		static create(view, stepContext, componentContext) {
+			const badges = Badges.createForStep(stepContext, view, componentContext);
+			return new StepComponent(view, stepContext.step, stepContext.parentSequence, view.hasOutput, badges);
+		}
+		constructor(view, step, parentSequence, hasOutput, badges) {
+			this.view = view;
+			this.step = step;
+			this.parentSequence = parentSequence;
+			this.hasOutput = hasOutput;
+			this.badges = badges;
+		}
+		findById(stepId) {
+			if (this.step.id === stepId) {
+				return this;
+			}
+			if (this.view.sequenceComponents) {
+				for (const component of this.view.sequenceComponents) {
+					const result = component.findById(stepId);
+					if (result) {
+						return result;
+					}
+				}
+			}
+			return null;
+		}
+		resolveClick(click) {
+			if (this.view.sequenceComponents) {
+				for (const component of this.view.sequenceComponents) {
+					const result = component.resolveClick(click);
+					if (result) {
+						return result;
+					}
+				}
+			}
+			const badgeResult = this.badges.resolveClick(click);
+			if (badgeResult) {
+				return badgeResult;
+			}
+			const viewResult = this.view.resolveClick(click);
+			if (viewResult) {
+				return viewResult === true
+					? {
+						type: exports.ClickCommandType.selectStep,
+						component: this
+					}
+					: viewResult;
+			}
+			return null;
+		}
+		resolvePlaceholders(skipComponent, result) {
+			if (skipComponent !== this) {
+				if (this.view.sequenceComponents) {
+					this.view.sequenceComponents.forEach(component => component.resolvePlaceholders(skipComponent, result));
+				}
+				if (this.view.placeholders) {
+					this.view.placeholders.forEach(ph => result.placeholders.push(ph));
+				}
+				result.components.push(this);
+			}
+		}
+		setIsDragging(isDragging) {
+			this.view.setIsDragging(isDragging);
+		}
+		setIsSelected(isSelected) {
+			this.view.setIsSelected(isSelected);
+		}
+		setIsDisabled(isDisabled) {
+			this.view.setIsDisabled(isDisabled);
+		}
+		updateBadges(result) {
+			if (this.view.sequenceComponents) {
+				this.view.sequenceComponents.forEach(component => component.updateBadges(result));
+			}
+			this.badges.update(result);
+		}
+	}
+
+	class StepComponentViewContextFactory {
+		static create(stepContext, componentContext) {
+			const preferenceKeyPrefix = stepContext.step.id + ':';
+			return {
+				i18n: componentContext.i18n,
+				getStepIconUrl: () => componentContext.iconProvider.getIconUrl(stepContext.step),
+				getStepName: () => componentContext.i18n(`step.${stepContext.step.type}.name`, stepContext.step.name),
+				createSequenceComponent: (parentElement, sequence) => {
+					const sequenceContext = {
+						sequence,
+						depth: stepContext.depth + 1,
+						isInputConnected: true,
+						isOutputConnected: stepContext.isOutputConnected,
+						isPreview: stepContext.isPreview
+					};
+					return componentContext.services.sequenceComponent.create(parentElement, sequenceContext, componentContext);
+				},
+				createRegionComponentView(parentElement, componentClassName, contentFactory) {
+					return componentContext.services.regionComponentView.create(parentElement, componentClassName, stepContext, this, contentFactory);
+				},
+				createPlaceholderForArea: componentContext.services.placeholder.createForArea.bind(componentContext.services.placeholder),
+				getPreference: (key) => componentContext.preferenceStorage.getItem(preferenceKeyPrefix + key),
+				setPreference: (key, value) => componentContext.preferenceStorage.setItem(preferenceKeyPrefix + key, value)
+			};
+		}
+	}
+
+	class StepComponentFactory {
+		constructor(stepExtensionResolver) {
+			this.stepExtensionResolver = stepExtensionResolver;
+		}
+		create(parentElement, stepContext, componentContext) {
+			const viewContext = StepComponentViewContextFactory.create(stepContext, componentContext);
+			const extension = this.stepExtensionResolver.resolve(stepContext.step.componentType);
+			const view = extension.createComponentView(parentElement, stepContext, viewContext);
+			const wrappedView = componentContext.services.stepComponentViewWrapper.wrap(view, stepContext);
+			return StepComponent.create(wrappedView, stepContext, componentContext);
+		}
+	}
+
+	class ComponentContext {
+		static create(configuration, state, stepExtensionResolver, definitionWalker, preferenceStorage, placeholderController, i18n, services) {
+			const validator = new DefinitionValidator(configuration.validator, state);
+			const iconProvider = new IconProvider(configuration.steps);
+			const stepComponentFactory = new StepComponentFactory(stepExtensionResolver);
+			return new ComponentContext(validator, iconProvider, placeholderController, stepComponentFactory, definitionWalker, services, preferenceStorage, i18n);
+		}
+		constructor(validator, iconProvider, placeholderController, stepComponentFactory, definitionWalker, services, preferenceStorage, i18n) {
+			this.validator = validator;
+			this.iconProvider = iconProvider;
+			this.placeholderController = placeholderController;
+			this.stepComponentFactory = stepComponentFactory;
+			this.definitionWalker = definitionWalker;
+			this.services = services;
+			this.preferenceStorage = preferenceStorage;
+			this.i18n = i18n;
+		}
+	}
+
+	class CustomActionController {
+		constructor(configuration, state, stateModifier) {
+			this.configuration = configuration;
+			this.state = state;
+			this.stateModifier = stateModifier;
+		}
+		trigger(action, step, sequence) {
+			const handler = this.configuration.customActionHandler;
+			if (!handler) {
+				console.warn(`Custom action handler is not defined (action type: ${action.type})`);
+				return;
+			}
+			const context = this.createCustomActionHandlerContext();
+			handler(action, step, sequence, context);
+		}
+		createCustomActionHandlerContext() {
+			return {
+				notifyStepNameChanged: (stepId) => this.notifyStepChanged(exports.DefinitionChangeType.stepNameChanged, stepId, false),
+				notifyStepPropertiesChanged: (stepId) => this.notifyStepChanged(exports.DefinitionChangeType.stepPropertyChanged, stepId, false),
+				notifyStepInserted: (stepId) => this.notifyStepChanged(exports.DefinitionChangeType.stepInserted, stepId, true),
+				notifyStepMoved: (stepId) => this.notifyStepChanged(exports.DefinitionChangeType.stepMoved, stepId, true),
+				notifyStepDeleted: (stepId) => this.notifyStepChanged(exports.DefinitionChangeType.stepDeleted, stepId, true)
+			};
+		}
+		notifyStepChanged(changeType, stepId, updateDependencies) {
+			if (!stepId) {
+				throw new Error('Step id is empty');
+			}
+			this.state.notifyDefinitionChanged(changeType, stepId);
+			if (updateDependencies) {
+				this.stateModifier.updateDependencies();
+			}
+		}
+	}
+
+	class EditorView {
+		static create(parent) {
+			return new EditorView(parent);
+		}
+		constructor(parent) {
+			this.parent = parent;
+			this.currentContainer = null;
+		}
+		setContent(content, className) {
+			const container = Dom.element('div', {
+				class: className
+			});
+			container.appendChild(content);
+			if (this.currentContainer) {
+				this.parent.removeChild(this.currentContainer);
+			}
+			this.parent.appendChild(container);
+			this.currentContainer = container;
+		}
+		destroy() {
+			if (this.currentContainer) {
+				this.parent.removeChild(this.currentContainer);
+			}
+		}
+	}
+
+	class Editor {
+		static create(parent, api, stepEditorClassName, stepEditorProvider, rootEditorClassName, rootEditorProvider, customSelectedStepIdProvider) {
+			const view = EditorView.create(parent);
+			function render(step) {
+				const definition = api.getDefinition();
+				let content;
+				let className;
+				if (step) {
+					const stepContext = api.createStepEditorContext(step.id);
+					content = stepEditorProvider(step, stepContext, definition, api.isReadonly());
+					className = stepEditorClassName;
+				}
+				else {
+					const rootContext = api.createRootEditorContext();
+					content = rootEditorProvider(definition, rootContext, api.isReadonly());
+					className = rootEditorClassName;
+				}
+				view.setContent(content, className);
+			}
+			const renderer = api.runRenderer(step => render(step), customSelectedStepIdProvider);
+			return new Editor(view, renderer);
+		}
+		constructor(view, renderer) {
+			this.view = view;
+			this.renderer = renderer;
+		}
+		destroy() {
+			this.view.destroy();
+			this.renderer.destroy();
+		}
+	}
+
+	class ValidationErrorBadgeView {
+		static create(parent, cfg) {
+			const g = Dom.svg('g');
+			const halfOfSize = cfg.size / 2;
+			const circle = Dom.svg('path', {
+				class: 'sqd-validation-error',
+				d: `M 0 ${-halfOfSize} l ${halfOfSize} ${cfg.size} l ${-cfg.size} 0 Z`
+			});
+			Dom.translate(circle, halfOfSize, halfOfSize);
+			g.appendChild(circle);
+			const icon = Icons.appendPath(g, 'sqd-validation-error-icon-path', Icons.alert, cfg.iconSize);
+			const offsetX = (cfg.size - cfg.iconSize) / 2;
+			const offsetY = offsetX * 1.5;
+			Dom.translate(icon, offsetX, offsetY);
+			parent.appendChild(g);
+			return new ValidationErrorBadgeView(parent, g, cfg.size, cfg.size);
+		}
+		constructor(parent, g, width, height) {
+			this.parent = parent;
+			this.g = g;
+			this.width = width;
+			this.height = height;
+		}
+		destroy() {
+			this.parent.removeChild(this.g);
+		}
+	}
+
+	class ValidatorFactory {
+		static createForStep(stepContext, view, componentContext) {
+			return () => {
+				if (!componentContext.validator.validateStep(stepContext.step, stepContext.parentSequence)) {
+					return false;
+				}
+				if (view.haveCollapsedChildren) {
+					let allChildrenValid = true;
+					componentContext.definitionWalker.forEachChildren(stepContext.step, (step, _, parentSequence) => {
+						if (!componentContext.validator.validateStep(step, parentSequence)) {
+							allChildrenValid = false;
+							return false;
+						}
+					});
+					if (!allChildrenValid) {
+						return false;
+					}
+				}
+				return true;
+			};
+		}
+		static createForRoot(componentContext) {
+			return () => {
+				return componentContext.validator.validateRoot();
+			};
+		}
+	}
+
+	class ValidationErrorBadge {
+		static createForStep(parentElement, view, stepContext, componentContext, configuration) {
+			const validator = ValidatorFactory.createForStep(stepContext, view, componentContext);
+			return new ValidationErrorBadge(parentElement, validator, configuration);
+		}
+		static createForRoot(parentElement, componentContext, configuration) {
+			const validator = ValidatorFactory.createForRoot(componentContext);
+			return new ValidationErrorBadge(parentElement, validator, configuration);
+		}
+		constructor(parentElement, validator, configuration) {
+			this.parentElement = parentElement;
+			this.validator = validator;
+			this.configuration = configuration;
+			this.view = null;
+		}
+		update(result) {
+			const isValid = this.validator();
+			if (isValid) {
+				if (this.view) {
+					this.view.destroy();
+					this.view = null;
+				}
+			}
+			else if (!this.view) {
+				this.view = ValidationErrorBadgeView.create(this.parentElement, this.configuration);
+			}
+			return isValid && result;
+		}
+		resolveClick() {
+			return null;
+		}
+	}
+
+	const defaultConfiguration$5 = {
+		view: {
+			size: 22,
+			iconSize: 12
+		}
+	};
+	class ValidationErrorBadgeExtension {
+		static create(configuration) {
+			return new ValidationErrorBadgeExtension(configuration !== null && configuration !== void 0 ? configuration : defaultConfiguration$5);
+		}
+		constructor(configuration) {
+			this.configuration = configuration;
+			this.id = 'validationError';
+			this.createStartValue = () => true;
+		}
+		createForStep(parentElement, view, stepContext, componentContext) {
+			return ValidationErrorBadge.createForStep(parentElement, view, stepContext, componentContext, this.configuration.view);
+		}
+		createForRoot(parentElement, componentContext) {
+			return ValidationErrorBadge.createForRoot(parentElement, componentContext, this.configuration.view);
+		}
+	}
+
+	class ComponentDom {
+		static stepG(componentClassName, type, id) {
+			return Dom.svg('g', {
+				class: `sqd-step-${componentClassName} sqd-type-${type}`,
+				'data-step-id': id
+			});
+		}
+	}
+
+	class InputView {
+		static createRectInput(parent, x, y, size, iconSize, iconUrl) {
+			const g = Dom.svg('g');
+			parent.appendChild(g);
+			const rect = Dom.svg('rect', {
+				class: 'sqd-input',
+				width: size,
+				height: size,
+				x: x - size / 2,
+				y: y + size / -2 + 0.5,
+				rx: 4,
+				ry: 4
+			});
+			g.appendChild(rect);
+			if (iconUrl) {
+				const icon = Dom.svg('image', {
+					href: iconUrl,
+					width: iconSize,
+					height: iconSize,
+					x: x - iconSize / 2,
+					y: y + iconSize / -2
+				});
+				g.appendChild(icon);
+			}
+			return new InputView(g);
+		}
+		static createRoundInput(parent, x, y, size) {
+			const circle = Dom.svg('circle', {
+				class: 'sqd-input',
+				cx: x,
+				xy: y,
+				r: size / 2
+			});
+			parent.appendChild(circle);
+			return new InputView(circle);
+		}
+		constructor(root) {
+			this.root = root;
+		}
+		setIsHidden(isHidden) {
+			Dom.attrs(this.root, {
+				visibility: isHidden ? 'hidden' : 'visible'
+			});
+		}
+	}
+
+	class JoinView {
+		static createStraightJoin(parent, start, height) {
+			const join = Dom.svg('line', {
+				class: 'sqd-join',
+				x1: start.x,
+				y1: start.y,
+				x2: start.x,
+				y2: start.y + height
+			});
+			parent.insertBefore(join, parent.firstChild);
+		}
+		static createJoins(parent, start, targets) {
+			const firstTarget = targets[0];
+			const h = Math.abs(firstTarget.y - start.y) / 2; // half height
+			const y = Math.sign(firstTarget.y - start.y); // y direction
+			switch (targets.length) {
+				case 1:
+					if (start.x === targets[0].x) {
+						JoinView.createStraightJoin(parent, start, firstTarget.y * y);
+					}
+					else {
+						appendCurvedJoins(parent, start, targets, h, y);
+					}
+					break;
+				case 2:
+					appendCurvedJoins(parent, start, targets, h, y);
+					break;
+				default:
+					{
+						const f = targets[0]; // first
+						const l = targets[targets.length - 1]; // last
+						appendJoin(parent, `M ${f.x} ${f.y} q ${h * 0.3} ${h * -y * 0.8} ${h} ${h * -y} ` +
+							`l ${l.x - f.x - h * 2} 0 q ${h * 0.8} ${-h * -y * 0.3} ${h} ${-h * -y}`);
+						for (let i = 1; i < targets.length - 1; i++) {
+							JoinView.createStraightJoin(parent, targets[i], h * -y);
+						}
+						JoinView.createStraightJoin(parent, start, h * y);
+					}
+					break;
+			}
+		}
+	}
+	function appendCurvedJoins(parent, start, targets, h, y) {
+		for (const target of targets) {
+			const l = Math.abs(target.x - start.x) - h * 2; // line size
+			const x = Math.sign(target.x - start.x); // x direction
+			appendJoin(parent, `M ${start.x} ${start.y} q ${x * h * 0.3} ${y * h * 0.8} ${x * h} ${y * h} ` +
+				`l ${x * l} 0 q ${x * h * 0.7} ${y * h * 0.2} ${x * h} ${y * h}`);
+		}
+	}
+	function appendJoin(parent, d) {
+		const join = Dom.svg('path', {
+			class: 'sqd-join',
+			fill: 'none',
+			d
+		});
+		parent.insertBefore(join, parent.firstChild);
+	}
+
+	class LabelView {
+		static create(parent, y, cfg, text, theme) {
+			const g = Dom.svg('g', {
+				class: `sqd-label sqd-label-${theme}`
+			});
+			parent.appendChild(g);
+			const nameText = Dom.svg('text', {
+				class: 'sqd-label-text',
+				y: y + cfg.height / 2
+			});
+			nameText.textContent = text;
+			g.appendChild(nameText);
+			const width = Math.max(nameText.getBBox().width + cfg.paddingX * 2, cfg.minWidth);
+			const nameRect = Dom.svg('rect', {
+				class: 'sqd-label-rect',
+				width: width,
+				height: cfg.height,
+				x: -width / 2 + 0.5,
+				y: y + 0.5,
+				rx: cfg.radius,
+				ry: cfg.radius
+			});
+			g.insertBefore(nameRect, nameText);
+			return new LabelView(g, width, cfg.height);
+		}
+		constructor(g, width, height) {
+			this.g = g;
+			this.width = width;
+			this.height = height;
+		}
+	}
+
+	class OutputView {
+		static create(parent, x, y, size) {
+			const circle = Dom.svg('circle', {
+				class: 'sqd-output',
+				cx: x,
+				cy: y,
+				r: size / 2
+			});
+			parent.appendChild(circle);
+			return new OutputView(circle);
+		}
+		constructor(root) {
+			this.root = root;
+		}
+		setIsHidden(isHidden) {
+			Dom.attrs(this.root, {
+				visibility: isHidden ? 'hidden' : 'visible'
+			});
+		}
+	}
+
+	class DefaultSequenceComponentView {
+		static create(parent, sequenceContext, componentContext) {
+			const phWidth = componentContext.services.placeholder.gapSize.x;
+			const phHeight = componentContext.services.placeholder.gapSize.y;
+			const { sequence } = sequenceContext;
+			const g = Dom.svg('g');
+			parent.appendChild(g);
+			const components = [];
+			for (let index = 0; index < sequence.length; index++) {
+				const stepContext = {
+					parentSequence: sequenceContext.sequence,
+					step: sequence[index],
+					depth: sequenceContext.depth,
+					position: index,
+					isInputConnected: index === 0 ? sequenceContext.isInputConnected : components[index - 1].hasOutput,
+					isOutputConnected: index === sequence.length - 1 ? sequenceContext.isOutputConnected : true,
+					isPreview: sequenceContext.isPreview
+				};
+				components[index] = componentContext.stepComponentFactory.create(g, stepContext, componentContext);
+			}
+			let joinX;
+			let totalWidth;
+			if (components.length > 0) {
+				const restWidth = Math.max(...components.map(c => c.view.width - c.view.joinX));
+				joinX = Math.max(...components.map(c => c.view.joinX));
+				totalWidth = joinX + restWidth;
+			}
+			else {
+				joinX = phWidth / 2;
+				totalWidth = phWidth;
+			}
+			let offsetY = phHeight;
+			const placeholders = [];
+			for (let i = 0; i < components.length; i++) {
+				const component = components[i];
+				const offsetX = joinX - component.view.joinX;
+				if ((i === 0 && sequenceContext.isInputConnected) || (i > 0 && components[i - 1].hasOutput)) {
+					JoinView.createStraightJoin(g, new Vector(joinX, offsetY - phHeight), phHeight);
+				}
+				if (!sequenceContext.isPreview && componentContext.placeholderController.canCreate(sequence, i)) {
+					const ph = componentContext.services.placeholder.createForGap(g, sequence, i);
+					Dom.translate(ph.view.g, joinX - phWidth / 2, offsetY - phHeight);
+					placeholders.push(ph);
+				}
+				Dom.translate(component.view.g, offsetX, offsetY);
+				offsetY += component.view.height + phHeight;
+			}
+			if (sequenceContext.isOutputConnected && (components.length === 0 || components[components.length - 1].hasOutput)) {
+				JoinView.createStraightJoin(g, new Vector(joinX, offsetY - phHeight), phHeight);
+			}
+			const newIndex = components.length;
+			if (!sequenceContext.isPreview && componentContext.placeholderController.canCreate(sequence, newIndex)) {
+				const ph = componentContext.services.placeholder.createForGap(g, sequence, newIndex);
+				Dom.translate(ph.view.g, joinX - phWidth / 2, offsetY - phHeight);
+				placeholders.push(ph);
+			}
+			return new DefaultSequenceComponentView(g, totalWidth, offsetY, joinX, placeholders, components);
+		}
+		constructor(g, width, height, joinX, placeholders, components) {
+			this.g = g;
+			this.width = width;
+			this.height = height;
+			this.joinX = joinX;
+			this.placeholders = placeholders;
+			this.components = components;
+		}
+		hasOutput() {
+			if (this.components.length > 0) {
+				return this.components[this.components.length - 1].hasOutput;
+			}
+			return true;
+		}
+	}
+
+	class DefaultSequenceComponent {
+		static create(parentElement, sequenceContext, context) {
+			const view = DefaultSequenceComponentView.create(parentElement, sequenceContext, context);
+			return new DefaultSequenceComponent(view, view.hasOutput());
+		}
+		constructor(view, hasOutput) {
+			this.view = view;
+			this.hasOutput = hasOutput;
+		}
+		resolveClick(click) {
+			for (const component of this.view.components) {
+				const result = component.resolveClick(click);
+				if (result) {
+					return result;
+				}
+			}
+			for (const placeholder of this.view.placeholders) {
+				const result = placeholder.resolveClick(click);
+				if (result) {
+					return result;
+				}
+			}
+			return null;
+		}
+		findById(stepId) {
+			for (const component of this.view.components) {
+				const sc = component.findById(stepId);
+				if (sc) {
+					return sc;
+				}
+			}
+			return null;
+		}
+		resolvePlaceholders(skipComponent, result) {
+			this.view.placeholders.forEach(placeholder => result.placeholders.push(placeholder));
+			this.view.components.forEach(c => c.resolvePlaceholders(skipComponent, result));
+		}
+		updateBadges(result) {
+			for (const component of this.view.components) {
+				component.updateBadges(result);
+			}
+		}
+	}
+
+	const COMPONENT_CLASS_NAME$2 = 'container';
+	const createContainerStepComponentViewFactory = (cfg) => (parentElement, stepContext, viewContext) => {
+		return viewContext.createRegionComponentView(parentElement, COMPONENT_CLASS_NAME$2, (g, regionViewBuilder) => {
+			const step = stepContext.step;
+			const name = viewContext.getStepName();
+			const labelView = LabelView.create(g, cfg.paddingTop, cfg.label, name, 'primary');
+			const sequenceComponent = viewContext.createSequenceComponent(g, step.sequence);
+			const halfOfWidestElement = labelView.width / 2;
+			const offsetLeft = Math.max(halfOfWidestElement - sequenceComponent.view.joinX, 0) + cfg.paddingX;
+			const offsetRight = Math.max(halfOfWidestElement - (sequenceComponent.view.width - sequenceComponent.view.joinX), 0) + cfg.paddingX;
+			const width = offsetLeft + sequenceComponent.view.width + offsetRight;
+			const height = cfg.paddingTop + cfg.label.height + sequenceComponent.view.height;
+			const joinX = sequenceComponent.view.joinX + offsetLeft;
+			Dom.translate(labelView.g, joinX, 0);
+			Dom.translate(sequenceComponent.view.g, offsetLeft, cfg.paddingTop + cfg.label.height);
+			const iconUrl = viewContext.getStepIconUrl();
+			const inputView = InputView.createRectInput(g, joinX, 0, cfg.inputSize, cfg.inputIconSize, iconUrl);
+			JoinView.createStraightJoin(g, new Vector(joinX, 0), cfg.paddingTop);
+			const regionView = regionViewBuilder(g, [width], height);
+			return {
+				g,
+				width,
+				height,
+				joinX,
+				placeholders: null,
+				sequenceComponents: [sequenceComponent],
+				hasOutput: sequenceComponent.hasOutput,
+				getClientPosition() {
+					return regionView.getClientPosition();
+				},
+				resolveClick(click) {
+					const result = regionView.resolveClick(click);
+					return result === true || (result === null && g.contains(click.element)) ? true : result;
+				},
+				setIsDragging(isDragging) {
+					inputView.setIsHidden(isDragging);
+				},
+				setIsSelected(isSelected) {
+					regionView.setIsSelected(isSelected);
+				},
+				setIsDisabled(isDisabled) {
+					Dom.toggleClass(g, isDisabled, 'sqd-disabled');
+				}
+			};
+		});
+	};
+
+	const COMPONENT_CLASS_NAME$1 = 'switch';
+	const createSwitchStepComponentViewFactory = (cfg) => (parent, stepContext, viewContext) => {
+		return viewContext.createRegionComponentView(parent, COMPONENT_CLASS_NAME$1, (g, regionViewBuilder) => {
+			const step = stepContext.step;
+			const branchNames = Object.keys(step.branches);
+			const branchComponents = branchNames.map(branchName => {
+				return viewContext.createSequenceComponent(g, step.branches[branchName]);
+			});
+			const branchLabelViews = branchNames.map(branchName => {
+				const labelY = cfg.paddingTop + cfg.nameLabel.height + cfg.connectionHeight;
+				const translatedBranchName = viewContext.i18n(`stepComponent.${step.type}.branchName`, branchName);
+				return LabelView.create(g, labelY, cfg.branchNameLabel, translatedBranchName, 'secondary');
+			});
+			const name = viewContext.getStepName();
+			const nameLabelView = LabelView.create(g, cfg.paddingTop, cfg.nameLabel, name, 'primary');
+			let prevOffsetX = 0;
+			const branchSizes = branchComponents.map((component, i) => {
+				const halfOfWidestBranchElement = Math.max(branchLabelViews[i].width, cfg.minContainerWidth) / 2;
+				const branchOffsetLeft = Math.max(halfOfWidestBranchElement - component.view.joinX, 0) + cfg.paddingX;
+				const branchOffsetRight = Math.max(halfOfWidestBranchElement - (component.view.width - component.view.joinX), 0) + cfg.paddingX;
+				const width = component.view.width + branchOffsetLeft + branchOffsetRight;
+				const joinX = component.view.joinX + branchOffsetLeft;
+				const offsetX = prevOffsetX;
+				prevOffsetX += width;
+				return { width, branchOffsetLeft, offsetX, joinX };
+			});
+			const centerBranchIndex = Math.floor(branchNames.length / 2);
+			const centerBranchSize = branchSizes[centerBranchIndex];
+			let joinX = centerBranchSize.offsetX;
+			if (branchNames.length % 2 !== 0) {
+				joinX += centerBranchSize.joinX;
+			}
+			const totalBranchesWidth = branchSizes.reduce((result, s) => result + s.width, 0);
+			const maxBranchesHeight = Math.max(...branchComponents.map(s => s.view.height));
+			const halfOfWidestSwitchElement = nameLabelView.width / 2 + cfg.paddingX;
+			const switchOffsetLeft = Math.max(halfOfWidestSwitchElement - joinX, 0);
+			const switchOffsetRight = Math.max(halfOfWidestSwitchElement - (totalBranchesWidth - joinX), 0);
+			const viewWidth = switchOffsetLeft + totalBranchesWidth + switchOffsetRight;
+			const viewHeight = maxBranchesHeight + cfg.paddingTop + cfg.nameLabel.height + cfg.branchNameLabel.height + cfg.connectionHeight * 2;
+			const shiftedJoinX = switchOffsetLeft + joinX;
+			Dom.translate(nameLabelView.g, shiftedJoinX, 0);
+			const branchOffsetTop = cfg.paddingTop + cfg.nameLabel.height + cfg.branchNameLabel.height + cfg.connectionHeight;
+			branchComponents.forEach((component, i) => {
+				const branchSize = branchSizes[i];
+				const branchOffsetLeft = switchOffsetLeft + branchSize.offsetX + branchSize.branchOffsetLeft;
+				Dom.translate(branchLabelViews[i].g, switchOffsetLeft + branchSize.offsetX + branchSize.joinX, 0);
+				Dom.translate(component.view.g, branchOffsetLeft, branchOffsetTop);
+				if (component.hasOutput && stepContext.isOutputConnected) {
+					const endOffsetTopOfComponent = cfg.paddingTop + cfg.nameLabel.height + cfg.branchNameLabel.height + cfg.connectionHeight + component.view.height;
+					const missingHeight = viewHeight - endOffsetTopOfComponent - cfg.connectionHeight;
+					if (missingHeight > 0) {
+						JoinView.createStraightJoin(g, new Vector(switchOffsetLeft + branchSize.offsetX + branchSize.joinX, endOffsetTopOfComponent), missingHeight);
+					}
+				}
+			});
+			let inputView = null;
+			if (cfg.inputSize > 0) {
+				const iconUrl = viewContext.getStepIconUrl();
+				inputView = InputView.createRectInput(g, shiftedJoinX, 0, cfg.inputSize, cfg.inputIconSize, iconUrl);
+			}
+			JoinView.createStraightJoin(g, new Vector(shiftedJoinX, 0), cfg.paddingTop);
+			JoinView.createJoins(g, new Vector(shiftedJoinX, cfg.paddingTop + cfg.nameLabel.height), branchSizes.map(o => new Vector(switchOffsetLeft + o.offsetX + o.joinX, cfg.paddingTop + cfg.nameLabel.height + cfg.connectionHeight)));
+			if (stepContext.isOutputConnected) {
+				const ongoingSequenceIndexes = branchComponents
+					.map((component, index) => (component.hasOutput ? index : null))
+					.filter(index => index !== null);
+				const ongoingJoinTargets = ongoingSequenceIndexes.map((i) => new Vector(switchOffsetLeft + branchSizes[i].offsetX + branchSizes[i].joinX, cfg.paddingTop + cfg.connectionHeight + cfg.nameLabel.height + cfg.branchNameLabel.height + maxBranchesHeight));
+				if (ongoingJoinTargets.length > 0) {
+					JoinView.createJoins(g, new Vector(shiftedJoinX, viewHeight), ongoingJoinTargets);
+				}
+			}
+			const regions = branchSizes.map(s => s.width);
+			regions[0] += switchOffsetLeft;
+			regions[regions.length - 1] += switchOffsetRight;
+			const regionView = regionViewBuilder(g, regions, viewHeight);
+			return {
+				g,
+				width: viewWidth,
+				height: viewHeight,
+				joinX: shiftedJoinX,
+				placeholders: null,
+				sequenceComponents: branchComponents,
+				hasOutput: branchComponents.some(c => c.hasOutput),
+				getClientPosition() {
+					return regionView.getClientPosition();
+				},
+				resolveClick(click) {
+					const result = regionView.resolveClick(click);
+					return result === true || (result === null && g.contains(click.element)) ? true : result;
+				},
+				setIsDragging(isDragging) {
+					inputView === null || inputView === void 0 ? void 0 : inputView.setIsHidden(isDragging);
+				},
+				setIsSelected(isSelected) {
+					regionView.setIsSelected(isSelected);
+				},
+				setIsDisabled(isDisabled) {
+					Dom.toggleClass(g, isDisabled, 'sqd-disabled');
+				}
+			};
+		});
+	};
+
+	const COMPONENT_CLASS_NAME = 'task';
+	const createTaskStepComponentViewFactory = (isInterrupted, cfg) => (parentElement, stepContext, viewContext) => {
+		const { step } = stepContext;
+		const g = ComponentDom.stepG(COMPONENT_CLASS_NAME, step.type, step.id);
+		parentElement.appendChild(g);
+		const boxHeight = cfg.paddingY * 2 + cfg.iconSize;
+		const text = Dom.svg('text', {
+			x: cfg.paddingLeft + cfg.iconSize + cfg.textMarginLeft,
+			y: boxHeight / 2,
+			class: 'sqd-step-task-text'
+		});
+		text.textContent = viewContext.getStepName();
+		g.appendChild(text);
+		const textWidth = Math.max(text.getBBox().width, cfg.minTextWidth);
+		const boxWidth = cfg.iconSize + cfg.paddingLeft + cfg.paddingRight + cfg.textMarginLeft + textWidth;
+		const rect = Dom.svg('rect', {
+			x: 0.5,
+			y: 0.5,
+			class: 'sqd-step-task-rect',
+			width: boxWidth,
+			height: boxHeight,
+			rx: cfg.radius,
+			ry: cfg.radius
+		});
+		g.insertBefore(rect, text);
+		const iconUrl = viewContext.getStepIconUrl();
+		const icon = iconUrl
+			? Dom.svg('image', {
+				href: iconUrl
+			})
+			: Dom.svg('rect', {
+				class: 'sqd-step-task-empty-icon',
+				rx: cfg.radius,
+				ry: cfg.radius
+			});
+		Dom.attrs(icon, {
+			x: cfg.paddingLeft,
+			y: cfg.paddingY,
+			width: cfg.iconSize,
+			height: cfg.iconSize
+		});
+		g.appendChild(icon);
+		const isInputViewHidden = stepContext.depth === 0 && stepContext.position === 0 && !stepContext.isInputConnected;
+		const isOutputViewHidden = isInterrupted;
+		const inputView = isInputViewHidden ? null : InputView.createRoundInput(g, boxWidth / 2, 0, cfg.inputSize);
+		const outputView = isOutputViewHidden ? null : OutputView.create(g, boxWidth / 2, boxHeight, cfg.outputSize);
+		return {
+			g,
+			width: boxWidth,
+			height: boxHeight,
+			joinX: boxWidth / 2,
+			sequenceComponents: null,
+			placeholders: null,
+			hasOutput: !!outputView,
+			getClientPosition() {
+				return getAbsolutePosition(rect);
+			},
+			resolveClick(click) {
+				return g.contains(click.element) ? true : null;
+			},
+			setIsDragging(isDragging) {
+				inputView === null || inputView === void 0 ? void 0 : inputView.setIsHidden(isDragging);
+				outputView === null || outputView === void 0 ? void 0 : outputView.setIsHidden(isDragging);
+			},
+			setIsDisabled(isDisabled) {
+				Dom.toggleClass(g, isDisabled, 'sqd-disabled');
+			},
+			setIsSelected(isSelected) {
+				Dom.toggleClass(rect, isSelected, 'sqd-selected');
+			}
+		};
+	};
+
+	class CenteredViewportCalculator {
+		static center(margin, canvasSize, rootComponentSize) {
+			const canvasSafeWidth = Math.max(canvasSize.x - margin * 2, 0);
+			const canvasSafeHeight = Math.max(canvasSize.y - margin * 2, 0);
+			const scale = Math.min(Math.min(canvasSafeWidth / rootComponentSize.x, canvasSafeHeight / rootComponentSize.y), 1);
+			const width = rootComponentSize.x * scale;
+			const height = rootComponentSize.y * scale;
+			const x = Math.max(0, (canvasSize.x - width) / 2);
+			const y = Math.max(0, (canvasSize.y - height) / 2);
+			return {
+				position: new Vector(x, y),
+				scale
+			};
+		}
+		static focusOnComponent(canvasSize, viewport, componentPosition, componentSize) {
+			const realPosition = viewport.position.divideByScalar(viewport.scale).subtract(componentPosition.divideByScalar(viewport.scale));
+			const componentOffset = componentSize.divideByScalar(2);
+			const position = realPosition.add(canvasSize.divideByScalar(2)).subtract(componentOffset);
+			return { position, scale: 1 };
+		}
+	}
+
+	class NextQuantifiedNumber {
+		constructor(values) {
+			this.values = values;
+		}
+		next(value, direction) {
+			let bestIndex = 0;
+			let bestDistance = Number.MAX_VALUE;
+			for (let i = 0; i < this.values.length; i++) {
+				const distance = Math.abs(this.values[i] - value);
+				if (bestDistance > distance) {
+					bestIndex = i;
+					bestDistance = distance;
+				}
+			}
+			let index;
+			if (direction) {
+				index = Math.min(bestIndex + 1, this.values.length - 1);
+			}
+			else {
+				index = Math.max(bestIndex - 1, 0);
+			}
+			return {
+				current: this.values[bestIndex],
+				next: this.values[index]
+			};
+		}
+	}
+
+	const SCALES = [0.06, 0.08, 0.1, 0.12, 0.16, 0.2, 0.26, 0.32, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1];
+	const MAX_DELTA_Y$1 = 16;
+	const quantifiedScale = new NextQuantifiedNumber(SCALES);
+	class QuantifiedScaleViewportCalculator {
+		static zoom(current, direction) {
+			const nextScale = quantifiedScale.next(current.scale, direction);
+			return {
+				position: current.position,
+				scale: nextScale.next
+			};
+		}
+		static zoomByWheel(current, e, canvasPosition) {
+			if (e.deltaY === 0) {
+				return null;
+			}
+			const nextScale = quantifiedScale.next(current.scale, e.deltaY < 0);
+			let scale;
+			const absDeltaY = Math.abs(e.deltaY);
+			if (absDeltaY < MAX_DELTA_Y$1) {
+				const fraction = absDeltaY / MAX_DELTA_Y$1;
+				const step = nextScale.next - nextScale.current;
+				scale = current.scale + step * fraction;
+			}
+			else {
+				scale = nextScale.next;
+			}
+			const mousePoint = new Vector(e.pageX, e.pageY).subtract(canvasPosition);
+			// The real point is point on canvas with no scale.
+			const mouseRealPoint = mousePoint.divideByScalar(current.scale).subtract(current.position.divideByScalar(current.scale));
+			const position = mouseRealPoint.multiplyByScalar(-scale).add(mousePoint);
+			return { position, scale };
+		}
+	}
+
+	class ClassicWheelController {
+		static create(api) {
+			return new ClassicWheelController(api);
+		}
+		constructor(api) {
+			this.api = api;
+		}
+		onWheel(e) {
+			const viewport = this.api.getViewport();
+			const canvasPosition = this.api.getCanvasPosition();
+			const newViewport = QuantifiedScaleViewportCalculator.zoomByWheel(viewport, e, canvasPosition);
+			if (newViewport) {
+				this.api.setViewport(newViewport);
+			}
+		}
+	}
+
+	class ClassicWheelControllerExtension {
+		constructor() {
+			this.create = ClassicWheelController.create;
+		}
+	}
+
 	function animate(interval, handler) {
 		const iv = setInterval(tick, 15);
 		const startTime = Date.now();
@@ -689,20 +1828,21 @@
 	}
 
 	class ViewportAnimator {
-		constructor(state) {
-			this.state = state;
+		constructor(api) {
+			this.api = api;
 		}
 		execute(target) {
 			if (this.animation && this.animation.isAlive) {
 				this.animation.stop();
 			}
-			const startPosition = this.state.viewport.position;
-			const startScale = this.state.viewport.scale;
+			const viewport = this.api.getViewport();
+			const startPosition = viewport.position;
+			const startScale = viewport.scale;
 			const deltaPosition = startPosition.subtract(target.position);
 			const deltaScale = startScale - target.scale;
 			this.animation = animate(150, progress => {
 				const newScale = startScale - deltaScale * progress;
-				this.state.setViewport({
+				this.api.setViewport({
 					position: startPosition.subtract(deltaPosition.multiplyByScalar(progress)),
 					scale: newScale
 				});
@@ -710,65 +1850,180 @@
 		}
 	}
 
-	class ZoomByWheelCalculator {
-		static calculate(controller, current, canvasPosition, e) {
-			if (e.deltaY === 0) {
-				return null;
-			}
-			const nextScale = controller.getNextScale(current.scale, e.deltaY < 0);
-			let scale;
-			const absDeltaY = Math.abs(e.deltaY);
-			if (absDeltaY < controller.smoothDeltaYLimit) {
-				const fraction = absDeltaY / controller.smoothDeltaYLimit;
-				const step = nextScale.next - nextScale.current;
-				scale = current.scale + step * fraction;
-			}
-			else {
-				scale = nextScale.next;
-			}
-			const mousePoint = new Vector(e.pageX, e.pageY).subtract(canvasPosition);
-			// The real point is point on canvas with no scale.
-			const mouseRealPoint = mousePoint.divideByScalar(current.scale).subtract(current.position.divideByScalar(current.scale));
-			const position = mouseRealPoint.multiplyByScalar(-scale).add(mousePoint);
-			return { position, scale };
+	const CENTER_MARGIN = 10;
+	class DefaultViewportController {
+		static create(api) {
+			return new DefaultViewportController(api);
+		}
+		constructor(api) {
+			this.api = api;
+			this.animator = new ViewportAnimator(this.api);
+		}
+		setDefault() {
+			const rootComponentSize = this.api.getRootComponentSize();
+			const canvasSize = this.api.getCanvasSize();
+			const target = CenteredViewportCalculator.center(CENTER_MARGIN, canvasSize, rootComponentSize);
+			this.api.setViewport(target);
+		}
+		zoom(direction) {
+			const viewport = this.api.getViewport();
+			const target = QuantifiedScaleViewportCalculator.zoom(viewport, direction);
+			this.api.setViewport(target);
+		}
+		focusOnComponent(componentPosition, componentSize) {
+			const viewport = this.api.getViewport();
+			const canvasSize = this.api.getCanvasSize();
+			const target = CenteredViewportCalculator.focusOnComponent(canvasSize, viewport, componentPosition, componentSize);
+			this.animateTo(target);
+		}
+		animateTo(viewport) {
+			this.animator.execute(viewport);
 		}
 	}
 
-	class ViewportApi {
-		constructor(state, workspaceController, viewportController) {
-			this.state = state;
-			this.workspaceController = workspaceController;
-			this.viewportController = viewportController;
-			this.animator = new ViewportAnimator(this.state);
+	class DefaultViewportControllerExtension {
+		constructor() {
+			this.create = DefaultViewportController.create;
 		}
-		limitScale(scale) {
-			return this.viewportController.limitScale(scale);
-		}
-		resetViewport() {
-			const defaultViewport = this.viewportController.getDefault();
-			this.state.setViewport(defaultViewport);
-		}
-		zoom(direction) {
-			const viewport = this.viewportController.getZoomed(direction);
-			if (viewport) {
-				this.state.setViewport(viewport);
+	}
+
+	class StepExtensionResolver {
+		static create(services) {
+			const dict = {};
+			for (let i = services.steps.length - 1; i >= 0; i--) {
+				const extension = services.steps[i];
+				dict[extension.componentType] = extension;
 			}
+			return new StepExtensionResolver(dict);
 		}
-		moveViewportToStep(stepId) {
-			const component = this.workspaceController.getComponentByStepId(stepId);
-			const canvasPosition = this.workspaceController.getCanvasPosition();
-			const clientPosition = component.view.getClientPosition();
-			const componentPosition = clientPosition.subtract(canvasPosition);
-			const componentSize = new Vector(component.view.width, component.view.height);
-			const viewport = this.viewportController.getFocusedOnComponent(componentPosition, componentSize);
-			this.animator.execute(viewport);
+		constructor(dict) {
+			this.dict = dict;
 		}
-		handleWheelEvent(e) {
-			const canvasPosition = this.workspaceController.getCanvasPosition();
-			const newViewport = ZoomByWheelCalculator.calculate(this.viewportController, this.state.viewport, canvasPosition, e);
-			if (newViewport) {
-				this.state.setViewport(newViewport);
+		resolve(componentType) {
+			const extension = this.dict[componentType];
+			if (!extension) {
+				throw new Error(`Not supported component type: ${componentType}`);
 			}
+			return extension;
+		}
+	}
+
+	class RectPlaceholderView {
+		static create(parent, width, height, radius, iconSize, direction) {
+			const g = Dom.svg('g', {
+				visibility: 'hidden',
+				class: 'sqd-placeholder'
+			});
+			parent.appendChild(g);
+			const rect = Dom.svg('rect', {
+				class: 'sqd-placeholder-rect',
+				width,
+				height,
+				rx: radius,
+				ry: radius
+			});
+			g.appendChild(rect);
+			if (direction) {
+				const iconD = direction === exports.PlaceholderDirection.in ? Icons.folderIn : Icons.folderOut;
+				const icon = Icons.appendPath(g, 'sqd-placeholder-icon-path', iconD, iconSize);
+				Dom.translate(icon, (width - iconSize) / 2, (height - iconSize) / 2);
+			}
+			parent.appendChild(g);
+			return new RectPlaceholderView(rect, g);
+		}
+		constructor(rect, g) {
+			this.rect = rect;
+			this.g = g;
+		}
+		setIsHover(isHover) {
+			Dom.toggleClass(this.g, isHover, 'sqd-hover');
+		}
+		setIsVisible(isVisible) {
+			Dom.attrs(this.g, {
+				visibility: isVisible ? 'visible' : 'hidden'
+			});
+		}
+	}
+
+	class RectPlaceholder {
+		static create(parent, size, direction, sequence, index, configuration) {
+			const view = RectPlaceholderView.create(parent, size.x, size.y, configuration.radius, configuration.iconSize, direction);
+			return new RectPlaceholder(view, sequence, index);
+		}
+		constructor(view, parentSequence, index) {
+			this.view = view;
+			this.parentSequence = parentSequence;
+			this.index = index;
+		}
+		getClientRect() {
+			return this.view.rect.getBoundingClientRect();
+		}
+		setIsHover(isHover) {
+			this.view.setIsHover(isHover);
+		}
+		setIsVisible(isVisible) {
+			this.view.setIsVisible(isVisible);
+		}
+		resolveClick() {
+			return null;
+		}
+	}
+
+	class DefaultRegionView {
+		static create(parent, widths, height) {
+			const totalWidth = widths.reduce((result, width) => result + width, 0);
+			const lines = [
+				drawLine(parent, 0, 0, totalWidth, 0),
+				drawLine(parent, 0, 0, 0, height),
+				drawLine(parent, 0, height, totalWidth, height),
+				drawLine(parent, totalWidth, 0, totalWidth, height)
+			];
+			let offsetX = widths[0];
+			for (let i = 1; i < widths.length; i++) {
+				lines.push(drawLine(parent, offsetX, 0, offsetX, height));
+				offsetX += widths[i];
+			}
+			return new DefaultRegionView(lines, totalWidth, height);
+		}
+		constructor(lines, width, height) {
+			this.lines = lines;
+			this.width = width;
+			this.height = height;
+		}
+		getClientPosition() {
+			return getAbsolutePosition(this.lines[0]);
+		}
+		resolveClick(click) {
+			const regionPosition = this.getClientPosition();
+			const d = click.position.subtract(regionPosition);
+			if (d.x >= 0 && d.y >= 0 && d.x < this.width * click.scale && d.y < this.height * click.scale) {
+				return true;
+			}
+			return null;
+		}
+		setIsSelected(isSelected) {
+			this.lines.forEach(region => {
+				Dom.toggleClass(region, isSelected, 'sqd-selected');
+			});
+		}
+	}
+	function drawLine(parent, x1, y1, x2, y2) {
+		const line = Dom.svg('line', {
+			class: 'sqd-region',
+			x1,
+			y1,
+			x2,
+			y2
+		});
+		parent.insertBefore(line, parent.firstChild);
+		return line;
+	}
+
+	class DefaultRegionComponentViewExtension {
+		create(parentElement, componentClassName, stepContext, _, contentFactory) {
+			const g = ComponentDom.stepG(componentClassName, stepContext.step.type, stepContext.step.id);
+			parentElement.appendChild(g);
+			return contentFactory(g, DefaultRegionView.create);
 		}
 	}
 
@@ -955,1863 +2210,6 @@
 		}
 	}
 
-	class WorkspaceApi {
-		constructor(state, definitionWalker, workspaceController) {
-			this.state = state;
-			this.definitionWalker = definitionWalker;
-			this.workspaceController = workspaceController;
-		}
-		getViewport() {
-			return this.state.viewport;
-		}
-		setViewport(viewport) {
-			this.state.setViewport(viewport);
-		}
-		getCanvasPosition() {
-			return this.workspaceController.getCanvasPosition();
-		}
-		getCanvasSize() {
-			return this.workspaceController.getCanvasSize();
-		}
-		getRootComponentSize() {
-			return this.workspaceController.getRootComponentSize();
-		}
-		updateRootComponent() {
-			this.workspaceController.updateRootComponent();
-		}
-		updateBadges() {
-			this.workspaceController.updateBadges();
-		}
-		updateCanvasSize() {
-			this.workspaceController.updateCanvasSize();
-		}
-		getRootSequence() {
-			const stepId = this.state.tryGetLastStepIdFromFolderPath();
-			if (stepId) {
-				const parentStep = this.definitionWalker.getParentSequence(this.state.definition, stepId);
-				const children = this.definitionWalker.getChildren(parentStep.step);
-				if (!children || children.type !== exports.StepChildrenType.sequence) {
-					throw new Error('Cannot find single sequence in folder step');
-				}
-				return {
-					sequence: children.items,
-					parentStep
-				};
-			}
-			return {
-				sequence: this.state.definition.sequence,
-				parentStep: null
-			};
-		}
-	}
-
-	class DesignerApi {
-		static create(context) {
-			const workspace = new WorkspaceApi(context.state, context.definitionWalker, context.workspaceController);
-			const viewportController = context.services.viewportController.create(workspace);
-			const toolboxDataProvider = new ToolboxDataProvider(context.i18n, context.componentContext.iconProvider, context.configuration.toolbox);
-			return new DesignerApi(context.configuration.shadowRoot, ControlBarApi.create(context.state, context.historyController, context.stateModifier), new ToolboxApi(context.state, context, context.behaviorController, toolboxDataProvider, context.uidGenerator), new EditorApi(context.state, context.definitionWalker, context.stateModifier), workspace, new ViewportApi(context.state, context.workspaceController, viewportController), new PathBarApi(context.state, context.definitionWalker), context.definitionWalker, context.i18n);
-		}
-		constructor(shadowRoot, controlBar, toolbox, editor, workspace, viewport, pathBar, definitionWalker, i18n) {
-			this.shadowRoot = shadowRoot;
-			this.controlBar = controlBar;
-			this.toolbox = toolbox;
-			this.editor = editor;
-			this.workspace = workspace;
-			this.viewport = viewport;
-			this.pathBar = pathBar;
-			this.definitionWalker = definitionWalker;
-			this.i18n = i18n;
-		}
-	}
-
-	const TYPE = 'selectStep';
-	class SelectStepBehaviorEndToken {
-		static is(token) {
-			return Boolean(token) && token.type === TYPE;
-		}
-		constructor(stepId, time) {
-			this.stepId = stepId;
-			this.time = time;
-			this.type = TYPE;
-		}
-	}
-
-	const BADGE_GAP = 4;
-	class DefaultBadgesDecorator {
-		constructor(position, badges, g) {
-			this.position = position;
-			this.badges = badges;
-			this.g = g;
-		}
-		update() {
-			let offsetX = 0;
-			let maxHeight = 0;
-			let j = 0;
-			for (let i = 0; i < this.badges.length; i++) {
-				const badge = this.badges[i];
-				if (badge && badge.view) {
-					offsetX += j === 0 ? badge.view.width / 2 : badge.view.width;
-					maxHeight = Math.max(maxHeight, badge.view.height);
-					Dom.translate(badge.view.g, -offsetX, 0);
-					offsetX += BADGE_GAP;
-					j++;
-				}
-			}
-			Dom.translate(this.g, this.position.x, this.position.y + -maxHeight / 2);
-		}
-	}
-
-	class Badges {
-		static createForStep(stepContext, view, componentContext) {
-			const g = createG(view.g);
-			const badges = componentContext.services.badges.map(ext => ext.createForStep(g, view, stepContext, componentContext));
-			const decorator = componentContext.services.stepBadgesDecorator.create(g, view, badges);
-			return new Badges(badges, decorator);
-		}
-		static createForRoot(parentElement, position, componentContext) {
-			const g = createG(parentElement);
-			const badges = componentContext.services.badges.map(ext => {
-				return ext.createForRoot ? ext.createForRoot(g, componentContext) : null;
-			});
-			const decorator = new DefaultBadgesDecorator(position, badges, g);
-			return new Badges(badges, decorator);
-		}
-		constructor(badges, decorator) {
-			this.badges = badges;
-			this.decorator = decorator;
-		}
-		update(result) {
-			const count = this.badges.length;
-			for (let i = 0; i < count; i++) {
-				const badge = this.badges[i];
-				if (badge) {
-					result[i] = badge.update(result[i]);
-				}
-			}
-			this.decorator.update();
-		}
-		resolveClick(click) {
-			for (const badge of this.badges) {
-				const command = badge && badge.resolveClick(click);
-				if (command) {
-					return command;
-				}
-			}
-			return null;
-		}
-	}
-	function createG(parentElement) {
-		const g = Dom.svg('g', {
-			class: 'sqd-badges'
-		});
-		parentElement.appendChild(g);
-		return g;
-	}
-
-	class ValidationErrorBadgeView {
-		static create(parent, cfg) {
-			const g = Dom.svg('g');
-			const halfOfSize = cfg.size / 2;
-			const circle = Dom.svg('path', {
-				class: 'sqd-validation-error',
-				d: `M 0 ${-halfOfSize} l ${halfOfSize} ${cfg.size} l ${-cfg.size} 0 Z`
-			});
-			Dom.translate(circle, halfOfSize, halfOfSize);
-			g.appendChild(circle);
-			const icon = Icons.appendPath(g, 'sqd-validation-error-icon-path', Icons.alert, cfg.iconSize);
-			const offsetX = (cfg.size - cfg.iconSize) / 2;
-			const offsetY = offsetX * 1.5;
-			Dom.translate(icon, offsetX, offsetY);
-			parent.appendChild(g);
-			return new ValidationErrorBadgeView(parent, g, cfg.size, cfg.size);
-		}
-		constructor(parent, g, width, height) {
-			this.parent = parent;
-			this.g = g;
-			this.width = width;
-			this.height = height;
-		}
-		destroy() {
-			this.parent.removeChild(this.g);
-		}
-	}
-
-	class ValidatorFactory {
-		static createForStep(stepContext, view, componentContext) {
-			return () => {
-				if (!componentContext.validator.validateStep(stepContext.step, stepContext.parentSequence)) {
-					return false;
-				}
-				if (view.haveCollapsedChildren) {
-					let allChildrenValid = true;
-					componentContext.definitionWalker.forEachChildren(stepContext.step, (step, _, parentSequence) => {
-						if (!componentContext.validator.validateStep(step, parentSequence)) {
-							allChildrenValid = false;
-							return false;
-						}
-					});
-					if (!allChildrenValid) {
-						return false;
-					}
-				}
-				return true;
-			};
-		}
-		static createForRoot(componentContext) {
-			return () => {
-				return componentContext.validator.validateRoot();
-			};
-		}
-	}
-
-	class ValidationErrorBadge {
-		static createForStep(parentElement, view, stepContext, componentContext, configuration) {
-			const validator = ValidatorFactory.createForStep(stepContext, view, componentContext);
-			return new ValidationErrorBadge(parentElement, validator, configuration);
-		}
-		static createForRoot(parentElement, componentContext, configuration) {
-			const validator = ValidatorFactory.createForRoot(componentContext);
-			return new ValidationErrorBadge(parentElement, validator, configuration);
-		}
-		constructor(parentElement, validator, configuration) {
-			this.parentElement = parentElement;
-			this.validator = validator;
-			this.configuration = configuration;
-			this.view = null;
-		}
-		update(result) {
-			const isValid = this.validator();
-			if (isValid) {
-				if (this.view) {
-					this.view.destroy();
-					this.view = null;
-				}
-			}
-			else if (!this.view) {
-				this.view = ValidationErrorBadgeView.create(this.parentElement, this.configuration);
-			}
-			return isValid && result;
-		}
-		resolveClick() {
-			return null;
-		}
-	}
-
-	const defaultConfiguration$6 = {
-		view: {
-			size: 22,
-			iconSize: 12
-		}
-	};
-	class ValidationErrorBadgeExtension {
-		static create(configuration) {
-			return new ValidationErrorBadgeExtension(configuration !== null && configuration !== void 0 ? configuration : defaultConfiguration$6);
-		}
-		constructor(configuration) {
-			this.configuration = configuration;
-			this.id = 'validationError';
-			this.createStartValue = () => true;
-		}
-		createForStep(parentElement, view, stepContext, componentContext) {
-			return ValidationErrorBadge.createForStep(parentElement, view, stepContext, componentContext, this.configuration.view);
-		}
-		createForRoot(parentElement, componentContext) {
-			return ValidationErrorBadge.createForRoot(parentElement, componentContext, this.configuration.view);
-		}
-	}
-
-	class ComponentDom {
-		static stepG(componentClassName, type, id) {
-			return Dom.svg('g', {
-				class: `sqd-step-${componentClassName} sqd-type-${type}`,
-				'data-step-id': id
-			});
-		}
-	}
-
-	class InputView {
-		static createRectInput(parent, x, y, size, radius, iconSize, iconUrl) {
-			const g = Dom.svg('g');
-			parent.appendChild(g);
-			const rect = Dom.svg('rect', {
-				class: 'sqd-input',
-				width: size,
-				height: size,
-				x: x - size / 2,
-				y: y + size / -2 + 0.5,
-				rx: radius,
-				ry: radius
-			});
-			g.appendChild(rect);
-			if (iconUrl) {
-				const icon = Dom.svg('image', {
-					href: iconUrl,
-					width: iconSize,
-					height: iconSize,
-					x: x - iconSize / 2,
-					y: y + iconSize / -2
-				});
-				g.appendChild(icon);
-			}
-			return new InputView(g);
-		}
-		static createRoundInput(parent, x, y, size) {
-			const circle = Dom.svg('circle', {
-				class: 'sqd-input',
-				cx: x,
-				xy: y,
-				r: size / 2
-			});
-			parent.appendChild(circle);
-			return new InputView(circle);
-		}
-		constructor(g) {
-			this.g = g;
-		}
-		setIsHidden(isHidden) {
-			Dom.attrs(this.g, {
-				visibility: isHidden ? 'hidden' : 'visible'
-			});
-		}
-	}
-
-	const EPS = 0.5; // Epsilon, a tiny offset to avoid rendering issues
-	class JoinView {
-		static createStraightJoin(parent, start, height) {
-			const dy = Math.sign(height);
-			const join = Dom.svg('line', {
-				class: 'sqd-join',
-				x1: start.x,
-				y1: start.y - EPS * dy,
-				x2: start.x,
-				y2: start.y + height + EPS * dy
-			});
-			parent.insertBefore(join, parent.firstChild);
-		}
-		static createJoins(parent, start, targets) {
-			const firstTarget = targets[0];
-			const h = Math.abs(firstTarget.y - start.y) / 2; // half height
-			const dy = Math.sign(firstTarget.y - start.y); // direction y
-			switch (targets.length) {
-				case 1:
-					if (start.x === targets[0].x) {
-						JoinView.createStraightJoin(parent, start, h * 2 * dy);
-					}
-					else {
-						appendCurvedJoins(parent, start, targets, h, dy);
-					}
-					break;
-				case 2:
-					appendCurvedJoins(parent, start, targets, h, dy);
-					break;
-				default:
-					{
-						const f = targets[0]; // first
-						const l = targets[targets.length - 1]; // last
-						const eps = EPS * dy;
-						appendJoin(parent, `M ${f.x} ${f.y + eps} l 0 ${-eps} q ${h * 0.3} ${h * -dy * 0.8} ${h} ${h * -dy} ` +
-							`l ${l.x - f.x - h * 2} 0 q ${h * 0.8} ${-h * -dy * 0.3} ${h} ${-h * -dy} l 0 ${eps}`);
-						for (let i = 1; i < targets.length - 1; i++) {
-							JoinView.createStraightJoin(parent, targets[i], h * -dy);
-						}
-						JoinView.createStraightJoin(parent, start, h * dy);
-					}
-					break;
-			}
-		}
-	}
-	function appendCurvedJoins(parent, start, targets, h, dy) {
-		const eps = EPS * dy;
-		for (const target of targets) {
-			const l = Math.abs(target.x - start.x) - h * 2; // straight line length
-			const dx = Math.sign(target.x - start.x); // direction x
-			appendJoin(parent, `M ${start.x} ${start.y - eps} l 0 ${eps} q ${dx * h * 0.3} ${dy * h * 0.8} ${dx * h} ${dy * h} ` +
-				`l ${dx * l} 0 q ${dx * h * 0.7} ${dy * h * 0.2} ${dx * h} ${dy * h} l 0 ${eps}`);
-		}
-	}
-	function appendJoin(parent, d) {
-		const join = Dom.svg('path', {
-			class: 'sqd-join',
-			fill: 'none',
-			d
-		});
-		parent.insertBefore(join, parent.firstChild);
-	}
-
-	class LabelView {
-		static create(parent, y, cfg, text, theme) {
-			const g = Dom.svg('g', {
-				class: `sqd-label sqd-label-${theme}`
-			});
-			parent.appendChild(g);
-			const nameText = Dom.svg('text', {
-				class: 'sqd-label-text',
-				y: y + cfg.height / 2
-			});
-			nameText.textContent = text;
-			g.appendChild(nameText);
-			const width = Math.max(nameText.getBBox().width + cfg.paddingX * 2, cfg.minWidth);
-			const nameRect = Dom.svg('rect', {
-				class: 'sqd-label-rect',
-				width: width,
-				height: cfg.height,
-				x: -width / 2 + 0.5,
-				y: y + 0.5,
-				rx: cfg.radius,
-				ry: cfg.radius
-			});
-			g.insertBefore(nameRect, nameText);
-			return new LabelView(g, width, cfg.height);
-		}
-		constructor(g, width, height) {
-			this.g = g;
-			this.width = width;
-			this.height = height;
-		}
-	}
-
-	class OutputView {
-		static create(parent, x, y, size) {
-			const circle = Dom.svg('circle', {
-				class: 'sqd-output',
-				cx: x,
-				cy: y,
-				r: size / 2
-			});
-			parent.appendChild(circle);
-			return new OutputView(circle);
-		}
-		constructor(root) {
-			this.root = root;
-		}
-		setIsHidden(isHidden) {
-			Dom.attrs(this.root, {
-				visibility: isHidden ? 'hidden' : 'visible'
-			});
-		}
-	}
-
-	// PlaceholderExtension
-	exports.PlaceholderGapOrientation = void 0;
-	(function (PlaceholderGapOrientation) {
-		PlaceholderGapOrientation[PlaceholderGapOrientation["along"] = 0] = "along";
-		PlaceholderGapOrientation[PlaceholderGapOrientation["perpendicular"] = 1] = "perpendicular"; // Goes perpendicular to the flow
-	})(exports.PlaceholderGapOrientation || (exports.PlaceholderGapOrientation = {}));
-
-	class DefaultSequenceComponentView {
-		static create(parent, sequenceContext, componentContext) {
-			const phSize = componentContext.services.placeholder.getGapSize(exports.PlaceholderGapOrientation.along);
-			const phWidth = phSize.x;
-			const phHeight = phSize.y;
-			const { sequence } = sequenceContext;
-			const g = Dom.svg('g');
-			parent.appendChild(g);
-			const components = [];
-			for (let index = 0; index < sequence.length; index++) {
-				const stepContext = {
-					parentSequence: sequenceContext.sequence,
-					step: sequence[index],
-					depth: sequenceContext.depth,
-					position: index,
-					isInputConnected: index === 0 ? sequenceContext.isInputConnected : components[index - 1].hasOutput,
-					isOutputConnected: index === sequence.length - 1 ? sequenceContext.isOutputConnected : true,
-					isPreview: sequenceContext.isPreview
-				};
-				components[index] = componentContext.stepComponentFactory.create(g, stepContext, componentContext);
-			}
-			let joinX;
-			let totalWidth;
-			if (components.length > 0) {
-				const restWidth = Math.max(...components.map(c => c.view.width - c.view.joinX));
-				joinX = Math.max(...components.map(c => c.view.joinX));
-				totalWidth = joinX + restWidth;
-			}
-			else {
-				joinX = phWidth / 2;
-				totalWidth = phWidth;
-			}
-			let offsetY = phHeight;
-			const placeholders = [];
-			for (let i = 0; i < components.length; i++) {
-				const component = components[i];
-				const offsetX = joinX - component.view.joinX;
-				if ((i === 0 && sequenceContext.isInputConnected) || (i > 0 && components[i - 1].hasOutput)) {
-					JoinView.createStraightJoin(g, new Vector(joinX, offsetY - phHeight), phHeight);
-				}
-				if (!sequenceContext.isPreview && componentContext.placeholderController.canCreate(sequence, i)) {
-					const ph = componentContext.services.placeholder.createForGap(g, sequence, i, exports.PlaceholderGapOrientation.along);
-					Dom.translate(ph.view.g, joinX - phWidth / 2, offsetY - phHeight);
-					placeholders.push(ph);
-				}
-				Dom.translate(component.view.g, offsetX, offsetY);
-				offsetY += component.view.height + phHeight;
-			}
-			if (sequenceContext.isOutputConnected && (components.length === 0 || components[components.length - 1].hasOutput)) {
-				JoinView.createStraightJoin(g, new Vector(joinX, offsetY - phHeight), phHeight);
-			}
-			const newIndex = components.length;
-			if (!sequenceContext.isPreview && componentContext.placeholderController.canCreate(sequence, newIndex)) {
-				const ph = componentContext.services.placeholder.createForGap(g, sequence, newIndex, exports.PlaceholderGapOrientation.along);
-				Dom.translate(ph.view.g, joinX - phWidth / 2, offsetY - phHeight);
-				placeholders.push(ph);
-			}
-			return new DefaultSequenceComponentView(g, totalWidth, offsetY, joinX, placeholders, components);
-		}
-		constructor(g, width, height, joinX, placeholders, components) {
-			this.g = g;
-			this.width = width;
-			this.height = height;
-			this.joinX = joinX;
-			this.placeholders = placeholders;
-			this.components = components;
-		}
-		hasOutput() {
-			if (this.components.length > 0) {
-				return this.components[this.components.length - 1].hasOutput;
-			}
-			return true;
-		}
-	}
-
-	class DefaultSequenceComponent {
-		static create(parentElement, sequenceContext, context) {
-			const view = DefaultSequenceComponentView.create(parentElement, sequenceContext, context);
-			return new DefaultSequenceComponent(view, view.hasOutput());
-		}
-		constructor(view, hasOutput) {
-			this.view = view;
-			this.hasOutput = hasOutput;
-		}
-		resolveClick(click) {
-			for (const component of this.view.components) {
-				const result = component.resolveClick(click);
-				if (result) {
-					return result;
-				}
-			}
-			for (const placeholder of this.view.placeholders) {
-				const result = placeholder.resolveClick(click);
-				if (result) {
-					return result;
-				}
-			}
-			return null;
-		}
-		findById(stepId) {
-			for (const component of this.view.components) {
-				const result = component.findById(stepId);
-				if (result) {
-					return result;
-				}
-			}
-			return null;
-		}
-		resolvePlaceholders(skipComponent, result) {
-			this.view.components.forEach(component => component.resolvePlaceholders(skipComponent, result));
-			this.view.placeholders.forEach(placeholder => result.placeholders.push(placeholder));
-		}
-		updateBadges(result) {
-			this.view.components.forEach(component => component.updateBadges(result));
-		}
-	}
-
-	exports.ClickCommandType = void 0;
-	(function (ClickCommandType) {
-		ClickCommandType[ClickCommandType["selectStep"] = 1] = "selectStep";
-		ClickCommandType[ClickCommandType["rerenderStep"] = 2] = "rerenderStep";
-		ClickCommandType[ClickCommandType["openFolder"] = 3] = "openFolder";
-		ClickCommandType[ClickCommandType["triggerCustomAction"] = 4] = "triggerCustomAction";
-	})(exports.ClickCommandType || (exports.ClickCommandType = {}));
-	exports.PlaceholderDirection = void 0;
-	(function (PlaceholderDirection) {
-		PlaceholderDirection[PlaceholderDirection["gap"] = 0] = "gap";
-		PlaceholderDirection[PlaceholderDirection["in"] = 1] = "in";
-		PlaceholderDirection[PlaceholderDirection["out"] = 2] = "out";
-	})(exports.PlaceholderDirection || (exports.PlaceholderDirection = {}));
-
-	class StartStopRootComponentView {
-		static create(parent, sequence, parentPlaceIndicator, context, cfg) {
-			const g = Dom.svg('g', {
-				class: 'sqd-root-start-stop'
-			});
-			parent.appendChild(g);
-			const sequenceComponent = DefaultSequenceComponent.create(g, {
-				sequence,
-				depth: 0,
-				isInputConnected: Boolean(cfg.start),
-				isOutputConnected: true,
-				isPreview: false
-			}, context);
-			const view = sequenceComponent.view;
-			const x = view.joinX - cfg.size / 2;
-			const endY = cfg.size + view.height;
-			const iconSize = parentPlaceIndicator ? cfg.folderIconSize : cfg.defaultIconSize;
-			if (cfg.start) {
-				const startCircle = createCircle('start', parentPlaceIndicator ? cfg.folderIconD : cfg.start.iconD, cfg.size, iconSize);
-				Dom.translate(startCircle, x, 0);
-				g.appendChild(startCircle);
-			}
-			Dom.translate(view.g, 0, cfg.size);
-			const stopCircle = createCircle('stop', parentPlaceIndicator ? cfg.folderIconD : cfg.stopIconD, cfg.size, iconSize);
-			Dom.translate(stopCircle, x, endY);
-			g.appendChild(stopCircle);
-			let startPlaceholder = null;
-			let endPlaceholder = null;
-			if (parentPlaceIndicator) {
-				const size = new Vector(cfg.size, cfg.size);
-				startPlaceholder = context.services.placeholder.createForArea(g, size, exports.PlaceholderDirection.out, parentPlaceIndicator.sequence, parentPlaceIndicator.index);
-				endPlaceholder = context.services.placeholder.createForArea(g, size, exports.PlaceholderDirection.out, parentPlaceIndicator.sequence, parentPlaceIndicator.index);
-				Dom.translate(startPlaceholder.view.g, x, 0);
-				Dom.translate(endPlaceholder.view.g, x, endY);
-			}
-			const badges = Badges.createForRoot(g, new Vector(x + cfg.size, 0), context);
-			return new StartStopRootComponentView(g, view.width, view.height + cfg.size * 2, view.joinX, sequenceComponent, startPlaceholder, endPlaceholder, badges);
-		}
-		constructor(g, width, height, joinX, component, startPlaceholder, endPlaceholder, badges) {
-			this.g = g;
-			this.width = width;
-			this.height = height;
-			this.joinX = joinX;
-			this.component = component;
-			this.startPlaceholder = startPlaceholder;
-			this.endPlaceholder = endPlaceholder;
-			this.badges = badges;
-		}
-		destroy() {
-			var _a;
-			(_a = this.g.parentNode) === null || _a === void 0 ? void 0 : _a.removeChild(this.g);
-		}
-	}
-	function createCircle(classSuffix, d, size, iconSize) {
-		const g = Dom.svg('g', {
-			class: 'sqd-root-start-stop-' + classSuffix
-		});
-		const r = size / 2;
-		const circle = Dom.svg('circle', {
-			class: 'sqd-root-start-stop-circle',
-			cx: r,
-			cy: r,
-			r: r
-		});
-		g.appendChild(circle);
-		const offset = (size - iconSize) / 2;
-		const icon = Icons.appendPath(g, 'sqd-root-start-stop-icon', d, iconSize);
-		Dom.translate(icon, offset, offset);
-		return g;
-	}
-
-	class StartStopRootComponent {
-		static create(parentElement, sequence, parentPlaceIndicator, context, viewConfiguration) {
-			const view = StartStopRootComponentView.create(parentElement, sequence, parentPlaceIndicator, context, viewConfiguration);
-			return new StartStopRootComponent(view);
-		}
-		constructor(view) {
-			this.view = view;
-		}
-		resolveClick(click) {
-			return this.view.component.resolveClick(click);
-		}
-		findById(stepId) {
-			return this.view.component.findById(stepId);
-		}
-		resolvePlaceholders(skipComponent, result) {
-			this.view.component.resolvePlaceholders(skipComponent, result);
-			if (this.view.startPlaceholder && this.view.endPlaceholder) {
-				result.placeholders.push(this.view.startPlaceholder);
-				result.placeholders.push(this.view.endPlaceholder);
-			}
-		}
-		updateBadges(result) {
-			this.view.badges.update(result);
-			this.view.component.updateBadges(result);
-		}
-	}
-
-	const defaultViewConfiguration$1 = {
-		size: 30,
-		defaultIconSize: 22,
-		folderIconSize: 18,
-		start: {
-			iconD: Icons.play
-		},
-		stopIconD: Icons.stop,
-		folderIconD: Icons.folder
-	};
-	class StartStopRootComponentExtension {
-		static create(configuration) {
-			return new StartStopRootComponentExtension(configuration);
-		}
-		constructor(configuration) {
-			this.configuration = configuration;
-		}
-		create(parentElement, sequence, parentPlaceIndicator, context) {
-			var _a;
-			const view = ((_a = this.configuration) === null || _a === void 0 ? void 0 : _a.view) ? Object.assign(Object.assign({}, defaultViewConfiguration$1), this.configuration.view) : defaultViewConfiguration$1;
-			return StartStopRootComponent.create(parentElement, sequence, parentPlaceIndicator, context, view);
-		}
-	}
-
-	const COMPONENT_CLASS_NAME$3 = 'container';
-	const createContainerStepComponentViewFactory = (cfg) => (parentElement, stepContext, viewContext) => {
-		return viewContext.createRegionComponentView(parentElement, COMPONENT_CLASS_NAME$3, (g, regionViewBuilder) => {
-			const step = stepContext.step;
-			const name = viewContext.getStepName();
-			const labelView = LabelView.create(g, cfg.paddingTop, cfg.label, name, 'primary');
-			const sequenceComponent = viewContext.createSequenceComponent(g, step.sequence);
-			const halfOfWidestElement = labelView.width / 2;
-			const offsetLeft = Math.max(halfOfWidestElement - sequenceComponent.view.joinX, 0) + cfg.paddingX;
-			const offsetRight = Math.max(halfOfWidestElement - (sequenceComponent.view.width - sequenceComponent.view.joinX), 0) + cfg.paddingX;
-			const width = offsetLeft + sequenceComponent.view.width + offsetRight;
-			const height = cfg.paddingTop + cfg.label.height + sequenceComponent.view.height;
-			const joinX = sequenceComponent.view.joinX + offsetLeft;
-			Dom.translate(labelView.g, joinX, 0);
-			Dom.translate(sequenceComponent.view.g, offsetLeft, cfg.paddingTop + cfg.label.height);
-			let inputView = null;
-			if (cfg.inputSize > 0) {
-				const iconUrl = viewContext.getStepIconUrl();
-				inputView = InputView.createRectInput(g, joinX, 0, cfg.inputSize, cfg.inputRadius, cfg.inputIconSize, iconUrl);
-			}
-			JoinView.createStraightJoin(g, new Vector(joinX, 0), cfg.paddingTop);
-			const regionView = regionViewBuilder(g, [width], height);
-			return {
-				g,
-				width,
-				height,
-				joinX,
-				placeholders: null,
-				components: [sequenceComponent],
-				hasOutput: sequenceComponent.hasOutput,
-				getClientPosition() {
-					return regionView.getClientPosition();
-				},
-				resolveClick(click) {
-					const result = regionView.resolveClick(click);
-					return result === true || (result === null && g.contains(click.element)) ? true : result;
-				},
-				setIsDragging(isDragging) {
-					if (cfg.autoHideInputOnDrag && inputView) {
-						inputView.setIsHidden(isDragging);
-					}
-				},
-				setIsSelected(isSelected) {
-					regionView.setIsSelected(isSelected);
-				},
-				setIsDisabled(isDisabled) {
-					Dom.toggleClass(g, isDisabled, 'sqd-disabled');
-				}
-			};
-		});
-	};
-
-	const COMPONENT_CLASS_NAME$2 = 'launch-pad';
-	function createView$1(parentElement, stepContext, viewContext, regionViewFactory, isInterruptedIfEmpty, cfg) {
-		const step = stepContext.step;
-		const sequence = stepContext.step.sequence;
-		const g = ComponentDom.stepG(COMPONENT_CLASS_NAME$2, step.type, step.id);
-		parentElement.appendChild(g);
-		const components = [];
-		let width;
-		let height;
-		let joinX;
-		const placeholdersX = [];
-		let placeholderOrientation;
-		let placeholderSize;
-		let hasOutput;
-		let inputView = null;
-		let outputView = null;
-		if (sequence.length > 0) {
-			let maxComponentHeight = 0;
-			for (let i = 0; i < sequence.length; i++) {
-				const component = viewContext.createStepComponent(g, sequence, sequence[i], i);
-				components.push(component);
-				maxComponentHeight = Math.max(maxComponentHeight, component.view.height);
-			}
-			const joinsX = [];
-			const positionsX = [];
-			const spacesY = [];
-			placeholderOrientation = exports.PlaceholderGapOrientation.perpendicular;
-			placeholderSize = viewContext.getPlaceholderGapSize(placeholderOrientation);
-			placeholdersX.push(0);
-			let positionX = placeholderSize.x;
-			for (let i = 0; i < components.length; i++) {
-				if (i > 0) {
-					placeholdersX.push(positionX);
-					positionX += placeholderSize.x;
-				}
-				const component = components[i];
-				const componentY = (maxComponentHeight - component.view.height) / 2 + cfg.connectionHeight + cfg.paddingY;
-				Dom.translate(component.view.g, positionX, componentY);
-				joinsX.push(positionX + component.view.joinX);
-				positionX += component.view.width;
-				positionsX.push(positionX);
-				spacesY.push(Math.max(0, (maxComponentHeight - component.view.height) / 2));
-			}
-			placeholdersX.push(positionX);
-			positionX += placeholderSize.x;
-			width = positionX;
-			height = maxComponentHeight + 2 * cfg.connectionHeight + 2 * cfg.paddingY;
-			const contentJoinX = components.length % 2 === 0
-				? positionsX[Math.max(0, Math.floor(components.length / 2) - 1)] + placeholderSize.x / 2
-				: joinsX[Math.floor(components.length / 2)];
-			if (stepContext.isInputConnected) {
-				const joinsTopY = joinsX.map(x => new Vector(x, cfg.connectionHeight));
-				JoinView.createJoins(g, new Vector(contentJoinX, 0), joinsTopY);
-				for (let i = 0; i < joinsX.length; i++) {
-					JoinView.createStraightJoin(g, joinsTopY[i], cfg.paddingY + spacesY[i]);
-				}
-			}
-			const joinsBottomY = joinsX.map(x => new Vector(x, cfg.connectionHeight + 2 * cfg.paddingY + maxComponentHeight));
-			JoinView.createJoins(g, new Vector(contentJoinX, height), joinsBottomY);
-			for (let i = 0; i < joinsX.length; i++) {
-				JoinView.createStraightJoin(g, joinsBottomY[i], -(cfg.paddingY + spacesY[i]));
-			}
-			hasOutput = true;
-			joinX = contentJoinX;
-		}
-		else {
-			placeholderOrientation = exports.PlaceholderGapOrientation.along;
-			placeholderSize = viewContext.getPlaceholderGapSize(placeholderOrientation);
-			placeholdersX.push(cfg.emptyPaddingX);
-			width = placeholderSize.x + cfg.emptyPaddingX * 2;
-			height = placeholderSize.y + cfg.emptyPaddingY * 2;
-			hasOutput = !isInterruptedIfEmpty;
-			if (stepContext.isInputConnected) {
-				inputView = InputView.createRoundInput(g, width / 2, 0, cfg.emptyInputSize);
-			}
-			if (stepContext.isOutputConnected && hasOutput) {
-				outputView = OutputView.create(g, width / 2, height, cfg.emptyOutputSize);
-			}
-			if (cfg.emptyIconSize > 0) {
-				const iconUrl = viewContext.getStepIconUrl();
-				if (iconUrl) {
-					const icon = Dom.svg('image', {
-						href: iconUrl,
-						x: (width - cfg.emptyIconSize) / 2,
-						y: (height - cfg.emptyIconSize) / 2,
-						width: cfg.emptyIconSize,
-						height: cfg.emptyIconSize
-					});
-					g.appendChild(icon);
-				}
-			}
-			joinX = width / 2;
-		}
-		let regionView = null;
-		if (regionViewFactory) {
-			regionView = regionViewFactory(g, [width], height);
-		}
-		const placeholders = [];
-		const placeholderY = (height - placeholderSize.y) / 2;
-		for (let i = 0; i < placeholdersX.length; i++) {
-			const placeholder = viewContext.createPlaceholderForGap(g, sequence, i, placeholderOrientation);
-			placeholders.push(placeholder);
-			Dom.translate(placeholder.view.g, placeholdersX[i], placeholderY);
-		}
-		return {
-			g,
-			width,
-			height,
-			joinX,
-			components,
-			placeholders,
-			hasOutput,
-			getClientPosition() {
-				return getAbsolutePosition(g);
-			},
-			resolveClick(click) {
-				if (regionView) {
-					const result = regionView.resolveClick(click);
-					return result === true || (result === null && g.contains(click.element)) ? true : result;
-				}
-				return null;
-			},
-			setIsDragging(isDragging) {
-				inputView === null || inputView === void 0 ? void 0 : inputView.setIsHidden(isDragging);
-				outputView === null || outputView === void 0 ? void 0 : outputView.setIsHidden(isDragging);
-			},
-			setIsDisabled(isDisabled) {
-				Dom.toggleClass(g, isDisabled, 'sqd-disabled');
-			},
-			setIsSelected(isSelected) {
-				regionView === null || regionView === void 0 ? void 0 : regionView.setIsSelected(isSelected);
-			}
-		};
-	}
-	const createLaunchPadStepComponentViewFactory = (isInterruptedIfEmpty, cfg) => (parentElement, stepContext, viewContext) => {
-		if (cfg.isRegionEnabled) {
-			return viewContext.createRegionComponentView(parentElement, COMPONENT_CLASS_NAME$2, (g, regionViewBuilder) => {
-				return createView$1(g, stepContext, viewContext, regionViewBuilder, isInterruptedIfEmpty, cfg);
-			});
-		}
-		return createView$1(parentElement, stepContext, viewContext, null, isInterruptedIfEmpty, cfg);
-	};
-
-	const COMPONENT_CLASS_NAME$1 = 'switch';
-	function createView(g, width, height, joinX, viewContext, sequenceComponents, regionView, cfg) {
-		let inputView = null;
-		if (cfg.inputSize > 0) {
-			const iconUrl = viewContext.getStepIconUrl();
-			inputView = InputView.createRectInput(g, joinX, cfg.paddingTop1, cfg.inputSize, cfg.inputRadius, cfg.inputIconSize, iconUrl);
-		}
-		return {
-			g,
-			width,
-			height,
-			joinX,
-			placeholders: null,
-			components: sequenceComponents,
-			hasOutput: sequenceComponents ? sequenceComponents.some(c => c.hasOutput) : true,
-			getClientPosition() {
-				return regionView.getClientPosition();
-			},
-			resolveClick(click) {
-				const result = regionView.resolveClick(click);
-				return result === true || (result === null && g.contains(click.element)) ? true : result;
-			},
-			setIsDragging(isDragging) {
-				if (cfg.autoHideInputOnDrag && inputView) {
-					inputView.setIsHidden(isDragging);
-				}
-			},
-			setIsSelected(isSelected) {
-				regionView.setIsSelected(isSelected);
-			},
-			setIsDisabled(isDisabled) {
-				Dom.toggleClass(g, isDisabled, 'sqd-disabled');
-			}
-		};
-	}
-	const createSwitchStepComponentViewFactory = (cfg) => (parent, stepContext, viewContext) => {
-		return viewContext.createRegionComponentView(parent, COMPONENT_CLASS_NAME$1, (g, regionViewBuilder) => {
-			const step = stepContext.step;
-			const paddingTop = cfg.paddingTop1 + cfg.paddingTop2;
-			const name = viewContext.getStepName();
-			const nameLabelView = LabelView.create(g, paddingTop, cfg.nameLabel, name, 'primary');
-			const branchNames = Object.keys(step.branches);
-			if (branchNames.length === 0) {
-				const width = Math.max(nameLabelView.width, cfg.minBranchWidth) + cfg.paddingX * 2;
-				const height = nameLabelView.height + paddingTop + cfg.noBranchPaddingBottom;
-				const joinX = width / 2;
-				const regionView = regionViewBuilder(g, [width], height);
-				Dom.translate(nameLabelView.g, joinX, 0);
-				JoinView.createStraightJoin(g, new Vector(joinX, 0), height);
-				return createView(g, width, height, joinX, viewContext, null, regionView, cfg);
-			}
-			const branchComponents = [];
-			const branchLabelViews = [];
-			const branchSizes = [];
-			let totalBranchesWidth = 0;
-			let maxBranchesHeight = 0;
-			branchNames.forEach(branchName => {
-				const labelY = paddingTop + cfg.nameLabel.height + cfg.connectionHeight;
-				const translatedBranchName = viewContext.i18n(`stepComponent.${step.type}.branchName`, branchName);
-				const labelView = LabelView.create(g, labelY, cfg.branchNameLabel, translatedBranchName, 'secondary');
-				const component = viewContext.createSequenceComponent(g, step.branches[branchName]);
-				const halfOfWidestBranchElement = Math.max(labelView.width, cfg.minBranchWidth) / 2;
-				const branchOffsetLeft = Math.max(halfOfWidestBranchElement - component.view.joinX, 0) + cfg.paddingX;
-				const branchOffsetRight = Math.max(halfOfWidestBranchElement - (component.view.width - component.view.joinX), 0) + cfg.paddingX;
-				const width = component.view.width + branchOffsetLeft + branchOffsetRight;
-				const joinX = component.view.joinX + branchOffsetLeft;
-				const offsetX = totalBranchesWidth;
-				totalBranchesWidth += width;
-				maxBranchesHeight = Math.max(maxBranchesHeight, component.view.height);
-				branchComponents.push(component);
-				branchLabelViews.push(labelView);
-				branchSizes.push({ width, branchOffsetLeft, offsetX, joinX });
-			});
-			const centerBranchIndex = Math.floor(branchNames.length / 2);
-			const centerBranchSize = branchSizes[centerBranchIndex];
-			let joinX = centerBranchSize.offsetX;
-			if (branchNames.length % 2 !== 0) {
-				joinX += centerBranchSize.joinX;
-			}
-			const halfOfWidestSwitchElement = nameLabelView.width / 2 + cfg.paddingX;
-			const switchOffsetLeft = Math.max(halfOfWidestSwitchElement - joinX, 0);
-			const switchOffsetRight = Math.max(halfOfWidestSwitchElement - (totalBranchesWidth - joinX), 0);
-			const viewWidth = switchOffsetLeft + totalBranchesWidth + switchOffsetRight;
-			const viewHeight = maxBranchesHeight + paddingTop + cfg.nameLabel.height + cfg.branchNameLabel.height + cfg.connectionHeight * 2;
-			const shiftedJoinX = switchOffsetLeft + joinX;
-			Dom.translate(nameLabelView.g, shiftedJoinX, 0);
-			const branchOffsetTop = paddingTop + cfg.nameLabel.height + cfg.branchNameLabel.height + cfg.connectionHeight;
-			branchComponents.forEach((component, i) => {
-				const branchSize = branchSizes[i];
-				const branchOffsetLeft = switchOffsetLeft + branchSize.offsetX + branchSize.branchOffsetLeft;
-				Dom.translate(branchLabelViews[i].g, switchOffsetLeft + branchSize.offsetX + branchSize.joinX, 0);
-				Dom.translate(component.view.g, branchOffsetLeft, branchOffsetTop);
-				if (component.hasOutput && stepContext.isOutputConnected) {
-					const endOffsetTopOfComponent = paddingTop + cfg.nameLabel.height + cfg.branchNameLabel.height + cfg.connectionHeight + component.view.height;
-					const missingHeight = viewHeight - endOffsetTopOfComponent - cfg.connectionHeight;
-					if (missingHeight > 0) {
-						JoinView.createStraightJoin(g, new Vector(switchOffsetLeft + branchSize.offsetX + branchSize.joinX, endOffsetTopOfComponent), missingHeight);
-					}
-				}
-			});
-			JoinView.createStraightJoin(g, new Vector(shiftedJoinX, 0), paddingTop);
-			JoinView.createJoins(g, new Vector(shiftedJoinX, paddingTop + cfg.nameLabel.height), branchSizes.map(s => new Vector(switchOffsetLeft + s.offsetX + s.joinX, paddingTop + cfg.nameLabel.height + cfg.connectionHeight)));
-			if (stepContext.isOutputConnected) {
-				const ongoingSequenceIndexes = branchComponents
-					.map((component, index) => (component.hasOutput ? index : null))
-					.filter(index => index !== null);
-				const ongoingJoinTargets = ongoingSequenceIndexes.map((i) => {
-					const branchSize = branchSizes[i];
-					return new Vector(switchOffsetLeft + branchSize.offsetX + branchSize.joinX, paddingTop + cfg.connectionHeight + cfg.nameLabel.height + cfg.branchNameLabel.height + maxBranchesHeight);
-				});
-				if (ongoingJoinTargets.length > 0) {
-					JoinView.createJoins(g, new Vector(shiftedJoinX, viewHeight), ongoingJoinTargets);
-				}
-			}
-			const regions = branchSizes.map(s => s.width);
-			regions[0] += switchOffsetLeft;
-			regions[regions.length - 1] += switchOffsetRight;
-			const regionView = regionViewBuilder(g, regions, viewHeight);
-			return createView(g, viewWidth, viewHeight, shiftedJoinX, viewContext, branchComponents, regionView, cfg);
-		});
-	};
-
-	const COMPONENT_CLASS_NAME = 'task';
-	const createTaskStepComponentViewFactory = (isInterrupted, cfg) => (parentElement, stepContext, viewContext) => {
-		const { step } = stepContext;
-		const g = ComponentDom.stepG(COMPONENT_CLASS_NAME, step.type, step.id);
-		parentElement.appendChild(g);
-		const boxHeight = cfg.paddingY * 2 + cfg.iconSize;
-		const text = Dom.svg('text', {
-			x: cfg.paddingLeft + cfg.iconSize + cfg.textMarginLeft,
-			y: boxHeight / 2,
-			class: 'sqd-step-task-text'
-		});
-		text.textContent = viewContext.getStepName();
-		g.appendChild(text);
-		const textWidth = Math.max(text.getBBox().width, cfg.minTextWidth);
-		const boxWidth = cfg.iconSize + cfg.paddingLeft + cfg.paddingRight + cfg.textMarginLeft + textWidth;
-		const rect = Dom.svg('rect', {
-			x: 0.5,
-			y: 0.5,
-			class: 'sqd-step-task-rect',
-			width: boxWidth,
-			height: boxHeight,
-			rx: cfg.radius,
-			ry: cfg.radius
-		});
-		g.insertBefore(rect, text);
-		const iconUrl = viewContext.getStepIconUrl();
-		const icon = iconUrl
-			? Dom.svg('image', {
-				href: iconUrl
-			})
-			: Dom.svg('rect', {
-				class: 'sqd-step-task-empty-icon',
-				rx: cfg.radius,
-				ry: cfg.radius
-			});
-		Dom.attrs(icon, {
-			x: cfg.paddingLeft,
-			y: cfg.paddingY,
-			width: cfg.iconSize,
-			height: cfg.iconSize
-		});
-		g.appendChild(icon);
-		const isInputViewHidden = !stepContext.isInputConnected; // TODO: handle inside the folder
-		const isOutputViewHidden = isInterrupted;
-		const inputView = isInputViewHidden ? null : InputView.createRoundInput(g, boxWidth / 2, 0, cfg.inputSize);
-		const outputView = isOutputViewHidden ? null : OutputView.create(g, boxWidth / 2, boxHeight, cfg.outputSize);
-		return {
-			g,
-			width: boxWidth,
-			height: boxHeight,
-			joinX: boxWidth / 2,
-			components: null,
-			placeholders: null,
-			hasOutput: !!outputView,
-			getClientPosition() {
-				return getAbsolutePosition(rect);
-			},
-			resolveClick(click) {
-				return g.contains(click.element) ? true : null;
-			},
-			setIsDragging(isDragging) {
-				inputView === null || inputView === void 0 ? void 0 : inputView.setIsHidden(isDragging);
-				outputView === null || outputView === void 0 ? void 0 : outputView.setIsHidden(isDragging);
-			},
-			setIsDisabled(isDisabled) {
-				Dom.toggleClass(g, isDisabled, 'sqd-disabled');
-			},
-			setIsSelected(isSelected) {
-				Dom.toggleClass(rect, isSelected, 'sqd-selected');
-			}
-		};
-	};
-
-	class CenteredViewportCalculator {
-		static center(padding, canvasSize, rootComponentSize) {
-			if (canvasSize.x === 0 || canvasSize.y === 0) {
-				return {
-					position: new Vector(0, 0),
-					scale: 1
-				};
-			}
-			const canvasSafeWidth = Math.max(canvasSize.x - padding * 2, 0);
-			const canvasSafeHeight = Math.max(canvasSize.y - padding * 2, 0);
-			const scale = Math.min(Math.min(canvasSafeWidth / rootComponentSize.x, canvasSafeHeight / rootComponentSize.y), 1);
-			const width = rootComponentSize.x * scale;
-			const height = rootComponentSize.y * scale;
-			const x = Math.max(0, (canvasSize.x - width) / 2);
-			const y = Math.max(0, (canvasSize.y - height) / 2);
-			return {
-				position: new Vector(x, y),
-				scale
-			};
-		}
-		static getFocusedOnComponent(canvasSize, viewport, componentPosition, componentSize) {
-			const realPosition = viewport.position.divideByScalar(viewport.scale).subtract(componentPosition.divideByScalar(viewport.scale));
-			const componentOffset = componentSize.divideByScalar(2);
-			const position = realPosition.add(canvasSize.divideByScalar(2)).subtract(componentOffset);
-			return { position, scale: 1 };
-		}
-	}
-
-	class ClassicWheelController {
-		static create(api) {
-			return new ClassicWheelController(api);
-		}
-		constructor(api) {
-			this.api = api;
-		}
-		onWheel(e) {
-			this.api.handleWheelEvent(e);
-		}
-	}
-
-	class ClassicWheelControllerExtension {
-		constructor() {
-			this.create = ClassicWheelController.create;
-		}
-	}
-
-	class NextQuantifiedNumber {
-		constructor(values) {
-			this.values = values;
-		}
-		next(value, direction) {
-			let bestIndex = 0;
-			let bestDistance = Number.MAX_VALUE;
-			for (let i = 0; i < this.values.length; i++) {
-				const distance = Math.abs(this.values[i] - value);
-				if (bestDistance > distance) {
-					bestIndex = i;
-					bestDistance = distance;
-				}
-			}
-			let index;
-			if (direction) {
-				index = Math.min(bestIndex + 1, this.values.length - 1);
-			}
-			else {
-				index = Math.max(bestIndex - 1, 0);
-			}
-			return {
-				current: this.values[bestIndex],
-				next: this.values[index]
-			};
-		}
-		limit(scale) {
-			const min = this.values[0];
-			const max = this.values[this.values.length - 1];
-			return Math.min(Math.max(scale, min), max);
-		}
-	}
-
-	const defaultConfiguration$5 = {
-		scales: [0.06, 0.08, 0.1, 0.12, 0.16, 0.2, 0.26, 0.32, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1],
-		smoothDeltaYLimit: 16,
-		padding: 10
-	};
-	class DefaultViewportController {
-		static create(api, configuration) {
-			const config = configuration !== null && configuration !== void 0 ? configuration : defaultConfiguration$5;
-			const nqn = new NextQuantifiedNumber(config.scales);
-			return new DefaultViewportController(config.smoothDeltaYLimit, nqn, api, config.padding);
-		}
-		constructor(smoothDeltaYLimit, nqn, api, padding) {
-			this.smoothDeltaYLimit = smoothDeltaYLimit;
-			this.nqn = nqn;
-			this.api = api;
-			this.padding = padding;
-		}
-		getDefault() {
-			const rootComponentSize = this.api.getRootComponentSize();
-			const canvasSize = this.api.getCanvasSize();
-			return CenteredViewportCalculator.center(this.padding, canvasSize, rootComponentSize);
-		}
-		getZoomed(direction) {
-			const current = this.api.getViewport();
-			const nextScale = this.nqn.next(current.scale, direction);
-			if (nextScale) {
-				return {
-					position: current.position,
-					scale: nextScale.next
-				};
-			}
-			return null;
-		}
-		getFocusedOnComponent(componentPosition, componentSize) {
-			const viewport = this.api.getViewport();
-			const canvasSize = this.api.getCanvasSize();
-			return CenteredViewportCalculator.getFocusedOnComponent(canvasSize, viewport, componentPosition, componentSize);
-		}
-		getNextScale(scale, direction) {
-			return this.nqn.next(scale, direction);
-		}
-		limitScale(scale) {
-			return this.nqn.limit(scale);
-		}
-	}
-
-	class DefaultViewportControllerExtension {
-		static create(configuration) {
-			return new DefaultViewportControllerExtension(configuration);
-		}
-		constructor(configuration) {
-			this.configuration = configuration;
-		}
-		create(api) {
-			return DefaultViewportController.create(api, this.configuration);
-		}
-	}
-
-	class StepComponent {
-		static create(view, stepContext, componentContext) {
-			const badges = Badges.createForStep(stepContext, view, componentContext);
-			return new StepComponent(view, stepContext.step, stepContext.parentSequence, view.hasOutput, badges);
-		}
-		constructor(view, step, parentSequence, hasOutput, badges) {
-			this.view = view;
-			this.step = step;
-			this.parentSequence = parentSequence;
-			this.hasOutput = hasOutput;
-			this.badges = badges;
-		}
-		findById(stepId) {
-			if (this.step.id === stepId) {
-				return this;
-			}
-			if (this.view.components) {
-				for (const component of this.view.components) {
-					const result = component.findById(stepId);
-					if (result) {
-						return result;
-					}
-				}
-			}
-			return null;
-		}
-		resolveClick(click) {
-			if (this.view.components) {
-				for (const component of this.view.components) {
-					const result = component.resolveClick(click);
-					if (result) {
-						return result;
-					}
-				}
-			}
-			if (this.view.placeholders) {
-				for (const placeholder of this.view.placeholders) {
-					const result = placeholder.resolveClick(click);
-					if (result) {
-						return result;
-					}
-				}
-			}
-			const badgeResult = this.badges.resolveClick(click);
-			if (badgeResult) {
-				return badgeResult;
-			}
-			const viewResult = this.view.resolveClick(click);
-			if (viewResult) {
-				return viewResult === true
-					? {
-						type: exports.ClickCommandType.selectStep,
-						component: this
-					}
-					: viewResult;
-			}
-			return null;
-		}
-		resolvePlaceholders(skipComponent, result) {
-			if (skipComponent !== this) {
-				if (this.view.components) {
-					this.view.components.forEach(component => component.resolvePlaceholders(skipComponent, result));
-				}
-				if (this.view.placeholders) {
-					this.view.placeholders.forEach(ph => result.placeholders.push(ph));
-				}
-				result.components.push(this);
-			}
-		}
-		setIsDragging(isDragging) {
-			this.view.setIsDragging(isDragging);
-		}
-		setIsSelected(isSelected) {
-			this.view.setIsSelected(isSelected);
-		}
-		setIsDisabled(isDisabled) {
-			this.view.setIsDisabled(isDisabled);
-		}
-		updateBadges(result) {
-			if (this.view.components) {
-				this.view.components.forEach(component => component.updateBadges(result));
-			}
-			this.badges.update(result);
-		}
-	}
-
-	class StepExtensionResolver {
-		static create(services) {
-			const dict = {};
-			for (let i = services.steps.length - 1; i >= 0; i--) {
-				const extension = services.steps[i];
-				dict[extension.componentType] = extension;
-			}
-			return new StepExtensionResolver(dict);
-		}
-		constructor(dict) {
-			this.dict = dict;
-		}
-		resolve(componentType) {
-			const extension = this.dict[componentType];
-			if (!extension) {
-				throw new Error(`Not supported component type: ${componentType}`);
-			}
-			return extension;
-		}
-	}
-
-	class PlaceholderController {
-		static create(configuration) {
-			return new PlaceholderController(configuration);
-		}
-		constructor(configuration) {
-			var _a, _b, _c, _d;
-			this.configuration = configuration;
-			this.canCreate = (_b = (_a = this.configuration) === null || _a === void 0 ? void 0 : _a.canCreate) !== null && _b !== void 0 ? _b : (() => true);
-			this.canShow = (_d = (_c = this.configuration) === null || _c === void 0 ? void 0 : _c.canShow) !== null && _d !== void 0 ? _d : (() => true);
-		}
-	}
-
-	class RectPlaceholderView {
-		static create(parent, width, height, radius, iconSize, direction) {
-			const g = Dom.svg('g', {
-				visibility: 'hidden',
-				class: 'sqd-placeholder'
-			});
-			parent.appendChild(g);
-			const rect = Dom.svg('rect', {
-				class: 'sqd-placeholder-rect',
-				width,
-				height,
-				rx: radius,
-				ry: radius
-			});
-			g.appendChild(rect);
-			if (direction) {
-				const iconD = direction === exports.PlaceholderDirection.in ? Icons.folderIn : Icons.folderOut;
-				const icon = Icons.appendPath(g, 'sqd-placeholder-icon-path', iconD, iconSize);
-				Dom.translate(icon, (width - iconSize) / 2, (height - iconSize) / 2);
-			}
-			parent.appendChild(g);
-			return new RectPlaceholderView(rect, g);
-		}
-		constructor(rect, g) {
-			this.rect = rect;
-			this.g = g;
-		}
-		setIsHover(isHover) {
-			Dom.toggleClass(this.g, isHover, 'sqd-hover');
-		}
-		setIsVisible(isVisible) {
-			Dom.attrs(this.g, {
-				visibility: isVisible ? 'visible' : 'hidden'
-			});
-		}
-	}
-
-	class RectPlaceholder {
-		static create(parent, size, direction, sequence, index, radius, iconSize) {
-			const view = RectPlaceholderView.create(parent, size.x, size.y, radius, iconSize, direction);
-			return new RectPlaceholder(view, sequence, index);
-		}
-		constructor(view, parentSequence, index) {
-			this.view = view;
-			this.parentSequence = parentSequence;
-			this.index = index;
-		}
-		getClientRect() {
-			return this.view.rect.getBoundingClientRect();
-		}
-		setIsHover(isHover) {
-			this.view.setIsHover(isHover);
-		}
-		setIsVisible(isVisible) {
-			this.view.setIsVisible(isVisible);
-		}
-		resolveClick() {
-			return null;
-		}
-	}
-
-	class DefaultRegionView {
-		static create(parent, widths, height) {
-			const totalWidth = widths.reduce((result, width) => result + width, 0);
-			const lines = [
-				drawLine(parent, 0, 0, totalWidth, 0),
-				drawLine(parent, 0, 0, 0, height),
-				drawLine(parent, 0, height, totalWidth, height),
-				drawLine(parent, totalWidth, 0, totalWidth, height)
-			];
-			let offsetX = widths[0];
-			for (let i = 1; i < widths.length; i++) {
-				lines.push(drawLine(parent, offsetX, 0, offsetX, height));
-				offsetX += widths[i];
-			}
-			return new DefaultRegionView(lines, totalWidth, height);
-		}
-		constructor(lines, width, height) {
-			this.lines = lines;
-			this.width = width;
-			this.height = height;
-		}
-		getClientPosition() {
-			return getAbsolutePosition(this.lines[0]);
-		}
-		resolveClick(click) {
-			const regionPosition = this.getClientPosition();
-			const d = click.position.subtract(regionPosition);
-			if (d.x >= 0 && d.y >= 0 && d.x < this.width * click.scale && d.y < this.height * click.scale) {
-				return true;
-			}
-			return null;
-		}
-		setIsSelected(isSelected) {
-			this.lines.forEach(region => {
-				Dom.toggleClass(region, isSelected, 'sqd-selected');
-			});
-		}
-	}
-	function drawLine(parent, x1, y1, x2, y2) {
-		const line = Dom.svg('line', {
-			class: 'sqd-region',
-			x1,
-			y1,
-			x2,
-			y2
-		});
-		parent.insertBefore(line, parent.firstChild);
-		return line;
-	}
-
-	class DefaultRegionComponentViewExtension {
-		create(parentElement, componentClassName, stepContext, _, contentFactory) {
-			const g = ComponentDom.stepG(componentClassName, stepContext.step.type, stepContext.step.id);
-			parentElement.appendChild(g);
-			return contentFactory(g, DefaultRegionView.create);
-		}
-	}
-
-	class DefaultViewportControllerDesignerExtension {
-		static create(configuration) {
-			return new DefaultViewportControllerDesignerExtension(DefaultViewportControllerExtension.create(configuration));
-		}
-		constructor(viewportController) {
-			this.viewportController = viewportController;
-		}
-	}
-
-	class LineGrid {
-		static create(size) {
-			const path = Dom.svg('path', {
-				class: 'sqd-line-grid-path',
-				fill: 'none'
-			});
-			return new LineGrid(size, path);
-		}
-		constructor(size, element) {
-			this.size = size;
-			this.element = element;
-		}
-		setScale(_, scaledSize) {
-			Dom.attrs(this.element, {
-				d: `M ${scaledSize.x} 0 L 0 0 0 ${scaledSize.y}`
-			});
-		}
-	}
-
-	const defaultConfiguration$4 = {
-		gridSizeX: 48,
-		gridSizeY: 48
-	};
-	class LineGridExtension {
-		static create(configuration) {
-			return new LineGridExtension(configuration !== null && configuration !== void 0 ? configuration : defaultConfiguration$4);
-		}
-		constructor(configuration) {
-			this.configuration = configuration;
-		}
-		create() {
-			const size = new Vector(this.configuration.gridSizeX, this.configuration.gridSizeY);
-			return LineGrid.create(size);
-		}
-	}
-
-	class LineGridDesignerExtension {
-		static create(configuration) {
-			const grid = LineGridExtension.create(configuration);
-			return new LineGridDesignerExtension(grid);
-		}
-		constructor(grid) {
-			this.grid = grid;
-		}
-	}
-
-	class StartStopRootComponentDesignerExtension {
-		static create(configuration) {
-			return new StartStopRootComponentDesignerExtension(StartStopRootComponentExtension.create(configuration));
-		}
-		constructor(rootComponent) {
-			this.rootComponent = rootComponent;
-		}
-	}
-
-	const defaultConfiguration$3 = {
-		view: {
-			paddingTop: 20,
-			paddingX: 20,
-			inputSize: 18,
-			inputRadius: 4,
-			inputIconSize: 14,
-			autoHideInputOnDrag: true,
-			label: {
-				height: 22,
-				paddingX: 10,
-				minWidth: 50,
-				radius: 10
-			}
-		}
-	};
-	class ContainerStepExtension {
-		static create(configuration) {
-			return new ContainerStepExtension(configuration !== null && configuration !== void 0 ? configuration : defaultConfiguration$3);
-		}
-		constructor(configuration) {
-			this.configuration = configuration;
-			this.componentType = 'container';
-			this.createComponentView = createContainerStepComponentViewFactory(this.configuration.view);
-		}
-	}
-
-	const defaultConfiguration$2 = {
-		view: {
-			minBranchWidth: 88,
-			paddingX: 20,
-			paddingTop1: 0,
-			paddingTop2: 22,
-			connectionHeight: 20,
-			noBranchPaddingBottom: 24,
-			inputSize: 18,
-			inputIconSize: 14,
-			inputRadius: 4,
-			autoHideInputOnDrag: true,
-			branchNameLabel: {
-				height: 22,
-				paddingX: 10,
-				minWidth: 50,
-				radius: 10
-			},
-			nameLabel: {
-				height: 22,
-				paddingX: 10,
-				minWidth: 50,
-				radius: 10
-			}
-		}
-	};
-	class SwitchStepExtension {
-		static create(configuration) {
-			return new SwitchStepExtension(configuration !== null && configuration !== void 0 ? configuration : defaultConfiguration$2);
-		}
-		constructor(configuration) {
-			this.configuration = configuration;
-			this.componentType = 'switch';
-			this.createComponentView = createSwitchStepComponentViewFactory(this.configuration.view);
-		}
-	}
-
-	const defaultConfiguration$1 = {
-		view: {
-			paddingLeft: 12,
-			paddingRight: 12,
-			paddingY: 10,
-			textMarginLeft: 12,
-			minTextWidth: 70,
-			iconSize: 22,
-			radius: 5,
-			inputSize: 14,
-			outputSize: 10
-		}
-	};
-	class TaskStepExtension {
-		static create(configuration) {
-			return new TaskStepExtension(configuration !== null && configuration !== void 0 ? configuration : defaultConfiguration$1);
-		}
-		constructor(configuration) {
-			this.configuration = configuration;
-			this.componentType = 'task';
-			this.createComponentView = createTaskStepComponentViewFactory(false, this.configuration.view);
-		}
-	}
-
-	const defaultViewConfiguration = {
-		isRegionEnabled: true,
-		paddingY: 10,
-		connectionHeight: 20,
-		emptyPaddingX: 20,
-		emptyPaddingY: 20,
-		emptyInputSize: 14,
-		emptyOutputSize: 10,
-		emptyIconSize: 24
-	};
-	class LaunchPadStepExtension {
-		static create(configuration) {
-			return new LaunchPadStepExtension(configuration);
-		}
-		constructor(configuration) {
-			var _a, _b;
-			this.configuration = configuration;
-			this.componentType = 'launchPad';
-			this.createComponentView = createLaunchPadStepComponentViewFactory(false, (_b = (_a = this.configuration) === null || _a === void 0 ? void 0 : _a.view) !== null && _b !== void 0 ? _b : defaultViewConfiguration);
-		}
-	}
-
-	class StepsDesignerExtension {
-		static create(configuration) {
-			const steps = [];
-			if (configuration.container) {
-				steps.push(ContainerStepExtension.create(configuration.container));
-			}
-			if (configuration.switch) {
-				steps.push(SwitchStepExtension.create(configuration.switch));
-			}
-			if (configuration.task) {
-				steps.push(TaskStepExtension.create(configuration.task));
-			}
-			if (configuration.launchPad) {
-				steps.push(LaunchPadStepExtension.create(configuration.launchPad));
-			}
-			return new StepsDesignerExtension(steps);
-		}
-		constructor(steps) {
-			this.steps = steps;
-		}
-	}
-
-	class DefinitionValidator {
-		constructor(configuration, state) {
-			this.configuration = configuration;
-			this.state = state;
-		}
-		validateStep(step, parentSequence) {
-			var _a;
-			if ((_a = this.configuration) === null || _a === void 0 ? void 0 : _a.step) {
-				return this.configuration.step(step, parentSequence, this.state.definition);
-			}
-			return true;
-		}
-		validateRoot() {
-			var _a;
-			if ((_a = this.configuration) === null || _a === void 0 ? void 0 : _a.root) {
-				return this.configuration.root(this.state.definition);
-			}
-			return true;
-		}
-	}
-
-	class IconProvider {
-		constructor(configuration) {
-			this.configuration = configuration;
-		}
-		getIconUrl(step) {
-			if (this.configuration.iconUrlProvider) {
-				return this.configuration.iconUrlProvider(step.componentType, step.type);
-			}
-			return null;
-		}
-	}
-
-	class StepComponentViewContextFactory {
-		static create(stepContext, componentContext) {
-			const preferenceKeyPrefix = stepContext.step.id + ':';
-			return {
-				i18n: componentContext.i18n,
-				getStepIconUrl: () => componentContext.iconProvider.getIconUrl(stepContext.step),
-				getStepName: () => componentContext.i18n(`step.${stepContext.step.type}.name`, stepContext.step.name),
-				createStepComponent: (parentElement, parentSequence, step, position) => {
-					return componentContext.stepComponentFactory.create(parentElement, {
-						parentSequence,
-						step,
-						depth: stepContext.depth + 1,
-						position,
-						isInputConnected: stepContext.isInputConnected,
-						isOutputConnected: stepContext.isOutputConnected,
-						isPreview: stepContext.isPreview
-					}, componentContext);
-				},
-				createSequenceComponent: (parentElement, sequence) => {
-					const sequenceContext = {
-						sequence,
-						depth: stepContext.depth + 1,
-						isInputConnected: true,
-						isOutputConnected: stepContext.isOutputConnected,
-						isPreview: stepContext.isPreview
-					};
-					return componentContext.services.sequenceComponent.create(parentElement, sequenceContext, componentContext);
-				},
-				createRegionComponentView(parentElement, componentClassName, contentFactory) {
-					return componentContext.services.regionComponentView.create(parentElement, componentClassName, stepContext, this, contentFactory);
-				},
-				getPlaceholderGapSize: orientation => componentContext.services.placeholder.getGapSize(orientation),
-				createPlaceholderForGap: componentContext.services.placeholder.createForGap.bind(componentContext.services.placeholder),
-				createPlaceholderForArea: componentContext.services.placeholder.createForArea.bind(componentContext.services.placeholder),
-				getPreference: (key) => componentContext.preferenceStorage.getItem(preferenceKeyPrefix + key),
-				setPreference: (key, value) => componentContext.preferenceStorage.setItem(preferenceKeyPrefix + key, value)
-			};
-		}
-	}
-
-	class StepComponentFactory {
-		constructor(stepExtensionResolver) {
-			this.stepExtensionResolver = stepExtensionResolver;
-		}
-		create(parentElement, stepContext, componentContext) {
-			const viewContext = StepComponentViewContextFactory.create(stepContext, componentContext);
-			const extension = this.stepExtensionResolver.resolve(stepContext.step.componentType);
-			const view = extension.createComponentView(parentElement, stepContext, viewContext);
-			const wrappedView = componentContext.services.stepComponentViewWrapper.wrap(view, stepContext);
-			return StepComponent.create(wrappedView, stepContext, componentContext);
-		}
-	}
-
-	class ComponentContext {
-		static create(configuration, state, stepExtensionResolver, placeholderController, definitionWalker, preferenceStorage, i18n, services) {
-			const validator = new DefinitionValidator(configuration.validator, state);
-			const iconProvider = new IconProvider(configuration.steps);
-			const stepComponentFactory = new StepComponentFactory(stepExtensionResolver);
-			return new ComponentContext(configuration.shadowRoot, validator, iconProvider, placeholderController, stepComponentFactory, definitionWalker, services, preferenceStorage, i18n);
-		}
-		constructor(shadowRoot, validator, iconProvider, placeholderController, stepComponentFactory, definitionWalker, services, preferenceStorage, i18n) {
-			this.shadowRoot = shadowRoot;
-			this.validator = validator;
-			this.iconProvider = iconProvider;
-			this.placeholderController = placeholderController;
-			this.stepComponentFactory = stepComponentFactory;
-			this.definitionWalker = definitionWalker;
-			this.services = services;
-			this.preferenceStorage = preferenceStorage;
-			this.i18n = i18n;
-		}
-	}
-
-	class CustomActionController {
-		constructor(configuration, state, stateModifier) {
-			this.configuration = configuration;
-			this.state = state;
-			this.stateModifier = stateModifier;
-		}
-		trigger(action, step, sequence) {
-			const handler = this.configuration.customActionHandler;
-			if (!handler) {
-				console.warn(`Custom action handler is not defined (action type: ${action.type})`);
-				return;
-			}
-			const context = this.createCustomActionHandlerContext();
-			handler(action, step, sequence, context);
-		}
-		createCustomActionHandlerContext() {
-			return {
-				notifyStepNameChanged: (stepId) => this.notifyStepChanged(exports.DefinitionChangeType.stepNameChanged, stepId, false),
-				notifyStepPropertiesChanged: (stepId) => this.notifyStepChanged(exports.DefinitionChangeType.stepPropertyChanged, stepId, false),
-				notifyStepInserted: (stepId) => this.notifyStepChanged(exports.DefinitionChangeType.stepInserted, stepId, true),
-				notifyStepMoved: (stepId) => this.notifyStepChanged(exports.DefinitionChangeType.stepMoved, stepId, true),
-				notifyStepDeleted: (stepId) => this.notifyStepChanged(exports.DefinitionChangeType.stepDeleted, stepId, true)
-			};
-		}
-		notifyStepChanged(changeType, stepId, updateDependencies) {
-			if (!stepId) {
-				throw new Error('Step id is empty');
-			}
-			this.state.notifyDefinitionChanged(changeType, stepId);
-			if (updateDependencies) {
-				this.stateModifier.updateDependencies();
-			}
-		}
-	}
-
-	class EditorView {
-		static create(parent) {
-			return new EditorView(parent);
-		}
-		constructor(parent) {
-			this.parent = parent;
-			this.currentContainer = null;
-		}
-		setContent(content, className) {
-			const container = Dom.element('div', {
-				class: className
-			});
-			container.appendChild(content);
-			if (this.currentContainer) {
-				this.parent.removeChild(this.currentContainer);
-			}
-			this.parent.appendChild(container);
-			this.currentContainer = container;
-		}
-		destroy() {
-			if (this.currentContainer) {
-				this.parent.removeChild(this.currentContainer);
-			}
-		}
-	}
-
-	class Editor {
-		static create(parent, api, stepEditorClassName, stepEditorProvider, rootEditorClassName, rootEditorProvider, customSelectedStepIdProvider) {
-			const view = EditorView.create(parent);
-			function render(step) {
-				const definition = api.getDefinition();
-				let content;
-				let className;
-				if (step) {
-					const stepContext = api.createStepEditorContext(step.id);
-					content = stepEditorProvider(step, stepContext, definition, api.isReadonly());
-					className = stepEditorClassName;
-				}
-				else {
-					const rootContext = api.createRootEditorContext();
-					content = rootEditorProvider(definition, rootContext, api.isReadonly());
-					className = rootEditorClassName;
-				}
-				view.setContent(content, className);
-			}
-			const renderer = api.runRenderer(step => render(step), customSelectedStepIdProvider);
-			return new Editor(view, renderer);
-		}
-		constructor(view, renderer) {
-			this.view = view;
-			this.renderer = renderer;
-		}
-		destroy() {
-			this.view.destroy();
-			this.renderer.destroy();
-		}
-	}
-
 	function readMousePosition(e) {
 		return new Vector(e.pageX, e.pageY);
 	}
@@ -2829,65 +2227,37 @@
 		}
 		throw new Error('Unknown touch position');
 	}
-	function calculateFingerDistance(e) {
-		if (e.touches.length === 2) {
-			const t0 = e.touches[0];
-			const t1 = e.touches[1];
-			return Math.hypot(t0.clientX - t1.clientX, t0.clientY - t1.clientY);
-		}
-		throw new Error('Cannot calculate finger distance');
-	}
-	function readFingerCenterPoint(e) {
-		if (e.touches.length === 2) {
-			const t0 = e.touches[0];
-			const t1 = e.touches[1];
-			return new Vector((t0.pageX + t1.pageX) / 2, (t0.pageY + t1.pageY) / 2);
-		}
-		throw new Error('Cannot calculate finger center point');
-	}
 
-	const notInitializedError$1 = 'State is not initialized';
-	const nonPassiveOptions$1 = {
+	const notInitializedError = 'State is not initialized';
+	const nonPassiveOptions = {
 		passive: false
 	};
 	class BehaviorController {
-		static create(shadowRoot) {
-			return new BehaviorController(shadowRoot !== null && shadowRoot !== void 0 ? shadowRoot : document, shadowRoot);
-		}
-		constructor(dom, shadowRoot) {
-			this.dom = dom;
-			this.shadowRoot = shadowRoot;
-			this.previousEndToken = null;
-			this.state = null;
+		constructor() {
 			this.onMouseMove = (e) => {
 				e.preventDefault();
-				e.stopPropagation();
 				this.move(readMousePosition(e));
 			};
 			this.onTouchMove = (e) => {
 				e.preventDefault();
-				e.stopPropagation();
 				this.move(readTouchPosition(e));
 			};
 			this.onMouseUp = (e) => {
 				e.preventDefault();
-				e.stopPropagation();
 				this.stop(false, e.target);
 			};
 			this.onTouchEnd = (e) => {
 				var _a;
 				e.preventDefault();
-				e.stopPropagation();
 				if (!this.state) {
-					throw new Error(notInitializedError$1);
+					throw new Error(notInitializedError);
 				}
 				const position = (_a = this.state.lastPosition) !== null && _a !== void 0 ? _a : this.state.startPosition;
-				const element = this.dom.elementFromPoint(position.x, position.y);
+				const element = document.elementFromPoint(position.x, position.y);
 				this.stop(false, element);
 			};
 			this.onTouchStart = (e) => {
 				e.preventDefault();
-				e.stopPropagation();
 				if (e.touches.length !== 1) {
 					this.stop(true, null);
 				}
@@ -2903,34 +2273,21 @@
 				behavior
 			};
 			behavior.onStart(this.state.startPosition);
-			if (this.shadowRoot) {
-				this.bind(this.shadowRoot);
-			}
-			this.bind(window);
-		}
-		bind(target) {
-			target.addEventListener('mousemove', this.onMouseMove, false);
-			target.addEventListener('touchmove', this.onTouchMove, nonPassiveOptions$1);
-			target.addEventListener('mouseup', this.onMouseUp, false);
-			target.addEventListener('touchend', this.onTouchEnd, nonPassiveOptions$1);
-			target.addEventListener('touchstart', this.onTouchStart, nonPassiveOptions$1);
-		}
-		unbind(target) {
-			target.removeEventListener('mousemove', this.onMouseMove, false);
-			target.removeEventListener('touchmove', this.onTouchMove, nonPassiveOptions$1);
-			target.removeEventListener('mouseup', this.onMouseUp, false);
-			target.removeEventListener('touchend', this.onTouchEnd, nonPassiveOptions$1);
-			target.removeEventListener('touchstart', this.onTouchStart, nonPassiveOptions$1);
+			window.addEventListener('mousemove', this.onMouseMove, false);
+			window.addEventListener('touchmove', this.onTouchMove, nonPassiveOptions);
+			window.addEventListener('mouseup', this.onMouseUp, false);
+			window.addEventListener('touchend', this.onTouchEnd, nonPassiveOptions);
+			window.addEventListener('touchstart', this.onTouchStart, nonPassiveOptions);
 		}
 		move(position) {
 			if (!this.state) {
-				throw new Error(notInitializedError$1);
+				throw new Error(notInitializedError);
 			}
 			this.state.lastPosition = position;
 			const delta = this.state.startPosition.subtract(position);
 			const newBehavior = this.state.behavior.onMove(delta);
 			if (newBehavior) {
-				this.state.behavior.onEnd(true, null, null);
+				this.state.behavior.onEnd(true, null);
 				this.state.behavior = newBehavior;
 				this.state.startPosition = position;
 				this.state.behavior.onStart(this.state.startPosition);
@@ -2938,15 +2295,15 @@
 		}
 		stop(interrupt, element) {
 			if (!this.state) {
-				throw new Error(notInitializedError$1);
+				throw new Error(notInitializedError);
 			}
-			if (this.shadowRoot) {
-				this.unbind(this.shadowRoot);
-			}
-			this.unbind(window);
-			const endToken = this.state.behavior.onEnd(interrupt, element, this.previousEndToken);
-			this.state = null;
-			this.previousEndToken = endToken || null;
+			window.removeEventListener('mousemove', this.onMouseMove, false);
+			window.removeEventListener('touchmove', this.onTouchMove, nonPassiveOptions);
+			window.removeEventListener('mouseup', this.onMouseUp, false);
+			window.removeEventListener('touchend', this.onTouchEnd, nonPassiveOptions);
+			window.removeEventListener('touchstart', this.onTouchStart, nonPassiveOptions);
+			this.state.behavior.onEnd(interrupt, element);
+			this.state = undefined;
 		}
 	}
 
@@ -3033,15 +2390,14 @@
 	}
 
 	class StateModifier {
-		static create(definitionWalker, uidGenerator, state, configuration) {
+		static create(definitionWalker, state, configuration) {
 			const dependencies = [];
 			dependencies.push(new SelectedStepIdDefinitionModifierDependency(state, definitionWalker));
 			dependencies.push(new FolderPathDefinitionModifierDependency(state, definitionWalker));
-			return new StateModifier(definitionWalker, uidGenerator, state, configuration, dependencies);
+			return new StateModifier(definitionWalker, state, configuration, dependencies);
 		}
-		constructor(definitionWalker, uidGenerator, state, configuration, dependencies) {
+		constructor(definitionWalker, state, configuration, dependencies) {
 			this.definitionWalker = definitionWalker;
-			this.uidGenerator = uidGenerator;
 			this.state = state;
 			this.configuration = configuration;
 			this.dependencies = dependencies;
@@ -3050,17 +2406,15 @@
 			this.dependencies.push(dependency);
 		}
 		isSelectable(step, parentSequence) {
-			return this.configuration.isSelectable ? this.configuration.isSelectable(step, parentSequence) : true;
+			return this.configuration.steps.isSelectable ? this.configuration.steps.isSelectable(step, parentSequence) : true;
 		}
 		trySelectStep(step, parentSequence) {
 			if (this.isSelectable(step, parentSequence)) {
 				this.state.setSelectedStepId(step.id);
-				return true;
 			}
-			return false;
 		}
 		trySelectStepById(stepId) {
-			if (this.configuration.isSelectable) {
+			if (this.configuration.steps.isSelectable) {
 				const result = this.definitionWalker.getParentSequence(this.state.definition, stepId);
 				this.trySelectStep(result.step, result.parentSequence);
 			}
@@ -3069,16 +2423,16 @@
 			}
 		}
 		isDeletable(stepId) {
-			if (this.configuration.isDeletable) {
+			if (this.configuration.steps.isDeletable) {
 				const result = this.definitionWalker.getParentSequence(this.state.definition, stepId);
-				return this.configuration.isDeletable(result.step, result.parentSequence);
+				return this.configuration.steps.isDeletable(result.step, result.parentSequence);
 			}
 			return true;
 		}
 		tryDelete(stepId) {
 			const result = this.definitionWalker.getParentSequence(this.state.definition, stepId);
-			const canDeleteStep = this.configuration.canDeleteStep
-				? this.configuration.canDeleteStep(result.step, result.parentSequence)
+			const canDeleteStep = this.configuration.steps.canDeleteStep
+				? this.configuration.steps.canDeleteStep(result.step, result.parentSequence)
 				: true;
 			if (!canDeleteStep) {
 				return false;
@@ -3089,43 +2443,46 @@
 			return true;
 		}
 		tryInsert(step, targetSequence, targetIndex) {
-			const canInsertStep = this.configuration.canInsertStep ? this.configuration.canInsertStep(step, targetSequence, targetIndex) : true;
+			const canInsertStep = this.configuration.steps.canInsertStep
+				? this.configuration.steps.canInsertStep(step, targetSequence, targetIndex)
+				: true;
 			if (!canInsertStep) {
 				return false;
 			}
 			SequenceModifier.insertStep(step, targetSequence, targetIndex);
 			this.state.notifyDefinitionChanged(exports.DefinitionChangeType.stepInserted, step.id);
-			if (!this.configuration.isAutoSelectDisabled) {
+			if (!this.configuration.steps.isAutoSelectDisabled) {
 				this.trySelectStepById(step.id);
 			}
 			return true;
 		}
 		isDraggable(step, parentSequence) {
-			return this.configuration.isDraggable ? this.configuration.isDraggable(step, parentSequence) : true;
+			return this.configuration.steps.isDraggable ? this.configuration.steps.isDraggable(step, parentSequence) : true;
 		}
 		tryMove(sourceSequence, step, targetSequence, targetIndex) {
 			const apply = SequenceModifier.tryMoveStep(sourceSequence, step, targetSequence, targetIndex);
 			if (!apply) {
 				return false;
 			}
-			const canMoveStep = this.configuration.canMoveStep
-				? this.configuration.canMoveStep(sourceSequence, step, targetSequence, targetIndex)
+			const canMoveStep = this.configuration.steps.canMoveStep
+				? this.configuration.steps.canMoveStep(sourceSequence, step, targetSequence, targetIndex)
 				: true;
 			if (!canMoveStep) {
 				return false;
 			}
 			apply();
 			this.state.notifyDefinitionChanged(exports.DefinitionChangeType.stepMoved, step.id);
-			if (!this.configuration.isAutoSelectDisabled) {
+			if (!this.configuration.steps.isAutoSelectDisabled) {
 				this.trySelectStep(step, targetSequence);
 			}
 			return true;
 		}
 		isDuplicable(step, parentSequence) {
-			return this.configuration.isDuplicable ? this.configuration.isDuplicable(step, parentSequence) : false;
+			return this.configuration.steps.isDuplicable ? this.configuration.steps.isDuplicable(step, parentSequence) : false;
 		}
 		tryDuplicate(step, parentSequence) {
-			const duplicator = new StepDuplicator(this.uidGenerator, this.definitionWalker);
+			const uidGenerator = this.configuration.uidGenerator ? this.configuration.uidGenerator : Uid.next;
+			const duplicator = new StepDuplicator(uidGenerator, this.definitionWalker);
 			const index = parentSequence.indexOf(step);
 			const newStep = duplicator.duplicate(step);
 			return this.tryInsert(newStep, parentSequence, index + 1);
@@ -3206,11 +2563,9 @@
 				this.onIsDraggingChanged.forward(isDragging);
 			}
 		}
-		setIsDragDisabled(isDragDisabled) {
-			if (this.isDragDisabled !== isDragDisabled) {
-				this.isDragDisabled = isDragDisabled;
-				this.onIsDragDisabledChanged.forward(isDragDisabled);
-			}
+		toggleIsDragDisabled() {
+			this.isDragDisabled = !this.isDragDisabled;
+			this.onIsDragDisabledChanged.forward(this.isDragDisabled);
 		}
 		setIsToolboxCollapsed(isCollapsed) {
 			if (this.isToolboxCollapsed !== isCollapsed) {
@@ -3309,11 +2664,11 @@
 	}
 
 	class LayoutController {
-		constructor(placeholder) {
-			this.placeholder = placeholder;
+		constructor(parent) {
+			this.parent = parent;
 		}
 		isMobile() {
-			return this.placeholder.clientWidth < 400; // TODO
+			return this.parent.clientWidth < 400; // TODO
 		}
 	}
 
@@ -3370,33 +2725,32 @@
 	}
 
 	class DesignerContext {
-		static create(placeholder, startDefinition, configuration, services) {
-			var _a, _b, _c, _d, _e, _f;
+		static create(parent, startDefinition, configuration, services) {
+			var _a, _b, _c, _d, _e;
 			const definition = ObjectCloner.deepClone(startDefinition);
-			const layoutController = new LayoutController(placeholder);
-			const isReadonly = Boolean(configuration.isReadonly);
+			const layoutController = new LayoutController(parent);
+			const isReadonly = !!configuration.isReadonly;
 			const isToolboxCollapsed = configuration.toolbox ? (_a = configuration.toolbox.isCollapsed) !== null && _a !== void 0 ? _a : layoutController.isMobile() : false;
 			const isEditorCollapsed = configuration.editors ? (_b = configuration.editors.isCollapsed) !== null && _b !== void 0 ? _b : layoutController.isMobile() : false;
 			const theme = configuration.theme || 'light';
 			const state = new DesignerState(definition, isReadonly, isToolboxCollapsed, isEditorCollapsed);
 			const workspaceController = new WorkspaceControllerWrapper();
-			const behaviorController = BehaviorController.create(configuration.shadowRoot);
+			const placeholderController = services.placeholderController.create();
+			const behaviorController = new BehaviorController();
 			const stepExtensionResolver = StepExtensionResolver.create(services);
-			const placeholderController = PlaceholderController.create(configuration.placeholder);
 			const definitionWalker = (_c = configuration.definitionWalker) !== null && _c !== void 0 ? _c : new DefinitionWalker();
 			const i18n = (_d = configuration.i18n) !== null && _d !== void 0 ? _d : ((_, defaultValue) => defaultValue);
-			const uidGenerator = (_e = configuration.uidGenerator) !== null && _e !== void 0 ? _e : Uid.next;
-			const stateModifier = StateModifier.create(definitionWalker, uidGenerator, state, configuration.steps);
+			const stateModifier = StateModifier.create(definitionWalker, state, configuration);
 			const customActionController = new CustomActionController(configuration, state, stateModifier);
 			let historyController = undefined;
 			if (configuration.undoStackSize) {
 				historyController = HistoryController.create(configuration.undoStack, state, stateModifier, configuration);
 			}
-			const preferenceStorage = (_f = configuration.preferenceStorage) !== null && _f !== void 0 ? _f : new MemoryPreferenceStorage();
-			const componentContext = ComponentContext.create(configuration, state, stepExtensionResolver, placeholderController, definitionWalker, preferenceStorage, i18n, services);
-			return new DesignerContext(theme, state, configuration, services, componentContext, definitionWalker, i18n, uidGenerator, stateModifier, layoutController, workspaceController, placeholderController, behaviorController, customActionController, historyController);
+			const preferenceStorage = (_e = configuration.preferenceStorage) !== null && _e !== void 0 ? _e : new MemoryPreferenceStorage();
+			const componentContext = ComponentContext.create(configuration, state, stepExtensionResolver, definitionWalker, preferenceStorage, placeholderController, i18n, services);
+			return new DesignerContext(theme, state, configuration, services, componentContext, definitionWalker, i18n, stateModifier, layoutController, workspaceController, placeholderController, behaviorController, customActionController, historyController);
 		}
-		constructor(theme, state, configuration, services, componentContext, definitionWalker, i18n, uidGenerator, stateModifier, layoutController, workspaceController, placeholderController, behaviorController, customActionController, historyController) {
+		constructor(theme, state, configuration, services, componentContext, definitionWalker, i18n, stateModifier, layoutController, workspaceController, placeholderController, behaviorController, customActionController, historyController) {
 			this.theme = theme;
 			this.state = state;
 			this.configuration = configuration;
@@ -3404,7 +2758,6 @@
 			this.componentContext = componentContext;
 			this.definitionWalker = definitionWalker;
 			this.i18n = i18n;
-			this.uidGenerator = uidGenerator;
 			this.stateModifier = stateModifier;
 			this.layoutController = layoutController;
 			this.workspaceController = workspaceController;
@@ -3432,8 +2785,6 @@
 	OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
 	PERFORMANCE OF THIS SOFTWARE.
 	***************************************************************************** */
-	/* global Reflect, Promise, SuppressedError, Symbol, Iterator */
-
 
 	function __awaiter(thisArg, _arguments, P, generator) {
 		function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
@@ -3445,13 +2796,8 @@
 		});
 	}
 
-	typeof SuppressedError === "function" ? SuppressedError : function (error, suppressed, message) {
-		var e = new Error(message);
-		return e.name = "SuppressedError", e.error = error, e.suppressed = suppressed, e;
-	};
-
-	function isElementAttached(dom, element) {
-		return !(dom.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_DISCONNECTED);
+	function isElementAttached(element) {
+		return !(document.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_DISCONNECTED);
 	}
 
 	let lastGridPatternId = 0;
@@ -3485,27 +2831,24 @@
 			canvas.appendChild(foreground);
 			workspace.appendChild(canvas);
 			parent.appendChild(workspace);
-			const view = new WorkspaceView(componentContext.shadowRoot, workspace, canvas, pattern, gridPattern, foreground, componentContext);
-			window.addEventListener('resize', view.onResize, false);
+			const view = new WorkspaceView(workspace, canvas, pattern, gridPattern, foreground, componentContext);
+			window.addEventListener('resize', view.onResizeHandler, false);
 			return view;
 		}
-		constructor(shadowRoot, workspace, canvas, pattern, gridPattern, foreground, context) {
-			this.shadowRoot = shadowRoot;
+		constructor(workspace, canvas, pattern, gridPattern, foreground, context) {
 			this.workspace = workspace;
 			this.canvas = canvas;
 			this.pattern = pattern;
 			this.gridPattern = gridPattern;
 			this.foreground = foreground;
 			this.context = context;
-			this.onResize = () => {
-				this.refreshSize();
-			};
+			this.onResizeHandler = () => this.onResize();
 		}
-		render(sequence, parentPlaceIndicator) {
+		render(sequence, parentSequencePlaceIndicator) {
 			if (this.rootComponent) {
 				this.foreground.removeChild(this.rootComponent.view.g);
 			}
-			this.rootComponent = this.context.services.rootComponent.create(this.foreground, sequence, parentPlaceIndicator, this.context);
+			this.rootComponent = this.context.services.rootComponent.create(this.foreground, sequence, parentSequencePlaceIndicator, this.context);
 			this.refreshSize();
 		}
 		setPositionAndScale(position, scale) {
@@ -3527,26 +2870,18 @@
 		getCanvasSize() {
 			return new Vector(this.canvas.clientWidth, this.canvas.clientHeight);
 		}
-		bindMouseDown(handler) {
+		bindClick(handler) {
 			this.canvas.addEventListener('mousedown', e => {
 				e.preventDefault();
 				handler(readMousePosition(e), e.target, e.button, e.altKey);
 			}, false);
-		}
-		bindTouchStart(clickHandler, pinchToZoomHandler) {
 			this.canvas.addEventListener('touchstart', e => {
-				var _a;
 				e.preventDefault();
-				if (e.touches.length === 2) {
-					pinchToZoomHandler(calculateFingerDistance(e), readFingerCenterPoint(e));
-					return;
-				}
 				const clientPosition = readTouchClientPosition(e);
-				const dom = (_a = this.shadowRoot) !== null && _a !== void 0 ? _a : document;
-				const element = dom.elementFromPoint(clientPosition.x, clientPosition.y);
+				const element = document.elementFromPoint(clientPosition.x, clientPosition.y);
 				if (element) {
 					const position = readTouchPosition(e);
-					clickHandler(position, element, 0, false);
+					handler(position, element, 0, false);
 				}
 			}, listenerOptions$1);
 		}
@@ -3560,13 +2895,16 @@
 			this.canvas.addEventListener('wheel', handler, listenerOptions$1);
 		}
 		destroy() {
-			window.removeEventListener('resize', this.onResize, false);
+			window.removeEventListener('resize', this.onResizeHandler, false);
 		}
 		refreshSize() {
 			Dom.attrs(this.canvas, {
 				width: this.workspace.offsetWidth,
 				height: this.workspace.offsetHeight
 			});
+		}
+		onResize() {
+			this.refreshSize();
 		}
 	}
 
@@ -3632,14 +2970,9 @@
 			}
 		}
 		onEnd(interrupt) {
-			if (interrupt) {
-				return;
+			if (!interrupt) {
+				this.stateModifier.trySelectStep(this.pressedStepComponent.step, this.pressedStepComponent.parentSequence);
 			}
-			if (!this.stateModifier.trySelectStep(this.pressedStepComponent.step, this.pressedStepComponent.parentSequence)) {
-				// If we cannot select the step, we clear the selection.
-				this.state.setSelectedStepId(null);
-			}
-			return new SelectStepBehaviorEndToken(this.pressedStepComponent.step.id, Date.now());
 		}
 	}
 
@@ -3665,14 +2998,10 @@
 	}
 
 	class RerenderStepPressingBehaviorHandler {
-		constructor(command, designerContext) {
-			this.command = command;
+		constructor(designerContext) {
 			this.designerContext = designerContext;
 		}
 		handle() {
-			if (this.command.beforeCallback) {
-				this.command.beforeCallback();
-			}
 			this.designerContext.workspaceController.updateRootComponent();
 		}
 	}
@@ -3710,7 +3039,7 @@
 				case exports.ClickCommandType.selectStep:
 					return SelectStepBehavior.create(commandOrNull.component, forceMove, this.context);
 				case exports.ClickCommandType.rerenderStep:
-					return PressingBehavior.create(element, new RerenderStepPressingBehaviorHandler(commandOrNull, this.context));
+					return PressingBehavior.create(element, new RerenderStepPressingBehaviorHandler(this.context));
 				case exports.ClickCommandType.openFolder:
 					return PressingBehavior.create(element, new OpenFolderPressingBehaviorHandler(commandOrNull, this.context));
 				case exports.ClickCommandType.triggerCustomAction:
@@ -3732,7 +3061,7 @@
 	}
 
 	class ContextMenu {
-		static create(shadowRoot, position, theme, items) {
+		static create(position, theme, items) {
 			const menu = document.createElement('div');
 			menu.style.left = `${position.x}px`;
 			menu.style.top = `${position.y}px`;
@@ -3752,19 +3081,15 @@
 				elements.push(element);
 				menu.appendChild(element);
 			}
-			const body = shadowRoot !== null && shadowRoot !== void 0 ? shadowRoot : document.body;
-			const dom = shadowRoot !== null && shadowRoot !== void 0 ? shadowRoot : document;
-			const instance = new ContextMenu(body, dom, menu, elements, items, Date.now());
-			dom.addEventListener('mousedown', instance.mouseDown, false);
-			dom.addEventListener('mouseup', instance.mouseUp, false);
-			dom.addEventListener('touchstart', instance.mouseDown, false);
-			dom.addEventListener('touchend', instance.mouseUp, false);
-			body.appendChild(menu);
+			const instance = new ContextMenu(menu, elements, items, Date.now());
+			document.addEventListener('mousedown', instance.mouseDown, false);
+			document.addEventListener('mouseup', instance.mouseUp, false);
+			document.addEventListener('touchstart', instance.mouseDown, false);
+			document.addEventListener('touchend', instance.mouseUp, false);
+			document.body.appendChild(menu);
 			return instance;
 		}
-		constructor(body, dom, menu, elements, items, startTime) {
-			this.body = body;
-			this.dom = dom;
+		constructor(menu, elements, items, startTime) {
 			this.menu = menu;
 			this.elements = elements;
 			this.items = items;
@@ -3811,11 +3136,11 @@
 		}
 		tryDestroy() {
 			if (this.isAttached) {
-				this.body.removeChild(this.menu);
-				this.dom.removeEventListener('mousedown', this.mouseDown, false);
-				this.dom.removeEventListener('mouseup', this.mouseUp, false);
-				this.dom.removeEventListener('touchstart', this.mouseDown, false);
-				this.dom.removeEventListener('touchend', this.mouseUp, false);
+				document.body.removeChild(this.menu);
+				document.removeEventListener('mousedown', this.mouseDown, false);
+				document.removeEventListener('mouseup', this.mouseUp, false);
+				document.removeEventListener('touchstart', this.mouseDown, false);
+				document.removeEventListener('touchend', this.mouseUp, false);
 				this.isAttached = false;
 			}
 		}
@@ -3836,7 +3161,7 @@
 				this.current.tryDestroy();
 			}
 			const items = this.itemsBuilder.build(commandOrNull);
-			this.current = ContextMenu.create(this.configuration.shadowRoot, position, this.theme, items);
+			this.current = ContextMenu.create(position, this.theme, items);
 		}
 		destroy() {
 			if (this.current) {
@@ -3846,9 +3171,8 @@
 	}
 
 	class ContextMenuItemsBuilder {
-		constructor(viewportApi, workspaceApi, i18n, stateModifier, state, customMenuItemsProvider) {
+		constructor(viewportApi, i18n, stateModifier, state, customMenuItemsProvider) {
 			this.viewportApi = viewportApi;
-			this.workspaceApi = workspaceApi;
 			this.i18n = i18n;
 			this.stateModifier = stateModifier;
 			this.state = state;
@@ -3907,9 +3231,8 @@
 					}
 				}
 			}
-			else if (!commandOrNull) {
-				const rootSequence = this.workspaceApi.getRootSequence();
-				this.tryAppendCustomItems(items, null, rootSequence.sequence);
+			else {
+				this.tryAppendCustomItems(items, null, this.state.definition.sequence);
 			}
 			items.push({
 				label: this.i18n('contextMenu.resetView', 'Reset view'),
@@ -3923,86 +3246,11 @@
 		}
 		tryAppendCustomItems(items, step, parentSequence) {
 			if (this.customMenuItemsProvider) {
-				const customItems = this.customMenuItemsProvider.getItems(step, parentSequence, this.state.definition);
+				const customItems = this.customMenuItemsProvider.getItems(step, parentSequence);
 				for (const customItem of customItems) {
 					items.push(customItem);
 				}
 			}
-		}
-	}
-
-	const nonPassiveOptions = {
-		passive: false
-	};
-	const notInitializedError = 'State is not initialized';
-	class PinchToZoomController {
-		static create(workspaceApi, viewportApi, shadowRoot) {
-			return new PinchToZoomController(workspaceApi, viewportApi, shadowRoot);
-		}
-		constructor(workspaceApi, viewportApi, shadowRoot) {
-			this.workspaceApi = workspaceApi;
-			this.viewportApi = viewportApi;
-			this.shadowRoot = shadowRoot;
-			this.state = null;
-			this.onTouchMove = (e) => {
-				e.preventDefault();
-				if (!this.state) {
-					throw new Error(notInitializedError);
-				}
-				const touchEvent = e;
-				const distance = calculateFingerDistance(touchEvent);
-				const centerPoint = readFingerCenterPoint(touchEvent);
-				const deltaCenterPoint = centerPoint.subtract(this.state.lastCenterPoint);
-				const scale = this.viewportApi.limitScale(this.state.startScale * (distance / this.state.startDistance));
-				const zoomPoint = centerPoint.subtract(this.state.canvasPosition);
-				const zoomRealPoint = zoomPoint
-					.divideByScalar(this.state.lastViewport.scale)
-					.subtract(this.state.lastViewport.position.divideByScalar(this.state.lastViewport.scale));
-				const position = zoomRealPoint.multiplyByScalar(-scale).add(zoomPoint).add(deltaCenterPoint);
-				const newViewport = {
-					position,
-					scale
-				};
-				this.workspaceApi.setViewport(newViewport);
-				this.state.lastCenterPoint = centerPoint;
-				this.state.lastViewport = newViewport;
-			};
-			this.onTouchEnd = (e) => {
-				e.preventDefault();
-				if (!this.state) {
-					throw new Error(notInitializedError);
-				}
-				if (this.shadowRoot) {
-					this.unbind(this.shadowRoot);
-				}
-				this.unbind(window);
-				this.state = null;
-			};
-		}
-		start(startDistance, centerPoint) {
-			if (this.state) {
-				throw new Error(`State is already initialized`);
-			}
-			if (this.shadowRoot) {
-				this.bind(this.shadowRoot);
-			}
-			this.bind(window);
-			const viewport = this.workspaceApi.getViewport();
-			this.state = {
-				canvasPosition: this.workspaceApi.getCanvasPosition(),
-				startScale: viewport.scale,
-				startDistance,
-				lastViewport: viewport,
-				lastCenterPoint: centerPoint
-			};
-		}
-		bind(target) {
-			target.addEventListener('touchmove', this.onTouchMove, nonPassiveOptions);
-			target.addEventListener('touchend', this.onTouchEnd, nonPassiveOptions);
-		}
-		unbind(target) {
-			target.removeEventListener('touchmove', this.onTouchMove, nonPassiveOptions);
-			target.removeEventListener('touchend', this.onTouchEnd, nonPassiveOptions);
 		}
 	}
 
@@ -4011,41 +3259,38 @@
 			var _a;
 			const view = WorkspaceView.create(parent, designerContext.componentContext);
 			const clickBehaviorResolver = new ClickBehaviorResolver(designerContext);
-			const clickBehaviorWrapper = designerContext.services.clickBehaviorWrapperExtension.create(designerContext.customActionController);
-			const wheelController = designerContext.services.wheelController.create(api.viewport, api.workspace);
-			const pinchToZoomController = PinchToZoomController.create(api.workspace, api.viewport, api.shadowRoot);
-			const contextMenuItemsBuilder = new ContextMenuItemsBuilder(api.viewport, api.workspace, api.i18n, designerContext.stateModifier, designerContext.state, ((_a = designerContext.services.contextMenu) === null || _a === void 0 ? void 0 : _a.createItemsProvider)
+			const wheelController = designerContext.services.wheelController.create(api.workspace);
+			const contextMenuItemsBuilder = new ContextMenuItemsBuilder(api.viewport, api.i18n, designerContext.stateModifier, designerContext.state, ((_a = designerContext.services.contextMenu) === null || _a === void 0 ? void 0 : _a.createItemsProvider)
 				? designerContext.services.contextMenu.createItemsProvider(designerContext.customActionController)
 				: undefined);
 			const contextMenuController = new ContextMenuController(designerContext.theme, designerContext.configuration, contextMenuItemsBuilder);
-			const workspace = new Workspace(view, designerContext.state, designerContext.behaviorController, wheelController, pinchToZoomController, contextMenuController, clickBehaviorResolver, clickBehaviorWrapper, api.viewport, api.workspace, designerContext.services);
+			const workspace = new Workspace(view, designerContext.definitionWalker, designerContext.state, designerContext.behaviorController, wheelController, contextMenuController, clickBehaviorResolver, api.viewport, designerContext.services);
+			setTimeout(() => {
+				workspace.updateRootComponent();
+				api.viewport.resetViewport();
+			});
 			designerContext.setWorkspaceController(workspace);
 			designerContext.state.onViewportChanged.subscribe(workspace.onViewportChanged);
 			race(0, designerContext.state.onDefinitionChanged, designerContext.state.onSelectedStepIdChanged, designerContext.state.onFolderPathChanged).subscribe(r => {
 				workspace.onStateChanged(r[0], r[1], r[2]);
 			});
-			view.bindMouseDown(workspace.onClick);
-			view.bindTouchStart(workspace.onClick, workspace.onPinchToZoom);
+			view.bindClick(workspace.onClick);
 			view.bindWheel(workspace.onWheel);
 			view.bindContextMenu(workspace.onContextMenu);
-			workspace.scheduleInit();
 			return workspace;
 		}
-		constructor(view, state, behaviorController, wheelController, pinchToZoomController, contextMenuController, clickBehaviorResolver, clickBehaviorWrapper, viewportApi, workspaceApi, services) {
+		constructor(view, definitionWalker, state, behaviorController, wheelController, contextMenuController, clickBehaviorResolver, viewportApi, services) {
 			this.view = view;
+			this.definitionWalker = definitionWalker;
 			this.state = state;
 			this.behaviorController = behaviorController;
 			this.wheelController = wheelController;
-			this.pinchToZoomController = pinchToZoomController;
 			this.contextMenuController = contextMenuController;
 			this.clickBehaviorResolver = clickBehaviorResolver;
-			this.clickBehaviorWrapper = clickBehaviorWrapper;
 			this.viewportApi = viewportApi;
-			this.workspaceApi = workspaceApi;
 			this.services = services;
 			this.onRendered = new SimpleEvent();
 			this.isValid = false;
-			this.initTimeout = null;
 			this.selectedStepComponent = null;
 			this.validationErrorBadgeIndex = null;
 			this.onClick = (position, target, buttonIndex, altKey) => {
@@ -4055,12 +3300,8 @@
 					const forceMove = isMiddleButton || altKey;
 					const commandOrNull = this.resolveClick(target, position);
 					const behavior = this.clickBehaviorResolver.resolve(commandOrNull, target, forceMove);
-					const wrappedBehavior = this.clickBehaviorWrapper.wrap(behavior, commandOrNull);
-					this.behaviorController.start(position, wrappedBehavior);
+					this.behaviorController.start(position, behavior);
 				}
-			};
-			this.onPinchToZoom = (distance, centerPoint) => {
-				this.pinchToZoomController.start(distance, centerPoint);
 			};
 			this.onWheel = (e) => {
 				e.preventDefault();
@@ -4075,23 +3316,28 @@
 				this.view.setPositionAndScale(viewport.position, viewport.scale);
 			};
 		}
-		scheduleInit() {
-			this.initTimeout = setTimeout(() => {
-				this.initTimeout = null;
-				this.updateRootComponent();
-				this.viewportApi.resetViewport();
-			});
-		}
 		updateRootComponent() {
 			this.selectedStepComponent = null;
-			const rootSequence = this.workspaceApi.getRootSequence();
-			const parentPlaceIndicator = rootSequence.parentStep
-				? {
-					sequence: rootSequence.parentStep.parentSequence,
-					index: rootSequence.parentStep.index
+			let parentSequencePlaceIndicator;
+			let sequence;
+			const stepId = this.state.tryGetLastStepIdFromFolderPath();
+			if (stepId) {
+				const parentSequence = this.definitionWalker.getParentSequence(this.state.definition, stepId);
+				const children = this.definitionWalker.getChildren(parentSequence.step);
+				if (!children || children.type !== exports.StepChildrenType.sequence) {
+					throw new Error('Cannot find single sequence in folder step');
 				}
-				: null;
-			this.view.render(rootSequence.sequence, parentPlaceIndicator);
+				sequence = children.items;
+				parentSequencePlaceIndicator = {
+					sequence: parentSequence.parentSequence,
+					index: parentSequence.index
+				};
+			}
+			else {
+				sequence = this.state.definition.sequence;
+				parentSequencePlaceIndicator = null;
+			}
+			this.view.render(sequence, parentSequencePlaceIndicator);
 			this.trySelectStepComponent(this.state.selectedStepId);
 			this.updateBadges();
 			this.onRendered.forward();
@@ -4133,10 +3379,6 @@
 			setTimeout(() => this.view.refreshSize());
 		}
 		destroy() {
-			if (this.initTimeout) {
-				clearTimeout(this.initTimeout);
-				this.initTimeout = null;
-			}
 			this.contextMenuController.destroy();
 			this.view.destroy();
 		}
@@ -4195,8 +3437,8 @@
 			const uiComponents = designerContext.services.uiComponents.map(factory => factory.create(root, api));
 			const daemons = designerContext.services.daemons.map(factory => factory.create(api));
 			const view = new DesignerView(root, designerContext.layoutController, workspace, uiComponents, daemons);
-			view.applyLayout();
-			window.addEventListener('resize', view.onResize, false);
+			view.reloadLayout();
+			window.addEventListener('resize', view.onResizeHandler, false);
 			return view;
 		}
 		constructor(root, layoutController, workspace, uiComponents, daemons) {
@@ -4205,25 +3447,20 @@
 			this.workspace = workspace;
 			this.uiComponents = uiComponents;
 			this.daemons = daemons;
-			this.onResize = () => {
-				this.updateLayout();
-			};
-		}
-		updateLayout() {
-			this.applyLayout();
-			for (const component of this.uiComponents) {
-				component.updateLayout();
-			}
+			this.onResizeHandler = () => this.onResize();
 		}
 		destroy() {
 			var _a;
-			window.removeEventListener('resize', this.onResize, false);
+			window.removeEventListener('resize', this.onResizeHandler, false);
 			this.workspace.destroy();
 			this.uiComponents.forEach(component => component.destroy());
 			this.daemons.forEach(daemon => daemon.destroy());
 			(_a = this.root.parentElement) === null || _a === void 0 ? void 0 : _a.removeChild(this.root);
 		}
-		applyLayout() {
+		onResize() {
+			this.reloadLayout();
+		}
+		reloadLayout() {
 			const isMobile = this.layoutController.isMobile();
 			Dom.toggleClass(this.root, !isMobile, 'sqd-layout-desktop');
 			Dom.toggleClass(this.root, isMobile, 'sqd-layout-mobile');
@@ -4234,8 +3471,8 @@
 	class DefaultDraggedComponent {
 		static create(parent, step, componentContext) {
 			const canvas = Dom.svg('svg');
-			canvas.style.marginLeft = -10 + 'px';
-			canvas.style.marginTop = -10 + 'px';
+			canvas.style.marginLeft = -SAFE_OFFSET + 'px';
+			canvas.style.marginTop = -SAFE_OFFSET + 'px';
 			parent.appendChild(canvas);
 			const previewStepContext = {
 				parentSequence: [],
@@ -4373,7 +3610,7 @@
 		static create(parent, api) {
 			const isUndoRedoSupported = api.controlBar.isUndoRedoSupported();
 			const view = ControlBarView.create(parent, isUndoRedoSupported, api.i18n);
-			const bar = new ControlBar(view, api.controlBar, api.viewport, isUndoRedoSupported);
+			const bar = new ControlBar(view, api.controlBar, isUndoRedoSupported);
 			view.bindResetButtonClick(() => bar.onResetButtonClicked());
 			view.bindZoomInButtonClick(() => bar.onZoomInButtonClicked());
 			view.bindZoomOutButtonClick(() => bar.onZoomOutButtonClicked());
@@ -4387,26 +3624,22 @@
 			bar.refreshButtons();
 			return bar;
 		}
-		constructor(view, controlBarApi, viewportApi, isUndoRedoSupported) {
+		constructor(view, controlBarApi, isUndoRedoSupported) {
 			this.view = view;
 			this.controlBarApi = controlBarApi;
-			this.viewportApi = viewportApi;
 			this.isUndoRedoSupported = isUndoRedoSupported;
-		}
-		updateLayout() {
-			//
 		}
 		destroy() {
 			//
 		}
 		onResetButtonClicked() {
-			this.viewportApi.resetViewport();
+			this.controlBarApi.resetViewport();
 		}
 		onZoomInButtonClicked() {
-			this.viewportApi.zoom(true);
+			this.controlBarApi.zoomIn();
 		}
 		onZoomOutButtonClicked() {
-			this.viewportApi.zoom(false);
+			this.controlBarApi.zoomOut();
 		}
 		onMoveButtonClicked() {
 			this.controlBarApi.toggleIsDragDisabled();
@@ -4453,25 +3686,22 @@
 	const ignoreTagNames = ['INPUT', 'TEXTAREA', 'SELECT'];
 	class KeyboardDaemon {
 		static create(api, configuration) {
-			const dom = api.shadowRoot || document;
-			const controller = new KeyboardDaemon(dom, api.controlBar, configuration);
-			dom.addEventListener('keyup', controller.onKeyUp, false);
+			const controller = new KeyboardDaemon(api.controlBar, configuration);
+			document.addEventListener('keyup', controller.onKeyUp, false);
 			return controller;
 		}
-		constructor(dom, controlBarApi, configuration) {
-			this.dom = dom;
+		constructor(controlBarApi, configuration) {
 			this.controlBarApi = controlBarApi;
 			this.configuration = configuration;
 			this.onKeyUp = (e) => {
-				const ke = e;
-				const action = detectAction(ke);
+				const action = detectAction(e);
 				if (!action) {
 					return;
 				}
 				if (document.activeElement && ignoreTagNames.includes(document.activeElement.tagName)) {
 					return;
 				}
-				if (this.configuration.canHandleKey && !this.configuration.canHandleKey(action, ke)) {
+				if (this.configuration.canHandleKey && !this.configuration.canHandleKey(action, e)) {
 					return;
 				}
 				const isDeletable = this.controlBarApi.canDelete();
@@ -4483,7 +3713,7 @@
 			};
 		}
 		destroy() {
-			this.dom.removeEventListener('keyup', this.onKeyUp, false);
+			document.removeEventListener('keyup', this.onKeyUp, false);
 		}
 	}
 	function detectAction(e) {
@@ -4574,9 +3804,6 @@
 		updateVisibility() {
 			this.setIsCollapsed(this.editorApi.isCollapsed());
 		}
-		updateLayout() {
-			//
-		}
 		destroy() {
 			this.view.destroy();
 		}
@@ -4602,6 +3829,7 @@
 			});
 			parent.appendChild(root);
 			const view = new ScrollBoxView(root, viewport);
+			window.addEventListener('resize', view.onResize, false);
 			root.addEventListener('wheel', e => view.onWheel(e), listenerOptions);
 			root.addEventListener('touchstart', e => view.onTouchStart(e), listenerOptions);
 			root.addEventListener('mousedown', e => view.onMouseDown(e), false);
@@ -4610,6 +3838,9 @@
 		constructor(root, viewport) {
 			this.root = root;
 			this.viewport = viewport;
+			this.onResize = () => {
+				this.refresh();
+			};
 			this.onTouchStart = (e) => {
 				e.preventDefault();
 				this.startScroll(readTouchPosition(e));
@@ -4643,13 +3874,13 @@
 			this.root.appendChild(element);
 			this.reload(element);
 		}
-		updateLayout() {
+		refresh() {
 			if (this.content) {
 				this.reload(this.content.element);
 			}
 		}
 		destroy() {
-			//
+			window.removeEventListener('resize', this.onResize, false);
 		}
 		reload(element) {
 			const maxHeightPercent = 0.7;
@@ -4727,7 +3958,8 @@
 				const iconImage = Dom.element('img', {
 					class: 'sqd-toolbox-item-icon-image',
 					src: data.iconUrl,
-					draggable: 'false'
+					draggable: 'false',
+					alt: "icon-image"
 				});
 				icon.appendChild(iconImage);
 			}
@@ -4810,19 +4042,16 @@
 			const body = Dom.element('div', {
 				class: 'sqd-toolbox-body'
 			});
-			const filter = Dom.element('div', {
-				class: 'sqd-toolbox-filter'
-			});
 			const filterInput = Dom.element('input', {
-				class: 'sqd-toolbox-filter-input',
+				class: 'sqd-toolbox-filter',
 				type: 'text',
-				placeholder: i18n('toolbox.search', 'Search...')
+				placeholder: i18n('toolbox.search', 'Search...'),
+				name: 'toolbox-filter'
 			});
 			root.appendChild(header);
 			root.appendChild(body);
 			header.appendChild(headerTitle);
-			filter.appendChild(filterInput);
-			body.appendChild(filter);
+			body.appendChild(filterInput);
 			parent.appendChild(root);
 			const scrollBoxView = ScrollBoxView.create(body, parent);
 			return new ToolboxView(header, body, filterInput, scrollBoxView, api);
@@ -4833,9 +4062,6 @@
 			this.filterInput = filterInput;
 			this.scrollBoxView = scrollBoxView;
 			this.api = api;
-		}
-		updateLayout() {
-			this.scrollBoxView.updateLayout();
 		}
 		bindToggleClick(handler) {
 			function forward(e) {
@@ -4859,7 +4085,7 @@
 			this.headerToggleIcon = Icons.createSvg('sqd-toolbox-toggle-icon', isCollapsed ? Icons.expand : Icons.close);
 			this.header.appendChild(this.headerToggleIcon);
 			if (!isCollapsed) {
-				this.updateLayout();
+				this.scrollBoxView.refresh();
 			}
 		}
 		setGroups(groups) {
@@ -4896,9 +4122,6 @@
 			this.api = api;
 			this.allGroups = allGroups;
 		}
-		updateLayout() {
-			this.view.updateLayout();
-		}
 		destroy() {
 			this.view.destroy();
 		}
@@ -4924,7 +4147,40 @@
 		}
 	}
 
-	const defaultConfiguration = {
+	const defaultConfiguration$4 = {
+		view: {
+			paddingTop: 20,
+			paddingX: 20,
+			inputSize: 18,
+			inputIconSize: 14,
+			label: {
+				height: 22,
+				paddingX: 10,
+				minWidth: 50,
+				radius: 10
+			}
+		}
+	};
+	class ContainerStepExtension {
+		static create(configuration) {
+			return new ContainerStepExtension(configuration !== null && configuration !== void 0 ? configuration : defaultConfiguration$4);
+		}
+		constructor(configuration) {
+			this.configuration = configuration;
+			this.componentType = 'container';
+			this.createComponentView = createContainerStepComponentViewFactory(this.configuration.view);
+		}
+	}
+
+	class DefaultPlaceholderControllerExtension {
+		create() {
+			return {
+				canCreate: () => true
+			};
+		}
+	}
+
+	const defaultConfiguration$3 = {
 		gapWidth: 88,
 		gapHeight: 24,
 		radius: 6,
@@ -4932,22 +4188,177 @@
 	};
 	class RectPlaceholderExtension {
 		static create(configuration) {
-			return new RectPlaceholderExtension(configuration !== null && configuration !== void 0 ? configuration : defaultConfiguration);
+			return new RectPlaceholderExtension(configuration !== null && configuration !== void 0 ? configuration : defaultConfiguration$3);
 		}
 		constructor(configuration) {
 			this.configuration = configuration;
-			this.alongGapSize = new Vector(defaultConfiguration.gapWidth, defaultConfiguration.gapHeight);
-			this.perpendicularGapSize = new Vector(defaultConfiguration.gapHeight, defaultConfiguration.gapWidth);
+			this.gapSize = new Vector(this.configuration.gapWidth, this.configuration.gapHeight);
 		}
-		getGapSize(orientation) {
-			return orientation === exports.PlaceholderGapOrientation.perpendicular ? this.perpendicularGapSize : this.alongGapSize;
-		}
-		createForGap(parent, parentSequence, index, orientation) {
-			const gapSize = this.getGapSize(orientation);
-			return RectPlaceholder.create(parent, gapSize, exports.PlaceholderDirection.gap, parentSequence, index, this.configuration.radius, this.configuration.iconSize);
+		createForGap(parent, parentSequence, index) {
+			return RectPlaceholder.create(parent, this.gapSize, exports.PlaceholderDirection.none, parentSequence, index, this.configuration);
 		}
 		createForArea(parent, size, direction, parentSequence, index) {
-			return RectPlaceholder.create(parent, size, direction, parentSequence, index, this.configuration.radius, this.configuration.iconSize);
+			return RectPlaceholder.create(parent, size, direction, parentSequence, index, this.configuration);
+		}
+	}
+
+	const SIZE = 30;
+	const DEFAULT_ICON_SIZE = 22;
+	const FOLDER_ICON_SIZE = 18;
+	class StartStopRootComponentView {
+		static create(parent, sequence, parentPlaceIndicator, context) {
+			const g = Dom.svg('g', {
+				class: 'sqd-root-start-stop'
+			});
+			parent.appendChild(g);
+			const sequenceComponent = DefaultSequenceComponent.create(g, {
+				sequence,
+				depth: 0,
+				isInputConnected: true,
+				isOutputConnected: true,
+				isPreview: false
+			}, context);
+			const view = sequenceComponent.view;
+			const x = view.joinX - SIZE / 2;
+			const endY = SIZE + view.height;
+			const iconSize = parentPlaceIndicator ? FOLDER_ICON_SIZE : DEFAULT_ICON_SIZE;
+			const startCircle = createCircle(parentPlaceIndicator ? Icons.folder : Icons.play, iconSize);
+			Dom.translate(startCircle, x, 0);
+			g.appendChild(startCircle);
+			Dom.translate(view.g, 0, SIZE);
+			const endCircle = createCircle(parentPlaceIndicator ? Icons.folder : Icons.stop, iconSize);
+			Dom.translate(endCircle, x, endY);
+			g.appendChild(endCircle);
+			let startPlaceholder = null;
+			let endPlaceholder = null;
+			if (parentPlaceIndicator) {
+				const size = new Vector(SIZE, SIZE);
+				startPlaceholder = context.services.placeholder.createForArea(g, size, exports.PlaceholderDirection.out, parentPlaceIndicator.sequence, parentPlaceIndicator.index);
+				endPlaceholder = context.services.placeholder.createForArea(g, size, exports.PlaceholderDirection.out, parentPlaceIndicator.sequence, parentPlaceIndicator.index);
+				Dom.translate(startPlaceholder.view.g, x, 0);
+				Dom.translate(endPlaceholder.view.g, x, endY);
+			}
+			const badges = Badges.createForRoot(g, new Vector(x + SIZE, 0), context);
+			return new StartStopRootComponentView(g, view.width, view.height + SIZE * 2, view.joinX, sequenceComponent, startPlaceholder, endPlaceholder, badges);
+		}
+		constructor(g, width, height, joinX, component, startPlaceholder, endPlaceholder, badges) {
+			this.g = g;
+			this.width = width;
+			this.height = height;
+			this.joinX = joinX;
+			this.component = component;
+			this.startPlaceholder = startPlaceholder;
+			this.endPlaceholder = endPlaceholder;
+			this.badges = badges;
+		}
+		destroy() {
+			var _a;
+			(_a = this.g.parentNode) === null || _a === void 0 ? void 0 : _a.removeChild(this.g);
+		}
+	}
+	function createCircle(d, iconSize) {
+		const r = SIZE / 2;
+		const circle = Dom.svg('circle', {
+			class: 'sqd-root-start-stop-circle',
+			cx: r,
+			cy: r,
+			r: r
+		});
+		const g = Dom.svg('g');
+		g.appendChild(circle);
+		const offset = (SIZE - iconSize) / 2;
+		const icon = Icons.appendPath(g, 'sqd-root-start-stop-icon', d, iconSize);
+		Dom.translate(icon, offset, offset);
+		return g;
+	}
+
+	class StartStopRootComponent {
+		static create(parentElement, sequence, parentPlaceIndicator, context) {
+			const view = StartStopRootComponentView.create(parentElement, sequence, parentPlaceIndicator, context);
+			return new StartStopRootComponent(view);
+		}
+		constructor(view) {
+			this.view = view;
+		}
+		resolveClick(click) {
+			return this.view.component.resolveClick(click);
+		}
+		findById(stepId) {
+			return this.view.component.findById(stepId);
+		}
+		resolvePlaceholders(skipComponent, result) {
+			this.view.component.resolvePlaceholders(skipComponent, result);
+			if (this.view.startPlaceholder && this.view.endPlaceholder) {
+				result.placeholders.push(this.view.startPlaceholder);
+				result.placeholders.push(this.view.endPlaceholder);
+			}
+		}
+		updateBadges(result) {
+			this.view.badges.update(result);
+			this.view.component.updateBadges(result);
+		}
+	}
+
+	class StartStopRootComponentExtension {
+		constructor() {
+			this.create = StartStopRootComponent.create;
+		}
+	}
+
+	const defaultConfiguration$2 = {
+		view: {
+			minContainerWidth: 40,
+			paddingX: 20,
+			paddingTop: 20,
+			connectionHeight: 16,
+			inputSize: 18,
+			inputIconSize: 14,
+			branchNameLabel: {
+				height: 22,
+				paddingX: 10,
+				minWidth: 50,
+				radius: 10
+			},
+			nameLabel: {
+				height: 22,
+				paddingX: 10,
+				minWidth: 50,
+				radius: 10
+			}
+		}
+	};
+	class SwitchStepExtension {
+		static create(configuration) {
+			return new SwitchStepExtension(configuration !== null && configuration !== void 0 ? configuration : defaultConfiguration$2);
+		}
+		constructor(configuration) {
+			this.configuration = configuration;
+			this.componentType = 'switch';
+			this.createComponentView = createSwitchStepComponentViewFactory(this.configuration.view);
+		}
+	}
+
+	const defaultConfiguration$1 = {
+		view: {
+			paddingLeft: 12,
+			paddingRight: 12,
+			paddingY: 10,
+			textMarginLeft: 12,
+			minTextWidth: 70,
+			iconSize: 22,
+			radius: 5,
+			inputSize: 14,
+			outputSize: 10
+		}
+	};
+	class TaskStepExtension {
+		static create(configuration) {
+			return new TaskStepExtension(configuration !== null && configuration !== void 0 ? configuration : defaultConfiguration$1);
+		}
+		constructor(configuration) {
+			this.configuration = configuration;
+			this.componentType = 'task';
+			this.createComponentView = createTaskStepComponentViewFactory(false, this.configuration.view);
 		}
 	}
 
@@ -4963,22 +4374,39 @@
 		}
 	}
 
-	class DefaultClickBehaviorWrapper {
-		constructor() {
-			this.wrap = (behavior) => behavior;
+	class LineGrid {
+		static create(size) {
+			const path = Dom.svg('path', {
+				class: 'sqd-line-grid-path',
+				fill: 'none'
+			});
+			return new LineGrid(size, path);
+		}
+		constructor(size, element) {
+			this.size = size;
+			this.element = element;
+		}
+		setScale(_, scaledSize) {
+			Dom.attrs(this.element, {
+				d: `M ${scaledSize.x} 0 L 0 0 0 ${scaledSize.y}`
+			});
 		}
 	}
 
-	class DefaultClickBehaviorWrapperExtension {
+	const defaultConfiguration = {
+		gridSizeX: 48,
+		gridSizeY: 48
+	};
+	class LineGridExtension {
+		static create(configuration) {
+			return new LineGridExtension(configuration !== null && configuration !== void 0 ? configuration : defaultConfiguration);
+		}
+		constructor(configuration) {
+			this.configuration = configuration;
+		}
 		create() {
-			return new DefaultClickBehaviorWrapper();
-		}
-	}
-
-	class DefaultStepBadgesDecoratorExtension {
-		create(g, view, badges) {
-			const position = new Vector(view.width, 0);
-			return new DefaultBadgesDecorator(position, badges, g);
+			const size = new Vector(this.configuration.gridSizeX, this.configuration.gridSizeY);
+			return LineGrid.create(size);
 		}
 	}
 
@@ -4998,12 +4426,6 @@
 			if (ext.stepComponentViewWrapper) {
 				services.stepComponentViewWrapper = ext.stepComponentViewWrapper;
 			}
-			if (ext.stepBadgesDecorator) {
-				services.stepBadgesDecorator = ext.stepBadgesDecorator;
-			}
-			if (ext.clickBehaviorWrapperExtension) {
-				services.clickBehaviorWrapperExtension = ext.clickBehaviorWrapperExtension;
-			}
 			if (ext.badges) {
 				services.badges = (services.badges || []).concat(ext.badges);
 			}
@@ -5015,6 +4437,9 @@
 			}
 			if (ext.wheelController) {
 				services.wheelController = ext.wheelController;
+			}
+			if (ext.placeholderController) {
+				services.placeholderController = ext.placeholderController;
 			}
 			if (ext.placeholder) {
 				services.placeholder = ext.placeholder;
@@ -5049,15 +4474,8 @@
 		services.steps.push(ContainerStepExtension.create());
 		services.steps.push(SwitchStepExtension.create());
 		services.steps.push(TaskStepExtension.create());
-		services.steps.push(LaunchPadStepExtension.create());
 		if (!services.stepComponentViewWrapper) {
 			services.stepComponentViewWrapper = new DefaultStepComponentViewWrapperExtension();
-		}
-		if (!services.stepBadgesDecorator) {
-			services.stepBadgesDecorator = new DefaultStepBadgesDecoratorExtension();
-		}
-		if (!services.clickBehaviorWrapperExtension) {
-			services.clickBehaviorWrapperExtension = new DefaultClickBehaviorWrapperExtension();
 		}
 		if (!services.badges) {
 			services.badges = [];
@@ -5083,6 +4501,9 @@
 		if (!services.wheelController) {
 			services.wheelController = new ClassicWheelControllerExtension();
 		}
+		if (!services.placeholderController) {
+			services.placeholderController = new DefaultPlaceholderControllerExtension();
+		}
 		if (!services.placeholder) {
 			services.placeholder = RectPlaceholderExtension.create();
 		}
@@ -5090,13 +4511,13 @@
 			services.regionComponentView = new DefaultRegionComponentViewExtension();
 		}
 		if (!services.viewportController) {
-			services.viewportController = DefaultViewportControllerExtension.create();
+			services.viewportController = new DefaultViewportControllerExtension();
 		}
 		if (!services.grid) {
 			services.grid = LineGridExtension.create();
 		}
 		if (!services.rootComponent) {
-			services.rootComponent = StartStopRootComponentExtension.create();
+			services.rootComponent = new StartStopRootComponentExtension();
 		}
 		if (!services.sequenceComponent) {
 			services.sequenceComponent = new DefaultSequenceComponentExtension();
@@ -5133,18 +4554,17 @@
 		 * @returns An instance of the designer.
 		 */
 		static create(placeholder, startDefinition, configuration) {
-			var _a;
 			if (!placeholder) {
 				throw new Error('Placeholder is not defined');
+			}
+			if (!isElementAttached(placeholder)) {
+				throw new Error('Placeholder is not attached to the DOM');
 			}
 			if (!startDefinition) {
 				throw new Error('Start definition is not defined');
 			}
 			const config = configuration;
 			validateConfiguration(config);
-			if (!isElementAttached((_a = config.shadowRoot) !== null && _a !== void 0 ? _a : document, placeholder)) {
-				throw new Error('Placeholder is not attached to the DOM');
-			}
 			const services = ServicesResolver.resolve(configuration.extensions, config);
 			const designerContext = DesignerContext.create(placeholder, startDefinition, config, services);
 			const designerApi = DesignerApi.create(designerContext);
@@ -5246,12 +4666,6 @@
 			this.state.setViewport(viewport);
 		}
 		/**
-		 * @description Resets the viewport.
-		 */
-		resetViewport() {
-			this.api.viewport.resetViewport();
-		}
-		/**
 		 * @description Unselects the selected step.
 		 */
 		clearSelectedStep() {
@@ -5268,13 +4682,6 @@
 		 */
 		updateRootComponent() {
 			this.api.workspace.updateRootComponent();
-		}
-		/**
-		 * @description Updates the layout of the designer.
-		 */
-		updateLayout() {
-			this.api.workspace.updateCanvasSize();
-			this.view.updateLayout();
 		}
 		/**
 		 * @description Updates all badges.
@@ -5352,6 +4759,35 @@
 		}
 	}
 
+	class LineGridDesignerExtension {
+		static create(configuration) {
+			const grid = LineGridExtension.create(configuration);
+			return new LineGridDesignerExtension(grid);
+		}
+		constructor(grid) {
+			this.grid = grid;
+		}
+	}
+
+	class StepsDesignerExtension {
+		static create(configuration) {
+			const steps = [];
+			if (configuration.container) {
+				steps.push(ContainerStepExtension.create(configuration.container));
+			}
+			if (configuration.switch) {
+				steps.push(SwitchStepExtension.create(configuration.switch));
+			}
+			if (configuration.task) {
+				steps.push(TaskStepExtension.create(configuration.task));
+			}
+			return new StepsDesignerExtension(steps);
+		}
+		constructor(steps) {
+			this.steps = steps;
+		}
+	}
+
 	exports.Badges = Badges;
 	exports.CenteredViewportCalculator = CenteredViewportCalculator;
 	exports.ClassicWheelControllerExtension = ClassicWheelControllerExtension;
@@ -5364,7 +4800,6 @@
 	exports.DefaultSequenceComponent = DefaultSequenceComponent;
 	exports.DefaultSequenceComponentView = DefaultSequenceComponentView;
 	exports.DefaultViewportController = DefaultViewportController;
-	exports.DefaultViewportControllerDesignerExtension = DefaultViewportControllerDesignerExtension;
 	exports.DefaultViewportControllerExtension = DefaultViewportControllerExtension;
 	exports.DefinitionWalker = DefinitionWalker;
 	exports.Designer = Designer;
@@ -5382,26 +4817,20 @@
 	exports.ObjectCloner = ObjectCloner;
 	exports.OutputView = OutputView;
 	exports.PathBarApi = PathBarApi;
-	exports.PlaceholderController = PlaceholderController;
+	exports.QuantifiedScaleViewportCalculator = QuantifiedScaleViewportCalculator;
 	exports.RectPlaceholder = RectPlaceholder;
 	exports.RectPlaceholderView = RectPlaceholderView;
-	exports.SelectStepBehaviorEndToken = SelectStepBehaviorEndToken;
 	exports.ServicesResolver = ServicesResolver;
 	exports.SimpleEvent = SimpleEvent;
-	exports.StartStopRootComponentDesignerExtension = StartStopRootComponentDesignerExtension;
-	exports.StartStopRootComponentExtension = StartStopRootComponentExtension;
 	exports.StepComponent = StepComponent;
 	exports.StepExtensionResolver = StepExtensionResolver;
 	exports.StepsDesignerExtension = StepsDesignerExtension;
-	exports.TYPE = TYPE;
 	exports.ToolboxApi = ToolboxApi;
 	exports.Uid = Uid;
 	exports.ValidationErrorBadgeExtension = ValidationErrorBadgeExtension;
 	exports.Vector = Vector;
-	exports.ViewportApi = ViewportApi;
 	exports.WorkspaceApi = WorkspaceApi;
 	exports.createContainerStepComponentViewFactory = createContainerStepComponentViewFactory;
-	exports.createLaunchPadStepComponentViewFactory = createLaunchPadStepComponentViewFactory;
 	exports.createSwitchStepComponentViewFactory = createSwitchStepComponentViewFactory;
 	exports.createTaskStepComponentViewFactory = createTaskStepComponentViewFactory;
 	exports.getAbsolutePosition = getAbsolutePosition;

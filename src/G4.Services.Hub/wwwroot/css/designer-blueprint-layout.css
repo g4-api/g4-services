@@ -71,6 +71,19 @@
 	flex: 1;
 }
 
+.sqd-error {
+	margin-top: 13px;
+	padding: 6px;
+}
+
+.sqd-error-title {
+	margin-bottom: 6px;
+}
+
+.sqd-error-description {
+	margin: 0;
+}
+
 .sqd-footer {
 	height: var(--footer-height);
 }

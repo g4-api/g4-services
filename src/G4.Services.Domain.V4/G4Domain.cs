@@ -226,7 +226,7 @@ namespace G4.Services.Domain.V4
                 {
                     Id = e.Rule.Reference.Id,
                     ObjectType = e.Rule.GetType().Name,
-                    Type = e.Rule.GetManifest().PluginType,
+                    Type = e.Rule.GetManifest()?.PluginType ?? "SystemPlugin",
                     Value = e.Rule
                 });
             };
@@ -242,7 +242,7 @@ namespace G4.Services.Domain.V4
                 {
                     Id = e.Rule.Reference.Id,
                     ObjectType = e.Rule.GetType().Name,
-                    Type = e.Rule.GetManifest().PluginType,
+                    Type = e.Rule.GetManifest()?.PluginType ?? "SystemPlugin",
                     Value = e.Rule
                 });
             };

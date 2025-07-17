@@ -106,10 +106,9 @@ async function initializeDesigner() {
 	// Create default container types for "Stage" and "Job".
 	const stage = StateMachineSteps.newG4Stage('Stage', {}, {}, []);
 	const job = StateMachineSteps.newG4Job('Job', {}, {}, []);
-	const exportDataContainer = StateMachineSteps.newExportDataContainer('Export Data', {}, {}, []);
 
 	// Add the containers to the "Containers" group.
-	containersGroup.steps.push(...[stage, job, exportDataContainer]);
+	containersGroup.steps.push(...[stage, job]);
 
 	// If "Containers" group doesn't exist, add it to the groups array.
 	if (!containers) {
@@ -370,8 +369,56 @@ function newConfiguration() {
 			 * const isValid = validator.step(step);
 			 * console.log(isValid); // Outputs: true
 			 */
-			step: step => {
-				return !step?.categories?.toUpperCase().includes("G-ERROR");
+			step: (step, _, definition) => {
+                // Get the ID of the currently selected step in the designer
+				const id = _designer.getSelectedStepId();
+
+				// If the step is not selected, return true (no validation needed)
+				if ((!id || id !== step.id) && step.sequence && step.sequence.length > 0) {
+                    step.context.errors = step.context.errors || {};
+					return Object.keys(step.context.errors).length === 0
+						&& !step?.categories?.toUpperCase().includes("G-ERROR");
+				}
+
+				// Array to collect each validation result (true = pass, false = fail)
+				const assertions = [];
+
+				// Check that the rule step is placed under a Job container somewhere
+				assertions.push(
+					Validators.confirmRulePlacement(step, definition)
+				);
+
+				// Ensure all required step properties are present and valid
+				assertions.push(
+					Validators.confirmStepProperties(step)
+				);
+
+				// Verify that Content rules are correctly nested under an ExportData plugin
+				assertions.push(
+					Validators.confirmContentRule(step, definition)
+				);
+
+				// Confirm that the step appears in a valid Stage context if needed
+				assertions.push(
+					Validators.confirmStagePlacement(step, definition)
+				);
+
+				// Validate that Job-specific placement rules are satisfied
+				assertions.push(
+					Validators.confirmJobPlacement(step, definition)
+				);
+
+				// Validate the step.
+				const isValid = assertions.every(assertion => assertion)
+					&& !step?.categories?.toUpperCase().includes("G-ERROR");
+
+				// emit after validating
+				document.dispatchEvent(new CustomEvent(STEP_VALIDATED, {
+					detail: { step, definition, isValid }
+				}));
+
+				// Only return true if every assertion passed AND the step is not marked with a "G-ERROR" category
+				return isValid;
 			},
 
 			/**
@@ -695,6 +742,11 @@ function newImportModal() {
 		 * rules or branches.
 		 */
 		const newStep = (rule) => {
+            // Normalize extraction rules to use 'ExportData' as the plugin name if not specified.
+			if (rule["$type"].toUpperCase() === "EXTRACTION" && !rule.pluginName) {
+				rule.pluginName = 'ExportData'
+			}
+
 			// Retrieve the manifest for the rule's plugin from the cache.
 			const manifest = getManifest(_cache, rule.pluginName);
 
@@ -709,44 +761,104 @@ function newImportModal() {
 			// Ensure that the rule has 'rules' and 'branches' properties.
 			rule.rules = rule.rules || [];
 			rule.branches = rule.branches || {};
+            rule.transformers = rule.transformers || [];
 
 			// Determine if the rule contains nested rules or branch entries.
 			const branchesKeys = Object.keys(rule.branches);
 			const isRules = rule.rules.length > 0;
+            const isTransformers = rule.transformers.length > 0;
 			const isBranches = branchesKeys.length > 0;
 
 			// Synchronize the current step with the rule configuration.
 			_client.syncStep(step, rule);
 
 			// If no nested rules or branches exist, return the current step.
-			if (!isRules && !isBranches) {
+			if (!isRules && !isBranches && !isTransformers) {
 				return step;
 			}
 
-			// Process nested rules recursively if they exist.
+			// If the rule contains nested child rules, process them recursively
 			if (isRules) {
+				// Initialize an empty array to hold the sequence of sub-steps
 				step.sequence = [];
+
+				// Iterate over each child rule in the "rules" array
 				for (const subRule of rule.rules) {
+					// Create a new step object based on the sub-rule definition
 					const subStep = newStep(subRule);
+
+					// Synchronize the new sub-step with its original rule data
 					_client.syncStep(subStep, subRule);
+
+					// Add the synced sub-step to the sequence array
 					step.sequence.push(subStep);
 				}
 			}
 
-			// Process branch rules if they exist.
+			// If there are transformer rules defined, process them recursively
+			if (isTransformers) {
+				// Initialize an empty array to hold the transformer sub-steps
+				step.transformers = [];
+
+				// Iterate over each transformer definition on the rule
+				for (const transformer of rule.transformers) {
+					// Create a new step object from this transformer definition
+					const subStep = newStep(transformer);
+
+					// Sync the new sub-step with its source transformer data
+					_client.syncStep(subStep, transformer);
+
+					// Add the synced sub-step into the step's transformers array
+					step.transformers.push(subStep);
+				}
+			}
+
+			// Process branch rules if any branches are defined on this rule
 			if (isBranches) {
+				// Iterate over each branch key (e.g., "Actions", "Transformers")
 				for (const branchKey of branchesKeys) {
-					// Initialize the branch array if not already present.
-					for (const subRule of rule.branches[branchKey]) {
+					// Safely retrieve the array of sub-rules for this branch
+					const subRules = rule.branches[branchKey];
+
+					// For each sub-rule in the current branch
+					for (const subRule of subRules) {
+						// Create a new step object from the sub-rule definition
 						const subStep = newStep(subRule);
+
+						// Ensure the step.branches array exists for this branch
 						step.branches[branchKey] = step.branches[branchKey] || [];
+
+						// Synchronize the newly created step with its source rule data
 						_client.syncStep(subStep, subRule);
+
+						// Add the synchronized sub-step into the branch array
 						step.branches[branchKey].push(subStep);
 					}
 				}
 			}
 
-			// Return the constructed step with nested rules or branches.
+			// Check if the current step is a ContentRule (actions or transformers)
+			const isContentRule = step.pluginType.toUpperCase() === "CONTENT";
+
+			if (isContentRule && (isRules || isTransformers)) {
+				// Change the component type to a switcher when rules/transformers apply
+				step.componentType = 'switch';
+
+				// Initialize an empty branches object to hold sub-flows
+				step.branches = {};
+
+				// Assign the existing sequence of actions into an "Actions" branch
+				step.branches["Actions"] = step.sequence || [];
+
+				// Assign any transformers into a "Transformers" branch
+				step.branches["Transformers"] = step.transformers || [];
+
+				// Remove the old flat sequence and transformers properties
+				delete step.sequence;
+				delete step.transformers;
+			}
+
+			// Return the modified step object, now with nested branches if applicable
 			return step;
 		};
 
@@ -1324,15 +1436,19 @@ async function startDefinition() {
 	// Check if the designer is in read-only mode - indicating the workflow is running
 	// If it is, exit the function early
 	if (_designer.isReadonly()) {
-
 		return;
 	}
 
 	// Check if the designer is valid before proceeding
 	// If it is not, display an alert and exit the function
 	if (!_designer.isValid()) {
-		window.alert('The workflow definition is invalid. Please review and correct any errors.');
-		return;
+		console.error(
+			"⚠️ Workflow validation failed! " +
+			"Your definition contains errors that must be addressed. " +
+			"The sequence might still run, but leaving these issues uncorrected " +
+			"risks outright failures or unpredictable behavior. " +
+			"Please review and fix the highlighted steps now."
+		);
 	}
 
 	// Set the designer to read-only mode to prevent further editing while the workflow is running
@@ -1347,6 +1463,21 @@ async function startDefinition() {
 	// Start the workflow execution using the state machine instance
 	// created above and wait for it to complete
 	await _stateMachine.start();
+}
+
+/**
+ * Asynchronously stops the current state machine execution.
+ *
+ * Sends an interrupt signal to the state machine, causing it to
+ * halt its current workflow gracefully.
+ *
+ * @async
+ * @function stopDefinition
+ * @returns {Promise<void>} Resolves once the interrupt has been issued.
+ */
+async function stopDefinition() {
+	// Send an interrupt to the state machine to stop its execution flow
+	_stateMachine.interrupt();
 }
 
 /**
@@ -1620,6 +1751,132 @@ function stepEditorProvider(step, editorContext) {
 		);
 	};
 
+	/**
+	 * Initializes the “containerable” toggle on a step editor.
+	 * This adds a switch that lets you convert a step between a task and a container.
+	 */
+	const initializeContainerableEditorProvider = (container, step) => {
+		// Ensure we have a context object to store our “containerable” flag
+		step.context = step.context || {};
+
+        // Create a switch field for toggling container mode
+		CustomFields.newSwitchField(
+			{
+				container: container,
+				initialValue: step.context.convertToContainer || false,
+				label: 'Convert to Container',
+				// Tooltip explaining container mode behavior and revert conditions
+				title: 'Toggle Container Mode:\n' +
+					'- When enabled, you can add child rules to this step.\n' +
+					'- To revert back to Task Mode, first remove all child rules.',
+				step: step,
+				sequence: step.sequence || []
+			},
+			(value) => {
+				// Normalize the switch value to a boolean
+				step.context.convertToContainer = String(value).toUpperCase() === 'TRUE';
+
+                // If the switch is turned off, we need to check the current state of the step
+				const isSequenceEmpty = Array.isArray(step.sequence) && step.sequence.length === 0;
+
+				// Prevent disabling container mode if there are existing child steps
+				if (!isSequenceEmpty) {
+					step.context.convertToContainer = true;
+					editorContext.notifyPropertiesChanged();
+					return;
+				}
+
+				// If there are no child steps and container mode is turned off,
+				// convert this step into a standalone task
+				if (isSequenceEmpty && !step.context.convertToContainer) {
+					step.componentType = 'task';
+					delete step.sequence;
+					editorContext.notifyNameChanged();
+					return;
+				}
+
+				// Otherwise, ensure we are in container mode:
+				// clear any existing sequence and set the component type
+				step.componentType = 'container';
+				step.sequence = [];
+
+				editorContext.notifyNameChanged();
+			}
+		);
+	};
+
+	/**
+	 * Initializes a switchable editor provider on a given container for a workflow step.
+	 * This adds a toggle that lets the step switch between “Task Mode” (single action)
+	 * and “Branching Mode” (multiple Actions & Transformers).
+	 */
+	const initializeSwitchableEditorProvider = (container, step) => {
+		// Ensure we have a `context` object on the step to store the toggle flag
+		step.context = step.context || {};
+
+		// Create a switch field UI for toggling between Task and Branching modes
+		CustomFields.newSwitchField(
+			{
+				// Host element for the switch
+				container: container,
+				// Load saved state or default off
+				initialValue: step.context.convertToSwitch || false,
+				// Visible label next to the toggle
+				label: 'Convert to Switch',
+				// Tooltip guiding the user on what enabling/disabling will do
+				title:
+					'Activate Branching Mode:\n' +
+					'- Allows adding Actions and Transformers to this step.\n' +
+					'- To revert to Task Mode, remove all existing branches first.',
+				step: step,
+				// Pass existing branch names, if any
+				branches: step.branches || []
+			},
+			(value) => {
+				// Normalize the incoming value (“true”/“false” or boolean) into a boolean flag
+				step.context.convertToSwitch = String(value).toUpperCase() === 'TRUE';
+
+				// Check whether any branch holds child steps (non-null, non-empty arrays)
+				const isSequenceEmpty = Object
+					.values(step.branches || {})
+					.every(i => i == null || (Array.isArray(i) && i.length === 0));
+
+				// If disabling branching but branches still exist, revert the toggle back on
+				if (!isSequenceEmpty) {
+					step.context.convertToSwitch = true;
+
+					// Refresh the switch UI
+					editorContext.notifyPropertiesChanged();
+					return;
+				}
+
+				// If toggle is off (Task Mode) and there are no branches, convert to a standalone task
+				if (!step.context.convertToSwitch && isSequenceEmpty) {
+					step.componentType = 'task';
+
+					// Remove any leftover branches data
+					delete step.branches;
+
+					// Update step’s displayed name/icon
+					editorContext.notifyNameChanged();
+					return;
+				}
+
+				// Otherwise (enabling branching), set up Branching Mode:
+				step.componentType = 'switch';
+				step.branches = {};
+
+				// For each branch name stored in context, create an empty child-step list
+				(step.context.branches || []).forEach(branchName => {
+					step.branches[branchName] = [];
+				});
+
+				// Refresh the step display
+				editorContext.notifyNameChanged();
+			}
+		);
+	};
+
 	// Generate a unique identifier for input elements within the editor.
 	const inputId = Utilities.newUid();
 
@@ -1633,6 +1890,35 @@ function stepEditorProvider(step, editorContext) {
 	// Set the tooltip for the container to provide a description of the step.
 	stepEditorContainer.title = step.description;
 
+    // Add event listener for the STEP_VALIDATED event. This event is triggered when the step is validated.
+	document.addEventListener(STEP_VALIDATED, e => {
+		// Check if the event's step ID matches the current step's ID.
+        // If it doesn't match, we ignore the event.
+		if (e.detail.step.id !== step.id) {
+			return;
+		}
+
+        // Select the error elements within the step editor container.
+		const errorElements = document.querySelectorAll(`div[data-g4-role="error"]`);
+
+		// Clean up any existing error elements in the container.
+		if (errorElements) {
+			errorElements.forEach(i => i.remove());
+		}
+
+		/**
+		 * Add an error field to the container.
+		 * This field is used to display any errors related to the step.
+		 * It is initialized with the step's error state.
+		 * This allows users to see if there are any issues with the step configuration.
+		 */
+		CustomFields.newError({
+			container: stepEditorContainer,
+			editorContext: editorContext,
+			step: e.detail.step
+		});
+	});
+
 	/**
 	 * Add a title section to the container.
 	 * This includes the plugin's name converted from PascalCase to space-separated words,
@@ -1643,6 +1929,18 @@ function stepEditorProvider(step, editorContext) {
 		titleText: Utilities.convertPascalToSpaceCase(step.pluginName),
 		subTitleText: step.pluginType,
 		helpText: step.description
+	});
+
+	/**
+	 * Add an error field to the container.
+	 * This field is used to display any errors related to the step.
+	 * It is initialized with the step's error state.
+	 * This allows users to see if there are any issues with the step configuration.
+	 */
+	CustomFields.newError({
+		container: stepEditorContainer,
+        editorContext: editorContext,
+        step: step
 	});
 
 	/**
@@ -1759,6 +2057,17 @@ function stepEditorProvider(step, editorContext) {
 	 */
 	if (sortedParameters.length > 0) {
 		stepEditorContainer.appendChild(parametersFieldContainer);
+	}
+
+    // TODO: When available, change to assert only if step context allows "Convert to Container" capability (context.isContainerable).
+	if (step.pluginType === "Content" || step.context.switchable) {
+		step.context.branches = step.context.branches || ["Actions", "Transformers"]
+		initializeSwitchableEditorProvider(stepEditorContainer, step);
+	}
+
+	// TODO: When available, change to assert only if step context allows "Convert to Container" capability (context.isContainerable).
+	if (step.context.containerable) {
+		initializeContainerableEditorProvider(stepEditorContainer, step);
 	}
 
 	/**

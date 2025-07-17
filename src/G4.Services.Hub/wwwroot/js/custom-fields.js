@@ -739,28 +739,33 @@ class CustomG4Fields {
 
         // Create the SVG element for the button icon.
         const svgElement = document.createElement("svg");
+
+        svgElement.innerHTML = options.svgElementHtml ? options.svgElementHtml : svgElement.innerHTML;
         svgElement.classList.add(...options.svgClassList);
-        svgElement.setAttribute('viewBox', options.viewBox);
 
-        // Apply any additional attributes to the SVG element if provided.
-        options.svgAttributes = options.svgAttributes || {};
-        for (const attribute of Object.keys(options.svgAttributes)) {
-            svgElement.setAttribute(attribute, options.svgAttributes[attribute]);
+        if (!options.svgElementHtml) {
+            svgElement.setAttribute('viewBox', options.viewBox);
+
+            // Apply any additional attributes to the SVG element if provided.
+            options.svgAttributes = options.svgAttributes || {};
+            for (const attribute of Object.keys(options.svgAttributes)) {
+                svgElement.setAttribute(attribute, options.svgAttributes[attribute]);
+            }
+
+            // Create the path element within the SVG.
+            const pathElement = document.createElement("path");
+            pathElement.classList.add(...options.pathClassList);
+            pathElement.setAttribute('d', options.icon);
+
+            // Apply any additional attributes to the path element if provided.
+            options.pathAttributes = options.pathAttributes || {};
+            for (const attribute of Object.keys(options.pathAttributes)) {
+                pathElement.setAttribute(attribute, options.pathAttributes[attribute]);
+            }
+
+            // Append the path element to the SVG.
+            svgElement.appendChild(pathElement);
         }
-
-        // Create the path element within the SVG.
-        const pathElement = document.createElement("path");
-        pathElement.classList.add(...options.pathClassList);
-        pathElement.setAttribute('d', options.icon);
-
-        // Apply any additional attributes to the path element if provided.
-        options.pathAttributes = options.pathAttributes || {};
-        for (const attribute of Object.keys(options.pathAttributes)) {
-            pathElement.setAttribute(attribute, options.pathAttributes[attribute]);
-        }
-
-        // Append the path element to the SVG.
-        svgElement.appendChild(pathElement);
 
         // Optional: Add an onclick handler to the SVG for debugging purposes.
         // This can be removed or modified as needed.
@@ -969,6 +974,25 @@ class CustomG4Fields {
         return options.container ? options.container : fieldContainer;
     }
 
+    // TODO: Add descriptions
+    /**
+     * Creates and renders a Data Collector field group, encompassing inputs for repository, source,
+     * type, and capabilities, and wires up callbacks for each sub-field.
+     *
+     * @static
+     * @param {Object} options                             - Configuration options for the Data Collector field.
+     * @param {HTMLElement} [options.container]            - Optional parent element to which the field group will be appended.
+     * @param {string} options.label                       - Display label for the data collector field group.
+     * @param {Object} [options.initialValue]              - Initial values for the fields.
+     * @param {string} [options.initialValue.repository]   - Initial repository identifier.
+     * @param {string} [options.initialValue.source]       - Initial connection string, file path, or URL.
+     * @param {string} [options.initialValue.type]         - Initial data source type (e.g., CSV, JSON).
+     * @param {Object} [options.initialValue.capabilities] - Initial key-value map of additional capabilities.
+     * @param {Array} [options.itemSource]                 - Array of allowed values for the "Type" data list input.
+     * @param {Function} setCallback                       - Callback invoked whenever any sub-field value changes. Receives an object with the updated property.
+     * 
+     * @returns {HTMLElement} The container element that holds the rendered Data Collector fields.
+     */
     static newDataCollectorField(options, setCallback) {
         // Generate a unique identifier for the Data Source field.
         const inputId = Utilities.newUid();
@@ -1055,6 +1079,29 @@ class CustomG4Fields {
                 };
 
                 // Invoke the main callback function with the updated data source
+                setCallback(dataSource);
+            }
+        );
+
+        /**
+         * Adds a toggle switch labeled “For Entity” to the UI, allowing users to choose
+         * whether extraction results should be written after each individual entity is
+         * processed or only once after all entities have been extracted.
+         */
+        CustomFields.newSwitchField(
+            {
+                container: controller,
+                initialValue: options.initialValue?.forEntity || false,
+                label: 'For Entity',
+                title: 'When enabled, results are written immediately after each entity is extracted; when disabled, ' +
+                    'results will be written only once after all entities have been processed.',
+            },
+            (value) => {
+                // Convert the incoming string ('true' or 'false') into a proper boolean
+                const dataSource = {
+                    forEntity: Utilities.convertStringToBool(value)
+                };
+                // Notify the rest of the system of the updated writing mode
                 setCallback(dataSource);
             }
         );
@@ -2260,6 +2307,71 @@ class CustomFields {
     }
 
     /**
+     * Renders error messages for a given step into the specified container.
+     * 
+     * @param {Object} options
+     * @param {Object} options.step           - The step object containing context and errors
+     * @param {string} options.step.id        - Unique identifier of the step
+     * @param {Object} options.step.context   - Context object holding error details
+     * @param {Object.<string, {title: string, description: string}>} options.step.context.errors
+     * @param {HTMLElement} options.container - The DOM element to render errors into
+     * @param {Function} [setCallback]        - Optional callback function invoked with the error container
+     * 
+     * @returns {HTMLElement|undefined} The updated container or the newly created error container
+     */
+    static newError(options, setCallback) {
+        // Helper: build HTML string for a single error block
+        const newErrorMessage = (id, title, content) => {
+            return `
+        <div class="sqd-error" data-g4-error-id="${id}">
+            <div class="sqd-error-title">${title || 'Error'}</div>
+            <div class="sqd-error-description">${content || 'Something went wrong. Please try again later.'}</div>
+        </div>`;
+        };
+
+        // Extract context and error keys safely
+        const context = options.step?.context || {};
+        const errorKeys = Object.keys(context.errors || {});
+
+        // If there are no errors, nothing to render
+        if (errorKeys.length === 0) {
+            return;
+        }
+
+        // Build combined HTML for all errors
+        let html = '';
+        for (const key of errorKeys) {
+            const errorDetail = context.errors[key];
+            const messageId = `${options.step.id}_${key}`;
+            html += newErrorMessage(messageId, errorDetail.title, errorDetail.description);
+        }
+
+        // Prepare the error container element
+        const errorContainer = document.createElement('div');
+        errorContainer.setAttribute('data-g4-role', `error`);
+
+        // Insert all error blocks inside the container
+        errorContainer.insertAdjacentHTML('beforeend', html);
+
+        // Insert the error container into the DOM after the first existing child
+        const refElement = options.container.firstElementChild;
+        if (refElement) {
+            refElement.insertAdjacentElement('afterend', errorContainer);
+        } else {
+            // Fallback: append if no reference child exists
+            options.container.appendChild(errorContainer);
+        }
+
+        // If a callback is provided, call it with the error container reference
+        if (typeof setCallback === 'function') {
+            setCallback(errorContainer);
+        }
+
+        // Return the relevant container for chaining or further manipulation
+        return options.container || errorContainer;
+    }
+
+    /**
      * Creates and appends a new key-value field to the specified container based on the provided options.
      * This field allows users to dynamically add multiple key-value pairs, with each pair consisting of:
      * - A key input
@@ -3073,9 +3185,11 @@ class CustomFields {
          * - Invokes the `setCallback` function with the new value whenever the selection changes.
          */
         if (typeof setCallback === 'function') {
-            fieldContainer.addEventListener('input', () => {
-                textareaElement.title = textareaElement.value;
-                callback(textareaElement);
+            ['input', 'paste', 'cut', 'drop'].forEach(e => {
+                fieldContainer.addEventListener(e, () => {
+                    textareaElement.title = textareaElement.value;
+                    callback(textareaElement);
+                });
             });
         }
 

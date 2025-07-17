@@ -82,6 +82,7 @@
 
 	<script src="./js/metric-utilities.js"></script>
 	<script src="./js/utilities.js"></script>
+	<script src="./js/validators.js"></script>
 	<script src="./js/observer.js"></script>
 	<script src="./js/cli-factory.js"></script>
 	<script src="./js/signalr.min.js" integrity="" crossorigin="anonymous"></script>
@@ -97,6 +98,20 @@
 		const client = new G4Client();
 
 		/**
+		 * Fetches an SVG resource from the given URI and returns its raw text.
+		 */
+		const resolveSvg = async (uri) => {
+			// Perform a network request to fetch the resource at the provided URI
+			const response = await fetch(uri);
+
+			// If the HTTP status indicates success (status in the range 200–299),
+			// return the response body as text; otherwise, return null
+			return response.ok
+				? await response.text()
+				: null;
+		};
+
+		/**
 		 * Waits for the '.sqd-control-bar' element to appear in the DOM within a specified timeout,
 		 * then adds custom control bar buttons for exporting, importing, starting, and stopping definitions.
 		 *
@@ -104,7 +119,7 @@
 		 * @param {number} timeout  - The maximum time to wait for the element in milliseconds.
 		 */
 		Utilities.waitForElement('.sqd-control-bar', 5000)
-			.then((controlBar) => {
+			.then(async (controlBar) => {
 				// SVG path data for the Export button icon
 				const exportSvg = "M960 608a32 32 0 0 0-32 32v288h-288a32 32 0 0 0 0 64h320a32 32 0 0 0 32-32V640a32 32 0 0 0-32-32zM512 928h-128a32 32 0 0 0 0 64h128a32 32 0 0 0 0-64zM278.72 937.28a32 32 0 0 0-34.88-6.72 29.76 29.76 0 0 0-10.56 6.72 32 32 0 0 0-6.72 10.56A32 32 0 0 0 224 960a32 32 0 0 0 54.72 22.72 37.12 37.12 0 0 0 6.72-10.56 30.08 30.08 0 0 0 0-24.32 29.76 29.76 0 0 0-6.72-10.56zM128 928H96v-288a32 32 0 0 0-64 0v320a32 32 0 0 0 32 32h64a32 32 0 0 0 0-64zM743.68 491.2a32 32 0 1 0 48.64 41.6l192-224a30.08 30.08 0 0 0 1.92-3.52 32 32 0 0 0 2.56-4.16v-2.24a32 32 0 0 0 0-5.12A32 32 0 0 0 992 288a32 32 0 0 0 0-4.8 32 32 0 0 0 0-5.12v-2.24a32 32 0 0 0-2.56-4.16 30.08 30.08 0 0 0-1.92-3.52l-192-224a32 32 0 0 0-48.64 41.6L890.56 256H480v480a32 32 0 0 0 64 0V320h346.56z";
 
@@ -156,6 +171,7 @@
 					svgClassList: ['sqd-control-bar-button-icon'],
 					title: 'Reset Definition',
 					viewBox: '0 0 1920 1920',
+					svgElementHtml: null,
 					onClick: () => {
 						// Indicate that the automation is no longer running
 						_stateMachine.isRunning = false;
@@ -204,15 +220,12 @@
 					svgClassList: ['sqd-control-bar-button-icon'],
 					title: 'Stop Definition',
 					viewBox: '0 0 100 100',
-					onClick: () => {
-						console.log('Stop Definition');
-					}
+					// Event handler for stopping the definition process
+					onClick: stopDefinition
 				});
 
 				/**
 				 * Creates and configures the Start Definition button.
-				 *
-				 * Assumes that the `startDefinition` function is defined elsewhere in the script.
 				 */
 				CustomG4Fields.newControlBarButton({
 					classList: ['sqd-control-bar-button'],

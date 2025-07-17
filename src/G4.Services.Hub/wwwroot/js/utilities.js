@@ -219,6 +219,60 @@
     }
 
     /**
+     * Recursively searches the workflow tree to find the container step
+     * that directly holds a given target step.
+     *
+     * @param {Object}      target        The step object for which to locate the parent container.
+     * @param {Object[]}    sequenceArray An array of step objects representing the current level of the workflow tree.
+     * @param {Object|null} [parent=null] The step object that serves as the parent of the current sequenceArray. Pass `null` when starting from the root.
+     * 
+     * @returns {Object|null} The step object whose `.sequence` contains the target, or `null` if the target was not found in this branch.
+     */
+    static findParentContainer(target, sequenceArray, parent = null) {
+        // Iterate each step in the current sequence
+        for (const step of sequenceArray) {
+            // If we've found the target step, return its parent container
+            if (step === target) {
+                return parent;
+            }
+
+            // If this step has its own child sequence, recurse into it
+            if (Array.isArray(step.sequence)) {
+                // pass current step as the new parent
+                const found = Utilities.findParentContainer(
+                    target,
+                    step.sequence,
+                    step);
+
+                // If recursion found the target, bubble it up immediately
+                if (found) {
+                    return found;
+                }
+            }
+
+            const branches = step.branches || {};
+            for (const branch in branches) {
+                // If this step has its own child sequence, recurse into it
+                if (Array.isArray(step.branches[branch])) {
+                    // pass current step as the new parent
+                    const found = Utilities.findParentContainer(
+                        target,
+                        step.branches[branch],
+                        step);
+
+                    // If recursion found the target, bubble it up immediately
+                    if (found) {
+                        return found;
+                    }
+                }
+            }
+        }
+
+        // If we exhaust the array without finding the target, return null
+        return null;
+    }
+
+    /**
      * Invokes an event of a specified type on all elements matching a selector.
      *
      * @param {Object}  options            - Options for the event invocation.
