@@ -969,6 +969,7 @@ class CustomG4Fields {
         return options.container ? options.container : fieldContainer;
     }
 
+    // TODO: Add descriptions
     /**
      * Creates and renders a Data Collector field group, encompassing inputs for repository, source,
      * type, and capabilities, and wires up callbacks for each sub-field.
@@ -1073,6 +1074,29 @@ class CustomG4Fields {
                 };
 
                 // Invoke the main callback function with the updated data source
+                setCallback(dataSource);
+            }
+        );
+
+        /**
+         * Adds a toggle switch labeled “For Entity” to the UI, allowing users to choose
+         * whether extraction results should be written after each individual entity is
+         * processed or only once after all entities have been extracted.
+         */
+        CustomFields.newSwitchField(
+            {
+                container: controller,
+                initialValue: options.initialValue?.forEntity || false,
+                label: 'For Entity',
+                title: 'When enabled, results are written immediately after each entity is extracted; when disabled, ' +
+                    'results will be written only once after all entities have been processed.',
+            },
+            (value) => {
+                // Convert the incoming string ('true' or 'false') into a proper boolean
+                const dataSource = {
+                    forEntity: Utilities.convertStringToBool(value)
+                };
+                // Notify the rest of the system of the updated writing mode
                 setCallback(dataSource);
             }
         );
