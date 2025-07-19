@@ -1,4 +1,6 @@
 ﻿const STEP_VALIDATED = 'stepValidated';
+const BASE_NOTIFICATION_URL = "/hub/v4/g4/notifications";
+const BASE_CLIENT_URL = "/api/v4/g4";
 
 let _averageCounter = 0;
 let _counter;
@@ -20,7 +22,7 @@ const _auditableTypes = ["ACTION", "CONTENT", "TRANSFORMER"];
 
 const _connection = new signalR
 	.HubConnectionBuilder()
-	.withUrl("/hub/v4/g4/notifications")
+    .withUrl(BASE_NOTIFICATION_URL)
 	.withAutomaticReconnect()
 	.build();
 
@@ -31,7 +33,7 @@ _connection
 
 (async () => {
 	// Create a new G4Client instance.
-	_client = new G4Client();
+    _client = new G4Client(BASE_CLIENT_URL);
 
 	// Create a new CliFactory instance.
 	_cliFactory = new CliFactory();
