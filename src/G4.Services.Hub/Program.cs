@@ -17,6 +17,7 @@ using Microsoft.OpenApi.Models;
 
 using System;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -120,13 +121,17 @@ var origins = string.IsNullOrEmpty(originsEnvironmentParameter)
     : originsEnvironmentParameter.Split(";", StringSplitOptions.TrimEntries);
 
 // Add and configure CORS (Cross-Origin Resource Sharing) to allow requests from any origin.
-builder.Services
-    .AddCors(i =>
-        i.AddPolicy("CorsPolicy", policy => policy
-            .WithOrigins(origins)
-            .AllowAnyMethod()
-            .AllowAnyHeader()
-            .AllowCredentials()));
+builder.Services.AddCors(options =>
+    options.AddPolicy("CorsPolicy", policy => policy
+        .SetIsOriginAllowed(origin =>
+            origins.Contains(origin)
+            || (origin != null && origin.StartsWith("vscode-webview://"))
+        )
+        .AllowAnyMethod()
+        .AllowAnyHeader()
+        .AllowCredentials()
+    )
+);
 
 // Add and configure SignalR for real-time web functionalities.
 builder.Services
