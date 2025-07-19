@@ -138,7 +138,6 @@ namespace G4.Services.Hub.Api.V4.Controllers
             }
         }
 
-
         [HttpGet]
         [Route("documents/key/{key}")]
         [SwaggerOperation(
@@ -258,6 +257,34 @@ namespace G4.Services.Hub.Api.V4.Controllers
 
             // Return a 404 Not Found response with the error model.
             return NotFound(error404);
+        }
+
+        [HttpGet]
+        [Route("files")]
+        [SwaggerOperation(
+            summary: "Lists all static files in wwwroot.",
+            description: "Recursively scans the wwwroot directory and returns a list of all static file paths, relative to wwwroot. Useful for discovering available static resources such as HTML, JS, CSS, images, etc.",
+            Tags = new[] { "Integration", "Files" })]
+        [SwaggerResponse(StatusCodes.Status200OK, description: "Successfully returned a list of all static files found under wwwroot.", type: typeof(List<string>), contentTypes: MediaTypeNames.Application.Json)]
+        [ResponseCache(Duration = 60, Location = ResponseCacheLocation.Client, NoStore = false)]
+        public IActionResult GetStaticFilesList()
+        {
+            // Resolve the absolute path to wwwroot.
+            var wwwrootPath = Path.Combine(_domain.Environment.ContentRootPath, "wwwroot");
+
+            // If wwwroot does not exist, return an empty list.
+            if (!Directory.Exists(wwwrootPath))
+            {
+                return Ok(new List<string>());
+            }
+
+            // Enumerate all files recursively under wwwroot, returning paths relative to wwwroot (using forward slashes for URL compatibility).
+            var files = Directory.EnumerateFiles(wwwrootPath, "*", SearchOption.AllDirectories)
+                .Select(f => Path.GetRelativePath(wwwrootPath, f).Replace("\\", "/"))
+                .ToList();
+
+            // Return the list of relative file paths as JSON.
+            return Ok(files);
         }
 
         [HttpGet]
