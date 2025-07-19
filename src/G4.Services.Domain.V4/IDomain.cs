@@ -3,6 +3,7 @@ using G4.Cache;
 using G4.Services.Domain.V4.Hubs;
 using G4.Services.Domain.V4.Repositories;
 
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 
@@ -58,5 +59,7 @@ namespace G4.Services.Domain.V4
         /// notifications and updates to subscribed clients.
         /// </summary>
         IHubContext<G4AutomationNotificationsHub> NotificationsHubContext { get; set; }
+
+        IWebHostEnvironment Environment { get; set; }
     }
 }

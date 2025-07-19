@@ -8,6 +8,7 @@ using G4.Services.Domain.V4.Hubs;
 using G4.Services.Domain.V4.Repositories;
 
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
@@ -30,7 +31,8 @@ namespace G4.Services.Domain.V4
         IHubContext<G4AutomationNotificationsHub> notificationsHubContext,
         IHubContext<G4Hub> g4HubContext,
         IHubContext<G4BotsHub> botsHubContext,
-        IBotsRepository connectedBots) : IDomain
+        IBotsRepository connectedBots,
+        IWebHostEnvironment environment) : IDomain
     {
         #region *** Properties   ***
         /// <inheritdoc />
@@ -56,6 +58,9 @@ namespace G4.Services.Domain.V4
 
         /// <inheritdoc />
         public IHubContext<G4AutomationNotificationsHub> NotificationsHubContext { get; set; } = notificationsHubContext;
+
+        /// <inheritdoc />
+        public IWebHostEnvironment Environment { get; set; } = environment;
         #endregion
 
         #region *** Methods      ***
