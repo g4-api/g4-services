@@ -63,10 +63,12 @@ html, body {
 
 	.sqd-theme-light .sqd-card .sqd-card--content {
 		font: var(--card-contet-font);
+		color: var(--card-content-color);
 	}
 
 	.sqd-theme-light .sqd-card .sqd-card--label {
 		font: var(--card-label-font);
+		color: var(--card-content-color);
 	}
 
 .sqd-theme-light .sqd-step-container > g > .sqd-input,
@@ -81,9 +83,10 @@ html, body {
 }
 
 .sqd-theme-light .sqd-toolbox {
-	background: var(--toolbox-background);
-	border-radius: var(--border-radius);
-	box-shadow: var(--toolbox-box-shadow);
+    background: var(--toolbox-background);
+    border-radius: var(--border-radius);
+    box-shadow: var(--toolbox-box-shadow);
+    color: var(--toolbox-color);
 }
 
 .sqd-theme-light .sqd-label--with-help-icon {
@@ -256,6 +259,7 @@ html, body {
 
 	.sqd-theme-light .sqd-modal button:hover {
 		border: var(--modal-button-hover-border) !important;
+		background: var(--modal-button-hover-background) !important;
 	}
 
 .sqd-theme-light .sqd-smart-editor {
@@ -292,6 +296,7 @@ html, body {
 
 		.sqd-theme-light .sqd-smart-editor button:hover {
 			border: var(--smart-editor-button-hover-border);
+			background: var(--smart-editor-button-hover-background);
 		}
 
 	.sqd-theme-light .sqd-smart-editor .sqd-editor details {
@@ -340,6 +345,7 @@ html, body {
 		background: var(--smart-editor-help-text-background);
 		border: var(--smart-editor-help-text-border);
 		border-radius: var(--border-radius);
+		color: var(--smart-editor-help-text-color);
 	}
 
 .sqd-theme-light .sqd-smart-editor-toggle {
