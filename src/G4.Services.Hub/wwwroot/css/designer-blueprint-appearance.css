@@ -6,6 +6,7 @@ html, body {
 
 .sqd-theme-light .sqd-text--tiny {
 	font: var(--text-tiny);
+	color: var(--designer-header-color);
 }
 
 .sqd-theme-light a:active {
@@ -144,6 +145,10 @@ html, body {
 	border-radius: var(--border-radius);
 	color: var(--toolbox-filter-color);
 }
+
+	.sqd-theme-light .sqd-toolbox-filter input {
+		border: var(--toolbox-filter-input-border)
+	}
 
 	.sqd-theme-light .sqd-toolbox-filter:focus {
 		background: var(--toolbox-filter-focus-background);
@@ -339,6 +344,7 @@ html, body {
 
 		.sqd-theme-light .sqd-smart-editor .sqd-editor .sqd-help-icon-container:hover {
 			fill: var(--smart-editor-label-help-icon-container-hover-fill);
+			background: var(--smart-editor-label-help-icon-container-hover-background);
 		}
 
 	.sqd-theme-light .sqd-smart-editor .sqd-editor .sqd-help-text {
