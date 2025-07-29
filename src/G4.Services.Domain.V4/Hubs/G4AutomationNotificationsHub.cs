@@ -47,7 +47,7 @@ namespace G4.Services.Domain.V4.Hubs
             };
 
             // Invoke the automation session using the automation model, returning a response object.
-            var response = _domain.G4Client.Automation.Invoke(automation);
+            var response = _domain.G4.Automation.Invoke(automation);
 
             // Send the response back to the calling client via the "StartAutomation" method.
             return Clients.Caller.SendAsync("StartAutomation", response);

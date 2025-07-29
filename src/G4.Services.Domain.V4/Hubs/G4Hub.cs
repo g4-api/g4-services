@@ -39,7 +39,7 @@ namespace G4.Services.Domain.V4.Hubs
             _logger.LogInformation("GetPendingAutomation invoked by Connection ID: {ConnectionId}", Context.ConnectionId);
 
             // Retrieve the pending automation request from the QueueManager.
-            var pendingAutomation = _domain.G4Client.AutomationAsync.QueueManager.GetPending();
+            var pendingAutomation = _domain.G4.AutomationAsync.QueueManager.GetPending();
 
             // Return the pending automation to the caller, or a message if none is available.
             return Clients.Caller.SendAsync("ReceivePendingAutomation", pendingAutomation);
@@ -51,7 +51,7 @@ namespace G4.Services.Domain.V4.Hubs
         public Task CompleteAutomation(string key, G4AutomationResponseModel response)
         {
             // Add the received automation response to the client's completed automation collection.
-            _domain.G4Client.AutomationAsync.AddCompletedAutomation(key, response);
+            _domain.G4.AutomationAsync.AddCompletedAutomation(key, response);
 
             // Send a confirmation message back to the caller indicating the automation response has been received.
             return Clients.Caller.SendAsync("ConfirmAutomationResponse", key);

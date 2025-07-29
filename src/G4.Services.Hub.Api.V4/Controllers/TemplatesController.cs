@@ -37,7 +37,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
             try
             {
                 // Attempt to add the new template using the provided manifest
-                _domain.G4Client.Templates.AddTemplate(manifest);
+                _domain.G4.Templates.AddTemplate(manifest);
 
                 // If the template was successfully added or overwritten, return 204 No Content
                 return NoContent();
@@ -62,7 +62,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         public IActionResult ClearTemplates()
         {
             // Clear all templates from the cache
-            _domain.G4Client.Templates.ClearTemplates();
+            _domain.G4.Templates.ClearTemplates();
 
             // Return a 204 No Content response to indicate success
             return NoContent();
@@ -79,7 +79,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
             [FromRoute][SwaggerParameter(description: "The key of the template to retrieve the manifest for.", Required = true)] string key)
         {
             // Retrieve the manifest of the specified template by key
-            var (statusCode, manifest) = _domain.G4Client.Templates.GetTemplate(key);
+            var (statusCode, manifest) = _domain.G4.Templates.GetTemplate(key);
 
             // If the template is found, return a 200 OK response with the manifest in JSON format
             if (statusCode == StatusCodes.Status200OK)
@@ -105,7 +105,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         public IActionResult GetTemplates()
         {
             // Retrieve all template manifests and convert to an array
-            var manifests = _domain.G4Client.Templates.GetTemplates().ToArray();
+            var manifests = _domain.G4.Templates.GetTemplates().ToArray();
 
             // Append a custom header with the count of manifests
             Response.Headers.Append("X-Manifest-Count", $"{manifests.Length}");
@@ -127,7 +127,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
             [FromRoute][SwaggerParameter(description: "The key of the template to be removed.", Required = true)] string key)
         {
             // Remove the template from the cache
-            var statusCode = _domain.G4Client.Templates.RemoveTemplate(key);
+            var statusCode = _domain.G4.Templates.RemoveTemplate(key);
 
             // If the template was successfully removed, return 204 No Content
             if (statusCode == StatusCodes.Status204NoContent)

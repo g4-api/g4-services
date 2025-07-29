@@ -36,6 +36,7 @@ namespace G4.Services.Domain.V4.Repositories
         #endregion
 
         #region *** Properties ***
+        /// <inheritdoc />
         public ConcurrentDictionary<string, ConnectedBotModel> ConnectedBots { get; } = connectedBots;
         #endregion
 

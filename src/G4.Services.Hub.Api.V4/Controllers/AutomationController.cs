@@ -34,7 +34,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         public IActionResult Invoke([FromBody] G4AutomationModel automation)
         {
             // Invoke the automation session using the provided automation model.
-            var response = _domain.G4Client.Automation.Invoke(automation);
+            var response = _domain.G4.Automation.Invoke(automation);
 
             // Return a 200 OK response with the detailed automation session results.
             return Ok(response);
@@ -61,7 +61,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
             var automation = JsonSerializer.Deserialize<G4AutomationModel>(json, _domain.JsonOptions);
 
             // Invoke the automation session using the deserialized automation model.
-            var response = _domain.G4Client.Automation.Invoke(automation);
+            var response = _domain.G4.Automation.Invoke(automation);
 
             // Return a 200 OK response with the detailed automation session results.
             return Ok(response);
