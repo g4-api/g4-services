@@ -6,7 +6,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
-namespace G4.Services.Domain.V4.Models
+namespace G4.Models
 {
     public class CopilotRequestModel
     {

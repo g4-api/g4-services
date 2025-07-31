@@ -11,12 +11,12 @@ namespace G4.Services.Domain.V4.Repositories
 {
     public interface ICopilotRepository
     {
-        ToolManifestModel FindTool(string toolName);
+        object FindTool(string toolName, object id);
 
         object GetTools(object id);
 
         object Initialize(object id);
 
-        object InvokeTool(string toolName, JsonElement parameters);
+        object InvokeTool(JsonElement parameters, object id);
     }
 }

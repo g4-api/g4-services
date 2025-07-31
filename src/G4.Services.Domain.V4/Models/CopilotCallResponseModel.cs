@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace G4.Services.Domain.V4.Models
+namespace G4.Models
 {
     public class CopilotCallResponseModel
     {

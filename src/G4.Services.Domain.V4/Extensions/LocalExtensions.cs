@@ -1,11 +1,114 @@
-﻿using G4.Models;
+﻿using G4.Cache;
+using G4.Models;
 
 using Microsoft.AspNetCore.SignalR;
+
+using System;
+using System.Linq;
+using System.Text.RegularExpressions;
+
 
 namespace G4.Extensions
 {
     internal static class LocalExtensions
     {
+        private static readonly CacheManager s_cache = CacheManager.Instance;
+
+        /// <summary>
+        /// Converts a plugin manifest into an <see cref="McpToolModel"/>, 
+        /// extracting its name, description, and input schema (parameters & properties).
+        /// </summary>
+        /// <param name="manifest">The plugin manifest containing metadata, parameters, and properties.</param>
+        /// <returns>A fully populated <see cref="McpToolModel"/> representing the same plugin, ready for JSON‐RPC schema generation.
+        /// </returns>
+        public static McpToolModel ConvertToTool(this IG4PluginManifest manifest)
+        {
+            // Converts PluginParameterModel to McpToolModel.ScehmaPropertyModel for input schema
+            static McpToolModel.ScehmaPropertyModel ConvertToInputSchema(PluginParameterModel parameterModel)
+            {
+                // Converts various naming styles (kebab-case, camelCase) to snake_case
+                static string ConvertToSnakeCase(string input) => input
+                    .Replace("-", " ")
+                    .ConvertToKebabCase()
+                    .Replace("-", "_")
+                    .ToLower();
+
+                // Parses and normalizes the 'Type' string into valid JSON schema types
+                static string[] ConvertType(string input)
+                {
+                    // List of approved JSON schema types for validation and normalization
+                    var approvedTypes = new[] { "null", "boolean", "object", "array", "number", "integer", "string" };
+
+                    // Create a set of approved types for input validation and normalization
+                    return [.. input
+                    .Split('|')
+                    .Select(i => (approvedTypes.Contains(i, StringComparer.OrdinalIgnoreCase) ? i.Trim().ToLower() : "string"))
+                    .Distinct()
+                    .Select(i => (i == "switch" || i == "bool") ? "boolean" : i)
+                    .Distinct()];
+                }
+
+                // Construct the schema property model from the parameter metadata
+                // Return the created schema property and its 'Mandatory' flag
+                return new McpToolModel.ScehmaPropertyModel
+                {
+                    Description = string.Join(" ", parameterModel.Description ?? []),
+                    //Enum = [],
+                    Name = ConvertToSnakeCase(parameterModel.Name),
+                    Required = parameterModel.Mandatory,
+                    Type = ConvertType(parameterModel.Type)
+                };
+            }
+
+            // Derive a standardized plugin key by replacing non-word characters with spaces.
+            var pluginKey = Regex.Replace(manifest.Key, pattern: @"\W+", replacement: " ");
+
+            // Derive a standardized tool name: replace hyphens with spaces,
+            // kebab‑case it, then turn hyphens into underscores and lowercase all.
+            var name = pluginKey
+                .Replace("-", " ")
+                .ConvertToKebabCase()
+                .Replace("-", "_")
+                .ToLower();
+
+            // Join all summary lines into a single human-readable description.
+            var description = string.Join(' ', manifest.Summary);
+
+            // Define the set of approved JSON schema primitive types.
+            // (Note: currently not filtered against manifest.Type, but kept for future use.)
+            var included = new[] { "null", "boolean", "object", "array", "number", "integer", "string" };
+
+            // Convert each declared parameter in the manifest into a schema property.
+            var pluginParameters = (manifest.Parameters ?? []).Select(ConvertToInputSchema);
+
+            // Likewise convert any additional manifest properties into schema properties.
+            var pluginProperties = (manifest.Properties ?? []).Select(ConvertToInputSchema);
+
+            // Combine parameters and properties into a single lookup by property name.
+            var properties = pluginParameters
+                .Concat(pluginProperties)
+                .ToDictionary(prop => prop.Name, prop => prop);
+
+            // Determine which properties are required based on the schema metadata.
+            var requiredProperties = properties.Values
+                .Where(prop => prop.Required)
+                .Select(prop => prop.Name)
+                .ToArray();
+
+            // Build and return the final MCP tool model.
+            return new McpToolModel
+            {
+                Name = name,
+                Description = description,
+                InputSchema = new McpToolModel.ParameterSchemaModel
+                {
+                    Type = "object",
+                    Properties = properties,
+                    Required = requiredProperties
+                }
+            };
+        }
+
         /// <summary>
         /// Retrieves the connection identifier from the G4AutomationModel's SignalR environment settings.
         /// </summary>
