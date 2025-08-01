@@ -6,7 +6,9 @@ using System.Threading.Tasks;
 
 namespace G4.Models
 {
-    public class CopilotListResponseModel
+    public class CopilotErrorModel
     {
+        public long Code { get; set; }
+        public string Message { get; set; } = string.Empty;
     }
 }

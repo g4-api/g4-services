@@ -8,7 +8,7 @@ namespace G4.Models
 {
     public class CopilotInitializeResponseModel
     {
-        public string Id { get; set; }
+        public object Id { get; set; }
         public string Jsonrpc { get; set; }
         public ResultModel Result { get; set; }
 

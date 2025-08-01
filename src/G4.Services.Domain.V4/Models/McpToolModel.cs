@@ -77,6 +77,11 @@ namespace G4.Models
             public string[] Enum { get; set; }
 
             /// <summary>
+            /// Gets or sets the schema for items in an array, if this property is an array.
+            /// </summary>
+            public ParameterSchemaModel Items { get; set; }
+
+            /// <summary>
             /// Gets or sets the name of the property as it appears in JSON.
             /// </summary>
             [JsonIgnore]

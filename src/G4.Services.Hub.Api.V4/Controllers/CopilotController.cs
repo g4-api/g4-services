@@ -1,4 +1,5 @@
-﻿using G4.Models;
+﻿using G4.Converters;
+using G4.Models;
 using G4.Services.Domain.V4;
 
 using Microsoft.AspNetCore.Http;
@@ -9,6 +10,8 @@ using Swashbuckle.AspNetCore.Annotations;
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.Net.Mime;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -19,6 +22,27 @@ namespace G4.Services.Hub.Api.V4.Controllers
     [SwaggerTag(description: "GitHub Copilot Agent endpoint for integration and context exchange with AI agents.")]
     public class CopilotController(IDomain domain) : ControllerBase
     {
+        private static JsonSerializerOptions Options
+        {
+            get
+            {
+                var options = new JsonSerializerOptions
+                {
+                    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+                    DictionaryKeyPolicy = JsonNamingPolicy.SnakeCaseLower,
+                    PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+                    WriteIndented = false
+                };
+
+                options.Converters.Add(new TypeConverter());
+                options.Converters.Add(new ExceptionConverter());
+                options.Converters.Add(new DateTimeIso8601Converter());
+                options.Converters.Add(new MethodBaseConverter());
+
+                return options;
+            }
+        }
+
         // Dependency injection for domain services
         private readonly IDomain _domain = domain;
 
@@ -67,8 +91,21 @@ namespace G4.Services.Hub.Api.V4.Controllers
                          contentTypes: [MediaTypeNames.Application.Json])]
         #endregion
         public IActionResult Post(
-            [FromBody, Required][SwaggerParameter(description:"...")] CopilotRequestModel copilotRequest)
+            [FromBody, Required][SwaggerParameter(description: "...")] CopilotRequestModel copilotRequest)
         {
+
+            static IActionResult NewContentResult(int statusCode, object input)
+            {
+                var content = JsonSerializer.Serialize(input, Options);
+
+                return new ContentResult
+                {
+                    StatusCode = statusCode,
+                    Content = content,
+                    ContentType = MediaTypeNames.Application.Json
+                };
+            }
+
             // Acknowledge the initialized notification without further action
             if (copilotRequest.Method == "notifications/initialized")
             {
@@ -78,11 +115,11 @@ namespace G4.Services.Hub.Api.V4.Controllers
             // Dispatch based on the JSON-RPC method
             return copilotRequest.Method switch
             {
-                "initialize" => Ok(_domain.Copilot.Initialize(copilotRequest.Id)),
+                "initialize" => NewContentResult(statusCode: 200, _domain.Copilot.Initialize(copilotRequest.Id)),
                 "notifications/initialized" => Accepted(),
-                "tools/list" => Ok(_domain.Copilot.GetTools(copilotRequest.Id)),
-                "tools/call" => Ok(_domain.Copilot.InvokeTool(copilotRequest.Parameters, copilotRequest.Id)),
-                _ => BadRequest(new { error = $"Unknown method '{copilotRequest.Method}'" })
+                "tools/list" => NewContentResult(statusCode: 200, _domain.Copilot.GetTools(copilotRequest.Id)),
+                "tools/call" => NewContentResult(200, _domain.Copilot.InvokeTool(copilotRequest.Parameters, copilotRequest.Id)),
+                _ => NewContentResult(statusCode: 400, new { error = $"Unknown method '{copilotRequest.Method}'" })
             };
         }
     }
