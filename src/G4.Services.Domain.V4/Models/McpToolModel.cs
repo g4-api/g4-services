@@ -16,6 +16,12 @@ namespace G4.Models
         public string Description { get; set; }
 
         /// <summary>
+        /// Gets or sets the unique identifier for this tool as defined in the G4 specification.
+        /// </summary>
+        [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+        public string G4Name { get; set; }
+
+        /// <summary>
         /// Gets or sets the schema defining the inputs accepted by this tool.
         /// </summary>
         public ParameterSchemaModel InputSchema { get; set; }
