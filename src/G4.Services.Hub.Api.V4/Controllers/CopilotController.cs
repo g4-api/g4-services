@@ -18,7 +18,7 @@ using System.Threading.Tasks;
 namespace G4.Services.Hub.Api.V4.Controllers
 {
     [ApiController]
-    [Route("/api/v4/g4/[controller]")]
+    [Route("/api/v4/g4/[controller]/mcp")]
     [SwaggerTag(description: "GitHub Copilot Agent endpoint for integration and context exchange with AI agents.")]
     public class CopilotController(IDomain domain) : ControllerBase
     {
