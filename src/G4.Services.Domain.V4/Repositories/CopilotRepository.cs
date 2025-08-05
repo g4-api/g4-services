@@ -3,6 +3,8 @@ using G4.Cache;
 using G4.Extensions;
 using G4.Models;
 
+using HtmlAgilityPack;
+
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -152,14 +154,17 @@ namespace G4.Services.Domain.V4.Repositories
         {
             var toolName = parameters.GetProperty("name").GetString();
             var tool = _tools.GetValueOrDefault(toolName);
+            var arguments = parameters.GetProperty("arguments");
 
             var result = tool switch
             {
                 // Handle built-in system tools
-                { Name: "start_g4_session" } => StartG4Session(parameters.GetProperty("arguments").GetProperty("driverBinaries").GetString()),
-                { Name: "get_application_dom" } => GetApplicationDom(parameters.GetProperty("arguments").GetProperty("driver_binaries").GetString()),
+                { Name: "get_application_dom" } => GetApplicationDom(arguments.GetProperty("driver_binaries").GetString()),
+                { Name: "start_g4_session" } => StartG4Session(arguments.GetProperty("driver_binaries").GetString()),
+                { Name: "find_tool" } => FindTool(arguments.GetProperty("tool_name").GetString(), id),
+                { Name: "get_tools" } => GetTools(id),
                 // Handle plugin-based tools (e.g., Action rules)
-                _ => StartG4Rule(parameters.GetProperty("driver_binaries").GetString(), ConvertToRule(parameters.GetProperty("parameters")))
+                _ => StartG4Rule(arguments.GetProperty("session").GetString(), ConvertToRule(toolName, arguments))
             };
 
             var a = new
@@ -276,23 +281,24 @@ namespace G4.Services.Domain.V4.Repositories
             var session = response.Values.Last().Sessions.Last();
             _sessions[session.Key] = session.Value;
 
+            var dom = $"{session.Value.Environment.SessionParameters.Get("PageObjectOutput", "<html></html>")}".ConvertFromBase64();
+            var document = new HtmlDocument();
+            document.LoadHtml(dom);
+
+            document.DocumentNode.Clean();
+            var a = document.DocumentNode.OuterHtml;
+
             return new
             {
-                dom = $"{session.Value.Environment.SessionParameters.Get("PageObjectOutput", "<html></html>")}".ConvertFromBase64()
+                dom = document.DocumentNode.OuterHtml
             };
         }
 
         private object StartG4Rule(string driverBinaries, G4RuleModelBase rule)
         {
-            var authentication = new AuthenticationModel
-            {
-                Token = string.Empty
-            };
-
             var driverParameters = new Dictionary<string, object>
             {
-                ["driver"] = "ChromeDriver",
-                ["driverBinaries"] = driverBinaries
+                ["driver"] = $"Id({driverBinaries})"
             };
 
             var automation = new G4AutomationModel
@@ -330,76 +336,16 @@ namespace G4.Services.Domain.V4.Repositories
 
         private static McpToolModel[] GetSystemTools()
         {
-            return new McpToolModel[]
-            {
-                new McpToolModel
-                {
-                    Name = "start_g4_session",
-                    Description = "Starts a new G4 session using specified driver binaries, browser (platform) name, and headless option.",
-                    InputSchema = new McpToolModel.ParameterSchemaModel
-                    {
-                        Type = "object",
-                        Properties = new()
-                        {
-                            ["driverBinaries"] = new McpToolModel.ScehmaPropertyModel
-                            {
-                                Type = ["string"],
-                                Description = "Path to the browser driver executable or Selenium Grid endpoint URL."
-                            }
-                        },
-                        Required = ["driverBinaries"]
-                    },
-                    OutputSchema = new McpToolModel.ParameterSchemaModel
-                    {
-                        Type = "object",
-                        Properties = new Dictionary<string, McpToolModel.ScehmaPropertyModel>
-                        {
-                            ["session"] = new McpToolModel.ScehmaPropertyModel
-                            {
-                                Type = ["string"],
-                                Description = "Unique identifier for the newly created browser session."
-                            }
-                        },
-                        Required = ["session"]
-                    }
-                },
-
-                new McpToolModel
-                {
-                    Name = "get_application_dom",
-                    Description = "Retrieves the full HTML markup of the application's Document Object Model (DOM) for the current browser session. Useful for inspecting or analyzing the current state of the loaded web page.",
-                    InputSchema = new McpToolModel.ParameterSchemaModel
-                    {
-                        Type = "object",
-                        Properties = new()
-                        {
-                            ["driverBinaries"] = new McpToolModel.ScehmaPropertyModel
-                            {
-                                Type = ["string"],
-                                Description = "Path to the browser driver executable or Selenium Grid endpoint URL, or existing session by using the session id."
-                            }
-                        },
-                        Required = ["driverBinaries"]
-                    },
-                    OutputSchema = new McpToolModel.ParameterSchemaModel
-                    {
-                        Type = "object",
-                        Properties = new Dictionary<string, McpToolModel.ScehmaPropertyModel>
-                        {
-                            ["dom"] = new McpToolModel.ScehmaPropertyModel
-                            {
-                                Type = ["string"],
-                                Description = "A string containing the full HTML markup of the page’s Document Object Model."
-                            }
-                        },
-                        Required = ["session"]
-                    }
-                }
-            };
+            return [.. typeof(SystemTools).GetProperties()
+                .Where(i => i.GetCustomAttributes(typeof(SystemToolAttribute), false).Length != 0)
+                .Select(i => i.GetValue(null) as McpToolModel)
+                .Where(i => i != null)];
         }
 
-        private static G4RuleModelBase ConvertToRule(JsonElement parameters)
+        private static G4RuleModelBase ConvertToRule(string toolName, JsonElement parameters)
         {
+            var pluginName = _tools.GetValueOrDefault(key: toolName)?.G4Name;
+
             var json = JsonSerializer.Serialize(parameters, new JsonSerializerOptions
             {
                 WriteIndented = true
@@ -410,8 +356,207 @@ namespace G4.Services.Domain.V4.Repositories
                 PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
             });
 
+            rule.PluginName = pluginName;
+
             return rule;
         }
+
+        private static G4AutomationModel NewAutomation()
+        {
+            return new G4AutomationModel
+            {
+                  Stages = new List<G4StageModel>
+                {
+                    new G4StageModel
+                    {
+                        Jobs = new List<G4JobModel>
+                        {
+                            new G4JobModel
+                            {
+                            }
+                        }
+                    }
+                }
+            };
+
+            //var response = _client.Automation.Invoke(automation);
+
+            //var session = response.Values.Last().Sessions.Last();
+            //_sessions[session.Key] = session.Value;
+
+            //return new
+            //{
+            //    session = session.Key
+            //};
+        }
+
+        private static G4AutomationModel NewAutomation(G4RuleModelBase[] rules)
+        {
+            return new G4AutomationModel
+            {
+                Stages =
+                [
+                    new G4StageModel
+                    {
+                        Jobs =
+                        [
+                            new()
+                            {
+                                Rules =rules
+                            }
+                        ]
+                    }
+                ]
+            };
+
+            //var response = _client.Automation.Invoke(automation);
+
+            //var session = response.Values.Last().Sessions.Last();
+            //_sessions[session.Key] = session.Value;
+
+            //return new
+            //{
+            //    session = session.Key
+            //};
+        }
+        #endregion
+
+        #region *** Nested Types ***
+        private static class SystemTools
+        {
+            [SystemTool]
+            public static McpToolModel StartG4Session => new()
+            {
+                Name = "start_g4_session",
+                Description = "Starts a new G4 session using specified driver binaries, browser (platform) name, and headless option.",
+                InputSchema = new McpToolModel.ParameterSchemaModel
+                {
+                    Type = "object",
+                    Properties = new()
+                    {
+                        ["driver_binaries"] = new McpToolModel.ScehmaPropertyModel
+                        {
+                            Type = ["string"],
+                            Description = "Path to the browser driver executable or Selenium Grid endpoint URL."
+                        }
+                    },
+                    Required = ["driver_binaries"]
+                },
+                OutputSchema = new McpToolModel.ParameterSchemaModel
+                {
+                    Type = "object",
+                    Properties = new Dictionary<string, McpToolModel.ScehmaPropertyModel>
+                    {
+                        ["session"] = new McpToolModel.ScehmaPropertyModel
+                        {
+                            Type = ["string"],
+                            Description = "Unique identifier for the newly created browser session."
+                        }
+                    },
+                    Required = ["session"]
+                }
+            };
+
+            [SystemTool]
+            public static McpToolModel FindTool => new()
+            {
+                Name = "find_tool",
+                Description = "Retrieves the metadata and schema for a specific tool by its unique name.",
+                InputSchema = new McpToolModel.ParameterSchemaModel
+                {
+                    Type = "object",
+                    Properties = new()
+                    {
+                        ["tool_name"] = new McpToolModel.ScehmaPropertyModel
+                        {
+                            Type = ["string"],
+                            Description = "The unique identifier of the tool to find."
+                        }
+                    },
+                    Required = ["tool_name"]
+                },
+                OutputSchema = new McpToolModel.ParameterSchemaModel
+                {
+                    Type = "object",
+                    Properties = new Dictionary<string, McpToolModel.ScehmaPropertyModel>
+                    {
+                        ["tool"] = new McpToolModel.ScehmaPropertyModel
+                        {
+                            Type = ["object"],
+                            Description = "The tool's metadata including name, description, input and output schemas."
+                        }
+                    },
+                    Required = ["tool"]
+                }
+            };
+
+            [SystemTool]
+            public static McpToolModel GetApplicationDom => new()
+            {
+                Name = "get_application_dom",
+                Description = "Retrieves the full HTML markup of the application's Document Object Model (DOM) for the current browser session. Useful for inspecting or analyzing the current state of the loaded web page.",
+                InputSchema = new McpToolModel.ParameterSchemaModel
+                {
+                    Type = "object",
+                    Properties = new()
+                    {
+                        ["driver_binaries"] = new McpToolModel.ScehmaPropertyModel
+                        {
+                            Type = ["string"],
+                            Description = "Path to the browser driver executable or Selenium Grid endpoint URL, or existing session by using the session id."
+                        }
+                    },
+                    Required = ["driver_binaries"]
+                },
+                OutputSchema = new McpToolModel.ParameterSchemaModel
+                {
+                    Type = "object",
+                    Properties = new Dictionary<string, McpToolModel.ScehmaPropertyModel>
+                    {
+                        ["dom"] = new McpToolModel.ScehmaPropertyModel
+                        {
+                            Type = ["string"],
+                            Description = "A string containing the full HTML markup of the page’s Document Object Model."
+                        }
+                    },
+                    Required = ["dom"]
+                }
+            };
+
+            [SystemTool]
+            public static McpToolModel GetTools => new()
+            {
+                Name = "get_tools",
+                Description = "Retrieves the full list of available tools that the Copilot agent can invoke.",
+                InputSchema = new McpToolModel.ParameterSchemaModel
+                {
+                    Type = "object",
+                    Properties = new()
+                    {
+                        // No input parameters required
+                    },
+                    Required = []
+                },
+                OutputSchema = new McpToolModel.ParameterSchemaModel
+                {
+                    Type = "object",
+                    Properties = new Dictionary<string, McpToolModel.ScehmaPropertyModel>
+                    {
+                        ["tools"] = new McpToolModel.ScehmaPropertyModel
+                        {
+                            Type = ["array", "object"],
+                            Description = "An array of tool objects, each containing name, description, input and output schemas."
+                        }
+                    },
+                    Required = ["tools"]
+                }
+            };
+        }
+        #endregion
+
+        #region *** Attributes   ***
+        [AttributeUsage(AttributeTargets.Property)]
+        private sealed class SystemToolAttribute : Attribute { }
         #endregion
     }
 }
