@@ -1,6 +1,8 @@
 ﻿using G4.Cache;
 using G4.Models;
 
+using HtmlAgilityPack;
+
 using Microsoft.AspNetCore.SignalR;
 
 using System;
@@ -8,14 +10,64 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 
-using static G4.Models.McpToolModel;
-
 
 namespace G4.Extensions
 {
     internal static class LocalExtensions
     {
-        private static readonly CacheManager s_cache = CacheManager.Instance;
+
+        public static HtmlNode Clean(this HtmlNode node)
+        {
+            var includedTags = new HashSet<string>(StringComparer.OrdinalIgnoreCase) {
+                "head",
+                "title",
+                "base",
+                "noscript",
+                "script",
+                "style",
+                "link",
+                "meta",
+                "frame",
+                "frameset",
+                "object",
+                "embed",
+                "param",
+                "source",
+                "track",
+                "picture",
+                "canvas",
+                "map",
+                "area"
+            };
+
+            foreach (var child in node.ChildNodes.ToList())
+            {
+                if(child.NodeType == HtmlNodeType.Text)
+                {
+                    continue;
+                }
+
+                var isElement = child.NodeType == HtmlNodeType.Element;
+                var isIncludedTag = isElement && includedTags.Contains(child.Name);
+                
+                if (isElement && isIncludedTag)
+                {
+                    // Remove the entire script or style tag
+                    node.RemoveChild(child);
+                }
+                else if (isElement)
+                {
+                    // Recursively clean child nodes
+                    Clean(child);
+                }
+                else
+                {
+                    child.Remove();
+                }
+            }
+
+            return node;
+        }
 
         /// <summary>
         /// Converts a plugin manifest into an <see cref="McpToolModel"/>, 
@@ -51,80 +103,29 @@ namespace G4.Extensions
                         .Distinct()];
                 }
 
-                var type = ConvertType(parameterModel.Type);
-
-
                 // Construct the schema property model from the parameter metadata
                 // Return the created schema property and its 'Mandatory' flag
-                return new McpToolModel.ScehmaPropertyModel
+                var schema = new McpToolModel.ScehmaPropertyModel
                 {
                     Description = string.Join(" ", parameterModel.Description ?? Array.Empty<string>()),
                     //Enum = [],
                     Name = ConvertToSnakeCase(parameterModel.Name),
                     Required = parameterModel.Mandatory,
-                    Type = type,
-                    Items = new ParameterSchemaModel
-                    {
-                        Description = "Additional object parameters for this plugin",
-                        Type = "object",
-                        Properties = new Dictionary<string, McpToolModel.ScehmaPropertyModel>
-                        {
-                            ["argument"] = new()
-                            {
-                                Description = "The main input value or identifier for the plugin operation",
-                                Name = "argument",
-                                Type = ["string"]
-                            }
-                        }
-                    }
-                    //Items = type.Any(i => i.Equals("array", StringComparison.OrdinalIgnoreCase))
-                    //    ? null
-                    //    : new ParameterSchemaModel
-                    //    {
-                    //        Description = "Additional object parameters for this plugin",
-                    //        Type = "object",
-                    //        Properties = new Dictionary<string, McpToolModel.ScehmaPropertyModel>
-                    //        {
-                    //            ["argument"] = new()
-                    //            {
-                    //                Description = "The main input value or identifier for the plugin operation",
-                    //                Name = "argument",
-                    //                Type = ["string"]
-                    //            },
-                    //            ["locator"] = new()
-                    //            {
-                    //                Description = "A selector (e.g. CSS or XPath) used to find the target element in the DOM",
-                    //                Name = "locator",
-                    //                Type = ["string"]
-                    //            },
-                    //            ["on_attribute"] = new()
-                    //            {
-                    //                Description = "The attribute name whose value will be read or asserted on the target element",
-                    //                Name = "on_attribute",
-                    //                Type = ["string"]
-                    //            },
-                    //            ["on_element"] = new()
-                    //            {
-                    //                Description = "A secondary selector for nested or related elements to act upon",
-                    //                Name = "on_element",
-                    //                Type = ["string"]
-                    //            },
-                    //            ["plugin_name"] = new()
-                    //            {
-                    //                Description = "The name of the plugin to be executed, if applicable",
-                    //                Name = "plugin_name",
-                    //                Type = ["string"]
-                    //            },
-                    //            ["regular_expression"] = new()
-                    //            {
-                    //                Description = "A regex pattern used to validate or extract text from the target element",
-                    //                Name = "regular_expression",
-                    //                Type = ["string"]
-                    //            }
-                    //        },
-                    //        Required = ["plugin_name"]
-                    //    }
+                    Type = ConvertType(parameterModel.Type)
                 };
+
+                // If the parameter is "Rules", add a specific schema for nested rules
+                if (parameterModel.Name.Equals("Rules", StringComparison.OrdinalIgnoreCase))
+                {
+                    schema.Items = new McpToolModel.ParameterSchemaModel
+                    {
+                        Description = "Array of nested rule objects—each item’s tool_name must first be looked up via find_tool to retrieve its inputSchema before its parameters are included in the parent rule for invoke_g4_tool to process as one.",
+                        Type = "object"
+                    };
+                }
+
+                // Return the constructed schema property model
+                return schema;
             }
 
             // Derive a standardized plugin key by replacing non-word characters with spaces.
@@ -165,8 +166,9 @@ namespace G4.Extensions
             // Build and return the final MCP tool model.
             return new McpToolModel
             {
-                Name = name,
                 Description = description,
+                G4Name = manifest.Key,
+                Name = name,
                 InputSchema = new McpToolModel.ParameterSchemaModel
                 {
                     Type = "object",
