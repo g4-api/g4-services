@@ -146,6 +146,47 @@
     }
 
     /**
+     * Convert a file:// URI into a local file system path.
+     *
+     * @param {string} uri - The URI to convert. Can be any string; non-file URIs will be returned unchanged.
+     * @returns {string} The decoded file system path on the local machine, or the original URI if conversion fails
+     *                   or the URI is not a file:// URI.
+     */
+    static convertToFileSystemPath(uri) {
+        try {
+            // Parse the input as a URL. This will throw if `uri` is not a valid URL.
+            const url = new URL(uri);
+
+            // If the scheme is not "file:", there's nothing to convert—return as-is.
+            if (url.protocol !== 'file:') {
+                return uri;
+            }
+
+            // Decode percent-encoded characters (e.g., "%20" → " ") in the path component.
+            let filePath = decodeURIComponent(url.pathname);
+
+            // Normalize Windows drive-letter paths:
+            // URL.pathname for "file:///C:/path/to/file" is "/C:/path/to/file"
+            // We detect a leading slash followed by a drive letter and colon.
+            if (/^\/[A-Za-z]:/.test(filePath)) {
+                // Remove the leading slash, turning "/C:/..." into "C:/..."
+                filePath = filePath.slice(1);
+
+                // Convert forward slashes to backslashes for Windows compatibility:
+                // "C:/path/to/file" → "C:\path\to\file"
+                filePath = filePath.replace(/\//g, '\\');
+            }
+
+            // Return the normalized path.
+            return filePath;
+
+        } catch (error) {
+            // If parsing or decoding fails for any reason, fall back to returning the original input.
+            return uri;
+        }
+    }
+
+    /**
      * Converts a given input to an integer.
      *
      * This function takes any input, converts it to a string, and attempts to parse it into an integer.
