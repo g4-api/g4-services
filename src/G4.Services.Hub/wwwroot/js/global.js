@@ -193,6 +193,15 @@ _connection
 			designer.classList.remove('sqd-content-dragover');
 		});
 
+        // Check if running in an Electron environment
+		const isElectron = /Electron\/\d+\.\d+\.\d+/.test(navigator.userAgent);
+
+		// If running in Electron, skip drag-and-drop import setup.
+		if (isElectron) {
+			console.info("Running in Electron environment: enhanced desktop features enabled.");
+			return;
+		}
+
 		// Handle file drop event
 		// Process dropped file and import its content.
 		designer.addEventListener('drop', async (e) => {
