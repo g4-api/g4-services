@@ -10,6 +10,7 @@
 	--border-radius: 10px;
 	--card-border: 1px solid var(--primary-color);
 	--card-background: #1F1F1F;
+	--card-content-color: var(--base-font-color);
 	--card-contet-font: 700 2.7vmin 'Roboto', sans-serif;
 	--card-label-font: 400 1.2vmin 'Roboto', sans-serif;
 	/* Colors */
@@ -45,9 +46,11 @@
 	--context-menu-item-hover-color: var(--white);
 	--context-menu-item-hover-font: 400 1.0em 'Roboto', sans-serif;
 	/* Designer */
+	--designer-background: var(--primary-color);
 	--designer-header-background: var(--primary-color);
 	--designer-header-border: 2px solid var(--primary-color);
-	--designer-header-title-color: var(--white);
+	--designer-header-color: var(--base-font-color);
+	--designer-header-title-color: var(--base-font-color);
 	--designer-header-title-font: 700 2.5vmin 'Roboto', sans-serif;
 	--designer-header-subtitle-color: var(--gray);
 	--designer-header-subtitle-font: 700 1.6vmin 'Roboto', sans-serif;
@@ -73,6 +76,7 @@
 	--modal-button-border: 1px solid var(--primary-color);
 	--modal-button-color: var(--gray);
 	--modal-button-font: 400 1.0em 'Roboto', sans-serif;
+	--modal-button-hover-background: var(--secondary-color);
 	--modal-button-hover-border: 1px solid var(--red);
 	/* Smart Editor */
 	--smart-editor-background: var(--secondary-color);
@@ -81,6 +85,7 @@
 	--smart-editor-button-border: 1px solid var(--primary-color);
 	--smart-editor-button-color: var(--base-font-color);
 	--smart-editor-button-font: 400 1.0em 'Roboto', sans-serif;
+	--smart-editor-button-hover-background: var(--primary-color);
 	--smart-editor-button-hover-border: 1px solid var(--red);
 	--smart-editor-color: var(--base-font-color);
 	--smart-editor-details-border: 1px solid var(--base-font-color);
@@ -96,7 +101,8 @@
 	--smart-editor-group-color: var(--base-font-color);
 	--smart-editor-group-font: 400 1.2em/1.2em 'Roboto', sans-serif;
 	--smart-editor-help-text-background: #1F1F1F;
-	--smart-editor-help-text-border: 1px solid var(--secondary-color);
+	--smart-editor-help-text-border: 1px solid var(--primary-color);
+	--smart-editor-help-text-color: var(--base-font-color);
 	--smart-editor-help-text-font: 400 1.0em 'Roboto', sans-serif;
 	--smart-editor-input-background: #1F1F1F;
 	--smart-editor-input-border: 1px solid var(--secondary-color);
@@ -112,6 +118,7 @@
 	--smart-editor-label-font: 700 1.1em/1.1em 'Roboto', sans-serif;
 	--smart-editor-label-help-icon-container-background: #1F1F1F;
 	--smart-editor-label-help-icon-container-fill: var(--base-font-color);
+	--smart-editor-label-help-icon-container-hover-background: #1F1F1F;
 	--smart-editor-label-help-icon-container-hover-fill: var(--primary-color-hover);
 	--smart-editor-label-help-icon-container-size: 1.2em;
 	--smart-editor-label-color: var(--base-font-color);
@@ -128,13 +135,15 @@
 	/* Toolbox */
 	--toolbox-background: var(--secondary-color);
 	--toolbox-box-shadow: 0 0 0px rgba(var(--black-rgb), 0.15), 0 0px 0px rgba(var(--black-rgb), 0.15);
+	--toolbox-color: var(--primary-color);
 	--toolbox-filter-background: var(--secondary-color);
-	--toolbox-filter-border: 1px solid var(--primary-color);
+	--toolbox-filter-border: 1px solid var(--secondary-color);
 	--toolbox-filter-color: var(--primary-color);
 	--toolbox-filter-focus-background: var(--secondary-color);
 	--toolbox-filter-focus-border-color: var(--red);
 	--toolbox-filter-focus-color: var(--black);
-	--toolbox-filter-hover-border-color: var(--primary-color);
+	--toolbox-filter-hover-border-color: var(--secondary-color);
+	--toolbox-filter-input-border: 1px solid var(--secondary-color);
 	--toolbox-group-title-color: var(--base-font-color);
 	--toolbox-group-title-background: var(--secondary-color);
 	--toolbox-group-title-font: 700 1.3em/1.3em 'Roboto', sans-serif;

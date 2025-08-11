@@ -37,7 +37,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         public IActionResult GetCache()
         {
             // Retrieve the plugin cache from the domain's integration layer.
-            var cache = _domain.G4Client.Integration.GetCache();
+            var cache = _domain.G4.Integration.GetCache();
 
             // Return the cache as a JSON response.
             return Ok(cache);
@@ -55,7 +55,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
             [SwaggerParameter(description: "The external repositories from which to retrieve the plugin cache.", Required = true)][FromBody] G4ExternalRepositoryModel[] repositories)
         {
             // Retrieve the plugin cache from the specified repositories via the integration layer.
-            var cache = _domain.G4Client.Integration.GetCache(repositories);
+            var cache = _domain.G4.Integration.GetCache(repositories);
 
             // Return the cache as a JSON response.
             return Ok(cache);
@@ -71,7 +71,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         public IActionResult SyncCache()
         {
             // Synchronize the internal plugin cache using internal resources and connected libraries.
-            _domain.G4Client.Integration.SyncCache(_domain.Cache);
+            _domain.G4.Integration.SyncCache(_domain.Cache);
 
             // Return a 204 No Content response, indicating successful synchronization with no response body.
             return NoContent();
@@ -88,7 +88,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
             [SwaggerParameter(description: "An array of external repository details to sync the plugin cache with.", Required = true)][FromBody] G4ExternalRepositoryModel[] repositories)
         {
             // Synchronize the plugin cache using the provided external repositories.
-            _domain.G4Client.Integration.SyncCache(_domain.Cache, repositories);
+            _domain.G4.Integration.SyncCache(_domain.Cache, repositories);
 
             // Return a 204 No Content response, indicating successful synchronization with no response body.
             return NoContent();
@@ -112,32 +112,28 @@ namespace G4.Services.Hub.Api.V4.Controllers
 
 
             // Create a memory stream to hold the ZIP archive
-            using (var zipStream = new MemoryStream())
+            using var zipStream = new MemoryStream();
+
+            // Create the zip archive
+            using (var archive = new ZipArchive(zipStream, ZipArchiveMode.Create, true))
             {
-                // Create the zip archive
-                using (var archive = new ZipArchive(zipStream, ZipArchiveMode.Create, true))
+                foreach (var jsonFile in j)
                 {
-                    foreach (var jsonFile in j)
-                    {
-                        // Create an entry for each JSON file
-                        var entry = archive.CreateEntry($"{jsonFile.source_id}.json", CompressionLevel.Fastest);
-                        using (var entryStream = entry.Open())
-                        using (var streamWriter = new StreamWriter(entryStream))
-                        {
-                            var value = JsonSerializer.Serialize(jsonFile);
-                            streamWriter.Write(value);
-                        }
-                    }
+                    // Create an entry for each JSON file
+                    var entry = archive.CreateEntry($"{jsonFile.source_id}.json", CompressionLevel.Fastest);
+                    using var entryStream = entry.Open();
+                    using var streamWriter = new StreamWriter(entryStream);
+                    var value = JsonSerializer.Serialize(jsonFile);
+                    streamWriter.Write(value);
                 }
-
-                // Reset the stream position to the beginning before returning
-                zipStream.Position = 0;
-
-                // Return the zip file as a FileResult
-                return File(zipStream.ToArray(), "application/zip", "jsonFiles.zip");
             }
-        }
 
+            // Reset the stream position to the beginning before returning
+            zipStream.Position = 0;
+
+            // Return the zip file as a FileResult
+            return File(zipStream.ToArray(), "application/zip", "jsonFiles.zip");
+        }
 
         [HttpGet]
         [Route("documents/key/{key}")]
@@ -151,7 +147,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
             [SwaggerParameter(description: "The name of the plugin identifying the Markdown documentation to retrieve.", Required = true)] string key)
         {
             // Attempt to retrieve the Markdown documentation using the provided plugin name.
-            var document = _domain.G4Client.Integration.GetDocument(key);
+            var document = _domain.G4.Integration.GetDocument(key);
 
             if (!string.IsNullOrEmpty(document))
             {
@@ -180,7 +176,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
             [SwaggerParameter(description: "The name of the plugin identifying the Markdown documentation to retrieve.", Required = true)] string key)
         {
             // Attempt to retrieve the Markdown documentation using the provided plugin type and name.
-            var document = _domain.G4Client.Integration.GetDocument(pluginType, key);
+            var document = _domain.G4.Integration.GetDocument(pluginType, key);
 
             if (!string.IsNullOrEmpty(document))
             {
@@ -211,7 +207,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
             [SwaggerParameter(description: "The external repository information where the plugin is located.", Required = true)][FromBody] G4ExternalRepositoryModel repository)
         {
             // Attempt to retrieve the Markdown documentation using the provided plugin name and repository.
-            var document = _domain.G4Client.Integration.GetDocument(key, repository);
+            var document = _domain.G4.Integration.GetDocument(key, repository);
 
             if (!string.IsNullOrEmpty(document))
             {
@@ -243,7 +239,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
             [SwaggerParameter(description: "The external repository information where the plugin is located.", Required = true)][FromBody] G4ExternalRepositoryModel repository)
         {
             // Attempt to retrieve the Markdown documentation using the provided plugin type, name, and repository.
-            var document = _domain.G4Client.Integration.GetDocument(pluginType, key, repository);
+            var document = _domain.G4.Integration.GetDocument(pluginType, key, repository);
 
             // If the document is found, return the content as Markdown.
             if (!string.IsNullOrEmpty(document))
@@ -261,6 +257,34 @@ namespace G4.Services.Hub.Api.V4.Controllers
         }
 
         [HttpGet]
+        [Route("files")]
+        [SwaggerOperation(
+            summary: "Lists all static files in wwwroot.",
+            description: "Recursively scans the wwwroot directory and returns a list of all static file paths, relative to wwwroot. Useful for discovering available static resources such as HTML, JS, CSS, images, etc.",
+            Tags = new[] { "Integration", "Files" })]
+        [SwaggerResponse(StatusCodes.Status200OK, description: "Successfully returned a list of all static files found under wwwroot.", type: typeof(List<string>), contentTypes: MediaTypeNames.Application.Json)]
+        [ResponseCache(Duration = 60, Location = ResponseCacheLocation.Client, NoStore = false)]
+        public IActionResult GetStaticFilesList()
+        {
+            // Resolve the absolute path to wwwroot.
+            var wwwrootPath = Path.Combine(_domain.Environment.ContentRootPath, "wwwroot");
+
+            // If wwwroot does not exist, return an empty list.
+            if (!Directory.Exists(wwwrootPath))
+            {
+                return Ok(new List<string>());
+            }
+
+            // Enumerate all files recursively under wwwroot, returning paths relative to wwwroot (using forward slashes for URL compatibility).
+            var files = Directory.EnumerateFiles(wwwrootPath, "*", SearchOption.AllDirectories)
+                .Select(f => Path.GetRelativePath(wwwrootPath, f).Replace("\\", "/"))
+                .ToList();
+
+            // Return the list of relative file paths as JSON.
+            return Ok(files);
+        }
+
+        [HttpGet]
         [Route("manifests/key/{key}")]
         [SwaggerOperation(
             summary: "Retrieves the plugin manifest by key.",
@@ -273,7 +297,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
             [SwaggerParameter(description: "Comma-separated list of fields to include in the response.", Required = false)][FromQuery] string expandFields)
         {
             // Attempt to retrieve the plugin manifest using the provided key.
-            var manifest = _domain.G4Client.Integration.GetManifest<IG4PluginManifest>(key);
+            var manifest = _domain.G4.Integration.GetManifest<IG4PluginManifest>(key);
 
             // If the manifest is found, return it in JSON format.
             // If 'expandFields' is provided, return only the specified fields from the manifest.
@@ -304,7 +328,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
             [SwaggerParameter(description: "Comma-separated list of fields to include in the response.", Required = false)][FromQuery] string expandFields)
         {
             // Attempt to retrieve the manifest using the provided plugin type and key.
-            var manifest = _domain.G4Client.Integration.GetManifest<IG4PluginManifest>(pluginType, key);
+            var manifest = _domain.G4.Integration.GetManifest<IG4PluginManifest>(pluginType, key);
 
             // If the manifest is found, return it in JSON format.
             // If 'expandFields' is provided, return only the specified fields.
@@ -336,7 +360,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
             [SwaggerParameter(description: "The external repository information where the plugin is located.", Required = true)][FromBody] G4ExternalRepositoryModel repository)
         {
             // Attempt to retrieve the manifest using the provided plugin name and repository.
-            var manifest = _domain.G4Client.Integration.GetManifest<IG4PluginManifest>(key, repository);
+            var manifest = _domain.G4.Integration.GetManifest<IG4PluginManifest>(key, repository);
 
             // If the manifest is found, return it as a JSON result.
             // If 'expandFields' is provided, extract only the specified fields from the manifest.
@@ -370,7 +394,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
             [SwaggerParameter(description: "The external repository information where the plugin is located.", Required = true)][FromBody] G4ExternalRepositoryModel repository)
         {
             // Attempt to retrieve the manifest using the provided plugin type, name, and repository.
-            var manifest = _domain.G4Client.Integration.GetManifest<IG4PluginManifest>(pluginType, key, repository);
+            var manifest = _domain.G4.Integration.GetManifest<IG4PluginManifest>(pluginType, key, repository);
 
             // If the manifest is found, return it as a JSON result.
             if (manifest != default)
@@ -400,7 +424,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         {
             // Retrieve all manifests and optionally extract only the specified fields using 'expandFields' if provided.
             var manifests = _domain
-                .G4Client
+                .G4
                 .Integration
                 .GetManifests<IG4PluginManifest>()
                 .Select(i => i.ExtractFields(expandFields))
@@ -427,7 +451,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         {
             // Retrieve all manifests from the provided repositories and optionally filter fields using 'expandFields'.
             var manifests = _domain
-                .G4Client
+                .G4
                 .Integration
                 .GetManifests<IG4PluginManifest>(repositories)
                 .Select(i => i.ExtractFields(expandFields))

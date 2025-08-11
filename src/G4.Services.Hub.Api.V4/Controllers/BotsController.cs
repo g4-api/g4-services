@@ -1,6 +1,7 @@
 ﻿using G4.Models;
 using G4.Services.Domain.V4;
 
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
@@ -15,9 +16,6 @@ using System.Threading.Tasks;
 
 namespace G4.Services.Hub.Api.V4.Controllers
 {
-    /// <summary>
-    /// Provides API endpoints to monitor and query connected bots.
-    /// </summary>
     [ApiController]
     [Route("/api/v4/g4/[controller]")]
     [SwaggerTag(description: "Provides access to information about currently connected bots.")]

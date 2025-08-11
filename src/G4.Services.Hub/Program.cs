@@ -17,6 +17,7 @@ using Microsoft.OpenApi.Models;
 
 using System;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -84,6 +85,9 @@ builder.Services
 
         // Add a custom method base converter to handle method base serialization.
         i.JsonSerializerOptions.Converters.Add(new MethodBaseConverter());
+
+        // Add a custom dictionary converter to handle serialization of dictionaries with string keys and object values.
+        i.JsonSerializerOptions.Converters.Add(new DictionaryStringObjectJsonConverter());
     });
 
 // Add and configure Swagger for API documentation and testing.
@@ -120,13 +124,17 @@ var origins = string.IsNullOrEmpty(originsEnvironmentParameter)
     : originsEnvironmentParameter.Split(";", StringSplitOptions.TrimEntries);
 
 // Add and configure CORS (Cross-Origin Resource Sharing) to allow requests from any origin.
-builder.Services
-    .AddCors(i =>
-        i.AddPolicy("CorsPolicy", policy => policy
-            .WithOrigins(origins)
-            .AllowAnyMethod()
-            .AllowAnyHeader()
-            .AllowCredentials()));
+builder.Services.AddCors(options =>
+    options.AddPolicy("CorsPolicy", policy => policy
+        .SetIsOriginAllowed(origin =>
+            origins.Contains(origin)
+            || (origin != null && origin.StartsWith("vscode-webview://"))
+        )
+        .AllowAnyMethod()
+        .AllowAnyHeader()
+        .AllowCredentials()
+    )
+);
 
 // Add and configure SignalR for real-time web functionalities.
 builder.Services
@@ -178,7 +186,7 @@ builder.Services.AddHttpClient();
 
 #region *** Dependencies  ***
 // Configure dependencies for G4Domain.
-G4Domain.SetDependencies(builder);
+IDomain.SetDependencies(builder);
 #endregion
 
 #region *** Configuration ***

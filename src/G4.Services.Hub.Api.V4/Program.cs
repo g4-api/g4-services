@@ -170,7 +170,7 @@ builder.Services
 
 #region *** Dependencies  ***
 // Configure dependencies for G4Domain.
-G4Domain.SetDependencies(builder);
+IDomain.SetDependencies(builder);
 #endregion
 
 #region *** Configuration ***

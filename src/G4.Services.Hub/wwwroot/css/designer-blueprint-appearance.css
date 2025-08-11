@@ -6,6 +6,7 @@ html, body {
 
 .sqd-theme-light .sqd-text--tiny {
 	font: var(--text-tiny);
+	color: var(--designer-header-color);
 }
 
 .sqd-theme-light a:active {
@@ -63,10 +64,12 @@ html, body {
 
 	.sqd-theme-light .sqd-card .sqd-card--content {
 		font: var(--card-contet-font);
+		color: var(--card-content-color);
 	}
 
 	.sqd-theme-light .sqd-card .sqd-card--label {
 		font: var(--card-label-font);
+		color: var(--card-content-color);
 	}
 
 .sqd-theme-light .sqd-step-container > g > .sqd-input,
@@ -81,9 +84,10 @@ html, body {
 }
 
 .sqd-theme-light .sqd-toolbox {
-	background: var(--toolbox-background);
-	border-radius: var(--border-radius);
-	box-shadow: var(--toolbox-box-shadow);
+    background: var(--toolbox-background);
+    border-radius: var(--border-radius);
+    box-shadow: var(--toolbox-box-shadow);
+    color: var(--toolbox-color);
 }
 
 .sqd-theme-light .sqd-label--with-help-icon {
@@ -141,6 +145,10 @@ html, body {
 	border-radius: var(--border-radius);
 	color: var(--toolbox-filter-color);
 }
+
+	.sqd-theme-light .sqd-toolbox-filter input {
+		border: var(--toolbox-filter-input-border)
+	}
 
 	.sqd-theme-light .sqd-toolbox-filter:focus {
 		background: var(--toolbox-filter-focus-background);
@@ -256,6 +264,7 @@ html, body {
 
 	.sqd-theme-light .sqd-modal button:hover {
 		border: var(--modal-button-hover-border) !important;
+		background: var(--modal-button-hover-background) !important;
 	}
 
 .sqd-theme-light .sqd-smart-editor {
@@ -292,6 +301,7 @@ html, body {
 
 		.sqd-theme-light .sqd-smart-editor button:hover {
 			border: var(--smart-editor-button-hover-border);
+			background: var(--smart-editor-button-hover-background);
 		}
 
 	.sqd-theme-light .sqd-smart-editor .sqd-editor details {
@@ -334,12 +344,14 @@ html, body {
 
 		.sqd-theme-light .sqd-smart-editor .sqd-editor .sqd-help-icon-container:hover {
 			fill: var(--smart-editor-label-help-icon-container-hover-fill);
+			background: var(--smart-editor-label-help-icon-container-hover-background);
 		}
 
 	.sqd-theme-light .sqd-smart-editor .sqd-editor .sqd-help-text {
 		background: var(--smart-editor-help-text-background);
 		border: var(--smart-editor-help-text-border);
 		border-radius: var(--border-radius);
+		color: var(--smart-editor-help-text-color);
 	}
 
 .sqd-theme-light .sqd-smart-editor-toggle {

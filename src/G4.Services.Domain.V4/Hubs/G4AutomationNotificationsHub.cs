@@ -1,4 +1,5 @@
-﻿using G4.Models;
+﻿using G4.Extensions;
+using G4.Models;
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
@@ -13,6 +14,16 @@ namespace G4.Services.Domain.V4.Hubs
     {
         // The domain service for the G4™ engine.
         private readonly IDomain _domain = domain;
+
+        [HubMethodName("InitializeAutomation")]
+        public Task InitializeAutomation([FromBody] G4AutomationModel automation)
+        {
+            // Invoke the automation session using the automation model, returning a response object.
+            var response = automation.Initialize();
+
+            // Send the response back to the calling client via the "StartAutomation" method.
+            return Clients.Caller.SendAsync("InitializeAutomation", response);
+        }
 
         // Handles the "SendHeartbeat" method invoked by clients. Logs the connection ID
         // and responds with a heartbeat acknowledgment.
@@ -47,7 +58,7 @@ namespace G4.Services.Domain.V4.Hubs
             };
 
             // Invoke the automation session using the automation model, returning a response object.
-            var response = _domain.G4Client.Automation.Invoke(automation);
+            var response = _domain.G4.Automation.Invoke(automation);
 
             // Send the response back to the calling client via the "StartAutomation" method.
             return Clients.Caller.SendAsync("StartAutomation", response);
