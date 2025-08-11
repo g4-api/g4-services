@@ -2,6 +2,7 @@
 using G4.Models;
 
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Logging;
 
@@ -12,6 +13,7 @@ using System.Linq;
 using System.Net.Mime;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace G4.Services.Domain.V4.Middlewares
@@ -71,6 +73,13 @@ namespace G4.Services.Domain.V4.Middlewares
 
                 // Read the entire response body as a string
                 var responseBody = await new StreamReader(memoryStream).ReadToEndAsync();
+
+                // TODO: Handle special cases where the response body might contain multiple JSON objects
+                // Replace any occurrences of "},{" with "," to ensure proper JSON formatting
+                responseBody = Regex.Replace(
+                    input: responseBody,
+                    pattern: @"(?i),{""traceId"".*?}",
+                    replacement: string.Empty);
 
                 // Reset the memory stream position again for potential further use
                 memoryStream.Seek(0, SeekOrigin.Begin);
