@@ -86,6 +86,7 @@ builder.Services
         // Add a custom method base converter to handle method base serialization.
         i.JsonSerializerOptions.Converters.Add(new MethodBaseConverter());
 
+        // Add a custom dictionary converter to handle serialization of dictionaries with string keys and object values.
         i.JsonSerializerOptions.Converters.Add(new DictionaryStringObjectJsonConverter());
     });
 
