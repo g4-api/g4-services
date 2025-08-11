@@ -9,7 +9,7 @@
 	--border-radius: 0px;
 	--card-border: 1px solid var(--secondary-color);
 	--card-background: var(--primary-color);
-	--card-content-color: var(--primary-color);
+	--card-content-color: var(--secondary-color);
 	--card-contet-font: 700 2.7vmin 'Roboto', sans-serif;
 	--card-label-font: 400 1.2vmin 'Roboto', sans-serif;
 	/* Colors */
