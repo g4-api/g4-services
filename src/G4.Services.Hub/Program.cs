@@ -85,6 +85,8 @@ builder.Services
 
         // Add a custom method base converter to handle method base serialization.
         i.JsonSerializerOptions.Converters.Add(new MethodBaseConverter());
+
+        i.JsonSerializerOptions.Converters.Add(new DictionaryStringObjectJsonConverter());
     });
 
 // Add and configure Swagger for API documentation and testing.

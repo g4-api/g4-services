@@ -1,4 +1,5 @@
 ﻿using G4.Attributes;
+using G4.Extensions;
 using G4.Models;
 using G4.Services.Domain.V4;
 
@@ -8,9 +9,11 @@ using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
 
 using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Net.Mime;
+using System.Text.Json;
 
 namespace G4.Services.Hub.Api.V4.Controllers
 {
@@ -36,6 +39,11 @@ namespace G4.Services.Hub.Api.V4.Controllers
         {
             try
             {
+                // Validate the manifest to ensure it contains the required source property
+                manifest.Source = manifest.Source.Equals("Template", StringComparison.OrdinalIgnoreCase)
+                    ? manifest.Source
+                    : "Template";
+
                 // Attempt to add the new template using the provided manifest
                 _domain.G4.Templates.AddTemplate(manifest);
 
@@ -104,7 +112,6 @@ namespace G4.Services.Hub.Api.V4.Controllers
         [SwaggerResponse(StatusCodes.Status200OK, description: "Manifests retrieved successfully.", type: typeof(G4PluginAttribute[]), contentTypes: MediaTypeNames.Application.Json)]
         public IActionResult GetTemplates()
         {
-            // Retrieve all template manifests and convert to an array
             var manifests = _domain.G4.Templates.GetTemplates().ToArray();
 
             // Append a custom header with the count of manifests

@@ -169,7 +169,11 @@ namespace G4.Services.Domain.V4
                     Id = e.Automation.Reference.Id,
                     ObjectType = nameof(G4AutomationModel),
                     Type = "Automation",
-                    Value = e.Automation
+                    Value = new
+                    {
+                        Request = e.Automation,
+                        e.Response
+                    }
                 });
             };
         }
@@ -192,7 +196,11 @@ namespace G4.Services.Domain.V4
                     Id = e.Automation.Reference.Id,
                     ObjectType = nameof(G4AutomationModel),
                     Type = "Automation",
-                    Value = e.Automation
+                    Value = new
+                    {
+                        Request = e.Automation,
+                        e.Response
+                    }
                 });
             };
 
@@ -256,7 +264,12 @@ namespace G4.Services.Domain.V4
                     Id = e.Rule.Reference.Id,
                     ObjectType = e.Rule.GetType().Name,
                     Type = e.Rule.GetManifest()?.PluginType ?? "SystemPlugin",
-                    Value = e.Rule
+                    Value = new
+                    {
+                        e.Rule,
+                        e.Extractions,
+                        e.Exceptions
+                    }
                 });
             };
 
