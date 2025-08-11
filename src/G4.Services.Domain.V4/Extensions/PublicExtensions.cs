@@ -176,44 +176,5 @@ namespace G4.Extensions
             // Return the list of rules that have had their macros resolved.
             return resolvedRules;
         }
-
-
-
-        public static IReadOnlyDictionary<string, object?> SnapshotDeep(this IDictionary<string, object> source)
-            => source.ToDictionary(kv => kv.Key, kv => CloneValue(kv.Value));
-
-        private static object CloneValue(object? value)
-        {
-            if (value is null) return null;
-            if (value is string || value is ValueType) return value; // strings/structs are safe copies
-
-            // IDictionary<string, object?>
-            if (value is IDictionary<string, object?> dict)
-                return dict.ToDictionary(kv => kv.Key, kv => CloneValue(kv.Value));
-
-            // Non-generic IDictionary
-            if (value is System.Collections.IDictionary ndict)
-            {
-                var copy = new Dictionary<string, object?>();
-                foreach (System.Collections.DictionaryEntry e in ndict)
-                    copy[e.Key?.ToString() ?? ""] = CloneValue(e.Value);
-                return copy;
-            }
-
-            // IEnumerable<object?>
-            if (value is IEnumerable<object?> list)
-                return list.Select(CloneValue).ToList();
-
-            // Non-generic IEnumerable
-            if (value is System.Collections.IEnumerable nenum)
-            {
-                var l = new List<object>();
-                foreach (var item in nenum) l.Add(CloneValue(item));
-                return l;
-            }
-
-            // POCOs: either treat as-is or map to DTOs if they’re mutable
-            return value;
-        }
     }
 }

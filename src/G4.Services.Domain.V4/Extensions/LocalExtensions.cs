@@ -107,7 +107,7 @@ namespace G4.Extensions
                 // Return the created schema property and its 'Mandatory' flag
                 var schema = new McpToolModel.ScehmaPropertyModel
                 {
-                    Description = string.Join(" ", parameterModel.Description ?? Array.Empty<string>()),
+                    Description = string.Join(" ", parameterModel.Description ?? []),
                     //Enum = [],
                     Name = ConvertToSnakeCase(parameterModel.Name),
                     Required = parameterModel.Mandatory,

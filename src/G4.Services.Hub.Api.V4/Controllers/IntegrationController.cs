@@ -112,30 +112,27 @@ namespace G4.Services.Hub.Api.V4.Controllers
 
 
             // Create a memory stream to hold the ZIP archive
-            using (var zipStream = new MemoryStream())
+            using var zipStream = new MemoryStream();
+
+            // Create the zip archive
+            using (var archive = new ZipArchive(zipStream, ZipArchiveMode.Create, true))
             {
-                // Create the zip archive
-                using (var archive = new ZipArchive(zipStream, ZipArchiveMode.Create, true))
+                foreach (var jsonFile in j)
                 {
-                    foreach (var jsonFile in j)
-                    {
-                        // Create an entry for each JSON file
-                        var entry = archive.CreateEntry($"{jsonFile.source_id}.json", CompressionLevel.Fastest);
-                        using (var entryStream = entry.Open())
-                        using (var streamWriter = new StreamWriter(entryStream))
-                        {
-                            var value = JsonSerializer.Serialize(jsonFile);
-                            streamWriter.Write(value);
-                        }
-                    }
+                    // Create an entry for each JSON file
+                    var entry = archive.CreateEntry($"{jsonFile.source_id}.json", CompressionLevel.Fastest);
+                    using var entryStream = entry.Open();
+                    using var streamWriter = new StreamWriter(entryStream);
+                    var value = JsonSerializer.Serialize(jsonFile);
+                    streamWriter.Write(value);
                 }
-
-                // Reset the stream position to the beginning before returning
-                zipStream.Position = 0;
-
-                // Return the zip file as a FileResult
-                return File(zipStream.ToArray(), "application/zip", "jsonFiles.zip");
             }
+
+            // Reset the stream position to the beginning before returning
+            zipStream.Position = 0;
+
+            // Return the zip file as a FileResult
+            return File(zipStream.ToArray(), "application/zip", "jsonFiles.zip");
         }
 
         [HttpGet]
