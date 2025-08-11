@@ -78,7 +78,7 @@ namespace G4.Services.Domain.V4.Middlewares
                 // Replace any occurrences of "},{" with "," to ensure proper JSON formatting
                 responseBody = Regex.Replace(
                     input: responseBody,
-                    pattern: @"(?i),{""traceId"".*?}",
+                    pattern: @"(?i),({?)""traceId"".*?}",
                     replacement: string.Empty);
 
                 // Reset the memory stream position again for potential further use
