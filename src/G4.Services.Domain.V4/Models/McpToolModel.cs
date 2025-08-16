@@ -50,6 +50,12 @@ namespace G4.Models
             public string Description { get; set; }
 
             /// <summary>
+            /// Gets or sets the set of allowed literal values for this property.
+            /// If empty or null, any value of the specified type is accepted.
+            /// </summary>
+            public string[] Enum { get; set; }
+
+            /// <summary>
             /// Gets or sets the set of named properties (parameters) and their schemas.
             /// </summary>
             public Dictionary<string, ScehmaPropertyModel> Properties { get; set; }
@@ -60,7 +66,7 @@ namespace G4.Models
             public string[] Required { get; set; }
 
             /// <summary>
-            /// Gets or sets the JSON schema type of this parameter schema (typically "object").
+            /// Gets or sets the JSON schema types (e.g., "string", "integer") allowed for this property.
             /// </summary>
             public string Type { get; set; }
         }
@@ -72,6 +78,11 @@ namespace G4.Models
         public class ScehmaPropertyModel
         {
             /// <summary>
+            /// Gets or sets the default value for this property.
+            /// </summary>
+            public object Default { get; set; }
+
+            /// <summary>
             /// Gets or sets the human-readable description of the property.
             /// </summary>
             public string Description { get; set; }
@@ -81,6 +92,13 @@ namespace G4.Models
             /// If empty or null, any value of the specified type is accepted.
             /// </summary>
             public string[] Enum { get; set; }
+
+            /// <summary>
+            /// Gets or sets a value indicating whether this property is required.
+            /// </summary>
+            [JsonIgnore]
+            [Newtonsoft.Json.JsonIgnore]
+            public bool G4Required { get; set; }
 
             /// <summary>
             /// Gets or sets the schema for items in an array, if this property is an array.
@@ -100,16 +118,14 @@ namespace G4.Models
             public Dictionary<string, ScehmaPropertyModel> Properties { get; set; }
 
             /// <summary>
+            /// Gets or sets a value indicating whether this property is required.
+            /// </summary>
+            public string[] Required { get; set; }
+
+            /// <summary>
             /// Gets or sets the JSON schema types (e.g., "string", "integer") allowed for this property.
             /// </summary>
             public string[] Type { get; set; }
-
-            /// <summary>
-            /// Gets or sets a value indicating whether this property is required.
-            /// </summary>
-            [JsonIgnore]
-            [Newtonsoft.Json.JsonIgnore]
-            public bool Required { get; set; }
         }
         #endregion
     }

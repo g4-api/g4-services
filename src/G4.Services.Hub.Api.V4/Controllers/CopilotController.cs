@@ -106,21 +106,59 @@ namespace G4.Services.Hub.Api.V4.Controllers
                 };
             }
 
-            // Acknowledge the initialized notification without further action
-            if (copilotRequest.Method == "notifications/initialized")
+
+            var respnse = new ContentResult
             {
-                return Accepted();
+                StatusCode = 200,
+                Content = "",
+                ContentType = MediaTypeNames.Application.Json
+            };
+
+            // Acknowledge the initialized notification without further action
+            if (copilotRequest.Method == "initialize")
+            {
+                var str = JsonSerializer.Serialize(_domain.Copilot.Initialize(copilotRequest.Id), new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                });
+                respnse.Content = str;
+                //return Accepted();
             }
+
+            //var a = NewContentResult(statusCode: 200, _domain.Copilot.Initialize(copilotRequest.Id));
+            //var j = JsonSerializer.Serialize(copilotRequest, Options);
 
             // Dispatch based on the JSON-RPC method
             return copilotRequest.Method switch
             {
-                "initialize" => NewContentResult(statusCode: 200, _domain.Copilot.Initialize(copilotRequest.Id)),
+                "initialize" => respnse, //NewContentResult(statusCode: 200, _domain.Copilot.Initialize(copilotRequest.Id)),
                 "notifications/initialized" => Accepted(),
                 "tools/list" => NewContentResult(statusCode: 200, _domain.Copilot.GetTools(copilotRequest.Id)),
                 "tools/call" => NewContentResult(200, _domain.Copilot.InvokeTool(copilotRequest.Parameters, copilotRequest.Id)),
                 _ => NewContentResult(statusCode: 400, new { error = $"Unknown method '{copilotRequest.Method}'" })
             };
+        }
+
+        [HttpGet, Route("sync")]
+        #region *** OpenAPI Documentation ***
+        [SwaggerOperation(
+            Summary = "Sync the list of tools available to the Copilot agent",
+            Description = "Refreshes the cached tool definitions so that the Copilot agent has the most up-to-date list of tools.")]
+        [SwaggerResponse(StatusCodes.Status204NoContent,
+            description: "The tools list was successfully synced. No content is returned.",
+            contentTypes: [])]
+        [SwaggerResponse(StatusCodes.Status500InternalServerError,
+            description: "An error occurred while syncing the tools list.",
+            type: typeof(object),
+            contentTypes: [MediaTypeNames.Application.Json])]
+        #endregion
+        public IActionResult SyncTools()
+        {
+            // Update the list of tools available to the Copilot agent
+            _domain.Copilot.SyncTools();
+
+            // Return an empty 204 No Content response
+            return NoContent();
         }
     }
 }

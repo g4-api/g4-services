@@ -34,11 +34,18 @@ namespace G4.Services.Domain.V4.Repositories
         CopilotInitializeResponseModel Initialize(object id);
 
         /// <summary>
-        /// Invokes a previously generated tool with the provided parameters.
+        /// Invokes the specified tool with the provided parameters and returns a JSON-RPC response containing the tool's result.
+        /// This method handles both system tools (built-in) and plugin-based tools (via action rules).
         /// </summary>
-        /// <param name="parameters">A <see cref="JsonElement"/> containing the parameters as definedby the tool's input schema.</param>
-        /// <param name="id">The JSON-RPC request identifier to correlate response.</param>
-        /// <returns>An object representing the raw JSON-RPC response payload, includingany result or error information from the tool.</returns>
-        object InvokeTool(JsonElement parameters, object id);
+        /// <param name="parameters">The JSON parameters for invoking the tool, including tool name and arguments.</param>
+        /// <param name="id">The request ID to correlate the response with the request.</param>
+        /// <returns>A <see cref="CopilotToolsResponseModel"/> containing the result of the tool execution.</returns>
+        CopilotToolsResponseModel InvokeTool(JsonElement parameters, object id);
+
+        /// <summary>
+        /// Sync the list of tools available to the Copilot agent by refreshing 
+        /// the underlying cache data.
+        /// </summary>
+        void SyncTools();
     }
 }
