@@ -1,5 +1,4 @@
-﻿using G4.Cache;
-using G4.Models;
+﻿using G4.Models;
 
 using HtmlAgilityPack;
 
@@ -15,57 +14,53 @@ namespace G4.Extensions
 {
     internal static class LocalExtensions
     {
-
+        /// <summary>
+        /// Recursively cleans an HTML node by removing unwanted elements and leaving only the specified tags.
+        /// The tags to be kept are defined in the `includedTags` set, and all other elements will be removed.
+        /// </summary>
+        /// <param name="node">The root HTML node to clean.</param>
+        /// <returns>The cleaned HTML node with unwanted elements removed.</returns>
         public static HtmlNode Clean(this HtmlNode node)
         {
+            // Define a set of allowed tags that should not be removed.
             var includedTags = new HashSet<string>(StringComparer.OrdinalIgnoreCase) {
-                "head",
-                "title",
-                "base",
-                "noscript",
-                "script",
-                "style",
-                "link",
-                "meta",
-                "frame",
-                "frameset",
-                "object",
-                "embed",
-                "param",
-                "source",
-                "track",
-                "picture",
-                "canvas",
-                "map",
-                "area"
+                "head", "title", "base", "noscript", "script", "style", "link", "meta", "frame",
+                "frameset", "object", "embed", "param", "source", "track", "picture", "canvas", "map", "area"
             };
 
+            // Iterate through all child nodes of the current node.
             foreach (var child in node.ChildNodes.ToList())
             {
-                if(child.NodeType == HtmlNodeType.Text)
+                // Skip text nodes, as we don't want to remove them.
+                if (child.NodeType == HtmlNodeType.Text)
                 {
                     continue;
                 }
 
+                // Determine whether the current child node is an element.
                 var isElement = child.NodeType == HtmlNodeType.Element;
+
+                // Check if the current element is in the included tags list.
                 var isIncludedTag = isElement && includedTags.Contains(child.Name);
-                
+
                 if (isElement && isIncludedTag)
                 {
-                    // Remove the entire script or style tag
+                    // If it's an element that should be included, remove it completely (e.g., script, style).
                     node.RemoveChild(child);
                 }
                 else if (isElement)
                 {
-                    // Recursively clean child nodes
+                    // If it's an element that should be cleaned, recursively clean its child nodes.
                     Clean(child);
                 }
                 else
                 {
+                    // For non-element nodes, simply remove them.
                     child.Remove();
                 }
             }
 
+            // Return the cleaned node after removing unwanted children.
             return node;
         }
 
@@ -110,7 +105,7 @@ namespace G4.Extensions
                     Description = string.Join(" ", parameterModel.Description ?? []),
                     //Enum = [],
                     Name = ConvertToSnakeCase(parameterModel.Name),
-                    Required = parameterModel.Mandatory,
+                    G4Required = parameterModel.Mandatory,
                     Type = ConvertType(parameterModel.Type)
                 };
 
@@ -119,7 +114,8 @@ namespace G4.Extensions
                 {
                     schema.Items = new McpToolModel.ParameterSchemaModel
                     {
-                        Description = "Array of nested rule objects—each item’s tool_name must first be looked up via find_tool to retrieve its inputSchema before its parameters are included in the parent rule for invoke_g4_tool to process as one.",
+                        Description = "Array of nested rule objects—each item’s tool_name must first be looked up via find_tool to " +
+                            "retrieve its inputSchema before its parameters are included in the parent rule for invoke_g4_tool to process as one.",
                         Type = "object"
                     };
                 }
@@ -147,21 +143,14 @@ namespace G4.Extensions
             var included = new[] { "null", "boolean", "object", "array", "number", "integer", "string" };
 
             // Convert each declared parameter in the manifest into a schema property.
-            var pluginParameters = (manifest.Parameters ?? []).Select(ConvertToInputSchema);
+            var pluginParameters = (manifest.Parameters ?? [])
+                .Select(ConvertToInputSchema)
+                .ToDictionary(i => i.Name, i => i);
 
             // Likewise convert any additional manifest properties into schema properties.
-            var pluginProperties = (manifest.Properties ?? []).Select(ConvertToInputSchema);
-
-            // Combine parameters and properties into a single lookup by property name.
-            var properties = pluginParameters
-                .Concat(pluginProperties)
-                .ToDictionary(prop => prop.Name, prop => prop);
-
-            // Determine which properties are required based on the schema metadata.
-            var requiredProperties = properties.Values
-                .Where(prop => prop.Required)
-                .Select(prop => prop.Name)
-                .ToArray();
+            var pluginProperties = (manifest.Properties ?? [])
+                .Select(ConvertToInputSchema)
+                .ToDictionary(i => i.Name, i => i);
 
             // Build and return the final MCP tool model.
             return new McpToolModel
@@ -172,8 +161,26 @@ namespace G4.Extensions
                 InputSchema = new McpToolModel.ParameterSchemaModel
                 {
                     Type = "object",
-                    Properties = properties,
-                    Required = requiredProperties
+                    Properties = new()
+                    {
+                        ["properties"] = new()
+                        {
+                            Type = ["object"],
+                            Description = "Standard input fields defined by the G4 Engine API. " +
+                                "These provide the core operational context for the tool, such as element locators, attributes, and matching rules.",
+                            Properties = pluginProperties,
+                            Required = [.. pluginProperties.Where(i => i.Value.G4Required).Select(i => i.Value.Name)]
+                        },
+                        ["parameters"] = new()
+                        {
+                            Type = ["object"],
+                            Description = "Custom, tool-specific parameters that extend or refine the tool's functionality. " +
+                                "These may include additional metadata, behavior modifiers, or configuration settings unique to this tool’s purpose.",
+                            Properties = pluginParameters,
+                            Required = [.. pluginParameters.Where(i => i.Value.G4Required).Select(i => i.Value.Name)]
+                        }
+                    },
+                    Required = []
                 }
             };
         }
