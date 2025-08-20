@@ -5,8 +5,6 @@ using G4.Settings;
 using Microsoft.AspNetCore.Http;
 
 using System;
-using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -98,63 +96,53 @@ namespace G4.Services.Domain.V4.Clients
         /// <inheritdoc />
         public async Task SendCompletionsStreamAsync(HttpResponse httpResponse, OpenAiChatCompletionRequest completions)
         {
-            // Set the default tool choice to "auto" for automatic tool selection
+            // If tools are available, allow OpenAI to automatically choose when to invoke them.
+            // Otherwise, leave the tool choice unset.
             completions.ToolChoice = completions.Tools?.Any() == true
                 ? "auto"
                 : null;
 
-            // Build the OpenAI streaming request using app settings and user-provided prompt
+            // Construct the OpenAI request based on app configuration and the user-supplied prompt.
             var request = NewCompletionsRequest(completions);
 
-            // Send the request and start streaming as soon as headers are received
+            // Send the HTTP request and instruct HttpClient to return as soon as headers are available
+            // (streaming mode instead of waiting for the full body).
             var response = await _httpClient.SendAsync(
                 request,
                 completionOption: HttpCompletionOption.ResponseHeadersRead);
 
-            // Set up response headers for Server-Sent Events (SSE)
+            // Configure the outgoing HTTP response for Server-Sent Events (SSE).
             httpResponse.StatusCode = (int)response.StatusCode;
             httpResponse.ContentType = "text/event-stream";
-            httpResponse.Headers.CacheControl = "no-cache";
-            httpResponse.Headers["X-Accel-Buffering"] = "no";     // Disable buffering for reverse proxies (e.g., Nginx)
-            httpResponse.Headers.XContentTypeOptions = "nosniff"; // Prevent MIME-type sniffing
+            httpResponse.Headers.CacheControl = "no-cache";       // Prevent caching of streamed content
+            httpResponse.Headers["X-Accel-Buffering"] = "no";     // Disable proxy buffering (Nginx, etc.)
+            httpResponse.Headers.XContentTypeOptions = "nosniff"; // Security header to prevent MIME sniffing
 
-            // Open the response stream from OpenAI and prepare readers/writers
+            // Prepare stream readers/writers for forwarding data from OpenAI to the client.
             await using var responseStream = await response.Content.ReadAsStreamAsync();
             using var reader = new StreamReader(responseStream);
             await using var writer = new StreamWriter(httpResponse.Body);
 
-            // Initialize a variable to hold each line read from the OpenAI stream
+            // Buffer for lines read from the OpenAI stream.
             string line;
 
-            //var toolStreams = new Dictionary<string, List<OpenAiStreamEntry>>();
-            var toolStreams = new List<string>();
-
-            // Set a flag to indicate the start of the thinking state
-            var startOfThinking = true;
-
-            // Relay each line from the OpenAI stream to the HTTP response
+            // Continuously relay the stream, line by line.
             while ((line = await reader.ReadLineAsync()) != null)
             {
-                await File.AppendAllTextAsync("C:\\temp\\log-not-working.txt", line + Environment.NewLine);
-
-                if (startOfThinking)
-                {
-                    await InvokeCot(writer, line);
-                    startOfThinking = false;
-                }
-
-                // Skip empty lines
+                // TODO: Perform CoT (Chain of Thought) processing at the very beginning of the stream.
+                
+                // Skip empty lines (OpenAI often sends keep-alives or delimiters).
                 if (string.IsNullOrWhiteSpace(line))
                 {
                     continue;
                 }
 
-                // Write the line to the client stream and flush immediately
+                // Forward the line to the client immediately to minimize latency.
                 await writer.WriteLineAsync(line);
                 await writer.FlushAsync();
             }
 
-            // Final flush to ensure all data is pushed out
+            // Ensure all buffered data is sent before closing the connection.
             await writer.FlushAsync();
             await httpResponse.Body.FlushAsync();
         }
@@ -190,43 +178,6 @@ namespace G4.Services.Domain.V4.Clients
 
             // Return the fully built HTTP request ready to be sent
             return httpRequestMessage;
-        }
-
-        private static async Task InvokeCot(StreamWriter writer, string line)
-        {
-            OpenAiStreamEntry _refernceEntry;
-
-            // Skip empty lines
-            if (string.IsNullOrWhiteSpace(line))
-            {
-                return;
-            }
-
-            // Trigger the "thinking" state by modifying the content of the first choice
-            _refernceEntry = OpenAiStreamEntry.ConvertFromJson(line[6..]);
-            _refernceEntry.Choices[0].Delta.Content = "<think>";
-
-            await writer.WriteLineAsync(_refernceEntry.ToString());
-            await writer.FlushAsync();
-
-            for (var i = 0; i < 5; i++)
-            {
-                // Simulate some thinking process by updating the content with a delay
-                _refernceEntry.Choices[0].Delta.Content = $"thinking {i + 1}...";
-                _refernceEntry.Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-
-                await writer.WriteLineAsync(_refernceEntry.ToString());
-                await writer.FlushAsync();
-                await Task.Delay(1000);
-            }
-
-            // Complete the "thinking" state by updating the content again
-            _refernceEntry.Choices[0].Delta.Content = "</think>";
-            _refernceEntry.Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-
-            await writer.WriteLineAsync(_refernceEntry.ToString());
-            await writer.FlushAsync();
-
         }
     }
 }
