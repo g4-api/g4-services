@@ -9,6 +9,8 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -175,6 +177,22 @@ namespace G4.Extensions
 
             // Return the list of rules that have had their macros resolved.
             return resolvedRules;
+        }
+
+        /// <summary>
+        /// Sets the Authorization header on an <see cref="HttpRequestMessage"/> using the specified scheme and parameter.
+        /// </summary>
+        /// <param name="request">The HTTP request message to modify.</param>
+        /// <param name="scheme">The authentication scheme (e.g., "Bearer").</param>
+        /// <param name="parameter">The token or credentials used for authentication.</param>
+        /// <returns>The original <see cref="HttpRequestMessage"/> with the Authorization header set.</returns>
+        public static HttpRequestMessage SetAuthorization(this HttpRequestMessage request, string scheme, string parameter)
+        {
+            // Apply the Authorization header to the request (e.g., Authorization: Bearer <token>)
+            request.Headers.Authorization = new AuthenticationHeaderValue(scheme, parameter);
+
+            // Return the modified request to allow for fluent method chaining
+            return request;
         }
     }
 }

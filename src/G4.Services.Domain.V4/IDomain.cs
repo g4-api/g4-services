@@ -5,6 +5,7 @@ using G4.Converters;
 using G4.Extensions;
 using G4.Models;
 using G4.Models.Events;
+using G4.Services.Domain.V4.Clients;
 using G4.Services.Domain.V4.Hubs;
 using G4.Services.Domain.V4.Repositories;
 
@@ -83,6 +84,11 @@ namespace G4.Services.Domain.V4
         /// and updates to subscribed clients.
         /// </summary>
         IHubContext<G4AutomationNotificationsHub> NotificationsHubContext { get; set; }
+
+        /// <summary>
+        /// Gets or sets the OpenAI client used to interact with OpenAI services.
+        /// </summary>
+        IOpenAiClient OpenAi { get; set; }
         #endregion
 
         #region *** Methods      ***
@@ -126,6 +132,9 @@ namespace G4.Services.Domain.V4
 
             // Register Copilot repository as a singleton service
             builder.Services.AddSingleton<ICopilotRepository, CopilotRepository>();
+
+            // Register open AI client as a singleton service implementing IOpenAiClient interface
+            builder.Services.AddSingleton<IOpenAiClient, OpenAiClient>();
 
             // Register the G4Domain as a transient service implementing IDomain
             builder.Services.AddTransient<IDomain, G4Domain>();

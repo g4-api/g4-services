@@ -34,7 +34,8 @@ builder.WebHost.UseUrls();
 #endregion
 
 #region *** Service       ***
-// Add compression services to reduce the size of HTTP responses.
+// Add response compression services to reduce the size of HTTP responses.
+// This is enabled for HTTPS requests to improve performance.
 builder.Services.AddResponseCompression(options =>
 {
     options.EnableForHttps = true;
@@ -50,10 +51,6 @@ builder.Services.AddRazorPages();
 
 // Enable directory browsing, allowing users to see the list of files in a directory.
 builder.Services.AddDirectoryBrowser();
-
-// Add response compression services to reduce the size of HTTP responses.
-// This is enabled for HTTPS requests to improve performance.
-builder.Services.AddResponseCompression(i => i.EnableForHttps = true);
 
 // Add controller services with custom input formatters and JSON serialization options.
 builder.Services
@@ -194,10 +191,16 @@ IDomain.SetDependencies(builder);
 var app = builder.Build();
 
 // Configure the application to use compression for responses
-app.UseResponseCompression();
-
 // Configure the application to use the exception handling middleware
-app.UseMiddleware<ErrorHandlingMiddleware>();
+// Apply compression and error handling to everything EXCEPT OpenAI proxy route:
+app.UseWhen(
+    context => !context.Request.Path.StartsWithSegments("/api/v4/g4/openai"),
+    branch =>
+    {
+        branch.UseResponseCompression();
+        branch.UseMiddleware<ErrorHandlingMiddleware>();
+    }
+);
 
 // Configure the application to use the response caching middleware
 app.UseResponseCaching();
