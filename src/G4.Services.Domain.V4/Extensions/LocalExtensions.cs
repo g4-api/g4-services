@@ -138,10 +138,6 @@ namespace G4.Extensions
             // Join all summary lines into a single human-readable description.
             var description = string.Join(' ', manifest.Summary);
 
-            // Define the set of approved JSON schema primitive types.
-            // (Note: currently not filtered against manifest.Type, but kept for future use.)
-            var included = new[] { "null", "boolean", "object", "array", "number", "integer", "string" };
-
             // Convert each declared parameter in the manifest into a schema property.
             var pluginParameters = (manifest.Parameters ?? [])
                 .Select(ConvertToInputSchema)
@@ -158,6 +154,7 @@ namespace G4.Extensions
                 Description = description,
                 G4Name = manifest.Key,
                 Name = name,
+                Type = "g4-tool",
                 InputSchema = new McpToolModel.ParameterSchemaModel
                 {
                     Type = "object",

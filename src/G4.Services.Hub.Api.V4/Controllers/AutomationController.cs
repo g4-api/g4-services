@@ -95,7 +95,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         [SwaggerResponse(StatusCodes.Status200OK,
             description: "Successfully resolved macros. Returns a list of G4RuleModelBase objects with macros resolved.",
             type: typeof(IEnumerable<G4RuleModelBase>),
-            contentTypes: [MediaTypeNames.Application.Json])]
+            contentTypes: MediaTypeNames.Application.Json)]
         public IActionResult Resolve([FromBody] G4AutomationModel automation)
         {
             // Call the extension method to resolve macros for all rules in the provided automation model.

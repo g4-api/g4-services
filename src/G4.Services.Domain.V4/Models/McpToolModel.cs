@@ -35,6 +35,12 @@ namespace G4.Models
         /// Gets or sets the unique name of the tool.
         /// </summary>
         public string Name { get; set; }
+
+        /// <summary>
+        /// Gets or sets the type of tool. Default is "system-tool", indicating a system-defined tool.
+        /// </summary>
+        [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+        public string Type { get; set; } = "system-tool";
         #endregion
 
         #region *** Nested Types ***

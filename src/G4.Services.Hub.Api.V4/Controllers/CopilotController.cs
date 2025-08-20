@@ -1,6 +1,6 @@
-﻿using G4.Converters;
-using G4.Models;
+﻿using G4.Models;
 using G4.Services.Domain.V4;
+using G4.Services.Domain.V4.Repositories;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -11,7 +11,6 @@ using System;
 using System.ComponentModel.DataAnnotations;
 using System.Net.Mime;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -22,27 +21,6 @@ namespace G4.Services.Hub.Api.V4.Controllers
     [SwaggerTag(description: "GitHub Copilot Agent endpoint for integration and context exchange with AI agents.")]
     public class CopilotController(IDomain domain) : ControllerBase
     {
-        private static JsonSerializerOptions Options
-        {
-            get
-            {
-                var options = new JsonSerializerOptions
-                {
-                    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-                    DictionaryKeyPolicy = JsonNamingPolicy.SnakeCaseLower,
-                    PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
-                    WriteIndented = false
-                };
-
-                options.Converters.Add(new TypeConverter());
-                options.Converters.Add(new ExceptionConverter());
-                options.Converters.Add(new DateTimeIso8601Converter());
-                options.Converters.Add(new MethodBaseConverter());
-
-                return options;
-            }
-        }
-
         // Dependency injection for domain services
         private readonly IDomain _domain = domain;
 
@@ -50,7 +28,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         [SwaggerOperation(
             Summary = "Establish SSE stream",
             Description = "Opens a text/event-stream channel for real-time context updates and heartbeats.")]
-        [SwaggerResponse(StatusCodes.Status200OK, description: "SSE stream established.", contentTypes: ["text/event-stream"])]
+        [SwaggerResponse(StatusCodes.Status200OK, description: "SSE stream established.", contentTypes: "text/event-stream")]
         public async Task Get(CancellationToken token)
         {
             // Set response headers for SSE
@@ -81,61 +59,37 @@ namespace G4.Services.Hub.Api.V4.Controllers
         [SwaggerResponse(StatusCodes.Status200OK,
             description: "Initialization result with context (CopilotInitializeResponseModel), list of available tools (CopilotListResponseModel), or result of tool invocation (object)",
             type: typeof(object),
-            contentTypes: [MediaTypeNames.Application.Json])]
-        [SwaggerResponse(StatusCodes.Status202Accepted,
-                         description: "Initialization notification acknowledged.",
-                         contentTypes: [])]
+            contentTypes: MediaTypeNames.Application.Json)]
+        [SwaggerResponse(StatusCodes.Status202Accepted, description: "Initialization notification acknowledged.")]
         [SwaggerResponse(StatusCodes.Status400BadRequest,
                          description: "Invalid or unsupported method.",
                          type: typeof(object),
-                         contentTypes: [MediaTypeNames.Application.Json])]
+                         contentTypes: MediaTypeNames.Application.Json)]
         #endregion
         public IActionResult Post(
-            [FromBody, Required][SwaggerParameter(description: "...")] CopilotRequestModel copilotRequest)
+            [FromBody, Required]
+            [SwaggerParameter(description:
+                "The Copilot request payload following the JSON-RPC structure. " +
+                "It contains the method to invoke (e.g., 'initialize', 'tools/list', 'tools/call'), " +
+                "the request identifier, and any required parameters for the method execution.")] CopilotRequestModel copilotRequest)
         {
-
-            static IActionResult NewContentResult(int statusCode, object input)
-            {
-                var content = JsonSerializer.Serialize(input, Options);
-
-                return new ContentResult
-                {
-                    StatusCode = statusCode,
-                    Content = content,
-                    ContentType = MediaTypeNames.Application.Json
-                };
-            }
-
-
-            var respnse = new ContentResult
-            {
-                StatusCode = 200,
-                Content = "",
-                ContentType = MediaTypeNames.Application.Json
-            };
-
-            // Acknowledge the initialized notification without further action
-            if (copilotRequest.Method == "initialize")
-            {
-                var str = JsonSerializer.Serialize(_domain.Copilot.Initialize(copilotRequest.Id), new JsonSerializerOptions
-                {
-                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-                });
-                respnse.Content = str;
-                //return Accepted();
-            }
-
-            //var a = NewContentResult(statusCode: 200, _domain.Copilot.Initialize(copilotRequest.Id));
-            //var j = JsonSerializer.Serialize(copilotRequest, Options);
-
             // Dispatch based on the JSON-RPC method
             return copilotRequest.Method switch
             {
-                "initialize" => respnse, //NewContentResult(statusCode: 200, _domain.Copilot.Initialize(copilotRequest.Id)),
+                "initialize" => NewContentResult(
+                    StatusCodes.Status200OK,
+                    value: _domain.Copilot.Initialize(copilotRequest.Id),
+                    options: ICopilotRepository.G4JsonOptions),
                 "notifications/initialized" => Accepted(),
-                "tools/list" => NewContentResult(statusCode: 200, _domain.Copilot.GetTools(copilotRequest.Id)),
-                "tools/call" => NewContentResult(200, _domain.Copilot.InvokeTool(copilotRequest.Parameters, copilotRequest.Id)),
-                _ => NewContentResult(statusCode: 400, new { error = $"Unknown method '{copilotRequest.Method}'" })
+                "tools/list" => NewContentResult(
+                    StatusCodes.Status200OK,
+                    value: _domain.Copilot.GetTools(copilotRequest.Id, "system-tool")),
+                "tools/call" => NewContentResult(
+                    StatusCodes.Status200OK,
+                    value: _domain.Copilot.InvokeTool(copilotRequest.Parameters, copilotRequest.Id)),
+                _ => NewContentResult(
+                    StatusCodes.Status400BadRequest,
+                    value: new { error = $"Unknown method '{copilotRequest.Method}'" })
             };
         }
 
@@ -144,13 +98,11 @@ namespace G4.Services.Hub.Api.V4.Controllers
         [SwaggerOperation(
             Summary = "Sync the list of tools available to the Copilot agent",
             Description = "Refreshes the cached tool definitions so that the Copilot agent has the most up-to-date list of tools.")]
-        [SwaggerResponse(StatusCodes.Status204NoContent,
-            description: "The tools list was successfully synced. No content is returned.",
-            contentTypes: [])]
+        [SwaggerResponse(StatusCodes.Status204NoContent, description: "The tools list was successfully synced. No content is returned.")]
         [SwaggerResponse(StatusCodes.Status500InternalServerError,
             description: "An error occurred while syncing the tools list.",
             type: typeof(object),
-            contentTypes: [MediaTypeNames.Application.Json])]
+            contentTypes: MediaTypeNames.Application.Json)]
         #endregion
         public IActionResult SyncTools()
         {
@@ -160,5 +112,29 @@ namespace G4.Services.Hub.Api.V4.Controllers
             // Return an empty 204 No Content response
             return NoContent();
         }
+
+        #region *** Methods ***
+        // Creates a new ContentResult with a JSON-formatted response body.
+        private static ContentResult NewContentResult(int statusCode, object value)
+        {
+            return NewContentResult(statusCode, value, ICopilotRepository.JsonOptions);
+        }
+
+        // Creates a new ContentResult with a JSON-formatted response body.
+        private static ContentResult NewContentResult(int statusCode, object value, JsonSerializerOptions options)
+        {
+            // Serialize the input object to JSON using the repository's predefined serializer options.
+            var content = JsonSerializer.Serialize(value, options);
+
+            // Construct and return a ContentResult with the provided status code,
+            // serialized JSON content, and the correct content type.
+            return new ContentResult
+            {
+                StatusCode = statusCode,
+                Content = content,
+                ContentType = MediaTypeNames.Application.Json
+            };
+        }
+        #endregion
     }
 }

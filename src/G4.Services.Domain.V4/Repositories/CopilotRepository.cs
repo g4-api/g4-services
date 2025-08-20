@@ -1,6 +1,5 @@
 ﻿using G4.Api;
 using G4.Cache;
-using G4.Converters;
 using G4.Extensions;
 using G4.Models;
 
@@ -14,8 +13,10 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Net.Mime;
+using System.Reflection;
+using System.Text;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using System.Threading;
 
 namespace G4.Services.Domain.V4.Repositories
@@ -39,12 +40,15 @@ namespace G4.Services.Domain.V4.Repositories
         #endregion
 
         #region *** Fields       ***
-        // Static, atomically swappable snapshot
-        private static ConcurrentDictionary<string, McpToolModel> _tools =
-            FormatTools(CacheManager.Instance);
+        private static readonly string s_locatorsSystemPrompt =
+            ReadSystemPrompt(instrcutionsManifest: "LocatorsSystemPrompt.md");
 
         // Tracks active browser or agent sessions by session ID.
-        private static readonly ConcurrentDictionary<object, object> _sessions = [];
+        private static readonly ConcurrentDictionary<object, object> s_sessions = [];
+
+        // Static, atomically swappable snapshot
+        private static ConcurrentDictionary<string, McpToolModel> s_tools =
+            FormatTools(CacheManager.Instance);
 
         // Cache manager providing access to plugin manifests.
         private readonly CacheManager _cache = cache;
@@ -54,89 +58,6 @@ namespace G4.Services.Domain.V4.Repositories
 
         // HTTP client configured for OpenAI API interactions, using a named configuration.
         private readonly HttpClient _httpClient = clientFactory.CreateClient(name: "copilot-openai");
-        #endregion
-
-        #region *** Properties   ***
-        // JSON serialization options for consistent formatting and naming conventions.
-        private static JsonSerializerOptions JsonOptions
-        {
-            get
-            {
-                // Create a fresh options instance.
-                // If this is on a hot path, consider caching in a static readonly field to avoid per-call allocations.
-                var options = new JsonSerializerOptions
-                {
-                    // Do not write properties whose value is null.
-                    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-
-                    // Serialize dictionary keys in snake_case (e.g., "error_code").
-                    DictionaryKeyPolicy = JsonNamingPolicy.SnakeCaseLower,
-
-                    // Serialize CLR property names in snake_case (e.g., "request_id").
-                    PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
-
-                    // Compact output optimized for transport/log size. Set true for dev readability.
-                    WriteIndented = false
-                };
-
-                // Serialize System.Type in a stable, readable format.
-                options.Converters.Add(new TypeConverter());
-
-                // Normalize exception payloads (type, message, stack trace, etc.).
-                options.Converters.Add(new ExceptionConverter());
-
-                // Enforce ISO-8601 DateTime text to avoid locale/round-trip issues.
-                options.Converters.Add(new DateTimeIso8601Converter());
-
-                // Provide a readable/portable representation for MethodBase (useful in logs/telemetry).
-                options.Converters.Add(new MethodBaseConverter());
-
-                // Return the configured options.
-                return options;
-            }
-        }
-
-        private static JsonSerializerOptions G4JsonOptions
-        {
-            get
-            {
-                // Create a fresh options instance.
-                // If this is on a hot path, consider caching in a static readonly field to avoid per-call allocations.
-                var options = new JsonSerializerOptions
-                {
-                    // Do not write properties whose value is null.
-                    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-
-                    // Serialize dictionary keys in snake_case (e.g., "error_code").
-                    DictionaryKeyPolicy = JsonNamingPolicy.CamelCase,
-
-                    // Serialize CLR property names in snake_case (e.g., "request_id").
-                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-
-                    // Compact output optimized for transport/log size. Set true for dev readability.
-                    WriteIndented = false
-                };
-
-                // Serialize System.Type in a stable, readable format.
-                options.Converters.Add(new TypeConverter());
-
-                // Normalize exception payloads (type, message, stack trace, etc.).
-                options.Converters.Add(new ExceptionConverter());
-
-                // Enforce ISO-8601 DateTime text to avoid locale/round-trip issues.
-                options.Converters.Add(new DateTimeIso8601Converter());
-
-                // Provide a readable/portable representation for MethodBase (useful in logs/telemetry).
-                options.Converters.Add(new MethodBaseConverter());
-
-                // Return the configured options.
-                return options;
-            }
-        }
-
-        // Registry of all available tools by name.
-        private static readonly ConcurrentDictionary<string, McpToolModel> Tools
-            = Volatile.Read(ref _tools);
         #endregion
 
         #region *** Methods      ***
@@ -160,18 +81,18 @@ namespace G4.Services.Domain.V4.Repositories
 
             // Create a JsonElement directly (no Serialize→Deserialize string round-trip).
             // Uses your configured JsonOptions (snake_case, ignore nulls, etc.).
-            var arguments = JsonSerializer.SerializeToElement(envelope, JsonOptions);
+            var arguments = JsonSerializer.SerializeToElement(envelope, ICopilotRepository.JsonOptions);
 
             // Delegate to the generic finder with the shared registry and protocol version.
             return FindG4Tool(
-                tools: Tools,
+                tools: s_tools,
                 jsonrpcVersion: JsonRpcVersion,
                 arguments,
                 id);
         }
 
         /// <inheritdoc />
-        public CopilotToolsResponseModel GetTools(object id) => GetG4Tools(Tools, id);
+        public CopilotToolsResponseModel GetTools(object id, params string[] types) => GetG4Tools(id, types);
 
         /// <inheritdoc />
         public CopilotInitializeResponseModel Initialize(object id) => new()
@@ -236,34 +157,59 @@ namespace G4.Services.Domain.V4.Repositories
                 ? toolNameOut.GetString()
                 : null;
 
+            // Retrieve the OpenAI API URI and API key from the arguments.
+            var openaiUri = arguments.TryGetProperty("openai_uri", out var completionsUriOut)
+                ? completionsUriOut.GetString()
+                : default;
+
+            // Retrieve the OpenAI API key from the arguments.
+            var openaiApiKey = arguments.TryGetProperty("openai_api_key", out var openaiApiKeyOut)
+                ? openaiApiKeyOut.GetString()
+                : string.Empty;
+
+            // Retrieve the OpenAI API key from the arguments.
+            var openAiModel = arguments.TryGetProperty("openai_model", out var openAiModelOut)
+                ? openAiModelOut.GetString()
+                : string.Empty;
+
             // Look up the tool definition in the registered tools dictionary.
             // If the tool is not found, 'tool' will be null and handled in the default branch below.
-            var tool = Tools.GetValueOrDefault(toolName);
+            var tool = s_tools.GetValueOrDefault(toolName);
 
             // Match the tool by name and execute the corresponding handler.
             // Some tools are built-in system tools, others are dynamically loaded plugins.
             var result = tool switch
             {
                 // Built-in: Finds and returns metadata about a tool by its name.
-                { Name: "find_tool" } => FindG4Tool(Tools, JsonRpcVersion, arguments, id),
+                { Name: "find_tool" } => FindG4Tool(s_tools, JsonRpcVersion, arguments, id),
 
                 // Built-in: Retrieves the current application's DOM (Document Object Model).
-                { Name: "get_application_dom" } => GetApplicationDom(_client, _sessions, driverSession, token),
+                { Name: "get_application_dom" } => GetApplicationDom(_client, s_sessions, driverSession, token),
 
                 // Built-in: Returns the instructions for the next tool call, including policies and defaults.
                 { Name: "get_instructions" } => GetInstructions(),
 
                 // Built-in: Retrieves the locator for a specific element on the page.
-                { Name: "get_locator" } => GetLocator(_httpClient, _client, _sessions, driverSession, token, "https://api.openai.com/v1/chat/completions", "", arguments),
+                { Name: "get_locator" } => GetLocator(
+                    _httpClient,
+                    _client,
+                    s_sessions,
+                    driverSession,
+                    token,
+                    openaiUri,
+                    openaiApiKey,
+                    openAiModel,
+                    s_locatorsSystemPrompt,
+                    arguments),
 
                 // Built-in: Lists all available tools.
-                { Name: "get_tools" } => GetG4Tools(Tools, id),
+                { Name: "get_tools" } => GetG4Tools(id),
 
                 // Built-in: Starts a new G4 browser automation session.
-                { Name: "start_g4_session" } => StartG4Session(_client, _sessions, driver, driverBinaries, token),
+                { Name: "start_g4_session" } => StartG4Session(_client, s_sessions, driver, driverBinaries, token),
 
                 // Default: Assumes this is a plugin-based tool and converts parameters into an executable rule.
-                _ => StartG4Rule(_client, _sessions, driverSession, token, rule: ConvertToRule(Tools, toolName, arguments))
+                _ => StartG4Rule(_client, s_sessions, driverSession, token, rule: ConvertToRule(s_tools, arguments))
             };
 
             // Construct and return the JSON-RPC response to the client.
@@ -284,7 +230,7 @@ namespace G4.Services.Domain.V4.Repositories
                         new
                         {
                             Type = "text",
-                            Text = JsonSerializer.Serialize(result, JsonOptions)
+                            Text = JsonSerializer.Serialize(result, ICopilotRepository.JsonOptions)
                         }
                     },
 
@@ -301,7 +247,7 @@ namespace G4.Services.Domain.V4.Repositories
             var rebuilt = new ConcurrentDictionary<string, McpToolModel>(FormatTools(_cache));
 
             // Atomically replace the current tools collection with the rebuilt one.
-            Interlocked.Exchange(ref _tools, rebuilt);
+            Interlocked.Exchange(ref s_tools, rebuilt);
         }
 
         // Searches for a G4 tool in the internal tool registry by its name. 
@@ -405,14 +351,20 @@ namespace G4.Services.Domain.V4.Repositories
                 PolicyVersion = "2025.08.13.1",
                 CheckList = new[]
                 {
-                    "Read token from .env (ask if missing)",
+                    "Read G4_API_KEY from .env (ask if missing)",
+                    "Read OPENAI_API_KEY from .env (ask if missing)",
+                    "Read OPENAI_URI from .env (ask if missing)",
+                    "Read OPENAI_MODEL from .env (ask if missing)",
                     "Ensure driver_session (start_g4_session if missing with WEB_DRIVER / WEB_DRIVER_REPOSITORY)",
+                    "Ensure openai_api_key, openai_uri and openai_model are available for get_locator. If not available, use get_application_dom tool, and build the locator",
                     "Run get_tools to confirm <toolName> exists",
                     "Run find_tool(<toolName>) and validate schema"
-
                 },
                 Defaults = new Dictionary<string, object>()
                 {
+                    ["get_locator.openai_api_key"] = "ENV:OPENAI_API_KEY",
+                    ["get_locator.openai_uri"] = "ENV:OPENAI_URI",
+                    ["get_locator.openai_model"] = "ENV:OPENAI_MODEL",
                     ["start_g4_session.driver"] = "ENV:WEB_DRIVER",
                     ["start_g4_session.driver_binaries"] = "ENV:WEB_DRIVER_REPOSITORY",
                 },
@@ -422,20 +374,6 @@ namespace G4.Services.Domain.V4.Repositories
                     ["retry_find_tool_once"] = true,
                     ["on_locator_failure"] = "ask_user"
                 },
-                //Must = new Dictionary<string, object>()
-                //{
-                //    ["prepend_steps"] = new[]
-                //    {
-                //        "Always fetch `token` from `.env` `G4_API_TOKEN` (ask user if missing)",
-                //        "If no `driver_session`, call `start_g4_session` with `.env` defaults: `WEB_DRIVER` → `driver`, `WEB_DRIVER_REPOSITORY` → `driver_binaries`; save session id",
-                //        "**Before every tool call**, first call `get_instructions` and **apply** its returned policy for the *next* tool call.",
-                //        "Then: `get_tools` → verify tool → `find_tool` → validate input schema.",
-                //        "For all tools **except** `start_g4_session`, include `driver_session` + `token`.",
-                //        "If page interaction, call get_locator {intent:'click login button', action:'click'} and use primary locator.",
-                //        "Sequence per call: `get_instructions` → token → driver\\_session → get\\_tools → find\\_tool → locator (if needed) → build per schema → add session+token → call tool.",
-                //        "Never invent tool names/params/locators; if missing, ask."
-                //    }
-                //},
                 PageTool= new Dictionary<string, object>()
                 {
                     ["required"] = "ONLY when interacting with the page",
@@ -452,6 +390,24 @@ namespace G4.Services.Domain.V4.Repositories
                 },
                 TtlSeconds = 60
             };
+        }
+
+        // Retrieves the list of all available G4 tools from the internal registry and returns them in a JSON-RPC response model.
+        private static CopilotToolsResponseModel GetG4Tools(object id, params string[] types)
+        {
+            // Filter the tools based on the specified types.
+            var tools = types.Length switch
+            {
+                // If no types are specified, return all tools from the registry.
+                0 => s_tools,
+                // If specific types are requested, filter the tools by those types.
+                _ => new ConcurrentDictionary<string, McpToolModel>(
+                    s_tools.Where(tool => types.Contains(tool.Value.Type, StringComparer.OrdinalIgnoreCase)),
+                    StringComparer.OrdinalIgnoreCase)
+            };
+
+            // Return a new CopilotToolsResponseModel with the list of tools from the registry.
+            return GetG4Tools(tools, id);
         }
 
         // Retrieves the list of all available G4 tools from the internal registry and returns them in a JSON-RPC response model.
@@ -473,7 +429,8 @@ namespace G4.Services.Domain.V4.Repositories
             };
         }
 
-        // Retrieves the locator for a specific element on the page by sending a request to the OpenAI API.
+        // Retrieves a locator for a specific element on the page by sending the DOM and intent
+        // to the OpenAI completion API.
         private static string GetLocator(
             HttpClient httpClient,
             G4Client client,
@@ -482,51 +439,70 @@ namespace G4.Services.Domain.V4.Repositories
             string token,
             string openAiUri,
             string openAiApiKey,
+            string openAiModel,
+            string systemPrompt,
             JsonElement intent)
         {
+            // Retrieve the current application DOM (document object model)
+            // for the given driver session.
             var documentObject = GetApplicationDom(client, sessions, driverSession, token);
 
-            var intentObject = JsonSerializer.Deserialize<Dictionary<string, object>>(intent.GetRawText(), JsonOptions);
+            // Deserialize the intent JSON into a dictionary for modification.
+            var intentObject = JsonSerializer.Deserialize<Dictionary<string, object>>(
+                json: intent.GetRawText(),
+                options: ICopilotRepository.JsonOptions);
+
+            // Inject the DOM into the intent so the model has page context.
             intentObject["dom"] = documentObject["value"];
 
-            // Send request to openai api completion API to get the locator.
-            var payload = new
+            // Serialize the updated intent object into JSON string for request payload.
+            var userContent = JsonSerializer.Serialize(
+                value: intentObject,
+                options: ICopilotRepository.JsonOptions);
+
+            // Build the request payload for OpenAI's ChatCompletion API.
+            var openAiRequest = new
             {
-                Model = "gpt-4o-mini",
+                Model = openAiModel,
                 Messages = new[]
                 {
                     new
                     {
                         Role = "system",
-                        Content = File.ReadAllText("C:\\temp\\locator-system-prompt.txt")
+                        Content = systemPrompt
                     },
                     new
                     {
                         Role = "user",
-                        Content = JsonSerializer.Serialize(intentObject, JsonOptions)
+                        Content = userContent
                     }
                 }
             };
 
+            // Serialize the OpenAI request payload into JSON.
+            var value = JsonSerializer.Serialize(
+                value: openAiRequest,
+                options: ICopilotRepository.JsonOptions);
+
+            // Construct the HTTP POST request to OpenAI API.
             var request = new HttpRequestMessage
             {
                 Method = HttpMethod.Post,
-                RequestUri = new Uri(openAiUri)
+                RequestUri = new Uri(openAiUri),
+                Content = new StringContent(value, Encoding.UTF8, MediaTypeNames.Application.Json)
             };
 
+            // Add the Bearer token for OpenAI authentication.
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", openAiApiKey);
-            request.Content = new StringContent(
-                JsonSerializer.Serialize(payload, JsonOptions),
-                System.Text.Encoding.UTF8,
-                "application/json");
 
-            // Send the request and get the response.
+            // Send the request synchronously and capture the response.
             var response = httpClient.Send(request);
-            var body = response.Content.ReadAsStringAsync().Result;
-            var a = "";
 
-            return body;
+            // Ensure the response indicates success (throws if not 2xx).
+            response.EnsureSuccessStatusCode();
 
+            // Read and return the response body as a string (raw JSON).
+            return response.Content.ReadAsStringAsync().Result;
         }
 
         // Starts the automation rule execution by invoking the specified rule on the client, 
@@ -614,7 +590,6 @@ namespace G4.Services.Domain.V4.Repositories
         // This method retrieves the plugin name associated with the tool and uses the parameters to create a rule model.
         private static ActionRuleModel ConvertToRule(
             ConcurrentDictionary<string, McpToolModel> tools,
-            string toolName,
             JsonElement arguments)
         {
             // Formats a JSON parameters object into a templated, G4 CLI-style string,
@@ -633,8 +608,10 @@ namespace G4.Services.Domain.V4.Repositories
                     .ToDictionary(i => i.Name, i => $"{i.Value}", StringComparer.OrdinalIgnoreCase);
 
                 // Round-trip through System.Text.Json to apply G4JsonOptions policies (e.g., snake_case keys).
-                var json = JsonSerializer.Serialize(parametersObject, G4JsonOptions);
-                var parametersCollection = JsonSerializer.Deserialize<Dictionary<string, string>>(json, G4JsonOptions)!;
+                var json = JsonSerializer.Serialize(value: parametersObject, options: ICopilotRepository.G4JsonOptions);
+                var parametersCollection = JsonSerializer.Deserialize<Dictionary<string, string>>(
+                    json,
+                    options: ICopilotRepository.G4JsonOptions)!;
 
                 // Convert keys to PascalCase and render as --Key[:Value] (omit :Value when empty).
                 var parametersExpression = parametersCollection
@@ -647,33 +624,42 @@ namespace G4.Services.Domain.V4.Repositories
                 return "{{$ " + string.Join(" ", parametersExpression) + "}}";
             }
 
+            // Try to extract the rule data from the arguments JSON.
+            var ruleData = arguments.TryGetProperty("rule", out var ruleOut)
+                ? ruleOut
+                : JsonDocument.Parse("{}").RootElement;
+
+            // Retrieve the "name" of the tool to be invoked. Defaults to null if not provided.
+            var toolName = ruleData.TryGetProperty("tool_name", out var toolNameOut)
+                ? toolNameOut.GetString()
+                : null;
+
             // Retrieve the plugin name associated with the provided tool name from the internal tool registry (_tools)
             var pluginName = tools.GetValueOrDefault(key: toolName)?.G4Name;
 
-            // Get the parameters from the arguments, defaulting to an empty JSON object if not provided.
-            var parameters = arguments.TryGetProperty("parameters", out var parametersOut)
+            // Get the parameters from the ruleData, defaulting to an empty JSON object if not provided.
+            var parameters = ruleData.TryGetProperty("parameters", out var parametersOut)
                 ? parametersOut
                 : JsonDocument.Parse("{}").RootElement;
 
             // Format the parameters into a command-line style string (e.g., "--param1:value1 --param2:value2").
             var parametersCli = FormatParameters(parameters);
 
-            // Get the properties from the arguments, defaulting to a JSON object with the plugin name if not provided.
-            var properties = arguments.TryGetProperty("properties", out var propertiesOut)
+            // Get the properties from the ruleData, defaulting to a JSON object with the plugin name if not provided.
+            var properties = ruleData.TryGetProperty("properties", out var propertiesOut)
                 ? propertiesOut.GetRawText()
-                : "{\"plugin_name\":\"" + pluginName + "\"}";
-
-            // Serialize the parameters into a JSON string to prepare them for deserialization into a G4RuleModelBase
-            //var json = JsonSerializer.Serialize(properties);
+                : "{\"tool_name\":\"" + pluginName + "\"}";
 
             // Deserialize the JSON string into the G4RuleModelBase object using the provided JSON options (JsonOptions)
-            var rule = JsonSerializer.Deserialize<ActionRuleModel>(properties, JsonOptions);
+            var rule = JsonSerializer.Deserialize<ActionRuleModel>(
+                json: properties,
+                options: ICopilotRepository.JsonOptions);
 
             // Set the PluginName property of the rule to the retrieved plugin name
             rule.PluginName = pluginName;
 
             // Set the Argument property of the rule to the formatted parameters if provided
-            rule.Argument = string.IsNullOrEmpty(parametersCli)
+            rule.Argument = string.IsNullOrEmpty(parametersCli) || parametersCli.Equals("{{$ }}")
                 ? rule.Argument
                 : parametersCli;
 
@@ -762,7 +748,7 @@ namespace G4.Services.Domain.V4.Repositories
                 .SelectMany(i => i.Values)
                 .Where(i => i.Manifest.PluginType == "Action" && i.Manifest.Key != "NoAction")
                 .Select(i => i.Manifest)
-                .DistinctBy(manifest => manifest.Key);//.Take(0);
+                .DistinctBy(manifest => manifest.Key);
 
             // Convert each action manifest into an MCP tool model
             var tools = actions
@@ -784,6 +770,41 @@ namespace G4.Services.Domain.V4.Repositories
 
             // Return the populated tools collection.
             return toolsCollection;
+        }
+
+        // Reads the contents of an embedded resource file (system prompt) from the assembly.
+        private static string ReadSystemPrompt(string instrcutionsManifest)
+        {
+            // Get a reference to the executing assembly.
+            var assembly = Assembly.GetExecutingAssembly();
+
+            // Retrieve the list of all manifest resource names embedded in the assembly.
+            var manifests = assembly.GetManifestResourceNames();
+
+            // Find the first manifest that ends with the provided name (case-insensitive).
+            var name = manifests.FirstOrDefault(
+                i => i.EndsWith(instrcutionsManifest, StringComparison.OrdinalIgnoreCase));
+
+            try
+            {
+                // Open a stream for the located embedded resource.
+                var stream = Assembly
+                    .GetExecutingAssembly()
+                    .GetManifestResourceStream(name);
+
+                // If no resource was found, return empty string safely.
+                if (stream == null)
+                    return string.Empty;
+
+                // Read the resource stream fully as UTF-8 text.
+                using var reader = new StreamReader(stream, Encoding.UTF8);
+                return reader.ReadToEnd();
+            }
+            catch
+            {
+                // In case of any error (e.g., resource not found, IO issues), return empty.
+                return string.Empty;
+            }
         }
         #endregion
 
@@ -872,8 +893,8 @@ namespace G4.Services.Domain.V4.Repositories
             /// Represents a system tool that retrieves the full HTML markup of the application's Document Object Model (DOM)
             /// for the current browser session. Useful for inspecting or analyzing the current state of the loaded web page.
             /// </summary>
-            //[SystemTool(name: "get_application_dom")]
-            public static McpToolModel GetApplicationDom => new()
+            [SystemTool(name: "get_application_dom")]
+            public static McpToolModel GetApplicationDomTool => new()
             {
                 /// <summary>
                 /// The unique name of the tool, used to identify it within the system.
@@ -963,7 +984,7 @@ namespace G4.Services.Domain.V4.Repositories
             /// Represents a system tool that gets instructions for the next tool call.
             /// </summary>
             [SystemTool(name: "get_instructions")]
-            public static McpToolModel GetIinstructions => new()
+            public static McpToolModel GetIinstructionsTool => new()
             {
                 /// <summary>
                 /// Unique tool name used by the agent/runtime to select and invoke this system tool.
@@ -1104,7 +1125,7 @@ namespace G4.Services.Domain.V4.Repositories
             /// Represents a system tool that retrieves an optimal locator for a specific element on a web page.
             /// </summary>
             [SystemTool(name: "get_locator")]
-            public static McpToolModel GetLocator => new()
+            public static McpToolModel GetLocatorTool => new()
             {
                 /// <summary>
                 /// Unique tool name used to identify this system tool in the runtime and during tool selection.
@@ -1182,7 +1203,7 @@ namespace G4.Services.Domain.V4.Repositories
                             Description = "Description of the intended interaction with the element, e.g., " +
                                 "'click login button' or 'type into search field'."
                         },
-                        ["openai_token"] = new()
+                        ["openai_api_key"] = new()
                         {
                             Type = ["string"],
                             Description = "OpenAI authentication token for verifying and authorizing the locator retrieval request."
@@ -1279,7 +1300,7 @@ namespace G4.Services.Domain.V4.Repositories
             /// The rule execution involves interacting with the browser session and processing the rule's logic to produce a result.
             /// </summary>
             [SystemTool(name: "start_g4_rule")]
-            public static McpToolModel StartG4Rule => new()
+            public static McpToolModel StartG4RuleTool => new()
             {
                 /// <summary>
                 /// The unique name of the tool, used to identify it within the system.
@@ -1375,7 +1396,7 @@ namespace G4.Services.Domain.V4.Repositories
             /// The session is initiated with a given G4 authentication token for secure access.
             /// </summary>
             [SystemTool(name: "start_g4_session")]
-            public static McpToolModel StartG4Session => new()
+            public static McpToolModel StartG4SessionTool => new()
             {
                 /// <summary>
                 /// The unique name of the tool. Used to identify the tool in the system.
@@ -1465,7 +1486,7 @@ namespace G4.Services.Domain.V4.Repositories
             /// This tool provides the metadata and schemas for all the tools that are available in the Copilot environment.
             /// </summary>
             [SystemTool(name: "get_tools")]
-            public static McpToolModel GetTools => new()
+            public static McpToolModel GetToolsTool => new()
             {
                 /// <summary>
                 /// The unique name of the tool, used to identify it within the system.
