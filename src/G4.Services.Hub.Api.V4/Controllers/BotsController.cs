@@ -19,6 +19,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
     [ApiController]
     [Route("/api/v4/g4/[controller]")]
     [SwaggerTag(description: "Provides access to information about currently connected bots.")]
+    [ApiExplorerSettings(GroupName = "G4 Hub")]
     public class BotsController(IDomain domain) : ControllerBase
     {
         private readonly IDomain _domain = domain;

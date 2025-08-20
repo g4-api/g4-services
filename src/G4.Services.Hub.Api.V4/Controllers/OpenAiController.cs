@@ -11,8 +11,11 @@ using System.Threading.Tasks;
 
 namespace G4.Services.Hub.Api.V4.Controllers
 {
-    [Route("/api/v4/g4/[controller]")]
     [ApiController]
+    [Route("/api/v4/g4/[controller]")]
+    [SwaggerTag(description: "Provides endpoints for interacting with the OpenAI-compatible backend, including model listing, " +
+        "chat completions, health status, and embeddings. All responses are standardized for G4 internal use.")]
+    [ApiExplorerSettings(GroupName = "G4 Hub")]
     public class OpenAiController(IDomain domain) : ControllerBase
     {
         private readonly IDomain _domain = domain;
@@ -22,7 +25,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         [SwaggerOperation(
             Summary = "List available models",
             Description = "Returns all available models from the OpenAI-compatible backend, prefixed with `g4-` for internal use.",
-            Tags = ["OpenAiProxy", "Models"])]
+            Tags = ["OpenAi", "Models"])]
         [SwaggerResponse(StatusCodes.Status200OK, Description = "Successfully retrieved list of available models.", Type = typeof(OpenAiModelListResponse), ContentTypes = [MediaTypeNames.Application.Json])]
         [SwaggerResponse(StatusCodes.Status500InternalServerError, Description = "Bad request or error occurred while fetching the models.", Type = typeof(GenericErrorModel), ContentTypes = [MediaTypeNames.Application.Json])]
         public async Task<IActionResult> GetModels()
@@ -41,7 +44,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         [SwaggerOperation(
             Summary = "Check proxy health status",
             Description = "Returns a basic status object indicating that the OpenAI proxy is online.",
-            Tags = ["OpenAiProxy", "Status"])]
+            Tags = ["OpenAi", "Status"])]
         [SwaggerResponse(StatusCodes.Status200OK, Description = "The service is operational.", Type = typeof(object), ContentTypes = [MediaTypeNames.Application.Json])]
         public IActionResult GetStatus()
         {
@@ -60,7 +63,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         [SwaggerOperation(
             Summary = "Generate chat completions",
             Description = "Sends a chat completion request to the OpenAI-compatible backend. Supports streaming or non-streaming responses based on the `stream` flag.",
-            Tags = ["OpenAiProxy", "ChatCompletions"])]
+            Tags = ["OpenAi", "ChatCompletions"])]
         [SwaggerResponse(StatusCodes.Status200OK, Description = "Returns the full chat completion if `stream=false`.", ContentTypes = [MediaTypeNames.Application.Json])]
         [SwaggerResponse(StatusCodes.Status204NoContent, Description = "The chat completion is streamed directly to the response if `stream=true`.")]
         public async Task<IActionResult> SendCompletions([FromBody] OpenAiChatCompletionRequest completions)
@@ -90,7 +93,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         [SwaggerOperation(
             Summary = "",
             Description = "",
-            Tags = ["OpenAiProxy", "ChatCompletions"])]
+            Tags = ["OpenAi", "ChatCompletions"])]
         public IActionResult ChatLegacy()
         {
             return Ok();
@@ -100,7 +103,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         [SwaggerOperation(
             Summary = "",
             Description = "",
-            Tags = ["OpenAiProxy", "Embeddings"])]
+            Tags = ["OpenAi", "Embeddings"])]
         public IActionResult Embeddings()
         {
             return Ok();

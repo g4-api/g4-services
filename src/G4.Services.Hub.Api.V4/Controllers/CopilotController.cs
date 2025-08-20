@@ -19,6 +19,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
     [ApiController]
     [Route("/api/v4/g4/[controller]/mcp")]
     [SwaggerTag(description: "GitHub Copilot Agent endpoint for integration and context exchange with AI agents.")]
+    [ApiExplorerSettings(GroupName = "G4 Hub")]
     public class CopilotController(IDomain domain) : ControllerBase
     {
         // Dependency injection for domain services

@@ -15,6 +15,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi.Models;
 
+using Swashbuckle.AspNetCore.Annotations;
+
 using System;
 using System.IO;
 using System.Linq;
@@ -92,8 +94,41 @@ builder.Services.AddSwaggerGen(i =>
 {
     // Define a Swagger document named "v4" with title and version information.
     i.SwaggerDoc(
-        name: $"v{AppSettings.ApiVersion}",
-        info: new OpenApiInfo { Title = "G4™ Hub Controllers", Version = $"v{AppSettings.ApiVersion}" });
+        name: $"g4",
+        info: new OpenApiInfo
+        {
+            Title = "G4™ Hub Endpoints",
+            Version = $"v{AppSettings.ApiVersion}",
+            Description = "G4™ Hub Controllers provide endpoints for G4™ Orchestrator, Automation, Bots, and Tools. " +
+                "This API is designed to be used by G4™ clients and services to interact with the G4™ ecosystem."
+        });
+
+    // Define a Swagger document named "tools" for G4™ Tools endpoints.
+    i.SwaggerDoc(
+        name: "tools",
+        info: new OpenApiInfo
+        {
+            Title = "G4™ Tools Endpoints",
+            Version = $"v{AppSettings.ApiVersion}",
+            Description = "Proxy for MCP tools, exposing each tool as a function-callable endpoint."
+        });
+
+    // Filter to include only controllers that have the "Tool" tag in their Swagger documentation.
+    i.DocInclusionPredicate((docName, apiDesc) =>
+    {
+        // for your “v4” doc, include everything
+        if (docName != "tools")
+        {
+            return true;
+        }
+
+        // look for a SwaggerOperationAttribute in the metadata
+        return apiDesc
+            .ActionDescriptor
+            .EndpointMetadata
+            .OfType<SwaggerOperationAttribute>()
+            .Any(attr => attr.Tags?.Contains("AiTools") == true);
+    });
 
     // Order API actions in the Swagger UI by HTTP method for better organization.
     i.OrderActionsBy(a => a.HttpMethod);
@@ -215,12 +250,30 @@ app.UseRouting();
 app.UseCors("CorsPolicy");
 
 // Add the Swagger documentation and UI page to the application
-app.UseSwagger();
+app.UseSwagger(i =>
+{
+    i.RouteTemplate = "swagger/{documentName}/docs.json";
+});
+
+// Add the Swagger UI for the main G4 API
 app.UseSwaggerUI(i =>
 {
-    i.SwaggerEndpoint($"/swagger/v{AppSettings.ApiVersion}/swagger.json", $"G{AppSettings.ApiVersion}");
+    // Serve the UI at /tools/docs
+    i.RoutePrefix = "swagger";
+
+    // Add the Swagger document for the G4 Hub API
+    i.SwaggerEndpoint("g4/docs.json", "G4 Hub");
+
+    // Add the Swagger document for the G4 OpenAi Tools API
+    i.SwaggerEndpoint("tools/docs.json", "OpenAi Tools");
+
+    // Show how long each request takes
     i.DisplayRequestDuration();
+
+    // Enable the built-in filter box
     i.EnableFilter();
+
+    // Turn on “Try it out” by default
     i.EnableTryItOutByDefault();
 });
 

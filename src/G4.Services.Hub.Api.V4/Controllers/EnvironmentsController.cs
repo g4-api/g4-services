@@ -18,6 +18,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
     [ApiController]
     [Route("/api/v4/g4/[controller]")]
     [SwaggerTag(description: "Provides endpoints to manage environments and their associated parameters, including creating, retrieving, updating, and deleting parameters within specific environments.")]
+    [ApiExplorerSettings(GroupName = "G4 Hub")]
     public class EnvironmentsController(IDomain domain) : ControllerBase
     {
         // The domain service instance is injected into the controller
