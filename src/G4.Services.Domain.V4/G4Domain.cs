@@ -26,7 +26,8 @@ namespace G4.Services.Domain.V4
         IHubContext<G4BotsHub> botsHubContext,
         ILogger logger,
         IOpenAiClient openAi,
-        IWebHostEnvironment environment) : IDomain
+        IWebHostEnvironment environment,
+        ToolsRepository tools) : IDomain
     {
         #region *** Properties   ***
         /// <inheritdoc />
@@ -61,6 +62,8 @@ namespace G4.Services.Domain.V4
 
         /// <inheritdoc />
         public IOpenAiClient OpenAi { get; set; } = openAi;
+
+        public ToolsRepository Tools { get; set; } = tools;
         #endregion
     }
 }

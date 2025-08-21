@@ -1,6 +1,4 @@
-﻿using G4.Services.Domain.V4.Models;
-
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
 namespace G4.Models
 {
@@ -8,14 +6,14 @@ namespace G4.Models
     /// Response model for the Copilot "list tools" JSON-RPC method.
     /// Encapsulates the request ID, the protocol version, and the result payload.
     /// </summary>
-    public class CopilotToolsResponseModel
+    public class ToolsResponseModel
     {
         #region *** Properties   ***
         /// <summary>
         /// Gets or sets the error information if the request failed.
         /// This property is optional and will be null if the request was successful.
         /// </summary>
-        public CopilotErrorModel Error { get; set; }
+        public ToolsErrorModel Error { get; set; }
 
         /// <summary>
         /// Gets or sets the identifier of the JSON-RPC request.

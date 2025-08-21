@@ -1,7 +1,6 @@
 ﻿using G4.Abstraction.Logging;
 using G4.Api;
 using G4.Cache;
-using G4.Converters;
 using G4.Extensions;
 using G4.Models;
 using G4.Models.Events;
@@ -19,7 +18,6 @@ using Microsoft.Extensions.Options;
 
 using System;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 
 namespace G4.Services.Domain.V4
 {
@@ -135,6 +133,8 @@ namespace G4.Services.Domain.V4
 
             // Register open AI client as a singleton service implementing IOpenAiClient interface
             builder.Services.AddSingleton<IOpenAiClient, OpenAiClient>();
+
+            builder.Services.AddSingleton<ToolsRepository, ToolsRepository>();
 
             // Register the G4Domain as a transient service implementing IDomain
             builder.Services.AddTransient<IDomain, G4Domain>();
