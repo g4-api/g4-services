@@ -47,6 +47,26 @@ namespace G4.Services.Domain.V4.Repositories
         }
 
         /// <inheritdoc />
+        public IDictionary<string, object> GetDocumentModel(string driverSession, string token)
+        {
+            // Prepare the invocation options that contain all the required context
+            // for retrieving the DOM from the G4 engine.
+            var options = new InvokeOptions
+            {
+                DriverSession = driverSession, // Session identifier to fetch the DOM for
+                Token = token,                 // Token authorizing the G4 engine to perform DOM retrieval
+                G4Client = _client,            // Reference to the G4 engine client instance
+                HttpClient = _httpClient,      // HTTP client used for underlying communication
+                Sessions = s_sessions,         // Active sessions collection used by the engine
+                Tools = s_tools                // Registered tools available in the current context
+            };
+
+            // Delegate the actual DOM retrieval to the helper method,
+            // which uses the constructed options.
+            return GetApplicationDom(options);
+        }
+
+        /// <inheritdoc />
         public IDictionary<string, McpToolModel> GetTools(params string[] types)
         {
             // Filter the tools based on the specified types.

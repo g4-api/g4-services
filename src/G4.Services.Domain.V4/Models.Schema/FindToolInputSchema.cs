@@ -9,12 +9,12 @@ namespace G4.Models.Schema
     [SwaggerSchema(description: "Schema for locating a tool by name or intent within the MCP tool registry.")]
     public class FindToolInputSchema
     {
-        /// <summary>
-        /// The unique chat identifier associated with this request.
-        /// Used to correlate tool lookups with a specific chat session.
-        /// </summary>
-        [SwaggerSchema(description: "The unique chat identifier used to correlate the request with a specific session.")]
-        public object Id { get; set; }
+        ///// <summary>
+        ///// The unique chat identifier associated with this request.
+        ///// Used to correlate tool lookups with a specific chat session.
+        ///// </summary>
+        //[SwaggerSchema(description: "The unique chat identifier used to correlate the request with a specific session.")]
+        //public object Id { get; set; }
 
         /// <summary>
         /// The functional intent that describes the purpose of the tool being requested.

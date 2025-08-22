@@ -20,6 +20,17 @@ namespace G4.Services.Domain.V4.Repositories
         McpToolModel FindTool(string intent, string toolName);
 
         /// <summary>
+        /// Retrieves the current document model (DOM) of the active session
+        /// using the G4 engine.  
+        /// Builds an <see cref="InvokeOptions"/> instance with the provided parameters
+        /// and forwards it to <see cref="GetApplicationDom(InvokeOptions)"/>.
+        /// </summary>
+        /// <param name="driverSession">The identifier of the active driver/browser session whose DOM should be retrieved.</param>
+        /// <param name="token">The authorization token required for the G4 engine to access and extract the DOM.</param>
+        /// <returns>A dictionary representing the application DOM as key–value pairs.The structure of the dictionary is defined by the G4 engine.</returns>
+        IDictionary<string, object> GetDocumentModel(string driverSession, string token);
+
+        /// <summary>
         /// Retrieves a collection of available tools, optionally filtered by type(s).
         /// </summary>
         /// <param name="types">Optional tool type filters. If not provided, all available tools are returned.</param>

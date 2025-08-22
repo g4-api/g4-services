@@ -1,5 +1,6 @@
 ﻿using G4.Models.Schema;
 using G4.Services.Domain.V4;
+using G4.Services.Domain.V4.Models.Schema;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -46,6 +47,43 @@ namespace G4.Services.Hub.Api.V4.Controllers
 
             // Return the result wrapped in the standard output schema.
             return Ok(new ToolOutputSchema
+            {
+                Result = result
+            });
+        }
+
+        [HttpPost("get_application_dom")]
+        #region *** OpenApi Documentation ***
+        [Consumes("application/json")]
+        [SwaggerOperation(
+            summary: "Retrieve the document model (DOM) of the current active session.",
+            description: "Uses the G4 engine to extract the DOM of the specified driver session. " +
+                "Authorization is performed using the provided token.",
+            OperationId = "GetDocumentModel",
+            Tags = ["AiTools"]
+        )]
+        [SwaggerResponse(
+            statusCode: StatusCodes.Status200OK,
+            description: "The document model (DOM) was retrieved successfully. " +
+                "The result contains a dictionary representation of the application DOM.",
+            Type = typeof(ToolOutputSchema),
+            ContentTypes = [MediaTypeNames.Application.Json]
+        )]
+        #endregion
+        public IActionResult GetDocumentModel(
+            [FromBody]
+            [SwaggerRequestBody(
+                description: "Input schema containing the driver session identifier and authorization token required to retrieve the DOM.",
+                Required = true
+            )]
+            GetDocumentModelInputSchema request)
+        {
+            // Call into the domain service to retrieve the document model (DOM) 
+            // for the specified driver session using the G4 engine.
+            var result = _domain.Tools.GetDocumentModel(request.DriverSession, request.Token);
+
+            // Return the result wrapped in an anonymous object for consistency with other API responses.
+            return Ok(new
             {
                 Result = result
             });
