@@ -14,9 +14,10 @@ namespace G4.Services.Domain.V4.Repositories
         /// <summary>
         /// Finds a specific tool by its unique name.
         /// </summary>
+        /// <param name="intent">The intent or purpose for which the tool is being sought.</param>
         /// <param name="toolName">The unique identifier or name of the tool to locate.</param>
         /// <returns>A <see cref="McpToolModel"/> representing the tool if found; otherwise, <c>null</c>.</returns>
-        McpToolModel FindTool(string toolName);
+        McpToolModel FindTool(string intent, string toolName);
 
         /// <summary>
         /// Retrieves a collection of available tools, optionally filtered by type(s).

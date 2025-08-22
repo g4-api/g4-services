@@ -1,7 +1,6 @@
 ﻿using G4.Extensions;
 using G4.Models;
 using G4.Services.Domain.V4;
-using G4.Services.Domain.V4.Models;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;

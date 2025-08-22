@@ -1,6 +1,7 @@
 ﻿using G4.Api;
 using G4.Cache;
 using G4.Models;
+using G4.Models.Schema;
 
 using System;
 using System.Collections.Generic;
@@ -17,7 +18,7 @@ namespace G4.Services.Domain.V4.Repositories
     /// <param name="clientFactory">Factory to create <see cref="HttpClient"/> instances with named configurations.</param>
     /// <param name="cache">The <see cref="CacheManager"/> instance containing plugin caches.</param>
     /// <param name="client">The <see cref="G4Client"/> used for any external service interactions.</param>
-    public class CopilotRepository(ToolsRepository tools) : ICopilotRepository
+    public class CopilotRepository(IToolsRepository tools) : ICopilotRepository
     {
         #region *** Constants    ***
         // The JSON-RPC protocol version used in all responses.
@@ -26,8 +27,51 @@ namespace G4.Services.Domain.V4.Repositories
 
         #region *** Methods      ***
         /// <inheritdoc />
-        public ToolsResponseModel FindTool(string toolName, object id)
+        public ToolOutputSchema FindTool(string toolName, object id)
         {
+            static ToolOutputSchema FindTool(
+                        IToolsRepository tools,
+                        string jsonrpcVersion,
+                        JsonElement arguments,
+                        object id)
+            {
+                // Extract the tool name from the arguments.
+                var toolName = arguments.TryGetProperty("tool_name", out var toolNameOut)
+                    ? toolNameOut.GetString()
+                    : default;
+
+                // Look up the tool by name in the internal registry.
+                var tool = tools.FindTool(intent: string.Empty, toolName);
+
+                // Initialize the response model with the provided ID and JSON-RPC version.
+                var response = new ToolOutputSchema
+                {
+                    Id = id,
+                    Jsonrpc = jsonrpcVersion
+                };
+
+                // If the tool is not found, set the error details in the response.
+                if (tool == null)
+                {
+                    response.Error = new()
+                    {
+                        // JSON-RPC error code for method not found.
+                        Code = -32601,
+
+                        // Provide a message indicating the tool is missing.
+                        Message = $"Tool '{toolName}' not found."
+                    };
+                }
+                // If the tool is found, populate the result with the tool's details.
+                else
+                {
+                    response.Result = tool;
+                }
+
+                // Return the response, either with the tool data or an error.
+                return response;
+            }
+
             // Guard against invalid input early to produce a clear failure mode.
             if (string.IsNullOrWhiteSpace(toolName))
             {
@@ -56,7 +100,7 @@ namespace G4.Services.Domain.V4.Repositories
         }
 
         /// <inheritdoc />
-        public ToolsResponseModel GetTools(object id, params string[] types) => GetTools(id, tools, types);
+        public ToolOutputSchema GetTools(object id, params string[] types) => GetTools(id, tools, types);
 
         /// <inheritdoc />
         public CopilotInitializeResponseModel Initialize(object id) => new()
@@ -90,7 +134,7 @@ namespace G4.Services.Domain.V4.Repositories
         };
 
         /// <inheritdoc />
-        public ToolsResponseModel InvokeTool(JsonElement parameters, object id)
+        public ToolOutputSchema InvokeTool(JsonElement parameters, object id)
         {
             // Match the tool by name and execute the corresponding handler.
             // Some tools are built-in system tools, others are dynamically loaded plugins.
@@ -128,53 +172,8 @@ namespace G4.Services.Domain.V4.Repositories
         /// <inheritdoc />
         public void SyncTools() => tools.SyncTools();
 
-        // Searches for a G4 tool in the internal tool registry by its name. 
-        // Returns a response containing the tool's details or an error message if the tool is not found.
-        private static ToolsResponseModel FindTool(
-            ToolsRepository tools,
-            string jsonrpcVersion,
-            JsonElement arguments,
-            object id)
-        {
-            // Extract the tool name from the arguments.
-            var toolName = arguments.TryGetProperty("tool_name", out var toolNameOut)
-                ? toolNameOut.GetString()
-                : default;
-
-            // Look up the tool by name in the internal registry.
-            var tool = tools.FindTool(toolName);
-
-            // Initialize the response model with the provided ID and JSON-RPC version.
-            var response = new ToolsResponseModel
-            {
-                Id = id,
-                Jsonrpc = jsonrpcVersion
-            };
-
-            // If the tool is not found, set the error details in the response.
-            if (tool == null)
-            {
-                response.Error = new()
-                {
-                    // JSON-RPC error code for method not found.
-                    Code = -32601,
-
-                    // Provide a message indicating the tool is missing.
-                    Message = $"Tool '{toolName}' not found."
-                };
-            }
-            // If the tool is found, populate the result with the tool's details.
-            else
-            {
-                response.Result = tool;
-            }
-
-            // Return the response, either with the tool data or an error.
-            return response;
-        }
-
         // Retrieves the list of all available G4 tools from the internal registry and returns them in a JSON-RPC response model.
-        private static ToolsResponseModel GetTools(object id, ToolsRepository tools, params string[] types)
+        private static ToolOutputSchema GetTools(object id, IToolsRepository tools, params string[] types)
         {
             // Filter the tools based on the specified types.
             var toolsCollection = tools.GetTools(types);
@@ -185,7 +184,7 @@ namespace G4.Services.Domain.V4.Repositories
                 // Include the request ID to correlate the response with the request.
                 Id = id,
                 Jsonrpc = JsonRpcVersion,
-                Result = new ToolsResponseModel.ResultModel()
+                Result = new ToolOutputSchema.ToolsResultSchema()
                 {
                     // Provide the list of tools contained in the registry as the result.
                     Tools = toolsCollection.Values

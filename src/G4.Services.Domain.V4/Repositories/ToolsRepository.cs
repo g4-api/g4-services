@@ -40,7 +40,7 @@ namespace G4.Services.Domain.V4.Repositories
 
         #region *** Methods      ***
         /// <inheritdoc />
-        public McpToolModel FindTool(string toolName)
+        public McpToolModel FindTool(string intent, string toolName)
         {
             // Look up the tool by name in the internal registry.
             return s_tools.GetValueOrDefault(toolName);
@@ -70,7 +70,8 @@ namespace G4.Services.Domain.V4.Repositories
             {
                 G4Client = _client,
                 HttpClient = _httpClient,
-                Sessions = s_sessions
+                Sessions = s_sessions,
+                Tools = s_tools
             };
 
             options.Rule = ConvertToRule(options.Arguments, s_tools);
@@ -84,7 +85,7 @@ namespace G4.Services.Domain.V4.Repositories
             return tool switch
             {
                 // Built-in: Finds and returns metadata about a tool by its name.
-                { Name: "find_tool" } => s_tools.GetValueOrDefault(options.ToolName),
+                { Name: "find_tool" } => FindTool(options),
 
                 // Built-in: Retrieves the current application's DOM (Document Object Model).
                 { Name: "get_application_dom" } => GetApplicationDom(options),
@@ -114,6 +115,22 @@ namespace G4.Services.Domain.V4.Repositories
 
             // Atomically replace the current tools collection with the rebuilt one.
             Interlocked.Exchange(ref s_tools, rebuilt);
+        }
+
+        // Finds and returns a tool model from the available tool collection
+        // using the tool name provided in the <see cref="InvokeOptions"/> arguments.
+        private static McpToolModel FindTool(InvokeOptions options)
+        {
+            // Extract the "tool_name" argument from the provided options.
+            // If no argument exists, default to an empty string.
+            var toolName = options.Arguments.GetOrDefault("tool_name", () => string.Empty);
+
+            // Check if the tool name is non-empty. If so, attempt to retrieve
+            // the corresponding tool from the Tools dictionary.
+            // If the tool name is empty or not found in the collection, return null.
+            return !string.IsNullOrEmpty(toolName)
+                ? options.Tools.GetValueOrDefault(toolName)
+                : null;
         }
 
         // Formats the tools available in the G4 framework, combining both
@@ -1390,6 +1407,8 @@ namespace G4.Services.Domain.V4.Repositories
             /// The general-purpose authentication token (if provided).
             /// </summary>
             public string Token { get; set; }
+
+            public ConcurrentDictionary<string, McpToolModel> Tools { get; set; }
 
             /// <summary>
             /// The name of the tool being invoked.

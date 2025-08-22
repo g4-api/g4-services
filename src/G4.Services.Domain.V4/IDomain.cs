@@ -87,6 +87,11 @@ namespace G4.Services.Domain.V4
         /// Gets or sets the OpenAI client used to interact with OpenAI services.
         /// </summary>
         IOpenAiClient OpenAi { get; set; }
+
+        /// <summary>
+        /// Gets or sets the repository for managing tool entities and operations.
+        /// </summary>
+        IToolsRepository Tools { get; set; }
         #endregion
 
         #region *** Methods      ***
@@ -134,7 +139,8 @@ namespace G4.Services.Domain.V4
             // Register open AI client as a singleton service implementing IOpenAiClient interface
             builder.Services.AddSingleton<IOpenAiClient, OpenAiClient>();
 
-            builder.Services.AddSingleton<ToolsRepository, ToolsRepository>();
+            // Register OpenAI tools repository as a singleton service implementing IToolsRepository interface
+            builder.Services.AddSingleton<IToolsRepository, ToolsRepository>();
 
             // Register the G4Domain as a transient service implementing IDomain
             builder.Services.AddTransient<IDomain, G4Domain>();

@@ -53,26 +53,30 @@ namespace G4.Services.Hub.Api.V4.Controllers
         }
 
         [HttpPost]
-        #region *** OpenAPI Documentation ***
+        #region *** OpenApi Documentation ***
         [SwaggerOperation(
             Summary = "Handle Copilot agent requests",
-            Description = "Processes JSON-RPC methods for initializing, listing tools, invoking tools, and handling notifications.")]
+            Description = "Processes JSON-RPC methods for initializing, listing tools, invoking tools, and handling notifications."
+        )]
         [SwaggerResponse(StatusCodes.Status200OK,
             description: "Initialization result with context (CopilotInitializeResponseModel), list of available tools (CopilotListResponseModel), or result of tool invocation (object)",
             type: typeof(object),
-            contentTypes: MediaTypeNames.Application.Json)]
+            contentTypes: MediaTypeNames.Application.Json
+        )]
         [SwaggerResponse(StatusCodes.Status202Accepted, description: "Initialization notification acknowledged.")]
         [SwaggerResponse(StatusCodes.Status400BadRequest,
-                         description: "Invalid or unsupported method.",
-                         type: typeof(object),
-                         contentTypes: MediaTypeNames.Application.Json)]
+            description: "Invalid or unsupported method.",
+            type: typeof(object),
+            contentTypes: MediaTypeNames.Application.Json
+        )]
         #endregion
         public IActionResult Post(
             [FromBody, Required]
             [SwaggerParameter(description:
                 "The Copilot request payload following the JSON-RPC structure. " +
                 "It contains the method to invoke (e.g., 'initialize', 'tools/list', 'tools/call'), " +
-                "the request identifier, and any required parameters for the method execution.")] CopilotRequestModel copilotRequest)
+                "the request identifier, and any required parameters for the method execution."
+            )] CopilotRequestModel copilotRequest)
         {
             // Dispatch based on the JSON-RPC method
             return copilotRequest.Method switch
@@ -95,15 +99,17 @@ namespace G4.Services.Hub.Api.V4.Controllers
         }
 
         [HttpGet, Route("sync")]
-        #region *** OpenAPI Documentation ***
+        #region *** OpenApi Documentation ***
         [SwaggerOperation(
             Summary = "Sync the list of tools available to the Copilot agent",
-            Description = "Refreshes the cached tool definitions so that the Copilot agent has the most up-to-date list of tools.")]
+            Description = "Refreshes the cached tool definitions so that the Copilot agent has the most up-to-date list of tools."
+        )]
         [SwaggerResponse(StatusCodes.Status204NoContent, description: "The tools list was successfully synced. No content is returned.")]
         [SwaggerResponse(StatusCodes.Status500InternalServerError,
             description: "An error occurred while syncing the tools list.",
             type: typeof(object),
-            contentTypes: MediaTypeNames.Application.Json)]
+            contentTypes: MediaTypeNames.Application.Json
+        )]
         #endregion
         public IActionResult SyncTools()
         {

@@ -27,7 +27,7 @@ namespace G4.Services.Domain.V4
         ILogger logger,
         IOpenAiClient openAi,
         IWebHostEnvironment environment,
-        ToolsRepository tools) : IDomain
+        IToolsRepository tools) : IDomain
     {
         #region *** Properties   ***
         /// <inheritdoc />
@@ -63,7 +63,8 @@ namespace G4.Services.Domain.V4
         /// <inheritdoc />
         public IOpenAiClient OpenAi { get; set; } = openAi;
 
-        public ToolsRepository Tools { get; set; } = tools;
+        /// <inheritdoc />
+        public IToolsRepository Tools { get; set; } = tools;
         #endregion
     }
 }

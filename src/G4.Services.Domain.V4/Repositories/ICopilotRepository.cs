@@ -1,5 +1,6 @@
 ﻿using G4.Converters;
 using G4.Models;
+using G4.Models.Schema;
 
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -99,8 +100,8 @@ namespace G4.Services.Domain.V4.Repositories
         /// </summary>
         /// <param name="toolName">The unique identifier of the tool to find.</param>
         /// <param name="id">The JSON-RPC request identifier to correlate response.</param>
-        /// <returns>A <see cref="ToolsResponseModel"/> containing the tool's schema,description, and any additional metadata.</returns>
-        ToolsResponseModel FindTool(string toolName, object id);
+        /// <returns>A <see cref="ToolResponseModel"/> containing the tool's schema,description, and any additional metadata.</returns>
+        ToolOutputSchema FindTool(string toolName, object id);
 
         /// <summary>
         /// Retrieves the full list of available tools that the Copilot agent can invoke.
@@ -108,8 +109,8 @@ namespace G4.Services.Domain.V4.Repositories
         /// <param name="id">The JSON-RPC request identifier to correlate response.</param>
         /// <param name="types">An optional list of tool type filters. If provided, only tools matching the specified types will be returned; otherwise, all available tools are included.
         /// </param>
-        /// <returns>A <see cref="ToolsResponseModel"/> wrapping the collection of tools.</returns>
-        ToolsResponseModel GetTools(object id, params string[] types);
+        /// <returns>A <see cref="ToolResponseModel"/> wrapping the collection of tools.</returns>
+        ToolOutputSchema GetTools(object id, params string[] types);
 
         /// <summary>
         /// Handles the "initialize" JSON-RPC method, returning protocol capabilities
@@ -125,8 +126,8 @@ namespace G4.Services.Domain.V4.Repositories
         /// </summary>
         /// <param name="parameters">The JSON parameters for invoking the tool, including tool name and arguments.</param>
         /// <param name="id">The request ID to correlate the response with the request.</param>
-        /// <returns>A <see cref="ToolsResponseModel"/> containing the result of the tool execution.</returns>
-        ToolsResponseModel InvokeTool(JsonElement parameters, object id);
+        /// <returns>A <see cref="ToolResponseModel"/> containing the result of the tool execution.</returns>
+        ToolOutputSchema InvokeTool(JsonElement parameters, object id);
 
         /// <summary>
         /// Sync the list of tools available to the Copilot agent by refreshing 
