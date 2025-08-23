@@ -2,6 +2,7 @@
 using G4.Cache;
 using G4.Extensions;
 using G4.Models;
+using G4.Models.Schema;
 
 using HtmlAgilityPack;
 
@@ -67,6 +68,17 @@ namespace G4.Services.Domain.V4.Repositories
         }
 
         /// <inheritdoc />
+        public object GetInstructions(string policy)
+        {
+            // If no policy name is provided, fall back to the "default" policy.
+            policy = string.IsNullOrEmpty(policy) ? "default" : policy;
+
+            // Delegate to the shadow instructions provider to retrieve
+            // the actual instruction set for the resolved policy name.
+            return GetShadowInstructions(policy);
+        }
+
+        /// <inheritdoc />
         public IDictionary<string, McpToolModel> GetTools(params string[] types)
         {
             // Filter the tools based on the specified types.
@@ -81,6 +93,7 @@ namespace G4.Services.Domain.V4.Repositories
             };
         }
 
+        // TODO: Get policy from the parameters and return different instructions based on policy.
         /// <inheritdoc />
         public object InvokeTool(JsonElement parameters)
         {
@@ -111,10 +124,10 @@ namespace G4.Services.Domain.V4.Repositories
                 { Name: "get_application_dom" } => GetApplicationDom(options),
 
                 // Built-in: Returns the instructions for the next tool call, including policies and defaults.
-                { Name: "get_instructions" } => GetInstructions(),
+                { Name: "get_instructions" } => GetInstructions(policy: string.Empty),
 
                 // Built-in: Retrieves the locator for a specific element on the page.
-                { Name: "get_locator" } => GetLocator(options),
+                { Name: "get_locator" } => ResolveLocator(options),
 
                 // Built-in: Lists all available tools.
                 { Name: "get_tools" } => s_tools.Values,
@@ -125,6 +138,29 @@ namespace G4.Services.Domain.V4.Repositories
                 // Default: Assumes this is a plugin-based tool and converts parameters into an executable rule.
                 _ => StartG4Rule(options)
             };
+        }
+
+        /// <inheritdoc />
+        public string ResolveLocator(ResolveLocatorInputSchema schema)
+        {
+            // Prepare the invocation options that contain all the required context
+            // for retrieving the DOM from the G4 engine.
+            var options = new InvokeOptions
+            {
+                DriverSession = schema.DriverSession, // Session identifier to fetch the DOM for
+                G4Client = _client,                   // Reference to the G4 engine client instance
+                HttpClient = _httpClient,             // HTTP client used for underlying communication
+                Intent = schema.Intent,               // The intent describing the element to locate
+                OpenaiApiKey = schema.OpenaiApiKey,   // OpenAI API key for authentication
+                OpenaiModel = schema.OpenaiModel,     // OpenAI model to use for locator resolution
+                OpenaiUri = schema.OpenaiUri,         // OpenAI API endpoint URI
+                Sessions = s_sessions,                // Active sessions collection used by the engine
+                Token = schema.Token,                 // Token authorizing the G4 engine to perform DOM retrieval
+                Tools = s_tools                       // Registered tools available in the current context
+            };
+
+            // Return the resolved locator using the provided intent and the retrieved DOM.
+            return ResolveLocator(options);
         }
 
         /// <inheritdoc />
@@ -247,11 +283,12 @@ namespace G4.Services.Domain.V4.Repositories
         }
 
         // Return a new object containing the instructions for the next tool call.
-        private static object GetInstructions()
+        private static object GetShadowInstructions(string policyName)
         {
             return new
             {
                 PolicyVersion = "2025.08.13.1",
+                Name = policyName,
                 CheckList = new[]
                 {
                     "Read G4_API_KEY from .env (ask if missing)",
@@ -293,72 +330,6 @@ namespace G4.Services.Domain.V4.Repositories
                 },
                 TtlSeconds = 60
             };
-        }
-
-        // Retrieves a locator for a specific element on the page by sending the DOM and intent
-        // to the OpenAI completion API.
-        private static string GetLocator(InvokeOptions options)
-        {
-            // Retrieve the current application DOM (document object model)
-            // for the given driver session.
-            var documentObject = GetApplicationDom(options);
-
-            // Deserialize the intent JSON into a dictionary for modification.
-            var intentObject = JsonSerializer.Deserialize<Dictionary<string, object>>(
-                json: options.Intent.GetRawText(),
-                options: ICopilotRepository.JsonOptions);
-
-            // Inject the DOM into the intent so the model has page context.
-            intentObject["dom"] = documentObject["value"];
-
-            // Serialize the updated intent object into JSON string for request payload.
-            var userContent = JsonSerializer.Serialize(
-                value: intentObject,
-                options: ICopilotRepository.JsonOptions);
-
-            // Build the request payload for OpenAI's ChatCompletion API.
-            var openAiRequest = new
-            {
-                Model = options.OpenaiModel,
-                Messages = new[]
-                {
-                    new
-                    {
-                        Role = "system",
-                        Content = InvokeOptions.SystemPrompts.Get(key: "LocatorsSystemPrompt.md", defaultValue: "")
-                    },
-                    new
-                    {
-                        Role = "user",
-                        Content = userContent
-                    }
-                }
-            };
-
-            // Serialize the OpenAI request payload into JSON.
-            var value = JsonSerializer.Serialize(
-                value: openAiRequest,
-                options: ICopilotRepository.JsonOptions);
-
-            // Construct the HTTP POST request to OpenAI API.
-            var request = new HttpRequestMessage
-            {
-                Method = HttpMethod.Post,
-                RequestUri = new Uri(options.OpenaiUri),
-                Content = new StringContent(value, Encoding.UTF8, MediaTypeNames.Application.Json)
-            };
-
-            // Add the Bearer token for OpenAI authentication.
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", options.OpenaiApiKey);
-
-            // Send the request synchronously and capture the response.
-            var response = options.HttpClient.Send(request);
-
-            // Ensure the response indicates success (throws if not 2xx).
-            response.EnsureSuccessStatusCode();
-
-            // Read and return the response body as a string (raw JSON).
-            return response.Content.ReadAsStringAsync().Result;
         }
 
         // Creates a new G4 automation model with the provided session details and rule parameters.
@@ -417,6 +388,77 @@ namespace G4.Services.Domain.V4.Repositories
                     }
                 ]
             };
+        }
+
+        // TODO: Decouple from GetApplicationDom and make it a standalone tool.
+        // Retrieves a locator for a specific element on the page by sending the DOM and intent
+        // to the OpenAI completion API.
+        private static string ResolveLocator(InvokeOptions options)
+        {
+            // Retrieve the current application DOM (document object model)
+            // for the given driver session.
+            var documentObject = GetApplicationDom(options);
+
+            // Deserialize the intent JSON into a dictionary for modification.
+            var inputObject = JsonSerializer.Deserialize<Dictionary<string, object>>(
+                json: options.Arguments.GetRawText(),
+                options: ICopilotRepository.JsonOptions);
+
+            // Inject the DOM into the intent so the model has page context.
+            var intentObject = new Dictionary<string, object>
+            {
+                ["intent"] = inputObject.GetValueOrDefault(key: "intent", defaultValue: string.Empty),
+                ["dom"] = documentObject.GetValueOrDefault("value", "<html></html>"),
+            };
+
+            // Serialize the updated intent object into JSON string for request payload.
+            var userContent = JsonSerializer.Serialize(
+                value: intentObject,
+                options: ICopilotRepository.JsonOptions);
+
+            // Build the request payload for OpenAI's ChatCompletion API.
+            var openAiRequest = new
+            {
+                Model = options.OpenaiModel,
+                Messages = new[]
+                {
+                    new
+                    {
+                        Role = "system",
+                        Content = InvokeOptions.SystemPrompts.Get(key: "LocatorsSystemPrompt.md", defaultValue: "")
+                    },
+                    new
+                    {
+                        Role = "user",
+                        Content = userContent
+                    }
+                }
+            };
+
+            // Serialize the OpenAI request payload into JSON.
+            var value = JsonSerializer.Serialize(
+                value: openAiRequest,
+                options: ICopilotRepository.JsonOptions);
+
+            // Construct the HTTP POST request to OpenAI API.
+            var request = new HttpRequestMessage
+            {
+                Method = HttpMethod.Post,
+                RequestUri = new Uri(options.OpenaiUri),
+                Content = new StringContent(value, Encoding.UTF8, MediaTypeNames.Application.Json)
+            };
+
+            // Add the Bearer token for OpenAI authentication.
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", options.OpenaiApiKey);
+
+            // Send the request synchronously and capture the response.
+            var response = options.HttpClient.Send(request);
+
+            // Ensure the response indicates success (throws if not 2xx).
+            response.EnsureSuccessStatusCode();
+
+            // Read and return the response body as a string (raw JSON).
+            return response.Content.ReadAsStringAsync().Result;
         }
 
         // Starts the automation rule execution by invoking the specified rule on the client, 
@@ -581,7 +623,7 @@ namespace G4.Services.Domain.V4.Repositories
             /// This tool provides detailed information about the tool, including its input/output schema, name, and description.
             /// </summary>
             [SystemTool(name: "find_tool")]
-            public static McpToolModel FindTool => new()
+            public static McpToolModel FindToolTool => new()
             {
                 /// <summary>
                 /// The unique name of the tool, used to identify it within the system.
@@ -592,7 +634,8 @@ namespace G4.Services.Domain.V4.Repositories
                 /// A brief description of what the tool does.
                 /// This tool retrieves the metadata and schema for a specific tool identified by its unique name.
                 /// </summary>
-                Description = "Retrieves the metadata and schema for a specific tool by its unique name.",
+                Description = "Retrieves the metadata and schema for a tool. " +
+                    "Uses the tool name if available, otherwise falls back to intent matching to find the best match.",
 
                 /// <summary>
                 /// Defines the input schema for the tool, including the types and descriptions of input parameters.
@@ -609,6 +652,11 @@ namespace G4.Services.Domain.V4.Repositories
                     /// </summary>
                     Properties = new(StringComparer.OrdinalIgnoreCase)
                     {
+                        ["intent"] = new()
+                        {
+                            Type = ["string"],
+                            Description = "The intent or purpose for which the tool is being sought."
+                        },
                         ["tool_name"] = new()
                         {
                             Type = ["string"],
@@ -969,6 +1017,11 @@ namespace G4.Services.Domain.V4.Repositories
                             Type = ["string"],
                             Description = "OpenAI authentication token for verifying and authorizing the locator retrieval request."
                         },
+                        ["openai_model"] = new()
+                        {
+                            Type = ["string"],
+                            Description = "Specifies the OpenAI model identifier (e.g., 'gpt-4o', 'gpt-4.1-mini')."
+                        },
                         ["openai_uri"] = new()
                         {
                             Type = ["string"],
@@ -980,7 +1033,7 @@ namespace G4.Services.Domain.V4.Repositories
                             Description = "G4 authentication token for verifying and authorizing the locator retrieval request."
                         }
                     },
-                    Required = ["driver_session", "openai_token", "openai_uri", "intent", "token"]
+                    Required = ["driver_session", "openai_model", "openai_token", "openai_uri", "intent", "token"]
                 },
 
                 /// <summary>
@@ -1395,11 +1448,21 @@ namespace G4.Services.Domain.V4.Repositories
             /// </summary>
             public string DriverSession { get; set; }
 
+            /// <summary>
+            /// A reference to the G4 client instance used to interact with the engine.
+            /// </summary>
             public G4Client G4Client { get; set; }
 
+            /// <summary>
+            /// The HTTP client used for making network requests during tool invocation.
+            /// </summary>
             public HttpClient HttpClient { get; set; }
 
-            public JsonElement Intent { get; set; }
+            /// <summary>
+            /// The intent that describes the purpose of the invocation,
+            /// which can be used for semantic or vector-based lookup of tools.
+            /// </summary>
+            public string Intent { get; set; }
 
             /// <summary>
             /// The OpenAI API key used for authentication.
@@ -1421,6 +1484,9 @@ namespace G4.Services.Domain.V4.Repositories
             /// </summary>
             public G4RuleModelBase Rule { get; set; }
 
+            /// <summary>
+            /// A thread-safe collection of active sessions maintained by the engine.
+            /// </summary>
             public ConcurrentDictionary<object, object> Sessions { get; set; }
 
             /// <summary>
@@ -1428,6 +1494,9 @@ namespace G4.Services.Domain.V4.Repositories
             /// </summary>
             public string Token { get; set; }
 
+            /// <summary>
+            /// The collection of registered tools available in the current context.
+            /// </summary>
             public ConcurrentDictionary<string, McpToolModel> Tools { get; set; }
 
             /// <summary>

@@ -19,12 +19,12 @@ namespace G4.Services.Domain.V4.Models.Schema
             "session's DOM should be retrieved.")]
         public string DriverSession { get; set; }
 
-        ///// <summary>
-        ///// The unique chat identifier associated with this request.
-        ///// Used to correlate tool lookups with a specific chat session.
-        ///// </summary>
-        //[SwaggerSchema(description: "The unique chat identifier used to correlate the request with a specific session.")]
-        //public object Id { get; set; }
+        /// <summary>
+        /// The unique chat identifier associated with this request.
+        /// Used to correlate tool lookups with a specific chat session.
+        /// </summary>
+        [SwaggerSchema(description: "The unique chat identifier used to correlate the request with a specific session.")]
+        public object Id { get; set; }
 
         /// <summary>
         /// Gets or sets the token required to authorize the request
