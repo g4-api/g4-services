@@ -183,17 +183,95 @@ namespace G4.Services.Hub.Api.V4.Controllers
             [FromBody]
             [SwaggerRequestBody(
                 description: "The input schema containing an optional intent (purpose) and/or tool types to filter the returned tools.",
-                Required = true
+                Required = false
             )]
             GetToolsInputSchema schema)
         {
+            // Normalize the input schema to ensure it's not null.
+            schema ??= new GetToolsInputSchema();
+
             // Retrieve the collection of available tools, applying any provided filters.
             var tools = _domain.Tools.GetTools(schema.Intent, schema.Types);
 
             // Format the result as a collection of tool names and descriptions.
-            var result = tools.Values.Select(i => i.Metadata);
+            var result = (tools
+                .Values
+                .Where(i => i.Type != "system-tool")
+                .Select(i => i.Metadata))
+                .Concat(tools.Values.Where(i => i.Type == "system-tool").Cast<object>());
 
             // Return the tools wrapped in a consistent response schema.
+            return Ok(new ToolOutputSchema
+            {
+                Result = result
+            });
+        }
+
+        [HttpPost("start_g4_session")]
+        #region *** OpenApi Documentation ***
+        [Consumes("application/json")]
+        [SwaggerOperation(
+            summary: "Start a new G4 driver session.",
+            description: "Creates a new driver session using the G4 engine. Requires driver name, driver binaries, and an authorization token. " +
+                "Optional session capabilities can be provided via AlwaysMatch or FirstMatch.",
+            OperationId = "StartSession",
+            Tags = ["AiTools"]
+        )]
+        [SwaggerResponse(
+            statusCode: StatusCodes.Status200OK,
+            description: "The driver session was started successfully. The response contains details of the newly created session.",
+            Type = typeof(ToolOutputSchema),
+            ContentTypes = [MediaTypeNames.Application.Json]
+        )]
+        #endregion
+        public IActionResult StartSession(
+            [FromBody]
+            [SwaggerRequestBody(
+                description: "The input schema containing driver session startup parameters. " +
+                    "Driver, DriverBinaries, and Token are required; AlwaysMatch and FirstMatch are optional.",
+                Required = true
+            )]
+            StartSessionInputSchema schema)
+        {
+            // Call into the domain service to start a new session using the provided schema.
+            var result = _domain.Tools.StartSession(schema);
+
+            // Return the session details wrapped in a consistent response schema.
+            return Ok(new ToolOutputSchema
+            {
+                Result = result
+            });
+        }
+
+        [HttpPost("start_g4_rule")]
+        #region *** OpenApi Documentation ***
+        [Consumes("application/json")]
+        [SwaggerOperation(
+            summary: "Start execution of a rule in an active driver session.",
+            description: "Uses the G4 engine to execute a rule within the specified driver session. " +
+                "Requires the session identifier, a rule definition, and an authorization token.",
+            OperationId = "StartRule",
+            Tags = ["AiTools"]
+        )]
+        [SwaggerResponse(
+            statusCode: StatusCodes.Status200OK,
+            description: "The rule was executed successfully. The response contains the result of the rule execution.",
+            Type = typeof(ToolOutputSchema),
+            ContentTypes = [MediaTypeNames.Application.Json]
+        )]
+        #endregion
+        public IActionResult StartRule(
+            [FromBody]
+            [SwaggerRequestBody(
+                description: "The input schema containing the driver session identifier, rule definition, and authorization token.",
+                Required = true
+            )]
+            StartRuleInputSchema schema)
+        {
+            // Call into the domain service to execute the rule within the specified session.
+            var result = _domain.Tools.StartRule(schema);
+
+            // Return the result wrapped in a consistent response schema.
             return Ok(new ToolOutputSchema
             {
                 Result = result

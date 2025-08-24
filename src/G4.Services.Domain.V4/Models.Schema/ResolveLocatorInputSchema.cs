@@ -1,5 +1,7 @@
 ﻿using Swashbuckle.AspNetCore.Annotations;
 
+using System.Text.Json.Serialization;
+
 namespace G4.Models.Schema
 {
     /// <summary>
@@ -14,6 +16,7 @@ namespace G4.Models.Schema
         /// Gets or sets the identifier of the active driver/browser session.
         /// This tells the G4 engine which session’s DOM should be targeted.
         /// </summary>
+        [JsonPropertyName("driver_session")]
         [SwaggerSchema(description: "The driver session identifier specifying which active session’s " +
             "DOM should be targeted.")]
         public string DriverSession { get; set; }
@@ -38,6 +41,7 @@ namespace G4.Models.Schema
         /// <summary>
         /// The OpenAI API key used for authentication. Optional.
         /// </summary>
+        [JsonPropertyName("openai_api_key")]
         [SwaggerSchema(description: "Optional: OpenAI API key for authentication when " +
             "using OpenAI-backed resolution.", Nullable = true)]
         public string OpenaiApiKey { get; set; }
@@ -45,6 +49,7 @@ namespace G4.Models.Schema
         /// <summary>
         /// The OpenAI model identifier (e.g., gpt-4o, gpt-4.1-mini). Optional.
         /// </summary>
+        [JsonPropertyName("openai_model")]
         [SwaggerSchema(description: "Optional: OpenAI model identifier " +
             "(e.g., 'gpt-4o', 'gpt-4.1-mini').", Nullable = true)]
         public string OpenaiModel { get; set; }
@@ -52,6 +57,7 @@ namespace G4.Models.Schema
         /// <summary>
         /// The OpenAI API base URI (default or custom endpoint). Optional.
         /// </summary>
+        [JsonPropertyName("openai_uri")]
         [SwaggerSchema(description: "Optional: OpenAI API base URI (use default or a " +
             "custom endpoint).", Nullable = true)]
         public string OpenaiUri { get; set; }

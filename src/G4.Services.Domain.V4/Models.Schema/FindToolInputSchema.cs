@@ -1,5 +1,7 @@
 ﻿using Swashbuckle.AspNetCore.Annotations;
 
+using System.Text.Json.Serialization;
+
 namespace G4.Models.Schema
 {
     /// <summary>
@@ -30,6 +32,7 @@ namespace G4.Models.Schema
         /// If not provided or inaccurate, the <see cref="Intent"/> can be used as a fallback
         /// to approximate the best matching tool.
         /// </summary>
+        [JsonPropertyName("tool_name")]
         [SwaggerSchema(description: "The exact or partial name of the tool to locate. " +
             "If missing or inaccurate, the intent will be used instead.")]
         public string ToolName { get; set; }

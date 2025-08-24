@@ -1,5 +1,7 @@
 ﻿using Swashbuckle.AspNetCore.Annotations;
 
+using System.Text.Json.Serialization;
+
 namespace G4.Services.Domain.V4.Models.Schema
 {
     /// <summary>
@@ -15,6 +17,7 @@ namespace G4.Services.Domain.V4.Models.Schema
         /// Gets or sets the driver session identifier.
         /// Used to specify which active session's DOM should be retrieved.
         /// </summary>
+        [JsonPropertyName("driver_session")]
         [SwaggerSchema(description: "The driver session identifier that indicates which active " +
             "session's DOM should be retrieved.")]
         public string DriverSession { get; set; }

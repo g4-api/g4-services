@@ -8,7 +8,7 @@ namespace G4.Models.Schema
     /// and associates the request with a chat/session identifier.
     /// </summary>
     [SwaggerSchema(description: "Schema for listing available tools, optionally filtered by " +
-        "intent (purpose) and/or type(s).")]
+        "intent (purpose) and/or type(s).", Nullable = true)]
     public class GetToolsInputSchema
     {
         /// <summary>
@@ -16,7 +16,7 @@ namespace G4.Models.Schema
         /// Used to correlate tool lookups with a specific chat session.
         /// </summary>
         [SwaggerSchema(description: "The unique chat identifier used to correlate the request " +
-            "with a specific session.")]
+            "with a specific session.", Nullable = true)]
         public object Id { get; set; }
 
         /// <summary>
@@ -26,14 +26,14 @@ namespace G4.Models.Schema
         /// If null or empty, no intent-based filtering is applied.
         /// </summary>
         [SwaggerSchema(description: "Optional: purpose/capability to filter or rank tools by " +
-            "(semantic/vector similarity may be used). If omitted, no intent filter is applied.")]
+            "(semantic/vector similarity may be used). If omitted, no intent filter is applied.", Nullable = true)]
         public string Intent { get; set; }
 
         /// <summary>
         /// Optional list of tool types to include. If omitted, all tool types are included.
         /// </summary>
         [SwaggerSchema(description: "Optional: list of tool types to include. If omitted, tools " +
-            "of all types are returned.")]
+            "of all types are returned.", Nullable = true)]
         public string[] Types { get; set; }
     }
 }

@@ -3,6 +3,8 @@ using G4.Cache;
 using G4.Extensions;
 using G4.Models;
 using G4.Models.Schema;
+using G4.Services.Domain.V4.Models.Schema;
+using G4.Settings;
 
 using HtmlAgilityPack;
 
@@ -32,9 +34,6 @@ namespace G4.Services.Domain.V4.Repositories
         private static ConcurrentDictionary<string, McpToolModel> s_tools =
             FormatTools(cache: CacheManager.Instance);
 
-        private readonly CacheManager _cache = cache;
-        private readonly G4Client _client = client;
-
         // HTTP client configured for OpenAI API interactions, using a named configuration.
         private readonly HttpClient _httpClient = clientFactory.CreateClient(name: "openai");
         #endregion
@@ -56,7 +55,7 @@ namespace G4.Services.Domain.V4.Repositories
             {
                 DriverSession = driverSession, // Session identifier to fetch the DOM for
                 Token = token,                 // Token authorizing the G4 engine to perform DOM retrieval
-                G4Client = _client,            // Reference to the G4 engine client instance
+                G4Client = client,             // Reference to the G4 engine client instance
                 HttpClient = _httpClient,      // HTTP client used for underlying communication
                 Sessions = s_sessions,         // Active sessions collection used by the engine
                 Tools = s_tools                // Registered tools available in the current context
@@ -106,7 +105,7 @@ namespace G4.Services.Domain.V4.Repositories
             // This contains tool-specific input such as driver settings, session IDs, etc.
             var options = new InvokeOptions(parameters)
             {
-                G4Client = _client,
+                G4Client = client,
                 HttpClient = _httpClient,
                 Sessions = s_sessions,
                 Tools = s_tools
@@ -157,7 +156,7 @@ namespace G4.Services.Domain.V4.Repositories
             var options = new InvokeOptions
             {
                 DriverSession = schema.DriverSession, // Session identifier to fetch the DOM for
-                G4Client = _client,                   // Reference to the G4 engine client instance
+                G4Client = client,                    // Reference to the G4 engine client instance
                 HttpClient = _httpClient,             // HTTP client used for underlying communication
                 Intent = schema.Intent,               // The intent describing the element to locate
                 OpenaiApiKey = schema.OpenaiApiKey,   // OpenAI API key for authentication
@@ -173,10 +172,57 @@ namespace G4.Services.Domain.V4.Repositories
         }
 
         /// <inheritdoc />
+        public object StartSession(StartSessionInputSchema schema)
+        {
+            // Build the invocation options using the required driver information
+            // provided in the input schema.
+            var options = new InvokeOptions
+            {
+                Driver = schema.Driver,
+                DriverBinaries = schema.DriverBinaries,
+                G4Client = client,
+                HttpClient = _httpClient,
+                Sessions = s_sessions,
+                Token = schema.Token,
+                Tools = s_tools
+            };
+
+            // Delegate session creation to the G4 engine.
+            return StartG4Session(options);
+        }
+
+        public object StartRule(StartRuleInputSchema schema)
+        {
+            var arguments = new
+            {
+                schema.Rule
+            };
+
+            var json = JsonSerializer.Serialize(value: arguments, AppSettings.OpenAiJsonOptions);
+            var jsonElement = JsonDocument.Parse(json).RootElement;
+
+            // Build the invocation options using the required driver information
+            // provided in the input schema.
+            var options = new InvokeOptions
+            {
+                DriverSession = schema.DriverSession,
+                G4Client = client,
+                HttpClient = _httpClient,
+                Rule = ConvertToRule(arguments: jsonElement, s_tools),
+                Sessions = s_sessions,
+                Token = schema.Token,
+                Tools = s_tools
+            };
+
+            // Delegate session creation to the G4 engine.
+            return StartG4Rule(options);
+        }
+
+        /// <inheritdoc />
         public void SyncTools()
         {
             // Rebuild the tools collection from the cache manager.
-            var rebuilt = new ConcurrentDictionary<string, McpToolModel>(FormatTools(_cache));
+            var rebuilt = new ConcurrentDictionary<string, McpToolModel>(FormatTools(cache));
 
             // Atomically replace the current tools collection with the rebuilt one.
             Interlocked.Exchange(ref s_tools, rebuilt);
@@ -1392,7 +1438,25 @@ namespace G4.Services.Domain.V4.Repositories
                         ["rule"] = new()
                         {
                             Type = ["object"],
-                            Description = "The G4 rule to be executed, including its parameters and configuration."
+                            Description = "The G4 rule to be executed, including its parameters and configuration.",
+                            Properties = new(StringComparer.OrdinalIgnoreCase)
+                            {
+                                ["tool_name"] = new()
+                                {
+                                    Type = ["string"],
+                                    Description = "The unique identifier of the tool (plugin) that defines the rule to be executed."
+                                },
+                                ["parameters"] = new()
+                                {
+                                    Type = ["object"],
+                                    Description = "The parameters to be passed to the rule during execution."
+                                },
+                                ["properties"] = new()
+                                {
+                                    Type = ["object"],
+                                    Description = "Additional properties and configuration for the rule."
+                                }
+                            }
                         }
                     },
 

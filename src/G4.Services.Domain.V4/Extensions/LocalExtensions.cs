@@ -157,7 +157,8 @@ namespace G4.Extensions
                 Metadata = new McpToolModel.ToolMetadataModel
                 {
                     Description= string.Join(Environment.NewLine, manifest.Summary),
-                    Name = name
+                    Name = name,
+                    Type = "g4-tool"
                 },
                 Type = "g4-tool",
                 InputSchema = new McpToolModel.ParameterSchemaModel

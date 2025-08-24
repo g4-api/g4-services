@@ -1,5 +1,6 @@
 ﻿using G4.Models;
 using G4.Models.Schema;
+using G4.Services.Domain.V4.Models.Schema;
 
 using System.Collections.Generic;
 using System.Text.Json;
@@ -61,6 +62,24 @@ namespace G4.Services.Domain.V4.Repositories
         /// <param name="schema">The input schema containing the driver session identifier, intent describing the target element or action, and the authorization token required for the G4 engine to process the request.</param>
         /// <returns>A string representing the resolved locator expression that can be used to query the DOM. Returns <c>null</c> or an empty string if no locator could be resolved.</returns>
         string ResolveLocator(ResolveLocatorInputSchema schema);
+
+        /// <summary>
+        /// Starts execution of a rule within an active G4 driver session.  
+        /// The rule definition is provided in the input schema and executed 
+        /// against the specified driver session.
+        /// </summary>
+        /// <param name="schema">The input schema that includes the driver session identifier, the rule definition to execute, and the authorization token required by the G4 engine.</param>
+        /// <returns>An object representing the outcome of the rule execution. The exact structure of the result is defined by the G4 engine.</returns>
+        object StartRule(StartRuleInputSchema schema);
+
+        /// <summary>
+        /// Starts a new driver session using the provided input schema.  
+        /// The session is created through the G4 engine using the driver configuration
+        /// and authorization token specified in the schema.
+        /// </summary>
+        /// <param name="schema">The input schema containing session startup parameters, including driver type, driver binaries, and authorization token.</param>
+        /// <returns>An object representing the newly created session. The exact structure is defined by the G4 engine.</returns>
+        object StartSession(StartSessionInputSchema schema);
 
         /// <summary>
         /// Synchronizes the tool repository with its source (e.g., database, file system, or registry),

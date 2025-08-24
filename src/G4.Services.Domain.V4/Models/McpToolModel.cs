@@ -169,6 +169,12 @@ namespace G4.Models
             public string Name { get; set; }
 
             /// <summary>
+            /// Gets or sets the type of tool. Default is "system-tool", indicating a system-defined tool.
+            /// </summary>
+            [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+            public string Type { get; set; } = "system-tool";
+
+            /// <summary>
             /// Gets or sets the URL associated with the tool,
             /// typically pointing to documentation, a repository, or a homepage.
             /// </summary>
