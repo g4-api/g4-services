@@ -104,13 +104,14 @@ namespace G4.Services.Domain.V4.Repositories
         ToolOutputSchema FindTool(string toolName, object id);
 
         /// <summary>
-        /// Retrieves the full list of available tools that the Copilot agent can invoke.
+        /// Retrieves a collection of available tools, optionally filtered by intent and/or type(s).  
+        /// If neither filter is applied, all tools are returned.
         /// </summary>
         /// <param name="id">The JSON-RPC request identifier to correlate response.</param>
-        /// <param name="types">An optional list of tool type filters. If provided, only tools matching the specified types will be returned; otherwise, all available tools are included.
-        /// </param>
-        /// <returns>A <see cref="ToolResponseModel"/> wrapping the collection of tools.</returns>
-        ToolOutputSchema GetTools(object id, params string[] types);
+        /// <param name="intent">Optional intent filter. If provided, only tools relevant to the specified intent are returned. If <c>null</c> or empty, no intent-based filtering is applied.</param>
+        /// <param name="types">Optional tool type filters. If provided, only tools matching one of the given types are returned. If none are provided, no type-based filtering is applied.</param>
+        /// <returns>A dictionary mapping tool names (<see cref="string"/>) to their corresponding <see cref="McpToolModel"/> definitions. If both filters are omitted, all available tools are returned.</returns>
+        ToolOutputSchema GetTools(object id, string intent, params string[] types);
 
         /// <summary>
         /// Handles the "initialize" JSON-RPC method, returning protocol capabilities

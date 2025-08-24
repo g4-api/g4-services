@@ -70,8 +70,7 @@ namespace G4.Extensions
         /// extracting its name, description, and input schema (parameters & properties).
         /// </summary>
         /// <param name="manifest">The plugin manifest containing metadata, parameters, and properties.</param>
-        /// <returns>A fully populated <see cref="McpToolModel"/> representing the same plugin, ready for JSON‐RPC schema generation.
-        /// </returns>
+        /// <returns>A fully populated <see cref="McpToolModel"/> representing the same plugin, ready for JSON‐RPC schema generation.</returns>
         public static McpToolModel ConvertToTool(this IG4PluginManifest manifest)
         {
             // Converts PluginParameterModel to McpToolModel.ScehmaPropertyModel for input schema
@@ -155,6 +154,11 @@ namespace G4.Extensions
                 Description = description,
                 G4Name = manifest.Key,
                 Name = name,
+                Metadata = new McpToolModel.ToolMetadataModel
+                {
+                    Description= string.Join(Environment.NewLine, manifest.Summary),
+                    Name = name
+                },
                 Type = "g4-tool",
                 InputSchema = new McpToolModel.ParameterSchemaModel
                 {

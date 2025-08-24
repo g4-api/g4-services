@@ -37,6 +37,12 @@ namespace G4.Models
         public string Name { get; set; }
 
         /// <summary>
+        /// Gets or sets additional metadata about the tool.
+        /// </summary>
+        [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+        public ToolMetadataModel Metadata { get; set; }
+
+        /// <summary>
         /// Gets or sets the type of tool. Default is "system-tool", indicating a system-defined tool.
         /// </summary>
         [JsonIgnore, Newtonsoft.Json.JsonIgnore]
@@ -132,6 +138,46 @@ namespace G4.Models
             /// Gets or sets the JSON schema types (e.g., "string", "integer") allowed for this property.
             /// </summary>
             public string[] Type { get; set; }
+        }
+
+        /// <summary>
+        /// Represents metadata information about a tool, including author, version,
+        /// licensing, and reference details.
+        /// </summary>
+        public class ToolMetadataModel
+        {
+            /// <summary>
+            /// Gets or sets the author of the tool (person, organization, or team).
+            /// </summary>
+            public string Author { get; set; }
+
+            /// <summary>
+            /// Gets or sets a human-readable description of the tool,
+            /// summarizing its purpose or functionality.
+            /// </summary>
+            public string Description { get; set; }
+
+            /// <summary>
+            /// Gets or sets the license under which the tool is distributed
+            /// (e.g., MIT, Apache-2.0, proprietary).
+            /// </summary>
+            public string License { get; set; }
+
+            /// <summary>
+            /// Gets or sets the name of the tool.
+            /// </summary>
+            public string Name { get; set; }
+
+            /// <summary>
+            /// Gets or sets the URL associated with the tool,
+            /// typically pointing to documentation, a repository, or a homepage.
+            /// </summary>
+            public string Url { get; set; }
+
+            /// <summary>
+            /// Gets or sets the version of the tool (e.g., "1.0.0").
+            /// </summary>
+            public string Version { get; set; }
         }
         #endregion
     }

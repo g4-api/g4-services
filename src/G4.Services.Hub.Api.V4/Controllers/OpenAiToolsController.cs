@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 
 using Swashbuckle.AspNetCore.Annotations;
 
+using System.Linq;
 using System.Net.Mime;
 
 namespace G4.Services.Hub.Api.V4.Controllers
@@ -83,13 +84,13 @@ namespace G4.Services.Hub.Api.V4.Controllers
             var result = _domain.Tools.GetDocumentModel(schema.DriverSession, schema.Token);
 
             // Return the result wrapped in an anonymous object for consistency with other API responses.
-            return Ok(new
+            return Ok(new ToolOutputSchema
             {
                 Result = result
             });
         }
 
-        [HttpGet]
+        [HttpGet("get_instructions")]
         #region *** OpenApi Documentation ***
         [SwaggerOperation(
             summary: "Retrieve instructions for a given policy.",
@@ -117,7 +118,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
             var result = _domain.Tools.GetInstructions(policy);
 
             // Return the instructions wrapped in a consistent response object.
-            return Ok(new
+            return Ok(new ToolOutputSchema
             {
                 Result = result
             });
@@ -155,7 +156,45 @@ namespace G4.Services.Hub.Api.V4.Controllers
             var result = _domain.Tools.ResolveLocator(schema);
 
             // Return the result wrapped in a consistent response object.
-            return Ok(new
+            return Ok(new ToolOutputSchema
+            {
+                Result = result
+            });
+        }
+
+        [HttpPost("get_tools")]
+        #region *** OpenApi Documentation ***
+        [Consumes("application/json")]
+        [SwaggerOperation(
+            summary: "Retrieve a collection of available tools.",
+            description: "Returns a dictionary of available tools, optionally filtered by intent (purpose) and/or tool types. " +
+                         "If no filters are provided, all tools are returned.",
+            OperationId = "GetTools",
+            Tags = ["AiTools"]
+        )]
+        [SwaggerResponse(
+            statusCode: StatusCodes.Status200OK,
+            description: "The available tools were retrieved successfully. The response contains a dictionary mapping tool names to their definitions.",
+            Type = typeof(ToolOutputSchema),
+            ContentTypes = [MediaTypeNames.Application.Json]
+        )]
+        #endregion
+        public IActionResult GetTools(
+            [FromBody]
+            [SwaggerRequestBody(
+                description: "The input schema containing an optional intent (purpose) and/or tool types to filter the returned tools.",
+                Required = true
+            )]
+            GetToolsInputSchema schema)
+        {
+            // Retrieve the collection of available tools, applying any provided filters.
+            var tools = _domain.Tools.GetTools(schema.Intent, schema.Types);
+
+            // Format the result as a collection of tool names and descriptions.
+            var result = tools.Values.Select(i => i.Metadata);
+
+            // Return the tools wrapped in a consistent response schema.
+            return Ok(new ToolOutputSchema
             {
                 Result = result
             });

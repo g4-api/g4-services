@@ -100,7 +100,24 @@ namespace G4.Services.Domain.V4.Repositories
         }
 
         /// <inheritdoc />
-        public ToolOutputSchema GetTools(object id, params string[] types) => GetTools(id, tools, types);
+        public ToolOutputSchema GetTools(object id, string intent, params string[] types)
+        {
+            // Filter the tools based on the specified types.
+            var toolsCollection = tools.GetTools(intent, types);
+
+            // Return a new CopilotToolsResponseModel with the list of tools from the registry.
+            return new()
+            {
+                // Include the request ID to correlate the response with the request.
+                Id = id,
+                Jsonrpc = JsonRpcVersion,
+                Result = new ToolOutputSchema.ToolsResultSchema()
+                {
+                    // Provide the list of tools contained in the registry as the result.
+                    Tools = toolsCollection.Values
+                }
+            };
+        }
 
         /// <inheritdoc />
         public CopilotInitializeResponseModel Initialize(object id) => new()
@@ -171,26 +188,6 @@ namespace G4.Services.Domain.V4.Repositories
         // TODO: Migrate to tools repository.
         /// <inheritdoc />
         public void SyncTools() => tools.SyncTools();
-
-        // Retrieves the list of all available G4 tools from the internal registry and returns them in a JSON-RPC response model.
-        private static ToolOutputSchema GetTools(object id, IToolsRepository tools, params string[] types)
-        {
-            // Filter the tools based on the specified types.
-            var toolsCollection = tools.GetTools(types);
-
-            // Return a new CopilotToolsResponseModel with the list of tools from the registry.
-            return new()
-            {
-                // Include the request ID to correlate the response with the request.
-                Id = id,
-                Jsonrpc = JsonRpcVersion,
-                Result = new ToolOutputSchema.ToolsResultSchema()
-                {
-                    // Provide the list of tools contained in the registry as the result.
-                    Tools = toolsCollection.Values
-                }
-            };
-        }
         #endregion
     }
 }

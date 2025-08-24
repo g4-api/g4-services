@@ -39,11 +39,13 @@ namespace G4.Services.Domain.V4.Repositories
         object GetInstructions(string policy);
 
         /// <summary>
-        /// Retrieves a collection of available tools, optionally filtered by type(s).
+        /// Retrieves a collection of available tools, optionally filtered by intent and/or type(s).  
+        /// If neither filter is applied, all tools are returned.
         /// </summary>
-        /// <param name="types">Optional tool type filters. If not provided, all available tools are returned.</param>
-        /// <returns>A dictionary mapping tool names (<see cref="string"/>) to their corresponding <see cref="McpToolModel"/> definitions.</returns>
-        IDictionary<string, McpToolModel> GetTools(params string[] types);
+        /// <param name="intent">Optional intent filter. If provided, only tools relevant to the specified intent are returned. If <c>null</c> or empty, no intent-based filtering is applied.</param>
+        /// <param name="types">Optional tool type filters. If provided, only tools matching one of the given types are returned. If none are provided, no type-based filtering is applied.</param>
+        /// <returns>A dictionary mapping tool names (<see cref="string"/>) to their corresponding <see cref="McpToolModel"/> definitions. If both filters are omitted, all available tools are returned.</returns>
+        IDictionary<string, McpToolModel> GetTools(string intent, params string[] types);
 
         /// <summary>
         /// Invokes a tool dynamically using its input parameters.

@@ -88,7 +88,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
                 "notifications/initialized" => Accepted(),
                 "tools/list" => NewContentResult(
                     StatusCodes.Status200OK,
-                    value: _domain.Copilot.GetTools(copilotRequest.Id, "system-tool")),
+                    value: _domain.Copilot.GetTools(copilotRequest.Id, intent: default, "system-tool")),
                 "tools/call" => NewContentResult(
                     StatusCodes.Status200OK,
                     value: _domain.Copilot.InvokeTool(copilotRequest.Parameters, copilotRequest.Id)),
