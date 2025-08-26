@@ -18,8 +18,10 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Mime;
 using System.Reflection;
+using System.Reflection.Metadata.Ecma335;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading;
 
 namespace G4.Services.Domain.V4.Repositories
@@ -27,6 +29,8 @@ namespace G4.Services.Domain.V4.Repositories
     public class ToolsRepository(IHttpClientFactory clientFactory, CacheManager cache, G4Client client) : IToolsRepository
     {
         #region *** Fields       ***
+        private static readonly ConcurrentDictionary<string, ConcurrentBag<(long Timestamp, G4RuleModelBase Rule)>> s_buffer = [];
+
         // Tracks active browser or agent sessions by session ID.
         private static readonly ConcurrentDictionary<object, object> s_sessions = [];
 
@@ -105,12 +109,14 @@ namespace G4.Services.Domain.V4.Repositories
             // This contains tool-specific input such as driver settings, session IDs, etc.
             var options = new InvokeOptions(parameters)
             {
+                Buffer = s_buffer,
                 G4Client = client,
                 HttpClient = _httpClient,
                 Sessions = s_sessions,
                 Tools = s_tools
             };
 
+            // Extract and convert the "arguments" to an executable rule format.
             options.Rule = ConvertToRule(options.Arguments, s_tools);
 
             // Look up the tool definition in the registered tools dictionary.
@@ -121,6 +127,9 @@ namespace G4.Services.Domain.V4.Repositories
             // Some tools are built-in system tools, others are dynamically loaded plugins.
             return tool switch
             {
+                // Built-in: Converts input parameters into executable rules.
+                { Name: "convert_to_rule" } => options.Rule,
+
                 // Built-in: Finds and returns metadata about a tool by its name.
                 { Name: "find_tool" } => FindTool(options),
 
@@ -134,10 +143,10 @@ namespace G4.Services.Domain.V4.Repositories
                 { Name: "get_locator" } => ResolveLocator(options),
 
                 // Built-in: Lists all available tools.
-                { Name: "get_tools" } => (s_tools
+                { Name: "get_tools" } => s_tools
                     .Values
                     .Where(i => i.Type != "system-tool")
-                    .Select(i => i.Metadata))
+                    .Select(i => i.Metadata)
                     .Concat(s_tools.Values.Where(i => i.Type == "system-tool").Cast<object>()),
 
                 // Built-in: Starts a new G4 browser automation session.
@@ -753,6 +762,11 @@ namespace G4.Services.Domain.V4.Repositories
             // Add the session to the sessions dictionary to keep track of the active session.
             options.Sessions[session.Key] = session.Value;
 
+            // Add the executed rule to the buffer associated with the session key.
+            var buffer = options.Buffer.GetValueOrDefault(key: session.Key, defaultValue: null);
+            var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            buffer?.Add((timestamp, options.Rule));
+
             // Retrieve the response for the rule execution from the response tree structure.
             var ruleResponse = session
                 .Value
@@ -761,11 +775,28 @@ namespace G4.Services.Domain.V4.Repositories
                 .Jobs.Last()
                 .Plugins.Last();
 
+            // Get the current buffer for the session, defaulting to an empty list if none exists.
+            var bufferOut = buffer ?? [];
+
+            // If the rule is to close the browser, clean up the session and buffer.
+            if (options.Rule.PluginName.Equals("CloseBrowser", StringComparison.OrdinalIgnoreCase))
+            {
+                // Remove the session from the sessions dictionary when closing the browser.
+                options.Sessions.TryRemove(session.Key, out _);
+                
+                // Clear the buffer associated with the session key.
+                options.Buffer.TryRemove(session.Key, out bufferOut);
+            }
+
             // Return an anonymous object containing the session key and the rule response value.
             return new
             {
                 DriverSession = session.Key,
-                Value = ruleResponse
+                Value = new
+                {
+                    Buffer = bufferOut.OrderBy(i => i.Timestamp).Select(i => i.Rule),
+                    Response = ruleResponse
+                }
             };
         }
 
@@ -798,6 +829,9 @@ namespace G4.Services.Domain.V4.Repositories
 
             // Add the session to the sessions dictionary using the session key.
             options.Sessions[session.Key] = session.Value;
+
+            // Initialize a new concurrent bag for buffering rules associated with this session.
+            options.Buffer[session.Key] = [];
 
             // Return an anonymous object containing the session key.
             // The session key for the newly created session.
@@ -896,6 +930,60 @@ namespace G4.Services.Domain.V4.Repositories
         /// </summary>
         private static class SystemTools
         {
+            /// <summary>
+            /// 
+            /// </summary>
+            [SystemTool("convert_to_rule")]
+            public static McpToolModel ConvertToRulesTool => new()
+            {
+                /// <summary>
+                /// The unique name of the tool, used to identify it within the system.
+                /// </summary>
+                Name = "convert_to_rule",
+
+                /// <summary>
+                /// A brief description of what the tool does.
+                /// This tool converts a given tool name and parameters into a G4 rule model,
+                /// which can then be executed within the G4 automation framework.
+                /// </summary>
+                Description = "Converts a tool name and parameters into a G4 rule model. " +
+                    "This is used to translate high-level tool invocations into executable rules within the G4 framework.",
+
+                /// <summary>
+                /// Defines the input schema for the tool, including the types and descriptions of input parameters.
+                /// </summary>
+                InputSchema = new()
+                {
+                    Type = "object",
+                    Properties = new(StringComparer.OrdinalIgnoreCase)
+                    {
+                        ["rule"] = new()
+                        {
+                            Type = ["object"],
+                            Description = "The rule object containing the tool name parameters and properties to convert."
+                        }
+                    },
+                    Required = ["rule"]
+                },
+
+                /// <summary>
+                /// Defines the output schema for the tool, including the types and descriptions of output parameters.
+                /// </summary>
+                OutputSchema = new()
+                {
+                    Type = "object",
+                    Properties = new(StringComparer.OrdinalIgnoreCase)
+                    {
+                        ["rule"] = new()
+                        {
+                            Type = ["object"],
+                            Description = "The converted G4 rule model ready for execution."
+                        }
+                    },
+                    Required = ["rule"]
+                }
+            };
+
             /// <summary>
             /// Represents a system tool that retrieves the metadata and schema for a specific tool by its unique name.
             /// This tool provides detailed information about the tool, including its input/output schema, name, and description.
@@ -1311,7 +1399,7 @@ namespace G4.Services.Domain.V4.Repositories
                             Description = "G4 authentication token for verifying and authorizing the locator retrieval request."
                         }
                     },
-                    Required = ["driver_session", "openai_model", "openai_token", "openai_uri", "intent", "token"]
+                    Required = ["driver_session", "intent", "token", "openai_api_key", "openai_model", "openai_uri"]
                 },
 
                 /// <summary>
@@ -1728,6 +1816,8 @@ namespace G4.Services.Domain.V4.Repositories
             /// The raw JSON <c>"arguments"</c> object supplied to the tool.
             /// </summary>
             public JsonElement Arguments { get; set; }
+
+            public ConcurrentDictionary<string, ConcurrentBag<(long Timestamp, G4RuleModelBase Rule)>> Buffer { get; set; }
 
             /// <summary>
             /// The name or type of driver to use (e.g., "ChromeDriver").
