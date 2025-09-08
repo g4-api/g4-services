@@ -61,10 +61,10 @@ namespace G4.Services.Domain.V4.Repositories
         /// </summary>
         /// <param name="schema">The input schema containing the driver session identifier, intent describing the target element or action, and the authorization token required for the G4 engine to process the request.</param>
         /// <returns>A string representing the resolved locator expression that can be used to query the DOM. Returns <c>null</c> or an empty string if no locator could be resolved.</returns>
-        string ResolveLocator(ResolveLocatorInputSchema schema);
+        object ResolveLocator(ResolveLocatorInputSchema schema);
 
         /// <summary>
-        /// Starts execution of a rule within an active G4 driver session.  
+        /// Starts execution of a rule within an active G4 driver session.
         /// The rule definition is provided in the input schema and executed 
         /// against the specified driver session.
         /// </summary>

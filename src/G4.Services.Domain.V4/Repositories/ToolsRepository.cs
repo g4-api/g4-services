@@ -18,10 +18,8 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Mime;
 using System.Reflection;
-using System.Reflection.Metadata.Ecma335;
 using System.Text;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using System.Threading;
 
 namespace G4.Services.Domain.V4.Repositories
@@ -158,7 +156,7 @@ namespace G4.Services.Domain.V4.Repositories
         }
 
         /// <inheritdoc />
-        public string ResolveLocator(ResolveLocatorInputSchema schema)
+        public object ResolveLocator(ResolveLocatorInputSchema schema)
         {
             // Prepare the invocation options that contain all the required context
             // for retrieving the DOM from the G4 engine.
@@ -678,30 +676,31 @@ namespace G4.Services.Domain.V4.Repositories
         // TODO: Decouple from GetApplicationDom and make it a standalone tool.
         // Retrieves a locator for a specific element on the page by sending the DOM and intent
         // to the OpenAI completion API.
-        private static string ResolveLocator(InvokeOptions options)
+        private static JsonElement ResolveLocator(InvokeOptions options)
         {
-            // Retrieve the current application DOM (document object model)
-            // for the given driver session.
+            // Fetch the current page DOM for the active driver session.
             var documentObject = GetApplicationDom(options);
 
-            // Deserialize the intent JSON into a dictionary for modification.
+            // Parse the incoming "arguments" JSON into a mutable dictionary.
+            // Assumes options.Arguments contains valid JSON.
             var inputObject = JsonSerializer.Deserialize<Dictionary<string, object>>(
                 json: options.Arguments.GetRawText(),
                 options: ICopilotRepository.JsonOptions);
 
-            // Inject the DOM into the intent so the model has page context.
+            // Build the model input: carry over "intent" and inject the DOM so the model has page context.
             var intentObject = new Dictionary<string, object>
             {
                 ["intent"] = inputObject.GetValueOrDefault(key: "intent", defaultValue: string.Empty),
                 ["dom"] = documentObject.GetValueOrDefault("value", "<html></html>"),
             };
 
-            // Serialize the updated intent object into JSON string for request payload.
+            // Serialize the model input that will go into the user message content.
             var userContent = JsonSerializer.Serialize(
                 value: intentObject,
                 options: ICopilotRepository.JsonOptions);
 
-            // Build the request payload for OpenAI's ChatCompletion API.
+            // Prepare a Chat Completions–style payload (model + messages).
+            // The system prompt is loaded from "LocatorsSystemPrompt.md".
             var openAiRequest = new
             {
                 Model = options.OpenaiModel,
@@ -720,12 +719,12 @@ namespace G4.Services.Domain.V4.Repositories
                 }
             };
 
-            // Serialize the OpenAI request payload into JSON.
+            // Serialize the request payload to JSON.
             var value = JsonSerializer.Serialize(
                 value: openAiRequest,
                 options: ICopilotRepository.JsonOptions);
 
-            // Construct the HTTP POST request to OpenAI API.
+            // Create the HTTP POST request to the (OpenAI-compatible) endpoint.
             var request = new HttpRequestMessage
             {
                 Method = HttpMethod.Post,
@@ -733,17 +732,31 @@ namespace G4.Services.Domain.V4.Repositories
                 Content = new StringContent(value, Encoding.UTF8, MediaTypeNames.Application.Json)
             };
 
-            // Add the Bearer token for OpenAI authentication.
+            // Add bearer authentication with the provided API key.
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", options.OpenaiApiKey);
 
-            // Send the request synchronously and capture the response.
+            // Send the request synchronously (blocks the calling thread).
+            // Consider SendAsync if this is on a request/UI thread.
             var response = options.HttpClient.Send(request);
 
-            // Ensure the response indicates success (throws if not 2xx).
+            // Throw if the status is not success (non-2xx).
             response.EnsureSuccessStatusCode();
 
-            // Read and return the response body as a string (raw JSON).
-            return response.Content.ReadAsStringAsync().Result;
+            // Read the response body as a raw JSON string.
+            var responseBody = response.Content.ReadAsStringAsync().Result;
+
+            // Parse the response JSON and extract choices[0].message.content.
+            // This assumes the shape exists and contains JSON text payload.
+            var document = JsonDocument.Parse(responseBody);
+            var content = document.RootElement
+                .GetProperty("choices")[0]
+                .GetProperty("message")
+                .GetProperty("content")
+                .GetString();
+
+            // The model is expected to return JSON in message.content.
+            // Deserialize that JSON into a JsonElement and return it.
+            return JsonSerializer.Deserialize<JsonElement>(content, ICopilotRepository.JsonOptions);
         }
 
         // Starts the automation rule execution by invoking the specified rule on the client, 
