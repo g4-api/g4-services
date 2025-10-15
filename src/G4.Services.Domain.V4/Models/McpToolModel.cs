@@ -35,6 +35,18 @@ namespace G4.Models
         /// Gets or sets the unique name of the tool.
         /// </summary>
         public string Name { get; set; }
+
+        /// <summary>
+        /// Gets or sets additional metadata about the tool.
+        /// </summary>
+        [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+        public ToolMetadataModel Metadata { get; set; }
+
+        /// <summary>
+        /// Gets or sets the type of tool. Default is "system-tool", indicating a system-defined tool.
+        /// </summary>
+        [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+        public string Type { get; set; } = "system-tool";
         #endregion
 
         #region *** Nested Types ***
@@ -50,6 +62,12 @@ namespace G4.Models
             public string Description { get; set; }
 
             /// <summary>
+            /// Gets or sets the set of allowed literal values for this property.
+            /// If empty or null, any value of the specified type is accepted.
+            /// </summary>
+            public string[] Enum { get; set; }
+
+            /// <summary>
             /// Gets or sets the set of named properties (parameters) and their schemas.
             /// </summary>
             public Dictionary<string, ScehmaPropertyModel> Properties { get; set; }
@@ -60,7 +78,7 @@ namespace G4.Models
             public string[] Required { get; set; }
 
             /// <summary>
-            /// Gets or sets the JSON schema type of this parameter schema (typically "object").
+            /// Gets or sets the JSON schema types (e.g., "string", "integer") allowed for this property.
             /// </summary>
             public string Type { get; set; }
         }
@@ -72,6 +90,11 @@ namespace G4.Models
         public class ScehmaPropertyModel
         {
             /// <summary>
+            /// Gets or sets the default value for this property.
+            /// </summary>
+            public object Default { get; set; }
+
+            /// <summary>
             /// Gets or sets the human-readable description of the property.
             /// </summary>
             public string Description { get; set; }
@@ -81,6 +104,13 @@ namespace G4.Models
             /// If empty or null, any value of the specified type is accepted.
             /// </summary>
             public string[] Enum { get; set; }
+
+            /// <summary>
+            /// Gets or sets a value indicating whether this property is required.
+            /// </summary>
+            [JsonIgnore]
+            [Newtonsoft.Json.JsonIgnore]
+            public bool G4Required { get; set; }
 
             /// <summary>
             /// Gets or sets the schema for items in an array, if this property is an array.
@@ -100,16 +130,60 @@ namespace G4.Models
             public Dictionary<string, ScehmaPropertyModel> Properties { get; set; }
 
             /// <summary>
+            /// Gets or sets a value indicating whether this property is required.
+            /// </summary>
+            public string[] Required { get; set; }
+
+            /// <summary>
             /// Gets or sets the JSON schema types (e.g., "string", "integer") allowed for this property.
             /// </summary>
             public string[] Type { get; set; }
+        }
+
+        /// <summary>
+        /// Represents metadata information about a tool, including author, version,
+        /// licensing, and reference details.
+        /// </summary>
+        public class ToolMetadataModel
+        {
+            /// <summary>
+            /// Gets or sets the author of the tool (person, organization, or team).
+            /// </summary>
+            public string Author { get; set; }
 
             /// <summary>
-            /// Gets or sets a value indicating whether this property is required.
+            /// Gets or sets a human-readable description of the tool,
+            /// summarizing its purpose or functionality.
             /// </summary>
-            [JsonIgnore]
-            [Newtonsoft.Json.JsonIgnore]
-            public bool Required { get; set; }
+            public string Description { get; set; }
+
+            /// <summary>
+            /// Gets or sets the license under which the tool is distributed
+            /// (e.g., MIT, Apache-2.0, proprietary).
+            /// </summary>
+            public string License { get; set; }
+
+            /// <summary>
+            /// Gets or sets the name of the tool.
+            /// </summary>
+            public string Name { get; set; }
+
+            /// <summary>
+            /// Gets or sets the type of tool. Default is "system-tool", indicating a system-defined tool.
+            /// </summary>
+            [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+            public string Type { get; set; } = "system-tool";
+
+            /// <summary>
+            /// Gets or sets the URL associated with the tool,
+            /// typically pointing to documentation, a repository, or a homepage.
+            /// </summary>
+            public string Url { get; set; }
+
+            /// <summary>
+            /// Gets or sets the version of the tool (e.g., "1.0.0").
+            /// </summary>
+            public string Version { get; set; }
         }
         #endregion
     }

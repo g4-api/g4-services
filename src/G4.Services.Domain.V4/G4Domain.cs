@@ -1,5 +1,6 @@
 ﻿using G4.Api;
 using G4.Cache;
+using G4.Services.Domain.V4.Clients;
 using G4.Services.Domain.V4.Hubs;
 using G4.Services.Domain.V4.Repositories;
 
@@ -24,7 +25,9 @@ namespace G4.Services.Domain.V4
         IHubContext<G4Hub> g4HubContext,
         IHubContext<G4BotsHub> botsHubContext,
         ILogger logger,
-        IWebHostEnvironment environment) : IDomain
+        IOpenAiClient openAi,
+        IWebHostEnvironment environment,
+        IToolsRepository tools) : IDomain
     {
         #region *** Properties   ***
         /// <inheritdoc />
@@ -56,6 +59,12 @@ namespace G4.Services.Domain.V4
 
         /// <inheritdoc />
         public IHubContext<G4AutomationNotificationsHub> NotificationsHubContext { get; set; } = notificationsHubContext;
+
+        /// <inheritdoc />
+        public IOpenAiClient OpenAi { get; set; } = openAi;
+
+        /// <inheritdoc />
+        public IToolsRepository Tools { get; set; } = tools;
         #endregion
     }
 }

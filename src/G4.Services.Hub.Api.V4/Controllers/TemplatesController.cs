@@ -1,5 +1,4 @@
 ﻿using G4.Attributes;
-using G4.Extensions;
 using G4.Models;
 using G4.Services.Domain.V4;
 
@@ -9,16 +8,15 @@ using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
 
 using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Net.Mime;
-using System.Text.Json;
 
 namespace G4.Services.Hub.Api.V4.Controllers
 {
-    [Route("api/v4/g4/[controller]")]
     [ApiController]
+    [Route("api/v4/g4/[controller]")]
+    [ApiExplorerSettings(GroupName = "G4 Hub")]
     public class TemplatesController(IDomain domain) : ControllerBase
     {
         // The domain service instance is injected into the controller

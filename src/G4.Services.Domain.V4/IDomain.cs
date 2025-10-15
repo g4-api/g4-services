@@ -4,6 +4,7 @@ using G4.Cache;
 using G4.Extensions;
 using G4.Models;
 using G4.Models.Events;
+using G4.Services.Domain.V4.Clients;
 using G4.Services.Domain.V4.Hubs;
 using G4.Services.Domain.V4.Repositories;
 
@@ -81,6 +82,16 @@ namespace G4.Services.Domain.V4
         /// and updates to subscribed clients.
         /// </summary>
         IHubContext<G4AutomationNotificationsHub> NotificationsHubContext { get; set; }
+
+        /// <summary>
+        /// Gets or sets the OpenAI client used to interact with OpenAI services.
+        /// </summary>
+        IOpenAiClient OpenAi { get; set; }
+
+        /// <summary>
+        /// Gets or sets the repository for managing tool entities and operations.
+        /// </summary>
+        IToolsRepository Tools { get; set; }
         #endregion
 
         #region *** Methods      ***
@@ -124,6 +135,12 @@ namespace G4.Services.Domain.V4
 
             // Register Copilot repository as a singleton service
             builder.Services.AddSingleton<ICopilotRepository, CopilotRepository>();
+
+            // Register open AI client as a singleton service implementing IOpenAiClient interface
+            builder.Services.AddSingleton<IOpenAiClient, OpenAiClient>();
+
+            // Register OpenAI tools repository as a singleton service implementing IToolsRepository interface
+            builder.Services.AddSingleton<IToolsRepository, ToolsRepository>();
 
             // Register the G4Domain as a transient service implementing IDomain
             builder.Services.AddTransient<IDomain, G4Domain>();
@@ -184,13 +201,13 @@ namespace G4.Services.Domain.V4
             // Resolve the SignalR notifications hub from the service provider.
             var context = serviceProvider.GetRequiredService<IHubContext<G4AutomationNotificationsHub>>();
 
-            // Set up the event handler for when an automation is completed.
+            // Event handler for when an automation has finished executing.
             client.Automation.AutomationInvoked += (sender, e) =>
             {
-                // Retrieve the connection ID for SignalR from environment variables.
+                // Retrieve the SignalR connection ID tied to this automation.
                 var connectionId = e.Automation.GetConnection();
 
-                // Send a notification about the completion of the automation to the specified SignalR client.
+                // Notify the client about the automation completion (with request and response data).
                 context.SendMessage(connectionId, method: "ReceiveAutomationInvokedEvent", message: new EventDataModel
                 {
                     Id = e.Automation.Reference.Id,
@@ -204,13 +221,13 @@ namespace G4.Services.Domain.V4
                 });
             };
 
-            // Set up the event handler for when an automation is invoked.
+            // Event handler for when an automation is starting.
             client.Automation.AutomationInvoking += (sender, e) =>
             {
-                // Retrieve the connection ID for SignalR from environment variables.
+                // Retrieve the SignalR connection ID tied to this automation.
                 var connectionId = e.Automation.GetConnection();
 
-                // Send a notification about the automation invocation to the specified SignalR client.
+                // Notify the client about the automation start.
                 context.SendMessage(connectionId, method: "ReceiveAutomationStartEvent", message: new EventDataModel
                 {
                     Id = e.Automation.Reference.Id,
@@ -220,13 +237,29 @@ namespace G4.Services.Domain.V4
                 });
             };
 
-            // Set up the event handler for when a stage is invoked.
-            client.Automation.StageInvoking += (sender, e) =>
+            // Event handler for when a stage has finished executing.
+            client.Automation.StageInvoked += (sender, e) =>
             {
-                // Retrieve the connection ID for SignalR from environment variables.
+                // Retrieve the SignalR connection ID tied to this automation.
                 var connectionId = e.Automation.GetConnection();
 
-                // Send a notification about the stage invocation to the specified SignalR client.
+                // Notify the client about the stage completion.
+                context.SendMessage(connectionId, method: "ReceiveAutomationEndEvent", message: new EventDataModel
+                {
+                    Id = e.Stage.Reference.Id,
+                    ObjectType = nameof(G4StageModel),
+                    Type = "Stage",
+                    Value = e.Stage
+                });
+            };
+
+            // Event handler for when a stage is starting.
+            client.Automation.StageInvoking += (sender, e) =>
+            {
+                // Retrieve the SignalR connection ID tied to this automation.
+                var connectionId = e.Automation.GetConnection();
+
+                // Notify the client about the stage start.
                 context.SendMessage(connectionId, method: "ReceiveAutomationStartEvent", message: new EventDataModel
                 {
                     Id = e.Stage.Reference.Id,
@@ -236,13 +269,29 @@ namespace G4.Services.Domain.V4
                 });
             };
 
-            // Set up the event handler for when a job is invoked.
+            //// Event handler for when a job has finished executing.
+            //client.Automation.JobInvoked += (sender, e) =>
+            //{
+            //    // Retrieve the SignalR connection ID tied to this automation.
+            //    var connectionId = e.Automation.GetConnection();
+
+            //    // Notify the client about the job completion.
+            //    context.SendMessage(connectionId, method: "ReceiveAutomationEndEvent", message: new EventDataModel
+            //    {
+            //        Id = e.Job.Reference.Id,
+            //        ObjectType = nameof(G4JobModel),
+            //        Type = "Job",
+            //        Value = e.Job
+            //    });
+            //};
+
+            // Event handler for when a job is starting.
             client.Automation.JobInvoking += (sender, e) =>
             {
-                // Retrieve the connection ID for SignalR from environment variables.
+                // Retrieve the SignalR connection ID tied to this automation.
                 var connectionId = e.Automation.GetConnection();
 
-                // Send a notification about the job invocation to the specified SignalR client.
+                // Notify the client about the job start.
                 context.SendMessage(connectionId, method: "ReceiveAutomationStartEvent", message: new EventDataModel
                 {
                     Id = e.Job.Reference.Id,
@@ -252,13 +301,13 @@ namespace G4.Services.Domain.V4
                 });
             };
 
-            // Set up the event handler for when a rule is invoked.
+            // Event handler for when a rule has finished executing.
             client.Automation.RuleInvoked += (sender, e) =>
             {
-                // Retrieve the connection ID for SignalR from environment variables.
+                // Retrieve the SignalR connection ID tied to this automation.
                 var connectionId = e.Automation.GetConnection();
 
-                // Send a notification about the rule invocation to the specified SignalR client.
+                // Notify the client about the rule completion (with results, extractions, and exceptions).
                 context.SendMessage(connectionId, method: "ReceiveAutomationEndEvent", message: new EventDataModel
                 {
                     Id = e.Rule.Reference.Id,
@@ -273,13 +322,13 @@ namespace G4.Services.Domain.V4
                 });
             };
 
-            // Set up the event handler for when a rule is invoked.
+            // Event handler for when a rule is starting.
             client.Automation.RuleInvoking += (sender, e) =>
             {
-                // Retrieve the connection ID for SignalR from environment variables.
+                // Retrieve the SignalR connection ID tied to this automation.
                 var connectionId = e.Automation.GetConnection();
 
-                // Send a notification about the rule invocation to the specified SignalR client.
+                // Notify the client about the rule start.
                 context.SendMessage(connectionId, method: "ReceiveAutomationStartEvent", message: new EventDataModel
                 {
                     Id = e.Rule.Reference.Id,
@@ -289,13 +338,13 @@ namespace G4.Services.Domain.V4
                 });
             };
 
-            // Set up the event handler for when an automation request is initialized.
+            // Event handler for when an automation request has been initialized.
             client.Automation.AutomationRequestInitialized += (_, e) =>
             {
-                // Retrieve the connection ID for SignalR from environment variables.
+                // Retrieve the SignalR connection ID tied to this automation.
                 var connectionId = e.Status.Automation.GetConnection();
 
-                // Send a notification about the automation request initialization to the specified SignalR client.
+                // Notify the client about the automation request initialization.
                 context.SendMessage(connectionId, method: "ReceiveAutomationRequestInitializedEvent", message: new EventDataModel
                 {
                     Id = e.Status.Automation.Reference.Id,
@@ -305,13 +354,13 @@ namespace G4.Services.Domain.V4
                 });
             };
 
-            // Set up the event handler for when a log is being created.
+            // Event handler for when a log entry is about to be created.
             client.Automation.LogCreating += (_, e) =>
             {
-                // Retrieve the connection ID for SignalR from environment variables.
+                // Retrieve the SignalR connection ID tied to this automation.
                 var connectionId = e.Automation.GetConnection();
 
-                // Send a notification about the log creation to the specified SignalR client.
+                // Notify the client about the pending log creation.
                 context.SendMessage(connectionId, method: "ReceiveLogCreatingEvent", message: new EventDataModel
                 {
                     Id = e.Invoker,
@@ -321,13 +370,13 @@ namespace G4.Services.Domain.V4
                 });
             };
 
-            // Set up the event handler for when a log is created.
+            // Event handler for when a log entry has been created.
             client.Automation.LogCreated += (_, e) =>
             {
-                // Retrieve the connection ID for SignalR from environment variables.
+                // Retrieve the SignalR connection ID tied to this automation.
                 var connectionId = e.Automation.GetConnection();
 
-                // Send a notification about the log creation to the specified SignalR client.
+                // Notify the client about the completed log entry.
                 context.SendMessage(connectionId, method: "ReceiveLogCreatedEvent", message: new EventDataModel
                 {
                     Id = e.Invoker,

@@ -16,6 +16,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi.Models;
 
 using System;
+using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -32,7 +33,8 @@ builder.WebHost.UseUrls();
 #endregion
 
 #region *** Service       ***
-// Add compression services to reduce the size of HTTP responses.
+// Add response compression services to reduce the size of HTTP responses.
+// This is enabled for HTTPS requests to improve performance.
 builder.Services.AddResponseCompression(options =>
 {
     options.EnableForHttps = true;
@@ -48,10 +50,6 @@ builder.Services.AddRazorPages();
 
 // Enable directory browsing, allowing users to see the list of files in a directory.
 builder.Services.AddDirectoryBrowser();
-
-// Add response compression services to reduce the size of HTTP responses.
-// This is enabled for HTTPS requests to improve performance.
-builder.Services.AddResponseCompression(i => i.EnableForHttps = true);
 
 // Add controller services with custom input formatters and JSON serialization options.
 builder.Services
@@ -80,6 +78,12 @@ builder.Services
 
         // Add a custom DateTime converter to handle ISO 8601 date/time format.
         i.JsonSerializerOptions.Converters.Add(new DateTimeIso8601Converter());
+
+        // Add a custom method base converter to handle method base serialization.
+        i.JsonSerializerOptions.Converters.Add(new MethodBaseConverter());
+
+        // Add a custom dictionary converter to handle serialization of dictionaries with string keys and object values.
+        i.JsonSerializerOptions.Converters.Add(new DictionaryStringObjectJsonConverter());
     });
 
 // Add and configure Swagger for API documentation and testing.
@@ -116,13 +120,17 @@ var origins = string.IsNullOrEmpty(originsEnvironmentParameter)
     : originsEnvironmentParameter.Split(";", StringSplitOptions.TrimEntries);
 
 // Add and configure CORS (Cross-Origin Resource Sharing) to allow requests from any origin.
-builder.Services
-    .AddCors(i =>
-        i.AddPolicy("CorsPolicy", policy => policy
-            .WithOrigins(origins)
-            .AllowAnyMethod()
-            .AllowAnyHeader()
-            .AllowCredentials()));
+builder.Services.AddCors(options =>
+    options.AddPolicy("CorsPolicy", policy => policy
+        .SetIsOriginAllowed(origin =>
+            origins.Contains(origin)
+            || (origin != null && origin.StartsWith("vscode-webview://"))
+        )
+        .AllowAnyMethod()
+        .AllowAnyHeader()
+        .AllowCredentials()
+    )
+);
 
 // Add and configure SignalR for real-time web functionalities.
 builder.Services
@@ -162,10 +170,14 @@ builder.Services
             {
                 new TypeConverter(),
                 new ExceptionConverter(),
-                new DateTimeIso8601Converter()
+                new DateTimeIso8601Converter(),
+                new MethodBaseConverter()
             }
         };
     });
+
+// Add IHttpClientFactory to the service collection for making HTTP requests.
+builder.Services.AddHttpClient();
 #endregion
 
 #region *** Dependencies  ***
@@ -178,10 +190,16 @@ IDomain.SetDependencies(builder);
 var app = builder.Build();
 
 // Configure the application to use compression for responses
-app.UseResponseCompression();
-
 // Configure the application to use the exception handling middleware
-app.UseMiddleware<ErrorHandlingMiddleware>();
+// Apply compression and error handling to everything EXCEPT OpenAI proxy route:
+app.UseWhen(
+    context => !context.Request.Path.StartsWithSegments("/api/v4/g4/openai"),
+    branch =>
+    {
+        branch.UseResponseCompression();
+        branch.UseMiddleware<ErrorHandlingMiddleware>();
+    }
+);
 
 // Configure the application to use the response caching middleware
 app.UseResponseCaching();
@@ -207,10 +225,9 @@ app.UseSwaggerUI(i =>
 
 app.MapDefaultControllerRoute();
 app.MapControllers();
-app.UseStaticFiles();
 
 // Add the SignalR hub to the application for real-time communication with clients and other services
-app.MapHub<G4Hub>($"/hub/v{AppSettings.ApiVersion}/g4/orchestrator");
+app.MapHub<G4Hub>($"/hub/v{AppSettings.ApiVersion}/g4/orchestrator").RequireCors("CorsPolicy");
 
 // Add the SignalR hub to send automation notifications to clients and other services in real-time
 app.MapHub<G4AutomationNotificationsHub>($"/hub/v{AppSettings.ApiVersion}/g4/notifications").RequireCors("CorsPolicy");

@@ -16,6 +16,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
     [ApiController]
     [Route("/api/v4/g4/[controller]")]
     [SwaggerTag(description: "Handles automation-related operations in the G4™ Engine.")]
+    [ApiExplorerSettings(GroupName = "G4 Hub")]
     public class AutomationController(IDomain domain) : ControllerBase
     {
         // The domain service for the G4™ engine.
@@ -95,7 +96,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         [SwaggerResponse(StatusCodes.Status200OK,
             description: "Successfully resolved macros. Returns a list of G4RuleModelBase objects with macros resolved.",
             type: typeof(IEnumerable<G4RuleModelBase>),
-            contentTypes: [MediaTypeNames.Application.Json])]
+            contentTypes: MediaTypeNames.Application.Json)]
         public IActionResult Resolve([FromBody] G4AutomationModel automation)
         {
             // Call the extension method to resolve macros for all rules in the provided automation model.

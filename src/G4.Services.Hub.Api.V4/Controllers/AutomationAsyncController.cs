@@ -13,6 +13,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
     [ApiController]
     [Route("/api/v4/g4/automation/async")]
     [SwaggerTag(description: "")]
+    [ApiExplorerSettings(GroupName = "G4 Hub")]
     public class AutomationAsyncController(IDomain domain) : ControllerBase
     {
         // The domain service for the G4™ engine.

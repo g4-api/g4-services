@@ -21,6 +21,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
     [ApiController]
     [Route("/api/v4/g4/[controller]")]
     [SwaggerTag(description: "Provides endpoints to retrieve G4™ engine metadata, enabling seamless integration with external client applications.")]
+    [ApiExplorerSettings(GroupName = "G4 Hub")]
     public class IntegrationController(IDomain domain) : ControllerBase
     {
         // The domain service for the G4™ engine.

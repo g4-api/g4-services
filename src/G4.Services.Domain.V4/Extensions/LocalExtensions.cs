@@ -1,5 +1,4 @@
-﻿using G4.Cache;
-using G4.Models;
+﻿using G4.Models;
 
 using HtmlAgilityPack;
 
@@ -8,6 +7,7 @@ using Microsoft.AspNetCore.SignalR;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 
 
@@ -15,57 +15,53 @@ namespace G4.Extensions
 {
     internal static class LocalExtensions
     {
-
+        /// <summary>
+        /// Recursively cleans an HTML node by removing unwanted elements and leaving only the specified tags.
+        /// The tags to be kept are defined in the `includedTags` set, and all other elements will be removed.
+        /// </summary>
+        /// <param name="node">The root HTML node to clean.</param>
+        /// <returns>The cleaned HTML node with unwanted elements removed.</returns>
         public static HtmlNode Clean(this HtmlNode node)
         {
+            // Define a set of allowed tags that should not be removed.
             var includedTags = new HashSet<string>(StringComparer.OrdinalIgnoreCase) {
-                "head",
-                "title",
-                "base",
-                "noscript",
-                "script",
-                "style",
-                "link",
-                "meta",
-                "frame",
-                "frameset",
-                "object",
-                "embed",
-                "param",
-                "source",
-                "track",
-                "picture",
-                "canvas",
-                "map",
-                "area"
+                "head", "title", "base", "noscript", "script", "style", "link", "meta", "frame",
+                "frameset", "object", "embed", "param", "source", "track", "picture", "canvas", "map", "area"
             };
 
+            // Iterate through all child nodes of the current node.
             foreach (var child in node.ChildNodes.ToList())
             {
-                if(child.NodeType == HtmlNodeType.Text)
+                // Skip text nodes, as we don't want to remove them.
+                if (child.NodeType == HtmlNodeType.Text)
                 {
                     continue;
                 }
 
+                // Determine whether the current child node is an element.
                 var isElement = child.NodeType == HtmlNodeType.Element;
+
+                // Check if the current element is in the included tags list.
                 var isIncludedTag = isElement && includedTags.Contains(child.Name);
-                
+
                 if (isElement && isIncludedTag)
                 {
-                    // Remove the entire script or style tag
+                    // If it's an element that should be included, remove it completely (e.g., script, style).
                     node.RemoveChild(child);
                 }
                 else if (isElement)
                 {
-                    // Recursively clean child nodes
+                    // If it's an element that should be cleaned, recursively clean its child nodes.
                     Clean(child);
                 }
                 else
                 {
+                    // For non-element nodes, simply remove them.
                     child.Remove();
                 }
             }
 
+            // Return the cleaned node after removing unwanted children.
             return node;
         }
 
@@ -74,8 +70,7 @@ namespace G4.Extensions
         /// extracting its name, description, and input schema (parameters & properties).
         /// </summary>
         /// <param name="manifest">The plugin manifest containing metadata, parameters, and properties.</param>
-        /// <returns>A fully populated <see cref="McpToolModel"/> representing the same plugin, ready for JSON‐RPC schema generation.
-        /// </returns>
+        /// <returns>A fully populated <see cref="McpToolModel"/> representing the same plugin, ready for JSON‐RPC schema generation.</returns>
         public static McpToolModel ConvertToTool(this IG4PluginManifest manifest)
         {
             // Converts PluginParameterModel to McpToolModel.ScehmaPropertyModel for input schema
@@ -110,7 +105,7 @@ namespace G4.Extensions
                     Description = string.Join(" ", parameterModel.Description ?? []),
                     //Enum = [],
                     Name = ConvertToSnakeCase(parameterModel.Name),
-                    Required = parameterModel.Mandatory,
+                    G4Required = parameterModel.Mandatory,
                     Type = ConvertType(parameterModel.Type)
                 };
 
@@ -119,7 +114,8 @@ namespace G4.Extensions
                 {
                     schema.Items = new McpToolModel.ParameterSchemaModel
                     {
-                        Description = "Array of nested rule objects—each item’s tool_name must first be looked up via find_tool to retrieve its inputSchema before its parameters are included in the parent rule for invoke_g4_tool to process as one.",
+                        Description = "Array of nested rule objects—each item’s tool_name must first be looked up via find_tool to " +
+                            "retrieve its inputSchema before its parameters are included in the parent rule for invoke_g4_tool to process as one.",
                         Type = "object"
                     };
                 }
@@ -142,26 +138,15 @@ namespace G4.Extensions
             // Join all summary lines into a single human-readable description.
             var description = string.Join(' ', manifest.Summary);
 
-            // Define the set of approved JSON schema primitive types.
-            // (Note: currently not filtered against manifest.Type, but kept for future use.)
-            var included = new[] { "null", "boolean", "object", "array", "number", "integer", "string" };
-
             // Convert each declared parameter in the manifest into a schema property.
-            var pluginParameters = (manifest.Parameters ?? []).Select(ConvertToInputSchema);
+            var pluginParameters = (manifest.Parameters ?? [])
+                .Select(ConvertToInputSchema)
+                .ToDictionary(i => i.Name, i => i);
 
             // Likewise convert any additional manifest properties into schema properties.
-            var pluginProperties = (manifest.Properties ?? []).Select(ConvertToInputSchema);
-
-            // Combine parameters and properties into a single lookup by property name.
-            var properties = pluginParameters
-                .Concat(pluginProperties)
-                .ToDictionary(prop => prop.Name, prop => prop);
-
-            // Determine which properties are required based on the schema metadata.
-            var requiredProperties = properties.Values
-                .Where(prop => prop.Required)
-                .Select(prop => prop.Name)
-                .ToArray();
+            var pluginProperties = (manifest.Properties ?? [])
+                .Select(ConvertToInputSchema)
+                .ToDictionary(i => i.Name, i => i);
 
             // Build and return the final MCP tool model.
             return new McpToolModel
@@ -169,11 +154,36 @@ namespace G4.Extensions
                 Description = description,
                 G4Name = manifest.Key,
                 Name = name,
+                Metadata = new McpToolModel.ToolMetadataModel
+                {
+                    Description= string.Join(Environment.NewLine, manifest.Summary),
+                    Name = name,
+                    Type = "g4-tool"
+                },
+                Type = "g4-tool",
                 InputSchema = new McpToolModel.ParameterSchemaModel
                 {
                     Type = "object",
-                    Properties = properties,
-                    Required = requiredProperties
+                    Properties = new()
+                    {
+                        ["properties"] = new()
+                        {
+                            Type = ["object"],
+                            Description = "Standard input fields defined by the G4 Engine API. " +
+                                "These provide the core operational context for the tool, such as element locators, attributes, and matching rules.",
+                            Properties = pluginProperties,
+                            Required = [.. pluginProperties.Where(i => i.Value.G4Required).Select(i => i.Value.Name)]
+                        },
+                        ["parameters"] = new()
+                        {
+                            Type = ["object"],
+                            Description = "Custom, tool-specific parameters that extend or refine the tool's functionality. " +
+                                "These may include additional metadata, behavior modifiers, or configuration settings unique to this tool’s purpose.",
+                            Properties = pluginParameters,
+                            Required = [.. pluginParameters.Where(i => i.Value.G4Required).Select(i => i.Value.Name)]
+                        }
+                    },
+                    Required = []
                 }
             };
         }
@@ -204,6 +214,50 @@ namespace G4.Extensions
             return containsConnectionId
                 ? $"{environmentVariables["SignalR"].Parameters["ConnectionId"]}"
                 : string.Empty;
+        }
+
+        /// <summary>
+        /// Retrieves the value of the <c>"token"</c> property from a <see cref="JsonElement"/>, 
+        /// or falls back to a default value provided by the factory function if the property does not exist 
+        /// or cannot be converted to the target type.
+        /// </summary>
+        /// <typeparam name="T">The expected type of the "token" value. Supports <see cref="string"/>, <see cref="int"/>, and <see cref="bool"/>.</typeparam>
+        /// <param name="jsonElement">The <see cref="JsonElement"/> that may contain the "token" property.</param>
+        /// <param name="propertyName"> The name of the property to retrieve.</param>
+        /// <param name="defaultValue">A function that produces a default value when the "token" property is missing or not supported.</param>
+        /// <returns>Returns the value of the "token" property if found and successfully converted; otherwise, returns the value produced by the <paramref name="defaultValue"/>.</returns>
+        public static T GetOrDefault<T>(this JsonElement jsonElement, string propertyName, Func<T> defaultValue)
+        {
+            // Try to get the "token" property from the JSON element.
+            // This could represent an authentication token or API key.
+            var isToken = jsonElement.TryGetProperty(propertyName, out var tokenOut);
+
+            // If the "token" property does not exist, return the default value from the factory.
+            if (!isToken)
+            {
+                return defaultValue();
+            }
+
+            // If the "token" property exists, decide how to extract its value
+            // based on its JSON value type.
+            return tokenOut.ValueKind switch
+            {
+                // If it's a string, cast to object first, then to generic type T.
+                JsonValueKind.String => (T)(object)tokenOut.GetString(),
+
+                // If it's a number, interpret it as a 32-bit integer.
+                JsonValueKind.Number => (T)(object)tokenOut.GetInt32(),
+
+                // If it's a boolean true, return true.
+                JsonValueKind.True => (T)(object)true,
+
+                // If it's a boolean false, return false.
+                JsonValueKind.False => (T)(object)false,
+
+                // If it's any other type (array, object, null, undefined, etc.), 
+                // fall back to the default value from the factory.
+                _ => defaultValue()
+            };
         }
 
         /// <summary>
