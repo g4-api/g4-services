@@ -1,6 +1,7 @@
 ﻿using Swashbuckle.AspNetCore.Annotations;
 
 using System.Collections.Generic;
+using System.Text.Json.Serialization;
 
 namespace G4.Models.Schema
 {
@@ -42,6 +43,30 @@ namespace G4.Models.Schema
         #endregion
 
         #region *** Nested Types ***
+        /// <summary>
+        /// Represents the result object returned by a tool invocation.
+        /// Contains raw and structured output content.
+        /// </summary>
+        [SwaggerSchema(description: "Result object returned by a tool invocation, containing raw and structured content.")]
+        public class ToolOutputResultSchema
+        {
+            /// <summary>
+            /// Gets or sets the raw content output by the tool.
+            /// This may be a string, number, or other arbitrary object.
+            /// </summary>
+            [SwaggerSchema(description: "Raw content returned by the tool (may be text, number, or any object).")]
+            public object Content { get; set; }
+
+            /// <summary>
+            /// Gets or sets the structured content output by the tool.
+            /// This provides a machine-readable representation of the tool's result.
+            /// </summary>
+            [SwaggerSchema(description: "Structured machine-readable content returned by the tool.")]
+            [JsonPropertyName(name: "structuredContent")]
+            [Newtonsoft.Json.JsonProperty(propertyName: "structuredContent")]
+            public object StructuredContent { get; set; }
+        }
+
         /// <summary>
         /// Wraps the payload returned by the "list tools" method.
         /// Contains the collection of <see cref="McpToolModel"/> instances.

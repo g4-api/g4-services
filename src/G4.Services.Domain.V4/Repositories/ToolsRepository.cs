@@ -141,11 +141,14 @@ namespace G4.Services.Domain.V4.Repositories
                 { Name: "get_locator" } => ResolveLocator(options),
 
                 // Built-in: Lists all available tools.
-                { Name: "get_tools" } => s_tools
-                    .Values
-                    .Where(i => i.Type != "system-tool")
-                    .Select(i => i.Metadata)
-                    .Concat(s_tools.Values.Where(i => i.Type == "system-tool").Cast<object>()),
+                { Name: "get_tools" } => new
+                {
+                    Tools = s_tools
+                        .Values
+                        .Where(i => i.Type != "system-tool")
+                        .Select(i => i.Metadata)
+                        .Concat(s_tools.Values.Where(i => i.Type == "system-tool").Cast<object>())
+                },
 
                 // Built-in: Starts a new G4 browser automation session.
                 { Name: "start_g4_session" } => StartG4Session(options),
@@ -237,7 +240,7 @@ namespace G4.Services.Domain.V4.Repositories
 
         // Finds and returns a tool model from the available tool collection
         // using the tool name provided in the <see cref="InvokeOptions"/> arguments.
-        private static McpToolModel FindTool(InvokeOptions options)
+        private static object FindTool(InvokeOptions options)
         {
             // Extract the "tool_name" argument from the provided options.
             // If no argument exists, default to an empty string.
@@ -250,7 +253,7 @@ namespace G4.Services.Domain.V4.Repositories
             // the corresponding tool from the Tools dictionary.
             // If the tool name is empty or not found in the collection, return null.
             return !string.IsNullOrEmpty(toolName)
-                ? options.Tools.GetValueOrDefault(toolName)
+                ? new { Tool = options.Tools.GetValueOrDefault(toolName) }
                 : null;
         }
 

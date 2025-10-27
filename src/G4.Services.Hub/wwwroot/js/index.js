@@ -319,29 +319,29 @@ function newConfiguration() {
 				const supportedIcons = Array.from(
 					new Set(
 						Object.values(_manifests).map(manifest =>
-							manifest?.context?.integration?.sequentialWorkflow?.iconProvider || 'task'
+							manifest?.context?.integration?.sequentialWorkflow?.iconProvider || 'gears'
 						)
 					)
 				);
 
 				// Determine the iconType based on the input 'type'.
-				// If the provided type is not in the list of supportedIcons, default to 'task'.
-				let iconType = supportedIcons.includes(type) ? type : 'task';
+				// If the provided type is not in the list of supportedIcons, default to 'gears'.
+				let iconType = supportedIcons.includes(type) ? type : 'gears';
 
 				// Convert the input type to uppercase for case-insensitive comparisons.
 				const upperType = type.toUpperCase();
 
-				// If the type is 'STAGE', force iconType to 'stage'.
+				// If the type is 'STAGE', force iconType to 'layer-group'.
 				if (upperType === 'STAGE') {
-					iconType = 'stage';
+					iconType = 'layer-group';
 				}
-				// Else if the type is 'JOB', force iconType to 'job'.
+				// Else if the type is 'JOB', force iconType to 'diagram-project'.
 				else if (upperType === 'JOB') {
-					iconType = 'job';
+					iconType = 'diagram-project';
 				}
-				// Else if the type is 'JOB', force iconType to 'job'.
+				// Else if the type is 'JOB', force iconType to 'upload'.
 				else if (upperType === 'EXPORT') {
-					iconType = 'export';
+					iconType = 'upload';
 				}
 
 				// Return the relative path to the SVG icon based on the determined iconType.
