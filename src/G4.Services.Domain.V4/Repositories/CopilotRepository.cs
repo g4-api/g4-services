@@ -167,7 +167,7 @@ namespace G4.Services.Domain.V4.Repositories
                 Jsonrpc = JsonRpcVersion,
 
                 // The result object contains both a text-serialized version and the structured data.
-                Result = new
+                Result = new ToolOutputSchema.ToolOutputResultSchema
                 {
                     // Plain text content (serialized JSON of the result object).
                     Content = new[]

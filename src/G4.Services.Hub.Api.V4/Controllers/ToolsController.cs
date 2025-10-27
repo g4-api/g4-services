@@ -2,6 +2,7 @@
 using G4.Services.Domain.V4;
 using G4.Services.Domain.V4.Repositories;
 
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -17,10 +18,10 @@ using System.Threading.Tasks;
 namespace G4.Services.Hub.Api.V4.Controllers
 {
     [ApiController]
-    [Route("/api/v4/g4/[controller]/mcp")]
+    [Route("/api/v4/g4/mcp")]
     [SwaggerTag(description: "GitHub Copilot Agent endpoint for integration and context exchange with AI agents.")]
     [ApiExplorerSettings(GroupName = "G4 Hub")]
-    public class CopilotController(IDomain domain) : ControllerBase
+    public class ToolsController(IDomain domain) : ControllerBase
     {
         // Dependency injection for domain services
         private readonly IDomain _domain = domain;
@@ -28,27 +29,51 @@ namespace G4.Services.Hub.Api.V4.Controllers
         [HttpGet]
         [SwaggerOperation(
             Summary = "Establish SSE stream",
-            Description = "Opens a text/event-stream channel for real-time context updates and heartbeats.")]
+            Description = "Opens a text/event-stream channel for real-time updates and heartbeats (n8n-compatible).")]
         [SwaggerResponse(StatusCodes.Status200OK, description: "SSE stream established.", contentTypes: "text/event-stream")]
         public async Task Get(CancellationToken token)
         {
-            // Set response headers for SSE
+            // Required SSE headers (n8n is strict about these)
             Response.StatusCode = StatusCodes.Status200OK;
             Response.ContentType = "text/event-stream";
+            Response.Headers.CacheControl = "no-cache";
+            Response.Headers.Connection = "keep-alive";
+            Response.Headers["X-Accel-Buffering"] = "no";    // disable nginx buffering if present
+            Response.Headers.ContentEncoding = "identity";   // prevent gzip on proxies
 
-            // Send a comment line to initiate the stream connection
-            await Response.WriteAsync(": connected\n\n", cancellationToken: token);
+            // Start the response immediately so clients consider the stream "open"
+            await Response.StartAsync(token);
+
+            // Send an initial comment + heartbeat quickly so n8n marks it connected
+            await Response.WriteAsync(": connected\n\n", token);
             await Response.Body.FlushAsync(token);
 
-            // Loop to send heartbeat comments periodically
-            while (!token.IsCancellationRequested)
-            {
-                // Wait 15 seconds between heartbeats
-                await Task.Delay(TimeSpan.FromSeconds(15), token);
+            // Periodic heartbeats (comments are valid SSE frames and cheaper than data events)
+            // Keep them reasonably frequent to survive proxies/load balancers.
+            var heartbeat = TimeSpan.FromSeconds(15);
 
-                // Send heartbeat comment line to keep the connection alive
-                await Response.WriteAsync(": heartbeat\n\n", cancellationToken: token);
-                await Response.Body.FlushAsync(token);
+            try
+            {
+                while (!token.IsCancellationRequested && !HttpContext.RequestAborted.IsCancellationRequested)
+                {
+                    await Task.Delay(heartbeat, token);
+
+                    // Heartbeat
+                    await Response.WriteAsync(": heartbeat\n\n", token);
+                    await Response.Body.FlushAsync(token);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // Client disconnected or server is shutting down – swallow gracefully.
+            }
+            finally
+            {
+                // Try to complete the response cleanly.
+                if (!HttpContext.RequestAborted.IsCancellationRequested)
+                {
+                    await Response.CompleteAsync();
+                }
             }
         }
 
