@@ -226,9 +226,10 @@ class StateMachineSteps {
 	 * Creates a new G4 step based on the provided manifest.
 	 *
 	 * @param {Object} manifest - The manifest object containing properties and parameters.
+	 * @param {string} pluginName - The name of the plugin associated with the step.
 	 * @returns {Object} The newly created G4 step object.
 	 */
-	static newG4Step(manifest) {
+	static newG4Step(manifest, pluginName) {
 		// Creates a new bridge object from a G4 parameter object.
 		const newBridgeObject = (g4ParameterObject) => {
 			let bridgeObject = {
@@ -262,7 +263,7 @@ class StateMachineSteps {
 				context: {},
 				description: "Description not provided.",
 				id: Utilities.newUid(),
-				name: "Missing Plugin",
+				name: Utilities.convertPascalToSpaceCase(pluginName || "Not Available"),
 				parameters: {},
 				pluginName: "MissingPlugin",
 				pluginType: "Action",
