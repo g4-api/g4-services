@@ -383,7 +383,7 @@ const setDefinition = (definition) => {
 		const manifest = getManifest(_cache, rule.pluginName);
 
 		// Create a new step using the state machine factory and the retrieved manifest.
-		const step = StateMachineSteps.newG4Step(manifest);
+		const step = StateMachineSteps.newG4Step(manifest, rule.pluginName);
 
 		// Assign the name of the rule's capabilities to the step if available.
 		step.name = step?.pluginName?.toUpperCase() === 'MISSINGPLUGIN'
