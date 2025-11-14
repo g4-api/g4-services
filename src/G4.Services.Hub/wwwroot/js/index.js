@@ -1572,6 +1572,68 @@ function stepEditorProvider(step, editorContext) {
 		);
 	};
 
+	/**
+	 * Initializes the Branchable Editor UI for a step.
+	 */
+	const initializeBranchableEditorProvider = (container, step) => {
+
+		// Get the branch names that already exist on the step.
+		const branches = Object.keys(step.branches);
+
+		// Create a unique ID so the input field and internal elements don't collide with others.
+		const inputId = Utilities.newUid();
+		const escapedId = CSS.escape(inputId);
+
+		// Create the visual box that will hold all branch-related controls.
+		// This is the "Branches" group the user sees in the editor.
+		const fieldContainer = newMultipleFieldsContainer(`${inputId}`, {
+			labelDisplayName: 'Branches',
+			role: 'branches-container',
+			hintText: 'Case branches that determine which action path runs at runtime.',
+			isOpen: true
+		});
+
+		// Make sure the step has a context object so the editor can track updates.
+		step.context = step.context || {};
+
+		// Create a small UI element with a text input and a button.
+		// The user types a branch name and clicks "Add Branch".
+		CustomFields.newButtonField(
+			{
+				button: {
+					label: 'Add Branch',
+					title: 'Add a branch that activates when the value you entered is matched.'
+				},
+				container: container,
+				input: {
+					label: 'Branch Value',
+					title: 'Enter the value that will trigger this branch at runtime.'
+				}
+			},
+			(value) => {
+				// This gives us what the user typed and the ID of the input element.
+				const branchValue = value.branchValue;
+				const id = value.id;
+
+				// If the user typed nothing or typed a branch that already exists,
+				// we simply stop and do nothing.
+				if (!branchValue || branches.includes(branchValue)) {
+					return;
+				}
+
+				// Add a new empty branch to the step’s branches collection.
+				step.branches[branchValue] = [];
+
+				// Clear the input box after adding the branch.
+				document.getElementById(id).value = '';
+
+				// Tell the editor that the step has changed so the UI can refresh.
+				editorContext.notifyPropertiesChanged();
+				editorContext.notifyNameChanged();
+			}
+		);
+	};
+
 	// Generate a unique identifier for input elements within the editor.
 	const inputId = Utilities.newUid();
 
@@ -1580,6 +1642,8 @@ function stepEditorProvider(step, editorContext) {
 
 	// Create the main container element for the step editor.
 	const stepEditorContainer = document.createElement('div');
+
+    // Assign a data attribute to identify the step editor role.
 	stepEditorContainer.setAttribute("data-g4-role", "step-editor");
 
 	// Set the tooltip for the container to provide a description of the step.
@@ -1763,6 +1827,10 @@ function stepEditorProvider(step, editorContext) {
 	// TODO: When available, change to assert only if step context allows "Convert to Container" capability (context.isContainerable).
 	if (step.context.containerable) {
 		initializeContainerableEditorProvider(stepEditorContainer, step);
+	}
+
+	if ((step.componentType || (step.context && step.context.componentType) || '').toLowerCase() === "switch") {
+		initializeBranchableEditorProvider(stepEditorContainer, step);
 	}
 
 	/**
