@@ -7,7 +7,7 @@
 				"-i",
 				"--rm",
 				"--env-file",
-				"${workspaceFolder}/.github.env",
+				".github.env",
 				"ghcr.io/github/github-mcp-server"
 			]
 		}
