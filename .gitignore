@@ -13,7 +13,7 @@
 [Ii]nstall/
 appsettings.json
 *.db
-.github.env
+*.github.env
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
