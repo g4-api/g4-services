@@ -23,7 +23,7 @@ const _auditableTypes = ["ACTION", "CONTENT", "TRANSFORMER"];
 
 const _connection = new signalR
 	.HubConnectionBuilder()
-    .withUrl(BASE_NOTIFICATION_PATH)
+	.withUrl(BASE_NOTIFICATION_PATH)
 	.withAutomaticReconnect()
 	.build();
 

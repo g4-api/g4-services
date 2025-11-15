@@ -99,7 +99,7 @@
 	--smart-editor-font: 400 1.0em 'Roboto', sans-serif;
 	--smart-editor-help-text-background: var(--light-gray);
 	--smart-editor-help-text-border: 1px solid var(--gray);
-	--smart-editor-help-text-color: var(--secondary-color);
+	--smart-editor-help-text-color: var(--primary-color);
 	--smart-editor-help-text-font: 400 1.0em 'Roboto', sans-serif;
 	--smart-editor-input-background: var(--secondary-color);
 	--smart-editor-input-border: 1px solid var(--primary-color);

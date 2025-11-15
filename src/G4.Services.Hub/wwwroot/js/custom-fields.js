@@ -2150,6 +2150,93 @@ class CustomFields {
     }
 
     /**
+     * Creates a button + input field pair inside a multi-field container.
+     * Allows a user to enter a branch value and trigger a callback when the button is clicked.
+     *
+     * @param   {Object}   options     - Configuration containing button/input settings and an optional container.
+     * @param   {Function} setCallback - Callback invoked on button click with the entered value.
+     * 
+     * @returns {HTMLElement} The rendered field container.
+     */
+    static newButtonField(options, setCallback) {
+
+        // Generate unique IDs used for DOM element references.
+        const id = Utilities.newUid();
+        const escapedId = CSS.escape(id);
+        const fieldId = `field-${id}`;
+        const buttonId = `button-${id}`;
+        const inputId = `input-${id}`;
+
+        // Create the surrounding multi-field container for branch definitions.
+        const fieldContainer = newMultipleFieldsContainer(`${id}`, {
+            labelDisplayName: "Branches",
+            role: "branches-container",
+            hintText: "Case branches that determine which action path runs at runtime.",
+            isOpen: true
+        });
+
+        // Container inside fieldContainer where branch items will be inserted.
+        const branchesContainer = fieldContainer.querySelector(`#${escapedId}-branches-container`);
+
+        // Create the action button used to trigger the callback with input value.
+        const button = document.createElement("button");
+        button.setAttribute("type", "button");
+        button.setAttribute("id", buttonId);
+        button.setAttribute("title", options.button.title || "");
+        button.setAttribute("style", "margin-top:0.2em;");
+        button.textContent = options.button.label || "Button";
+
+        // When clicked, read the input value and pass it to the provided callback.
+        button.addEventListener("click", () => {
+            const value = document.getElementById(inputId).value || "";
+
+            setCallback({
+                id: inputId,
+                branchValue: value
+            });
+        });
+
+         // Normalize initial value.
+         // Accepts empty, missing, or literal "undefined" and converts them to an empty string.
+        options.initialValue = (!options.initialValue || options.initialValue === "undefined")
+            ? ""
+            : options.initialValue;
+
+        // Create the user input element for entering the branch value.
+        const inputElement = document.createElement("input");
+        inputElement.setAttribute("type", "text");
+        inputElement.setAttribute("id", inputId);
+
+        // Metadata used by the editor to map this field to workflow parameters.
+        inputElement.setAttribute("data-g4-attribute", options.input.label);
+        inputElement.setAttribute("spellcheck", "false");
+        inputElement.setAttribute("title", options.input.title || "");
+        inputElement.value = options.input.initialValue || "";
+
+        // Create a field container wrapper with a title and description.
+        const inputContainer = newFieldContainer(
+            fieldId,
+            options.input.label,
+            options.input.title || ""
+        );
+
+        // Insert both the text input and the button into the wrapper.
+        inputContainer.appendChild(inputElement);
+        inputContainer.appendChild(button);
+
+        // Add the wrapper into the branches section of the main container.
+        branchesContainer.appendChild(inputContainer);
+
+        // If an external container was supplied, append the constructed field to it.
+        if (options.container) {
+            options.container.appendChild(fieldContainer);
+        }
+
+        // Return whichever container is being used.
+        return options.container || fieldContainer;
+    }
+
+    /**
      * Creates a new data list field (input with datalist) that allows users to type and select an option from a predefined list.
      * The list of items is derived from the provided `itemSource`, which can be fetched and processed by `getItems`.
      *

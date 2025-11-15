@@ -3,6 +3,13 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/main/VisualStudio.gitignore
 
+# Ignore all .env-* files and secret env files
+*.env
+*.env.*
+.env
+.mcp.env
+.github.env
+
 # User-specific files
 *.rsuser
 *.suo
