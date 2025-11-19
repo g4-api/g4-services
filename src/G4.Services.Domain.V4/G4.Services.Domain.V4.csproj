@@ -2,9 +2,9 @@
 
 	<PropertyGroup>
 		<!-- Assembly -->
-		<TargetFramework>net8.0</TargetFramework>
-		<AssemblyVersion>8.0.0.0</AssemblyVersion>
-		<FileVersion>8.0.0.0</FileVersion>
+		<TargetFramework>net10.0</TargetFramework>
+		<AssemblyVersion>10.0.0.0</AssemblyVersion>
+		<FileVersion>10.0.0.0</FileVersion>
 		<IsPackable>false</IsPackable>
 		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
 		<SatelliteResourceLanguages>en-US</SatelliteResourceLanguages>
@@ -20,8 +20,8 @@
 		<PackageReference Include="G4.Plugins" Version="2025.8.11.43" />
 		<PackageReference Include="G4.Plugins.Common" Version="2025.10.26.115" />
 		<PackageReference Include="G4.Plugins.Ui" Version="2025.10.26.115" />
-		<PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="8.0.10" />
-		<PackageReference Include="Swashbuckle.AspNetCore.Annotations" Version="9.0.6" />
+		<PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.0" />
+		<PackageReference Include="Swashbuckle.AspNetCore.Annotations" Version="10.0.1" />
 	</ItemGroup>
 
 	<ItemGroup>
