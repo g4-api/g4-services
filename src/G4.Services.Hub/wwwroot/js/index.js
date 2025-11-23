@@ -158,7 +158,6 @@ async function initializeDesigner() {
 		console.log(message);
 	});
 
-	// TODO: write to log
 	// Listen for the "ReceiveAutomationRequestInitializedEvent" message from the server
 	_connection.on("ReceiveLogCreatedEvent", (message) => {
 		console.log(message);
