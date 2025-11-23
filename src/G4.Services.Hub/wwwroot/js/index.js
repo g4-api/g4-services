@@ -237,63 +237,7 @@ function newConfiguration() {
 		 */
 		toolbox: {
 			// Initialize with no groups; groups can be added dynamically
-			groups: [],
-
-			/**
-			 * Creates a toolbox item DOM element based on the provided step.
-			 *
-			 * @param {Object} step               - The step object containing details to create the toolbox item.
-			 * @param {string} step.description   - A description of the step, used as a tooltip.
-			 * @param {string} step.componentType - The component type of the step, used to determine the icon.
-			 * @param {string} step.type          - The specific type of the step, used to select the appropriate icon.
-			 * @param {string} step.name          - The display name of the step.
-			 *
-			 * @returns {HTMLElement} The constructed toolbox item element.
-			 *
-			 * @example
-			 * const step = {
-			 *     description: 'Loop Step',
-			 *     componentType: 'workflow',
-			 *     type: 'loop',
-			 *     name: 'Loop'
-			 * };
-			 * const toolboxItem = toolbox.itemProvider(step);
-			 * document.body.appendChild(toolboxItem);
-			 */
-			itemProvider: (step) => {
-				// Create the main container div for the toolbox item
-				const item = document.createElement('div');
-				item.className = 'sqd-toolbox-item';
-
-				// If a description is provided, set it as the tooltip (title attribute)
-				if (step.description) {
-					item.title = step.description;
-				}
-
-				// Create the image element for the step icon
-				const icon = document.createElement('img');
-
-                // Set the alt text for the icon element
-				icon.setAttribute("alt", "g4-icon");
-
-				// Set the class name for the icon element
-				icon.className = 'sqd-toolbox-item-icon';
-
-				// Set the source of the icon using the iconUrlProvider function
-				icon.src = newConfiguration.steps.iconUrlProvider(step.componentType, step.type);
-
-				// Create the div element for the step name
-				const name = document.createElement('div');
-				name.className = 'sqd-toolbox-item-name';
-				name.textContent = step.name; // Set the text content to the step's name
-
-				// Append the icon and name to the main item container
-				//item.appendChild(icon);
-				item.appendChild(name);
-
-				// Return the fully constructed toolbox item
-				return item;
-			}
+			groups: []
 		},
 
 		/**
