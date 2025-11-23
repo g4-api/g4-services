@@ -348,6 +348,40 @@
     }
 
     /**
+     * Fetches all available SVG icons from the backend and returns them
+     * as a dictionary: { [iconName]: svgContent }.
+     */
+    static async readSvgIcons(files) {
+        // Filter only SVG files inside the "images/" folder
+        const images = files.filter(i => i.endsWith('.svg'));
+
+        // Map: { iconName : svgContent }
+        const result = {};
+
+        // Iterate through all matched SVG image files
+        for (const file of images) {
+
+            // Extract filename only -> "icon-arrow.svg"
+            const rawName = file.split('/').pop();
+
+            // Normalize icon name:
+            // "icon-arrow.svg" -> "arrow"
+            const key = rawName
+                .replace(/^icon-/, '')
+                .replace(/\.svg$/, '');
+
+            // Load the actual SVG file content as raw text
+            const svg = await fetch('/' + file).then(r => r.text());
+
+            // Store final icon: name -> SVG markup
+            result[key] = svg;
+        }
+
+        // Return dictionary of icons
+        return result;
+    }
+
+    /**
      * Adjusts the height of a textarea element based on its content while enforcing a maximum number of lines.
      * 
      * The function resets the textarea height to 'auto' to calculate the full content height, then adjusts
