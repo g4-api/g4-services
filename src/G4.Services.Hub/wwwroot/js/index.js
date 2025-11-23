@@ -1830,7 +1830,7 @@ window.addEventListener('load', async () => {
 		}
 
 		// Initialize the designer after exiting the loop
-		initializeDesigner();
+		await initializeDesigner();
 	};
 
 	try {
