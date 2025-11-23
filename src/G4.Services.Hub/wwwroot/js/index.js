@@ -108,7 +108,7 @@ async function initializeDesigner() {
 	const job = StateMachineSteps.newG4Job('Job', {}, {}, []);
 
 	// Add the containers to the "Containers" group.
-	containersGroup.steps.push(...[stage, job]);
+	containersGroup.steps.push(stage, job);
 
 	// If "Containers" group doesn't exist, add it to the groups array.
 	if (!containers) {
@@ -120,7 +120,7 @@ async function initializeDesigner() {
 
 	// Sort steps within each group alphabetically by name.
 	for (const group of sortedGroups) {
-		let sortedSteps = group.steps.sort((a, b) => a.name.localeCompare(b.name));
+		let sortedSteps = group.steps.toSorted((a, b) => a.name.localeCompare(b.name));
 		group.steps = sortedSteps;
 	}
 
