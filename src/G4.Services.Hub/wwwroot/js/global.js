@@ -16,10 +16,11 @@ let _extractionScopes = {};
 let _manifests = {};
 let _manifestsGroups = [];
 let _stateMachine = {};
+let _svgMap = {};
 let _timer;
 
-const _flowableTypes = ["ACTION", "CONTENT", "EXPORT", "JOB", "STAGE", "TRANSFORMER"];
 const _auditableTypes = ["ACTION", "CONTENT", "TRANSFORMER"];
+const _flowableTypes = ["ACTION", "CONTENT", "EXPORT", "JOB", "STAGE", "TRANSFORMER"];
 
 const _connection = new signalR
 	.HubConnectionBuilder()
@@ -68,6 +69,12 @@ _connection
             description: i.manifest.summary,
         })),
     }
+
+    // Get the files listed in the client.
+	const files = await _client.getFiles();
+
+	// Read SVG icons from the files and store them in a global variable.
+    _svgMap = await Utilities.readSvgIcons(files);
 
     /**
      * Wait for the timer element to be available in the DOM.
@@ -159,17 +166,10 @@ _connection
     Utilities.waitForElement('.sqd-workspace', 5000);
 
 	/**
-	 * Module to enable drag-and-drop import of model definitions into the designer canvas.
-	 * @module dragAndDropImport
-	 */
-
-	/**
 	 * Enable drag-and-drop import of model definitions into the designer canvas.
 	 * Listens for file drops on the '#designer' element, reads the file,
 	 * parses JSON or raw text, and applies the definition.
-	 */
-
-	/**
+	 * 
 	 * Waits for the '#designer' element and sets up dragover, dragleave, and drop handlers.
 	 */
 	Utilities.waitForElement('#designer', 5000).then(async (designer) => {
