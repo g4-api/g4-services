@@ -288,7 +288,7 @@ function newConfiguration() {
 				name.textContent = step.name; // Set the text content to the step's name
 
 				// Append the icon and name to the main item container
-				item.appendChild(icon);
+				//item.appendChild(icon);
 				item.appendChild(name);
 
 				// Return the fully constructed toolbox item
@@ -489,7 +489,7 @@ function newImportModal() {
 		// Add event listener to remove the modal when the Close button is clicked.
 		// Remove the modal element from the field container.
 		closeButtonElement.addEventListener('click', () => {
-			fieldContainer.removeChild(modalElement);
+			modalElement.remove();
 		});
 
 		// Create the Import button.
@@ -523,7 +523,7 @@ function newImportModal() {
 					: JSON.parse(textareaElement.value);
 
 				// Remove the modal element from the field container.
-				fieldContainer.removeChild(modalElement);
+				modalElement.remove();
 
 				// Invoke the callback function with the parsed JSON value.
 				setCallback(value);
