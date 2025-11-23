@@ -248,8 +248,7 @@
 		}
 		tryDelete() {
 			if (this.canDelete() && this.state.selectedStepId) {
-				this.stateModifier.tryDelete(this.state.selectedStepId);
-				return true;
+				return this.stateModifier.tryDeleteById(this.state.selectedStepId);
 			}
 			return false;
 		}
@@ -257,7 +256,7 @@
 			return (!!this.state.selectedStepId &&
 				!this.state.isReadonly &&
 				!this.state.isDragging &&
-				this.stateModifier.isDeletable(this.state.selectedStepId));
+				this.stateModifier.isDeletableById(this.state.selectedStepId));
 		}
 	}
 
@@ -398,14 +397,14 @@
 	}
 
 	class DragStepView {
-		static create(step, theme, componentContext) {
+		static create(step, isAttached, theme, componentContext) {
 			var _a;
 			const body = (_a = componentContext.shadowRoot) !== null && _a !== void 0 ? _a : document.body;
 			const layer = Dom.element('div', {
 				class: `sqd-drag sqd-theme-${theme}`
 			});
 			body.appendChild(layer);
-			const component = componentContext.services.draggedComponent.create(layer, step, componentContext);
+			const component = componentContext.services.draggedComponent.create(layer, step, isAttached, componentContext);
 			return new DragStepView(component, layer, body);
 		}
 		constructor(component, layer, body) {
@@ -467,29 +466,30 @@
 	}
 
 	class DragStepBehavior {
-		static create(designerContext, step, draggedStepComponent) {
-			const view = DragStepView.create(step, designerContext.theme, designerContext.componentContext);
-			return new DragStepBehavior(view, designerContext.workspaceController, designerContext.placeholderController, designerContext.state, step, designerContext.stateModifier, draggedStepComponent);
+		static create(designerContext, step, attachedStepComponent) {
+			const isAttached = Boolean(attachedStepComponent);
+			const view = DragStepView.create(step, isAttached, designerContext.theme, designerContext.componentContext);
+			return new DragStepBehavior(view, designerContext.workspaceController, designerContext.placeholderController, designerContext.state, step, designerContext.stateModifier, attachedStepComponent);
 		}
-		constructor(view, workspaceController, placeholderController, designerState, step, stateModifier, draggedStepComponent) {
+		constructor(view, workspaceController, placeholderController, designerState, step, stateModifier, attachedStepComponent) {
 			this.view = view;
 			this.workspaceController = workspaceController;
 			this.placeholderController = placeholderController;
 			this.designerState = designerState;
 			this.step = step;
 			this.stateModifier = stateModifier;
-			this.draggedStepComponent = draggedStepComponent;
+			this.attachedStepComponent = attachedStepComponent;
 		}
 		onStart(position) {
 			let offset = null;
-			if (this.draggedStepComponent) {
-				this.draggedStepComponent.setIsDisabled(true);
-				this.draggedStepComponent.setIsDragging(true);
-				const hasSameSize = this.draggedStepComponent.view.width === this.view.component.width &&
-					this.draggedStepComponent.view.height === this.view.component.height;
+			if (this.attachedStepComponent) {
+				this.attachedStepComponent.setIsDisabled(true);
+				this.attachedStepComponent.setIsDragging(true);
+				const hasSameSize = this.attachedStepComponent.view.width === this.view.component.width &&
+					this.attachedStepComponent.view.height === this.view.component.height;
 				if (hasSameSize) {
 					// Mouse cursor will be positioned on the same place as the source component.
-					const pagePosition = this.draggedStepComponent.view.getClientPosition();
+					const pagePosition = this.attachedStepComponent.view.getClientPosition();
 					offset = position.subtract(pagePosition);
 				}
 			}
@@ -499,7 +499,7 @@
 			}
 			this.view.setPosition(position.subtract(offset));
 			this.designerState.setIsDragging(true);
-			const { placeholders, components } = this.resolvePlaceholders(this.draggedStepComponent);
+			const { placeholders, components } = this.resolvePlaceholders(this.attachedStepComponent);
 			this.state = {
 				placeholders,
 				components,
@@ -538,17 +538,17 @@
 			this.designerState.setIsDragging(false);
 			let modified = false;
 			if (!interrupt && this.currentPlaceholder) {
-				if (this.draggedStepComponent) {
-					modified = this.stateModifier.tryMove(this.draggedStepComponent.parentSequence, this.draggedStepComponent.step, this.currentPlaceholder.parentSequence, this.currentPlaceholder.index);
+				if (this.attachedStepComponent) {
+					modified = this.stateModifier.tryMove(this.attachedStepComponent.parentSequence, this.attachedStepComponent.step, this.currentPlaceholder.parentSequence, this.currentPlaceholder.index);
 				}
 				else {
 					modified = this.stateModifier.tryInsert(this.step, this.currentPlaceholder.parentSequence, this.currentPlaceholder.index);
 				}
 			}
 			if (!modified) {
-				if (this.draggedStepComponent) {
-					this.draggedStepComponent.setIsDisabled(false);
-					this.draggedStepComponent.setIsDragging(false);
+				if (this.attachedStepComponent) {
+					this.attachedStepComponent.setIsDisabled(false);
+					this.attachedStepComponent.setIsDragging(false);
 				}
 				if (this.currentPlaceholder) {
 					this.currentPlaceholder.setIsHover(false);
@@ -760,7 +760,7 @@
 			const clientPosition = component.view.getClientPosition();
 			const componentPosition = clientPosition.subtract(canvasPosition);
 			const componentSize = new Vector(component.view.width, component.view.height);
-			const viewport = this.viewportController.getFocusedOnComponent(componentPosition, componentSize);
+			const viewport = this.viewportController.getFocusedOnComponent(componentPosition, componentSize, component.step.componentType, component.view.g);
 			this.animator.execute(viewport);
 		}
 		handleWheelEvent(e) {
@@ -1198,7 +1198,7 @@
 		}
 	}
 
-	const defaultConfiguration$6 = {
+	const defaultConfiguration$5 = {
 		view: {
 			size: 22,
 			iconSize: 12
@@ -1206,7 +1206,7 @@
 	};
 	class ValidationErrorBadgeExtension {
 		static create(configuration) {
-			return new ValidationErrorBadgeExtension(configuration !== null && configuration !== void 0 ? configuration : defaultConfiguration$6);
+			return new ValidationErrorBadgeExtension(configuration !== null && configuration !== void 0 ? configuration : defaultConfiguration$5);
 		}
 		constructor(configuration) {
 			this.configuration = configuration;
@@ -1525,7 +1525,6 @@
 	})(exports.ClickCommandType || (exports.ClickCommandType = {}));
 	exports.PlaceholderDirection = void 0;
 	(function (PlaceholderDirection) {
-		PlaceholderDirection[PlaceholderDirection["gap"] = 0] = "gap";
 		PlaceholderDirection[PlaceholderDirection["in"] = 1] = "in";
 		PlaceholderDirection[PlaceholderDirection["out"] = 2] = "out";
 	})(exports.PlaceholderDirection || (exports.PlaceholderDirection = {}));
@@ -1628,7 +1627,7 @@
 		}
 	}
 
-	const defaultViewConfiguration$1 = {
+	const defaultViewConfiguration$2 = {
 		size: 30,
 		defaultIconSize: 22,
 		folderIconSize: 18,
@@ -1647,7 +1646,7 @@
 		}
 		create(parentElement, sequence, parentPlaceIndicator, context) {
 			var _a;
-			const view = ((_a = this.configuration) === null || _a === void 0 ? void 0 : _a.view) ? Object.assign(Object.assign({}, defaultViewConfiguration$1), this.configuration.view) : defaultViewConfiguration$1;
+			const view = ((_a = this.configuration) === null || _a === void 0 ? void 0 : _a.view) ? Object.assign(Object.assign({}, defaultViewConfiguration$2), this.configuration.view) : defaultViewConfiguration$2;
 			return StartStopRootComponent.create(parentElement, sequence, parentPlaceIndicator, context, view);
 		}
 	}
@@ -1686,11 +1685,16 @@
 					return regionView.getClientPosition();
 				},
 				resolveClick(click) {
-					const result = regionView.resolveClick(click);
-					return result === true || (result === null && g.contains(click.element)) ? true : result;
+					if (cfg.isRegionClickable) {
+						const result = regionView.resolveClick(click);
+						if (result !== null) {
+							return result;
+						}
+					}
+					return labelView.g.contains(click.element) || (inputView && inputView.g.contains(click.element)) ? true : null;
 				},
 				setIsDragging(isDragging) {
-					if (cfg.autoHideInputOnDrag && inputView) {
+					if (inputView && cfg.autoHideInputOnDrag) {
 						inputView.setIsHidden(isDragging);
 					}
 				},
@@ -1848,7 +1852,7 @@
 	};
 
 	const COMPONENT_CLASS_NAME$1 = 'switch';
-	function createView(g, width, height, joinX, viewContext, sequenceComponents, regionView, cfg) {
+	function createView(g, width, height, joinX, viewContext, sequenceComponents, labelViews, regionView, cfg) {
 		let inputView = null;
 		if (cfg.inputSize > 0) {
 			const iconUrl = viewContext.getStepIconUrl();
@@ -1866,11 +1870,16 @@
 				return regionView.getClientPosition();
 			},
 			resolveClick(click) {
-				const result = regionView.resolveClick(click);
-				return result === true || (result === null && g.contains(click.element)) ? true : result;
+				if (cfg.isRegionClickable) {
+					const result = regionView.resolveClick(click);
+					if (result !== null) {
+						return result;
+					}
+				}
+				return labelViews.some(v => v.g.contains(click.element) || (inputView && inputView.g.contains(click.element))) ? true : null;
 			},
 			setIsDragging(isDragging) {
-				if (cfg.autoHideInputOnDrag && inputView) {
+				if (inputView && cfg.autoHideInputOnDrag) {
 					inputView.setIsHidden(isDragging);
 				}
 			},
@@ -1882,13 +1891,13 @@
 			}
 		};
 	}
-	const createSwitchStepComponentViewFactory = (cfg) => (parent, stepContext, viewContext) => {
+	const createSwitchStepComponentViewFactory = (cfg, branchNameResolver) => (parent, stepContext, viewContext) => {
 		return viewContext.createRegionComponentView(parent, COMPONENT_CLASS_NAME$1, (g, regionViewBuilder) => {
 			const step = stepContext.step;
 			const paddingTop = cfg.paddingTop1 + cfg.paddingTop2;
 			const name = viewContext.getStepName();
 			const nameLabelView = LabelView.create(g, paddingTop, cfg.nameLabel, name, 'primary');
-			const branchNames = Object.keys(step.branches);
+			const branchNames = branchNameResolver ? branchNameResolver(step) : Object.keys(step.branches);
 			if (branchNames.length === 0) {
 				const width = Math.max(nameLabelView.width, cfg.minBranchWidth) + cfg.paddingX * 2;
 				const height = nameLabelView.height + paddingTop + cfg.noBranchPaddingBottom;
@@ -1896,14 +1905,15 @@
 				const regionView = regionViewBuilder(g, [width], height);
 				Dom.translate(nameLabelView.g, joinX, 0);
 				JoinView.createStraightJoin(g, new Vector(joinX, 0), height);
-				return createView(g, width, height, joinX, viewContext, null, regionView, cfg);
+				return createView(g, width, height, joinX, viewContext, null, [nameLabelView], regionView, cfg);
 			}
-			const branchComponents = [];
-			const branchLabelViews = [];
-			const branchSizes = [];
+			const branchComponents = new Array(branchNames.length);
+			const branchSizes = new Array(branchNames.length);
+			const labelViews = new Array(branchNames.length + 1);
+			labelViews[branchNames.length] = nameLabelView;
 			let totalBranchesWidth = 0;
 			let maxBranchesHeight = 0;
-			branchNames.forEach(branchName => {
+			branchNames.forEach((branchName, i) => {
 				const labelY = paddingTop + cfg.nameLabel.height + cfg.connectionHeight;
 				const translatedBranchName = viewContext.i18n(`stepComponent.${step.type}.branchName`, branchName);
 				const labelView = LabelView.create(g, labelY, cfg.branchNameLabel, translatedBranchName, 'secondary');
@@ -1916,9 +1926,9 @@
 				const offsetX = totalBranchesWidth;
 				totalBranchesWidth += width;
 				maxBranchesHeight = Math.max(maxBranchesHeight, component.view.height);
-				branchComponents.push(component);
-				branchLabelViews.push(labelView);
-				branchSizes.push({ width, branchOffsetLeft, offsetX, joinX });
+				branchComponents[i] = component;
+				branchSizes[i] = { width, branchOffsetLeft, offsetX, joinX };
+				labelViews[i] = labelView;
 			});
 			const centerBranchIndex = Math.floor(branchNames.length / 2);
 			const centerBranchSize = branchSizes[centerBranchIndex];
@@ -1937,7 +1947,7 @@
 			branchComponents.forEach((component, i) => {
 				const branchSize = branchSizes[i];
 				const branchOffsetLeft = switchOffsetLeft + branchSize.offsetX + branchSize.branchOffsetLeft;
-				Dom.translate(branchLabelViews[i].g, switchOffsetLeft + branchSize.offsetX + branchSize.joinX, 0);
+				Dom.translate(labelViews[i].g, switchOffsetLeft + branchSize.offsetX + branchSize.joinX, 0);
 				Dom.translate(component.view.g, branchOffsetLeft, branchOffsetTop);
 				if (component.hasOutput && stepContext.isOutputConnected) {
 					const endOffsetTopOfComponent = paddingTop + cfg.nameLabel.height + cfg.branchNameLabel.height + cfg.connectionHeight + component.view.height;
@@ -1965,7 +1975,7 @@
 			regions[0] += switchOffsetLeft;
 			regions[regions.length - 1] += switchOffsetRight;
 			const regionView = regionViewBuilder(g, regions, viewHeight);
-			return createView(g, viewWidth, viewHeight, shiftedJoinX, viewContext, branchComponents, regionView, cfg);
+			return createView(g, viewWidth, viewHeight, shiftedJoinX, viewContext, branchComponents, labelViews, regionView, cfg);
 		});
 	};
 
@@ -2121,14 +2131,14 @@
 		}
 	}
 
-	const defaultConfiguration$5 = {
+	const defaultConfiguration$4 = {
 		scales: [0.06, 0.08, 0.1, 0.12, 0.16, 0.2, 0.26, 0.32, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1],
 		smoothDeltaYLimit: 16,
 		padding: 10
 	};
 	class DefaultViewportController {
 		static create(api, configuration) {
-			const config = configuration !== null && configuration !== void 0 ? configuration : defaultConfiguration$5;
+			const config = configuration !== null && configuration !== void 0 ? configuration : defaultConfiguration$4;
 			const nqn = new NextQuantifiedNumber(config.scales);
 			return new DefaultViewportController(config.smoothDeltaYLimit, nqn, api, config.padding);
 		}
@@ -2287,19 +2297,23 @@
 	}
 
 	class PlaceholderController {
-		static create(configuration) {
-			return new PlaceholderController(configuration);
+		static create(state, configuration) {
+			return new PlaceholderController(state, configuration);
 		}
-		constructor(configuration) {
-			var _a, _b, _c, _d;
+		constructor(state, configuration) {
+			var _a, _b;
 			this.configuration = configuration;
-			this.canCreate = (_b = (_a = this.configuration) === null || _a === void 0 ? void 0 : _a.canCreate) !== null && _b !== void 0 ? _b : (() => true);
-			this.canShow = (_d = (_c = this.configuration) === null || _c === void 0 ? void 0 : _c.canShow) !== null && _d !== void 0 ? _d : (() => true);
+			const canCreate = (_a = this.configuration) === null || _a === void 0 ? void 0 : _a.canCreate;
+			const canShow = (_b = this.configuration) === null || _b === void 0 ? void 0 : _b.canShow;
+			this.canCreate = canCreate ? (sequence, index) => canCreate(sequence, index, state.definition) : () => true;
+			this.canShow = canShow
+				? (sequence, index, draggingStepComponentType, draggingStepType) => canShow(sequence, index, draggingStepComponentType, draggingStepType, state.definition)
+				: () => true;
 		}
 	}
 
 	class RectPlaceholderView {
-		static create(parent, width, height, radius, iconSize, direction) {
+		static create(parent, width, height, radius, iconD, iconSize) {
 			const g = Dom.svg('g', {
 				visibility: 'hidden',
 				class: 'sqd-placeholder'
@@ -2313,8 +2327,7 @@
 				ry: radius
 			});
 			g.appendChild(rect);
-			if (direction) {
-				const iconD = direction === exports.PlaceholderDirection.in ? Icons.folderIn : Icons.folderOut;
+			if (iconD) {
 				const icon = Icons.appendPath(g, 'sqd-placeholder-icon-path', iconD, iconSize);
 				Dom.translate(icon, (width - iconSize) / 2, (height - iconSize) / 2);
 			}
@@ -2336,9 +2349,9 @@
 	}
 
 	class RectPlaceholder {
-		static create(parent, size, direction, sequence, index, radius, iconSize) {
-			const view = RectPlaceholderView.create(parent, size.x, size.y, radius, iconSize, direction);
-			return new RectPlaceholder(view, sequence, index);
+		static create(parent, size, parentSequence, index, radius, iconD, iconSize) {
+			const view = RectPlaceholderView.create(parent, size.x, size.y, radius, iconD, iconSize);
+			return new RectPlaceholder(view, parentSequence, index);
 		}
 		constructor(view, parentSequence, index) {
 			this.view = view;
@@ -2445,13 +2458,13 @@
 		}
 	}
 
-	const defaultConfiguration$4 = {
+	const defaultConfiguration$3 = {
 		gridSizeX: 48,
 		gridSizeY: 48
 	};
 	class LineGridExtension {
 		static create(configuration) {
-			return new LineGridExtension(configuration !== null && configuration !== void 0 ? configuration : defaultConfiguration$4);
+			return new LineGridExtension(configuration !== null && configuration !== void 0 ? configuration : defaultConfiguration$3);
 		}
 		constructor(configuration) {
 			this.configuration = configuration;
@@ -2472,6 +2485,49 @@
 		}
 	}
 
+	const defaultConfiguration$2 = {
+		gapWidth: 88,
+		gapHeight: 24,
+		radius: 6,
+		iconSize: 16
+	};
+	class RectPlaceholderExtension {
+		static create(configuration) {
+			return new RectPlaceholderExtension(configuration !== null && configuration !== void 0 ? configuration : defaultConfiguration$2);
+		}
+		constructor(configuration) {
+			this.configuration = configuration;
+			this.alongGapSize = new Vector(this.configuration.gapWidth, this.configuration.gapHeight);
+			this.perpendicularGapSize = new Vector(this.configuration.gapHeight, this.configuration.gapWidth);
+		}
+		getGapSize(orientation) {
+			return orientation === exports.PlaceholderGapOrientation.perpendicular ? this.perpendicularGapSize : this.alongGapSize;
+		}
+		createForGap(parent, parentSequence, index, orientation) {
+			const gapSize = this.getGapSize(orientation);
+			return RectPlaceholder.create(parent, gapSize, parentSequence, index, this.configuration.radius, this.configuration.iconD, this.configuration.iconSize);
+		}
+		createForArea(parent, size, direction, parentSequence, index) {
+			let iconD;
+			if (direction === exports.PlaceholderDirection.in) {
+				iconD = Icons.folderIn;
+			}
+			else if (direction === exports.PlaceholderDirection.out) {
+				iconD = Icons.folderOut;
+			}
+			return RectPlaceholder.create(parent, size, parentSequence, index, this.configuration.radius, iconD, this.configuration.iconSize);
+		}
+	}
+
+	class RectPlaceholderDesignerExtension {
+		static create(configuration) {
+			return new RectPlaceholderDesignerExtension(RectPlaceholderExtension.create(configuration));
+		}
+		constructor(placeholder) {
+			this.placeholder = placeholder;
+		}
+	}
+
 	class StartStopRootComponentDesignerExtension {
 		static create(configuration) {
 			return new StartStopRootComponentDesignerExtension(StartStopRootComponentExtension.create(configuration));
@@ -2481,7 +2537,7 @@
 		}
 	}
 
-	const defaultConfiguration$3 = {
+	const defaultConfiguration$1 = {
 		view: {
 			paddingTop: 20,
 			paddingX: 20,
@@ -2489,6 +2545,7 @@
 			inputRadius: 4,
 			inputIconSize: 14,
 			autoHideInputOnDrag: true,
+			isRegionClickable: true,
 			label: {
 				height: 22,
 				paddingX: 10,
@@ -2499,7 +2556,7 @@
 	};
 	class ContainerStepExtension {
 		static create(configuration) {
-			return new ContainerStepExtension(configuration !== null && configuration !== void 0 ? configuration : defaultConfiguration$3);
+			return new ContainerStepExtension(configuration !== null && configuration !== void 0 ? configuration : defaultConfiguration$1);
 		}
 		constructor(configuration) {
 			this.configuration = configuration;
@@ -2508,44 +2565,44 @@
 		}
 	}
 
-	const defaultConfiguration$2 = {
-		view: {
-			minBranchWidth: 88,
-			paddingX: 20,
-			paddingTop1: 0,
-			paddingTop2: 22,
-			connectionHeight: 20,
-			noBranchPaddingBottom: 24,
-			inputSize: 18,
-			inputIconSize: 14,
-			inputRadius: 4,
-			autoHideInputOnDrag: true,
-			branchNameLabel: {
-				height: 22,
-				paddingX: 10,
-				minWidth: 50,
-				radius: 10
-			},
-			nameLabel: {
-				height: 22,
-				paddingX: 10,
-				minWidth: 50,
-				radius: 10
-			}
+	const defaultViewConfiguration$1 = {
+		minBranchWidth: 88,
+		paddingX: 20,
+		paddingTop1: 0,
+		paddingTop2: 22,
+		connectionHeight: 20,
+		noBranchPaddingBottom: 24,
+		inputSize: 18,
+		inputIconSize: 14,
+		inputRadius: 4,
+		autoHideInputOnDrag: true,
+		isRegionClickable: true,
+		branchNameLabel: {
+			height: 22,
+			paddingX: 10,
+			minWidth: 50,
+			radius: 10
+		},
+		nameLabel: {
+			height: 22,
+			paddingX: 10,
+			minWidth: 50,
+			radius: 10
 		}
 	};
 	class SwitchStepExtension {
 		static create(configuration) {
-			return new SwitchStepExtension(configuration !== null && configuration !== void 0 ? configuration : defaultConfiguration$2);
+			return new SwitchStepExtension(configuration);
 		}
 		constructor(configuration) {
+			var _a, _b, _c;
 			this.configuration = configuration;
 			this.componentType = 'switch';
-			this.createComponentView = createSwitchStepComponentViewFactory(this.configuration.view);
+			this.createComponentView = createSwitchStepComponentViewFactory((_b = (_a = this.configuration) === null || _a === void 0 ? void 0 : _a.view) !== null && _b !== void 0 ? _b : defaultViewConfiguration$1, (_c = this.configuration) === null || _c === void 0 ? void 0 : _c.branchNamesResolver);
 		}
 	}
 
-	const defaultConfiguration$1 = {
+	const defaultConfiguration = {
 		view: {
 			paddingLeft: 12,
 			paddingRight: 12,
@@ -2560,7 +2617,7 @@
 	};
 	class TaskStepExtension {
 		static create(configuration) {
-			return new TaskStepExtension(configuration !== null && configuration !== void 0 ? configuration : defaultConfiguration$1);
+			return new TaskStepExtension(configuration !== null && configuration !== void 0 ? configuration : defaultConfiguration);
 		}
 		constructor(configuration) {
 			this.configuration = configuration;
@@ -2882,7 +2939,8 @@
 					throw new Error(notInitializedError$1);
 				}
 				const position = (_a = this.state.lastPosition) !== null && _a !== void 0 ? _a : this.state.startPosition;
-				const element = this.dom.elementFromPoint(position.x, position.y);
+				const clientPosition = position.subtract(new Vector(window.scrollX, window.scrollY));
+				const element = this.dom.elementFromPoint(clientPosition.x, clientPosition.y);
 				this.stop(false, element);
 			};
 			this.onTouchStart = (e) => {
@@ -3052,30 +3110,56 @@
 		isSelectable(step, parentSequence) {
 			return this.configuration.isSelectable ? this.configuration.isSelectable(step, parentSequence) : true;
 		}
-		trySelectStep(step, parentSequence) {
-			if (this.isSelectable(step, parentSequence)) {
-				this.state.setSelectedStepId(step.id);
-				return true;
-			}
-			return false;
-		}
-		trySelectStepById(stepId) {
+		isSelectableById(stepId) {
 			if (this.configuration.isSelectable) {
 				const result = this.definitionWalker.getParentSequence(this.state.definition, stepId);
-				this.trySelectStep(result.step, result.parentSequence);
+				return this.configuration.isSelectable(result.step, result.parentSequence);
 			}
-			else {
-				this.state.setSelectedStepId(stepId);
-			}
+			return true;
 		}
-		isDeletable(stepId) {
+		canUnselectSelectedStep() {
+			if (this.state.selectedStepId) {
+				if (this.configuration.canUnselectStep) {
+					const result = this.definitionWalker.getParentSequence(this.state.definition, this.state.selectedStepId);
+					return this.configuration.canUnselectStep(result.step, result.parentSequence);
+				}
+				return true;
+			}
+			return null;
+		}
+		/**
+		 * @description Check the `isSelectable` callback before calling this method.
+		 */
+		trySelectStepById(stepIdOrNull) {
+			const can = this.canUnselectSelectedStep();
+			if (can === true || can === null) {
+				this.state.setSelectedStepId(stepIdOrNull);
+				return true;
+			}
+			this.state.notifyStepUnselectionBlocked(stepIdOrNull);
+			return false;
+		}
+		tryResetSelectedStep() {
+			let stepIdOrNull = this.state.tryGetLastStepIdFromFolderPath();
+			if (stepIdOrNull && !this.isSelectableById(stepIdOrNull)) {
+				stepIdOrNull = null;
+			}
+			this.trySelectStepById(stepIdOrNull);
+		}
+		isDeletable(step, parentSequence) {
+			return this.configuration.isDeletable ? this.configuration.isDeletable(step, parentSequence) : true;
+		}
+		isDeletableById(stepId) {
 			if (this.configuration.isDeletable) {
 				const result = this.definitionWalker.getParentSequence(this.state.definition, stepId);
 				return this.configuration.isDeletable(result.step, result.parentSequence);
 			}
 			return true;
 		}
-		tryDelete(stepId) {
+		/**
+		 * @description Check the `isDeletable` callback before calling this method.
+		 */
+		tryDeleteById(stepId) {
 			const result = this.definitionWalker.getParentSequence(this.state.definition, stepId);
 			const canDeleteStep = this.configuration.canDeleteStep
 				? this.configuration.canDeleteStep(result.step, result.parentSequence)
@@ -3095,7 +3179,7 @@
 			}
 			SequenceModifier.insertStep(step, targetSequence, targetIndex);
 			this.state.notifyDefinitionChanged(exports.DefinitionChangeType.stepInserted, step.id);
-			if (!this.configuration.isAutoSelectDisabled) {
+			if (!this.configuration.isAutoSelectDisabled && this.isSelectable(step, targetSequence)) {
 				this.trySelectStepById(step.id);
 			}
 			return true;
@@ -3116,14 +3200,17 @@
 			}
 			apply();
 			this.state.notifyDefinitionChanged(exports.DefinitionChangeType.stepMoved, step.id);
-			if (!this.configuration.isAutoSelectDisabled) {
-				this.trySelectStep(step, targetSequence);
+			if (!this.configuration.isAutoSelectDisabled && this.isSelectable(step, targetSequence)) {
+				this.trySelectStepById(step.id);
 			}
 			return true;
 		}
 		isDuplicable(step, parentSequence) {
 			return this.configuration.isDuplicable ? this.configuration.isDuplicable(step, parentSequence) : false;
 		}
+		/**
+		 * @description Check the `isDuplicable` callback before calling this method.
+		 */
 		tryDuplicate(step, parentSequence) {
 			const duplicator = new StepDuplicator(this.uidGenerator, this.definitionWalker);
 			const index = parentSequence.indexOf(step);
@@ -3150,6 +3237,7 @@
 			this.isEditorCollapsed = isEditorCollapsed;
 			this.onViewportChanged = new SimpleEvent();
 			this.onSelectedStepIdChanged = new SimpleEvent();
+			this.onStepUnselectionBlocked = new SimpleEvent();
 			this.onFolderPathChanged = new SimpleEvent();
 			this.onIsReadonlyChanged = new SimpleEvent();
 			this.onIsDraggingChanged = new SimpleEvent();
@@ -3189,6 +3277,9 @@
 		}
 		notifyDefinitionChanged(changeType, stepId) {
 			this.onDefinitionChanged.forward({ changeType, stepId });
+		}
+		notifyStepUnselectionBlocked(stepId) {
+			this.onStepUnselectionBlocked.forward(stepId);
 		}
 		setViewport(viewport) {
 			this.viewport = viewport;
@@ -3382,7 +3473,7 @@
 			const workspaceController = new WorkspaceControllerWrapper();
 			const behaviorController = BehaviorController.create(configuration.shadowRoot);
 			const stepExtensionResolver = StepExtensionResolver.create(services);
-			const placeholderController = PlaceholderController.create(configuration.placeholder);
+			const placeholderController = PlaceholderController.create(state, configuration.placeholder);
 			const definitionWalker = (_c = configuration.definitionWalker) !== null && _c !== void 0 ? _c : new DefinitionWalker();
 			const i18n = (_d = configuration.i18n) !== null && _d !== void 0 ? _d : ((_, defaultValue) => defaultValue);
 			const uidGenerator = (_e = configuration.uidGenerator) !== null && _e !== void 0 ? _e : Uid.next;
@@ -3581,24 +3672,23 @@
 			this.stateModifier = stateModifier;
 		}
 		onStart() {
-			if (this.resetSelectedStep) {
-				const stepIdOrNull = this.state.tryGetLastStepIdFromFolderPath();
-				if (stepIdOrNull) {
-					this.stateModifier.trySelectStepById(stepIdOrNull);
-				}
-				else {
-					this.state.setSelectedStepId(null);
-				}
-			}
+			// Nothing to do.
 		}
 		onMove(delta) {
+			this.lastDelta = delta;
 			this.state.setViewport({
 				position: this.startPosition.subtract(delta),
 				scale: this.state.viewport.scale
 			});
 		}
 		onEnd() {
-			// Nothing to do.
+			if (this.resetSelectedStep) {
+				const distance = this.lastDelta ? this.lastDelta.distance() : 0;
+				if (distance > 2) {
+					return;
+				}
+				this.stateModifier.tryResetSelectedStep();
+			}
 		}
 	}
 
@@ -3623,7 +3713,7 @@
 			if (delta.distance() > 2) {
 				const canDrag = !this.state.isReadonly && !this.isDragDisabled;
 				if (canDrag) {
-					this.state.setSelectedStepId(null);
+					this.stateModifier.tryResetSelectedStep();
 					return DragStepBehavior.create(this.context, this.pressedStepComponent.step, this.pressedStepComponent);
 				}
 				else {
@@ -3635,9 +3725,12 @@
 			if (interrupt) {
 				return;
 			}
-			if (!this.stateModifier.trySelectStep(this.pressedStepComponent.step, this.pressedStepComponent.parentSequence)) {
-				// If we cannot select the step, we clear the selection.
-				this.state.setSelectedStepId(null);
+			if (this.stateModifier.isSelectable(this.pressedStepComponent.step, this.pressedStepComponent.parentSequence)) {
+				this.stateModifier.trySelectStepById(this.pressedStepComponent.step.id);
+			}
+			else {
+				// If the step is not selectable, we try to reset the selection.
+				this.stateModifier.tryResetSelectedStep();
 			}
 			return new SelectStepBehaviorEndToken(this.pressedStepComponent.step.id, Date.now());
 		}
@@ -3872,7 +3965,7 @@
 							label: this.i18n('contextMenu.unselect', 'Unselect'),
 							order: 10,
 							callback: () => {
-								this.state.setSelectedStepId(null);
+								this.stateModifier.tryResetSelectedStep();
 							}
 						});
 					}
@@ -3887,12 +3980,12 @@
 					}
 				}
 				if (!this.state.isReadonly) {
-					if (this.stateModifier.isDeletable(step.id)) {
+					if (this.stateModifier.isDeletable(step, parentSequence)) {
 						items.push({
 							label: this.i18n('contextMenu.delete', 'Delete'),
 							order: 30,
 							callback: () => {
-								this.stateModifier.tryDelete(step.id);
+								this.stateModifier.tryDeleteById(step.id);
 							}
 						});
 					}
@@ -4232,7 +4325,7 @@
 
 	const SAFE_OFFSET = 10;
 	class DefaultDraggedComponent {
-		static create(parent, step, componentContext) {
+		static create(parent, step, _, componentContext) {
 			const canvas = Dom.svg('svg');
 			canvas.style.marginLeft = -10 + 'px';
 			canvas.style.marginTop = -10 + 'px';
@@ -4924,33 +5017,6 @@
 		}
 	}
 
-	const defaultConfiguration = {
-		gapWidth: 88,
-		gapHeight: 24,
-		radius: 6,
-		iconSize: 16
-	};
-	class RectPlaceholderExtension {
-		static create(configuration) {
-			return new RectPlaceholderExtension(configuration !== null && configuration !== void 0 ? configuration : defaultConfiguration);
-		}
-		constructor(configuration) {
-			this.configuration = configuration;
-			this.alongGapSize = new Vector(defaultConfiguration.gapWidth, defaultConfiguration.gapHeight);
-			this.perpendicularGapSize = new Vector(defaultConfiguration.gapHeight, defaultConfiguration.gapWidth);
-		}
-		getGapSize(orientation) {
-			return orientation === exports.PlaceholderGapOrientation.perpendicular ? this.perpendicularGapSize : this.alongGapSize;
-		}
-		createForGap(parent, parentSequence, index, orientation) {
-			const gapSize = this.getGapSize(orientation);
-			return RectPlaceholder.create(parent, gapSize, exports.PlaceholderDirection.gap, parentSequence, index, this.configuration.radius, this.configuration.iconSize);
-		}
-		createForArea(parent, size, direction, parentSequence, index) {
-			return RectPlaceholder.create(parent, size, direction, parentSequence, index, this.configuration.radius, this.configuration.iconSize);
-		}
-	}
-
 	class DefaultSequenceComponentExtension {
 		constructor() {
 			this.create = DefaultSequenceComponent.create;
@@ -5162,6 +5228,7 @@
 			designerContext.state.onViewportChanged.subscribe(designer.onViewportChanged.forward);
 			designerContext.state.onIsToolboxCollapsedChanged.subscribe(designer.onIsToolboxCollapsedChanged.forward);
 			designerContext.state.onIsEditorCollapsedChanged.subscribe(designer.onIsEditorCollapsedChanged.forward);
+			designerContext.state.onStepUnselectionBlocked.subscribe(designer.onStepUnselectionBlocked.forward);
 			return designer;
 		}
 		constructor(view, state, stateModifier, walker, historyController, api) {
@@ -5187,6 +5254,10 @@
 			 * @description Fires when the selected step has changed.
 			 */
 			this.onSelectedStepIdChanged = new SimpleEvent();
+			/**
+			 * @description Fires when the designer could not unselect the currently selected step due to restrictions.
+			 */
+			this.onStepUnselectionBlocked = new SimpleEvent();
 			/**
 			 * @description Fires when the toolbox is collapsed or expanded.
 			 */
@@ -5230,7 +5301,13 @@
 		 * @description Selects a step by the id.
 		 */
 		selectStepById(stepId) {
-			this.stateModifier.trySelectStepById(stepId);
+			this.state.setSelectedStepId(stepId);
+		}
+		/**
+		 * @description Unselects the selected step.
+		 */
+		clearSelectedStep() {
+			this.state.setSelectedStepId(null);
 		}
 		/**
 		 * @returns the current viewport.
@@ -5250,12 +5327,6 @@
 		 */
 		resetViewport() {
 			this.api.viewport.resetViewport();
-		}
-		/**
-		 * @description Unselects the selected step.
-		 */
-		clearSelectedStep() {
-			this.state.setSelectedStepId(null);
 		}
 		/**
 		 * @description Moves the viewport to the step with the animation.
@@ -5384,6 +5455,7 @@
 	exports.PathBarApi = PathBarApi;
 	exports.PlaceholderController = PlaceholderController;
 	exports.RectPlaceholder = RectPlaceholder;
+	exports.RectPlaceholderDesignerExtension = RectPlaceholderDesignerExtension;
 	exports.RectPlaceholderView = RectPlaceholderView;
 	exports.SelectStepBehaviorEndToken = SelectStepBehaviorEndToken;
 	exports.ServicesResolver = ServicesResolver;
@@ -5406,5 +5478,4 @@
 	exports.createTaskStepComponentViewFactory = createTaskStepComponentViewFactory;
 	exports.getAbsolutePosition = getAbsolutePosition;
 	exports.race = race;
-
 }));
