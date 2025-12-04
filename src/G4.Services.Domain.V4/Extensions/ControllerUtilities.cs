@@ -1,4 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 
 namespace G4.Services.Domain.V4.Extensions
 {
@@ -7,6 +10,52 @@ namespace G4.Services.Domain.V4.Extensions
     /// </summary>
     public static class ControllerUtilities
     {
+        /// <summary>
+        /// Reads all SVG files from the specified wwwroot directory and returns a dictionary
+        /// where the keys are the formatted file names (without "icon-" prefix and ".svg" extension),
+        /// and the values are the content of the SVG files.
+        /// </summary>
+        /// <param name="wwwrootPath">The absolute path to the wwwroot directory.</param>
+        /// <returns>A dictionary with formatted file names as keys and SVG file contents as values.</returns>
+        public static Dictionary<string, string> ReadSvgs(string wwwrootPath)
+        {
+            // Static method to format file paths by removing the "icon-" prefix and the ".svg" extension.
+            static string FormatKey(string input)
+            {
+                // Define a case-insensitive string comparison for replacements.
+                const StringComparison comparison = StringComparison.OrdinalIgnoreCase;
+
+                // Extract the file name without its extension from the input path.
+                var name = Path.GetFileNameWithoutExtension(input);
+
+                // Remove "icon-" prefix from the input string to generate the dictionary key.
+                return name.Replace(
+                    oldValue: "icon-",
+                    newValue: string.Empty,
+                    comparison);
+            }
+
+            // If the specified wwwroot directory does not exist, return an empty dictionary.
+            if (!Directory.Exists(wwwrootPath))
+            {
+                return [];
+            }
+
+            // Enumerate all files recursively under wwwroot, filtering to include only SVG files.
+            // Get all files recursively.
+            // Convert file paths to relative and use forward slashes.
+            // Filter for files that end with ".svg".
+            // Use the FormatKey function to generate the dictionary key (formatted file name).
+            // Read the content of each SVG file and use it as the dictionary value.
+            return Directory.EnumerateFiles(wwwrootPath, "*", SearchOption.AllDirectories)
+                .Select(f => Path.GetRelativePath(wwwrootPath, f).Replace("\\", "/"))
+                .Where(i => i.EndsWith(".svg", StringComparison.OrdinalIgnoreCase))
+                .ToDictionary(
+                    FormatKey,
+                    i => File.ReadAllText(Path.Combine(wwwrootPath, i))
+                );
+        }
+
         /// <summary>
         /// Writes the G4™ Hub ASCII logo to the console, including the specified version number.
         /// </summary>

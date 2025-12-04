@@ -172,7 +172,10 @@ class G4Client {
 		this.cacheUrl = `${this.baseUrl}/integration/cache`;
 
         // The URL endpoint to manage files.
-        this.filesUrl = `${this.baseUrl}/integration/files`;
+		this.filesUrl = `${this.baseUrl}/integration/files`;
+
+        // The URL endpoint to fetch SVG assets.
+		this.svgsUrl = `${this.baseUrl}/integration/svgs`;
 
 		// An in-memory cache to store fetched manifests.
 		this.manifests = [];
@@ -924,6 +927,31 @@ class G4Client {
 		} catch (error) {
 			// Log the error for debugging and rethrow it.
 			console.error('Failed to fetch G4 plugins:', error);
+			throw new Error(error);
+		}
+	}
+
+	async getSvgs() {
+		try {
+			// Send HTTP request to fetch the files list from the server
+			const response = await fetch(this.svgsUrl);
+
+			// Validate that the HTTP response status is successful (200–299)
+			if (!response.ok) {
+				throw new Error(`Network response was not ok: ${response.statusText}`);
+			}
+
+			// Parse the response body as JSON
+			const data = await response.json();
+
+			// Return the parsed file list
+			return data;
+		} catch (error) {
+
+			// Log the error for debugging and troubleshooting
+			console.error('Failed to fetch G4 SVGs:', error);
+
+			// Rethrow the error to ensure callers are aware of the failure
 			throw new Error(error);
 		}
 	}

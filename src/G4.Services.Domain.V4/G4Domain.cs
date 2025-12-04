@@ -2,6 +2,7 @@
 using G4.Cache;
 using G4.Services.Domain.V4.Clients;
 using G4.Services.Domain.V4.Hubs;
+using G4.Services.Domain.V4.Models;
 using G4.Services.Domain.V4.Repositories;
 
 using Microsoft.AspNetCore.Hosting;
@@ -19,6 +20,7 @@ namespace G4.Services.Domain.V4
         CacheManager cache,
         G4Client g4,
         JsonSerializerOptions jsonOptions,
+        SvgCacheModel svgCache,
         IBotsRepository connectedBots,
         ICopilotRepository copilot,
         IHubContext<G4AutomationNotificationsHub> notificationsHubContext,
@@ -62,6 +64,9 @@ namespace G4.Services.Domain.V4
 
         /// <inheritdoc />
         public IOpenAiClient OpenAi { get; set; } = openAi;
+
+        /// <inheritdoc />
+        public SvgCacheModel SvgCache { get; set; } = svgCache;
 
         /// <inheritdoc />
         public IToolsRepository Tools { get; set; } = tools;

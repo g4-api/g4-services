@@ -164,9 +164,11 @@
 		then applies a blue filter to produce the color #FFFFFF.
 		To adjust for different target colors, try using https://codepen.io/sosuke/pen/Pjoqqp.
 	*/
-	--toolbox-item-icon-image-filter: brightness(0) saturate(100%) invert(100%) sepia(0%) saturate(67%) hue-rotate(19deg) brightness(110%) contrast(101%);
+	--toolbox-item-icon-image-filter: none;
+	--toolbox-item-icon-image-color: var(--toolbox-item-color);
 	--toolbox-item-icon-no-icon-background: var(--primary-color);
 	/* Workflow */
+	--container-step-input-icon-fill: var(--step-task-text-fill);
 	--container-step-input-fill: var(--primary-color);
 	--container-step-input-stroke: var(--base-font-color);
 	--container-step-input-stroke-width: 1;
@@ -183,6 +185,7 @@
 	--step-label-secondary-text-fill: var(--base-font-color);
 	--step-label-secondary-text-font: 700 1.0em 'Roboto', sans-serif;
 	--step-task-empty-icon-fill: rgba(var(--secondary-color-rgb), 0.5);
+	--step-task-icon-fill: var(--step-task-text-fill);
 	--step-task-rect-fill: transparent;
 	--step-task-rect-filter: drop-shadow(0 1.5px 1.5px rgba(var(--black-rgb), 0.15));
 	--step-task-rect-stroke: var(--base-font-color);

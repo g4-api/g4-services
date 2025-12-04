@@ -130,6 +130,42 @@ async function initializeDesigner() {
 	// Create the workflow designer using the configuration and start definition.
 	_designer = sequentialWorkflowDesigner.Designer.create(designerHtmlElement, startDefinition, configuration);
 
+	// Subscribe to definition changes in the designer.
+	// This event fires whenever a step is added, removed, or updated.
+	_designer.onDefinitionChanged.subscribe(async () => {
+
+		// CSS selector: finds <g> elements that contain a rect.sqd-input
+		// immediately followed by an <image> element.
+		// Example target:
+		// <g>
+		//   <rect class="sqd-input" ... />
+		//   <image ... />
+		// </g>
+		const iconsSelector = "g:has(> rect.sqd-input+image)";
+
+		// CSS selector: finds <g> groups whose class contains 'sqd-step-'
+		// AND that directly contain an <image> or <img> element.
+		// This is used for task icons inside workflow steps.
+		const tasksSelector =
+			"g[class*='sqd-step-']:has(>image), g[class*='sqd-step-']:has(>img)";
+
+		// CSS class applied to replaced SVG <path> elements
+		// for input connector icon styling.
+		const iconsClass = "sqd-input-icon";
+
+		// CSS class applied to replaced SVG <path> elements
+		// for task icons inside steps.
+		const tasksClass = "sqd-step-task-icon";
+
+		// Replace <image> tags under input connectors with inline SVG
+		// and apply styling class to the <path> inside each SVG.
+		Utilities.switchImages(iconsSelector, iconsClass, _svgsCache);
+
+		// Replace <image>/<img> tags in step task icons with inline SVG
+		// and apply styling class to the <path> inside each SVG.
+		Utilities.switchImages(tasksSelector, tasksClass, _svgsCache);
+	});
+
 	// Listen for the "ReceiveAutomationEvent" message from the server
 	_connection.on("ReceiveAutomationStartEvent", (message) => {
 		// Convert the message type to uppercase for consistent comparison.
