@@ -157,6 +157,12 @@ namespace G4.Services.Domain.V4
             // Register OpenAI tools repository as a singleton service implementing IToolsRepository interface
             builder.Services.AddSingleton<IToolsRepository, ToolsRepository>();
 
+            // Register various adapters as transient services for dependency injection
+            builder.Services.AddTransient<AspAdapter>();
+            builder.Services.AddTransient<G4Adapter>();
+            builder.Services.AddTransient<HubsAdapter>();
+            builder.Services.AddTransient<ResourcesAdapter>();
+
             // Register the G4Domain as a transient service implementing IDomain
             builder.Services.AddTransient<IDomain, G4Domain>();
         }
