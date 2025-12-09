@@ -1,5 +1,5 @@
-# Use the official .NET 8 SDK image as the build environment
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+# Use the official .NET 10 SDK image as the build environment
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 
 # Set the build configuration (default is Release)
 ARG BUILD_CONFIGURATION=Release
@@ -22,8 +22,8 @@ RUN dotnet build "G4.Services.Hub/G4.Services.Hub.csproj" -c $BUILD_CONFIGURATIO
 # Publish the project
 RUN dotnet publish "G4.Services.Hub/G4.Services.Hub.csproj" -c $BUILD_CONFIGURATION -o /app/publish
 
-# Use the official .NET 8 ASP.NET runtime as the runtime environment
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
+# Use the official .NET 10 ASP.NET runtime as the runtime environment
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 
 # Set the working directory for the runtime
 WORKDIR /app
