@@ -258,34 +258,6 @@ namespace G4.Services.Hub.Api.V4.Controllers
         }
 
         [HttpGet]
-        [Route("files")]
-        [SwaggerOperation(
-            summary: "Lists all static files in wwwroot.",
-            description: "Recursively scans the wwwroot directory and returns a list of all static file paths, relative to wwwroot. Useful for discovering available static resources such as HTML, JS, CSS, images, etc.",
-            Tags = new[] { "Integration", "Files" })]
-        [SwaggerResponse(StatusCodes.Status200OK, description: "Successfully returned a list of all static files found under wwwroot.", type: typeof(List<string>), contentTypes: MediaTypeNames.Application.Json)]
-        [ResponseCache(Duration = 60, Location = ResponseCacheLocation.Client, NoStore = false)]
-        public IActionResult GetStaticFilesList()
-        {
-            // Resolve the absolute path to wwwroot.
-            var wwwrootPath = Path.Combine(_domain.Environment.ContentRootPath, "wwwroot");
-
-            // If wwwroot does not exist, return an empty list.
-            if (!Directory.Exists(wwwrootPath))
-            {
-                return Ok(new List<string>());
-            }
-
-            // Enumerate all files recursively under wwwroot, returning paths relative to wwwroot (using forward slashes for URL compatibility).
-            var files = Directory.EnumerateFiles(wwwrootPath, "*", SearchOption.AllDirectories)
-                .Select(f => Path.GetRelativePath(wwwrootPath, f).Replace("\\", "/"))
-                .ToList();
-
-            // Return the list of relative file paths as JSON.
-            return Ok(files);
-        }
-
-        [HttpGet]
         [Route("manifests/key/{key}")]
         [SwaggerOperation(
             summary: "Retrieves the plugin manifest by key.",
@@ -463,6 +435,48 @@ namespace G4.Services.Hub.Api.V4.Controllers
 
             // Return the list of manifests in JSON format.
             return Ok(manifests);
+        }
+
+        [HttpGet]
+        [Route("files")]
+        [SwaggerOperation(
+            summary: "Lists all static files in wwwroot.",
+            description: "Recursively scans the wwwroot directory and returns a list of all static file paths, relative to wwwroot. Useful for discovering available static resources such as HTML, JS, CSS, images, etc.",
+            Tags = new[] { "Integration", "Files" })]
+        [SwaggerResponse(StatusCodes.Status200OK, description: "Successfully returned a list of all static files found under wwwroot.", type: typeof(List<string>), contentTypes: MediaTypeNames.Application.Json)]
+        [ResponseCache(Duration = 60, Location = ResponseCacheLocation.Client, NoStore = false)]
+        public IActionResult GetStaticFilesList()
+        {
+            // Resolve the absolute path to wwwroot.
+            var wwwrootPath = Path.Combine(_domain.Environment.ContentRootPath, "wwwroot");
+
+            // If wwwroot does not exist, return an empty list.
+            if (!Directory.Exists(wwwrootPath))
+            {
+                return Ok(new List<string>());
+            }
+
+            // Enumerate all files recursively under wwwroot, returning paths relative to wwwroot (using forward slashes for URL compatibility).
+            var files = Directory.EnumerateFiles(wwwrootPath, "*", SearchOption.AllDirectories)
+                .Select(f => Path.GetRelativePath(wwwrootPath, f).Replace("\\", "/"))
+                .ToList();
+
+            // Return the list of relative file paths as JSON.
+            return Ok(files);
+        }
+
+        [HttpGet]
+        [Route("svgs")]
+        [SwaggerOperation(
+            summary: "Lists all SVG files in wwwroot.",
+            description: "Recursively scans the wwwroot directory for SVG files and returns a dictionary with the formatted file names (as keys) and their relative paths (as values). Useful for discovering and using SVG resources for UI components, icons, etc.",
+            Tags = new[] { "Integration", "Files" })]
+        [SwaggerResponse(StatusCodes.Status200OK, description: "Successfully returned a dictionary of all SVG files found under wwwroot.", type: typeof(Dictionary<string, string>), contentTypes: MediaTypeNames.Application.Json)]
+        [ResponseCache(Duration = 60, Location = ResponseCacheLocation.Client, NoStore = false)]
+        public IActionResult GetSvgs()
+        {
+            // Return a dictionary where the key is the formatted SVG name and the value is its content.
+            return Ok(_domain.SvgCache.Svgs);
         }
     }
 }

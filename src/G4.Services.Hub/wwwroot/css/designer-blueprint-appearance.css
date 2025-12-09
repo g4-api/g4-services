@@ -83,6 +83,14 @@ html, body {
 	ry: var(--border-radius);
 }
 
+.sqd-theme-light .sqd-step-task svg path.sqd-step-task-icon {
+	fill: var(--step-task-icon-fill);
+}
+
+.sqd-theme-light .sqd-step-container svg path.sqd-input-icon {
+	fill: var(--container-step-input-icon-fill);
+}
+
 .sqd-theme-light .sqd-toolbox {
     background: var(--toolbox-background);
     border-radius: var(--border-radius);
@@ -208,6 +216,10 @@ html, body {
 
 	.sqd-theme-light .sqd-toolbox-item .sqd-toolbox-item-icon-image {
 		filter: var(--toolbox-item-icon-image-filter);
+	}
+
+	.sqd-theme-light .sqd-toolbox-item .sqd-toolbox-item-icon svg path {
+		fill: var(--toolbox-item-icon-image-color);
 	}
 
 	.sqd-theme-light .sqd-toolbox-item .sqd-toolbox-item-icon.sqd-no-icon {

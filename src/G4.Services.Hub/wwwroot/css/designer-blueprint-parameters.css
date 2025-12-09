@@ -81,7 +81,7 @@
 	--smart-editor-button-border: 1px solid var(--primary-color);
 	--smart-editor-button-color: var(--secondary-color);
 	--smart-editor-button-font: 400 1.0em 'Roboto', sans-serif;
-	--smart-editor-button-hover-background: var(--primary-color); /* Added */
+	--smart-editor-button-hover-background: var(--primary-color);
 	--smart-editor-button-hover-border: 1px solid var(--red);
 	--smart-editor-color: var(--primary-color);
 	--smart-editor-details-border: 1px solid var(--primary-color);
@@ -162,8 +162,10 @@
 		To adjust for different target colors, try using https://codepen.io/sosuke/pen/Pjoqqp.
 	*/
 	--toolbox-item-icon-image-filter: brightness(0) saturate(100%) invert(18%) sepia(29%) saturate(4501%) hue-rotate(202deg) brightness(90%) contrast(78%);
+	--toolbox-item-icon-image-color: var(--primary-color);
 	--toolbox-item-icon-no-icon-background: var(--secondary-color);
 	/* Workflow */
+	--container-step-input-icon-fill: var(--secondary-color);
 	--container-step-input-fill: var(--primary-color);
 	--container-step-input-stroke: var(--secondary-color);
 	--container-step-input-stroke-width: 1;
@@ -180,6 +182,7 @@
 	--step-label-secondary-text-fill: var(--secondary-color);
 	--step-label-secondary-text-font: 700 1.0em 'Roboto', sans-serif;
 	--step-task-empty-icon-fill: rgba(var(--secondary-color-rgb), 0.5);
+	--step-task-icon-fill: var(--secondary-color);
 	--step-task-rect-fill: transparent;
 	--step-task-rect-filter: drop-shadow(0 1.5px 1.5px rgba(var(--black-rgb), 0.15));
 	--step-task-rect-stroke: var(--secondary-color);

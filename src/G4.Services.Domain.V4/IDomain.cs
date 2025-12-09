@@ -5,7 +5,9 @@ using G4.Extensions;
 using G4.Models;
 using G4.Models.Events;
 using G4.Services.Domain.V4.Clients;
+using G4.Services.Domain.V4.Extensions;
 using G4.Services.Domain.V4.Hubs;
+using G4.Services.Domain.V4.Models;
 using G4.Services.Domain.V4.Repositories;
 
 using Microsoft.AspNetCore.Builder;
@@ -17,6 +19,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 using System;
+using System.IO;
 using System.Text.Json;
 
 namespace G4.Services.Domain.V4
@@ -89,6 +92,11 @@ namespace G4.Services.Domain.V4
         IOpenAiClient OpenAi { get; set; }
 
         /// <summary>
+        /// Gets or sets the cache model used for storing and retrieving SVG resources.
+        /// </summary>
+        SvgCacheModel SvgCache { get; set; }
+
+        /// <summary>
         /// Gets or sets the repository for managing tool entities and operations.
         /// </summary>
         IToolsRepository Tools { get; set; }
@@ -104,6 +112,7 @@ namespace G4.Services.Domain.V4
             // Get the singleton instance of the cache manager
             var cache = CacheManager.Instance;
             var connectedBots = IBotsRepository.InitializeConnectedBots(CacheManager.LiteDatabase, G4Logger.Instance);
+            var wwwrootPath = Path.Combine(builder.Environment.ContentRootPath, "wwwroot");
 
             // Register the cache manager as a singleton service
             builder.Services.AddSingleton(implementationInstance: cache);
@@ -139,8 +148,20 @@ namespace G4.Services.Domain.V4
             // Register open AI client as a singleton service implementing IOpenAiClient interface
             builder.Services.AddSingleton<IOpenAiClient, OpenAiClient>();
 
+            // Register SVG cache model as a singleton service
+            builder.Services.AddSingleton(new SvgCacheModel
+            {
+                Svgs = ControllerUtilities.ReadSvgs(wwwrootPath)
+            });
+
             // Register OpenAI tools repository as a singleton service implementing IToolsRepository interface
             builder.Services.AddSingleton<IToolsRepository, ToolsRepository>();
+
+            // Register various adapters as transient services for dependency injection
+            builder.Services.AddTransient<AspAdapter>();
+            builder.Services.AddTransient<G4Adapter>();
+            builder.Services.AddTransient<HubsAdapter>();
+            builder.Services.AddTransient<ResourcesAdapter>();
 
             // Register the G4Domain as a transient service implementing IDomain
             builder.Services.AddTransient<IDomain, G4Domain>();

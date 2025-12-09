@@ -348,6 +348,18 @@
     }
 
     /**
+     * Fetches all available SVG icons from the backend and returns them
+     * as a dictionary: { [iconName]: svgContent }.
+     */
+    static async readSvgIcons() {
+        // Fetch SVG icons from the backend API
+        const svg = await fetch("/api/v4/g4/integration/svgs").then(response => response.text());
+
+        // Return dictionary of icons
+        return JSON.parse(svg);
+    }
+
+    /**
      * Adjusts the height of a textarea element based on its content while enforcing a maximum number of lines.
      * 
      * The function resets the textarea height to 'auto' to calculate the full content height, then adjusts
@@ -385,6 +397,154 @@
 
             // Enable the vertical scrollbar to allow the user to scroll through the overflowing content.
             textarea.style.overflowY = contentHeight === 0 ? 'hidden' : 'scroll';
+        }
+    }
+
+    /**
+     * Replaces an <img> or <image> element inside the given parent toolbox element
+     * with an inline <svg> element. This enables styling SVG paths directly (e.g., fill).
+     *
+     * 1. Locate <img> or <image>.
+     * 2. Read the `src` (for <img>) or `href` (for <image>).
+     * 3. Fetch the SVG file contents.
+     * 4. Parse the SVG markup into a DOM <svg>.
+     * 5. Replace the original <img> or apply dimension attributes if it was an <image>.
+     *
+     * @param {HTMLElement} parentElement - The element containing the icon (<img> or <image>).
+     * @param {Object}      [svgsCache]   - Optional cache of SVG contents to avoid repeated fetches.
+     * @returns {Promise<SVGElement | null>} The injected inline SVG element (if successful).
+     */
+    static async switchImage(parentElement, svgsCache) {
+        /**
+         * Resolves the SVG content for a given source (URL or local file).
+         * First, it checks if the SVG is available in the cache. If not, it fetches the SVG from the source.
+         */
+        const resolveSvg = async (src, svgCache) => {
+             // Extract the file name from the URL path by splitting on '/' and removing the file extension
+            const fileName = src
+                .split('/')                 // Split the path into parts based on '/'
+                .pop()                      // Get the last part, which is the file name with extension
+                .replace(/\.[^/.]+$/, "")   // Remove the extension (e.g., ".svg")
+                .replace(/^icon-/i, "");    // Remove "icon-" prefix if present
+
+            // Check if the SVG is already in the cache; if it is, return it
+            // Return the cached SVG content
+            if (svgCache && fileName in svgCache) {
+                return svgCache[fileName];
+            }
+
+            // Fetch the SVG resource
+            const response = await fetch(src);
+
+            // If the SVG was not found in the cache, fetch it from the source URL
+            // If the response is not successful, throw an error with a message
+            if (!response.ok) {
+                throw new Error(`Failed to fetch SVG from ${src}: ${response.statusText}`);
+            }
+
+            // Return the fetched SVG content as a string
+            return await response.text();
+        };
+
+        // Attempt to locate either <img> or <image> inside this element.
+        // "img,image" allows handling both HTML <img> and SVG <image>.
+        const image = parentElement.querySelector("img,image");
+        if (!image) {
+            // Nothing to replace — exit early.
+            return;
+        }
+
+        // Determine where the SVG file path is stored.
+        // <img> uses "src", <image> uses "href".
+        const src = image.getAttribute("src") || image.getAttribute("href");
+        if (!src) {
+            // Missing file reference — cannot fetch SVG.
+            return;
+        }
+
+        try {
+            // Fetch SVG markup from local file or URL.
+            const svgText = await resolveSvg(src, svgsCache);
+
+            // Convert raw SVG XML text into a DOM <svg> element.
+            const parser = new DOMParser();
+            const svgDoc = parser.parseFromString(svgText, "image/svg+xml");
+            const svgElement = svgDoc.documentElement;
+
+            // The original element is <img>
+            if (image.tagName !== "image") {
+                // Replace the original <img> with the new inline <svg>.
+                image.replaceWith(svgElement);
+
+                // Return the new inline SVG element.
+                return svgElement;
+            }
+
+            // The original element is <image> (inside <svg>)
+            // <image> elements have placement attributes (x, y, width, height)
+            // that must be copied into the new inline <svg>.
+            const width = image.getAttribute("width");
+            const height = image.getAttribute("height");
+            const x = image.getAttribute("x");
+            const y = image.getAttribute("y");
+
+            // Reapply all spatial attributes to the new SVG for proper alignment.
+            if (width) svgElement.setAttribute("width", width);
+            if (height) svgElement.setAttribute("height", height);
+            if (x) svgElement.setAttribute("x", x);
+            if (y) svgElement.setAttribute("y", y);
+
+            // Ensures SVG maintains proportions inside its box.
+            svgElement.setAttribute("preserveAspectRatio", "xMidYMid meet");
+
+            // Replace the original <img> with the new inline <svg>.
+            image.replaceWith(svgElement);
+
+            // Replace the original <image> with the new inline <svg>.
+            return svgElement;
+        }
+        catch (error) {
+            // If something goes wrong (fetch/parse), fail gracefully and move on.
+            console.error("Failed to inline SVG:", error);
+        }
+    }
+
+    /**
+     * Replaces <img> icons under a given selector with inline SVG elements
+     * and applies a CSS class to their primary <path>.  
+     *
+     * @param {string} selector    - CSS selector for the elements containing <img> icons.
+     * @param {string} imageClass  - CSS class to apply on the <path> element of the injected SVG.
+     * @param {Object} svgsCache   - Optional cache of SVG contents to avoid repeated fetches.
+     *
+     * This utility:
+     * 1. Finds all matching DOM elements.
+     * 2. Converts their <img> source into an inline SVG via Utilities.switchImage().
+     * 3. Ensures the SVG is valid before applying the provided CSS class.
+     */
+    static async switchImages(selector, imageClass, svgsCache) {
+        // Select all elements that should have their <img> replaced by inline SVG.
+        const elements = document.querySelectorAll(selector);
+
+        // Iterate over each matched element.
+        for (const element of elements) {
+            // Convert the nested <img> into an inline SVG.
+            // Returns null/undefined if the operation failed.
+            const svg = await Utilities.switchImage(element, svgsCache);
+
+            // If the SVG failed to load or parse — skip this element.
+            if (!svg) {
+                continue;
+            }
+
+            // Locate the main <path> node inside the injected SVG
+            // (toolbox icons usually contain a single main path).
+            const path = svg.querySelector("path");
+
+            // If found, attach the provided CSS class so styling can be applied globally.
+            if (path) {
+                path.classList.add(imageClass);
+            }
         }
     }
 

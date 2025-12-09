@@ -16,11 +16,13 @@ let _extractionScopes = {};
 let _manifests = {};
 let _manifestsGroups = [];
 let _stateMachine = {};
+let _svgsCache = {};
 let _timer;
 
-const _flowableTypes = ["ACTION", "CONTENT", "EXPORT", "JOB", "STAGE", "TRANSFORMER"];
 const _auditableTypes = ["ACTION", "CONTENT", "TRANSFORMER"];
+const _flowableTypes = ["ACTION", "CONTENT", "EXPORT", "JOB", "STAGE", "TRANSFORMER"];
 
+// Initialize SignalR connection for notifications
 const _connection = new signalR
 	.HubConnectionBuilder()
 	.withUrl(BASE_NOTIFICATION_PATH)
@@ -28,148 +30,147 @@ const _connection = new signalR
 	.build();
 
 // Start the SiognalR connection
-_connection
-	.start()
-	.catch(err => console.error("Connection failed:", err.message));
+try {
+	_connection.start();
+}
+catch (err) {
+    console.error("Connection failed:", err.message);
+}
 
 (async () => {
-    // Create a new G4Client instance.
-    _client = new G4Client(BASE_CLIENT_PATH);
+	// Create a new G4Client instance.
+	_client = new G4Client(BASE_CLIENT_PATH);
 
-    // Create a new CliFactory instance.
-    _cliFactory = new CliFactory();
+	// Create a new CliFactory instance.
+	_cliFactory = new CliFactory();
 
-    // Fetch manifests and manifest groups from the G4Client.
-    _manifests = await _client.getManifests();
+	// Fetch manifests and manifest groups from the G4Client.
+	_manifests = await _client.getManifests();
 
-    // Collect all manifests groups from the G4Client.
-    _manifestsGroups = await _client.getGroups();
+	// Collect all manifests groups from the G4Client.
+	_manifestsGroups = await _client.getGroups();
 
-    // Store the cache in a global variable for later use.
-    _cache = await _client.getCache();
+	// Store the cache in a global variable for later use.
+	_cache = await _client.getCache();
 
-    // Store the cache keys in a global variable for later use.
-    _cacheKeys = Object.keys(_cache).map(key => key.toUpperCase());
+	// Store the cache keys in a global variable for later use.
+	_cacheKeys = Object.keys(_cache).map(key => key.toUpperCase());
 
-    // Store extraction scopes in a global variable for later use.
-    _extractionScopes = {
-        providers: _cache["ExtractionScope"],
-        itemSource: Object.values(_cache["ExtractionScope"]).map(i => ({
-            name: i.manifest.key,
-            description: i.manifest.summary,
-        })),
-    }
+	// Store extraction scopes in a global variable for later use.
+	_extractionScopes = {
+		providers: _cache["ExtractionScope"],
+		itemSource: Object.values(_cache["ExtractionScope"]).map(i => ({
+			name: i.manifest.key,
+			description: i.manifest.summary,
+		})),
+	}
 
-    // Store data collectors in a global variable for later use.
-    _dataCollectors = {
-        providers: _cache["DataCollector"],
-        itemSource: Object.values(_cache["DataCollector"]).map(i => ({
-            name: i.manifest.key,
-            description: i.manifest.summary,
-        })),
-    }
+	// Store data collectors in a global variable for later use.
+	_dataCollectors = {
+		providers: _cache["DataCollector"],
+		itemSource: Object.values(_cache["DataCollector"]).map(i => ({
+			name: i.manifest.key,
+			description: i.manifest.summary,
+		})),
+	}
 
-    /**
-     * Wait for the timer element to be available in the DOM.
-     * Once the element is found or after 5000ms, execute the callback.
-     */
-    Utilities.waitForElement('#designer--timer', 5000).then(() => {
-        // Get the timer element from the DOM.
-        const timerElement = document.querySelector('#designer--timer');
-
-        // Create a new Timer instance with the timer element.
-        _timer = new Timer(timerElement);
-    });
-
-    /**
-     * Wait for the counter element to be available in the DOM.
-     * Once the element is found or after 5000ms, execute the callback.
-     */
-    Utilities.waitForElement('#designer--total-actions', 5000).then(() => {
-        // Get the counter element from the DOM.
-        const counterElement = document.querySelector('#designer--total-actions');
-
-        // Create a new Counter instance with the counter element.
-        _counter = new Counter(counterElement);
-    });
-
-    /**
-     * Wait for the average counter element to be available in the DOM.
-     * Once the element is found or after 5000ms, execute the callback.
-     */
-    Utilities.waitForElement('#designer--average-action-time', 5000).then(() => {
-        // Get the average counter element from the DOM.
-        const averageElement = document.querySelector('#designer--average-action-time');
-
-        // Create a new AverageCounter instance with the average counter element.
-        _averageCounter = new AverageCounter(averageElement);
-    });
-
-    /**
-     * Wait for the smart editor element to be available in the DOM.
-     * Once the element is found or after 5000ms, execute the callback.
-     */
-    Utilities.waitForElement('#designer .sqd-smart-editor', 5000).then(() => {
-        // Select the target node that we want to observe for DOM changes.
-        const targetNode = document.querySelector('#designer .sqd-smart-editor');
-
-        // Query all elements in the document that match the provided selector.
-        const elements = document.querySelectorAll('#designer .sqd-smart-editor textarea') || [];
-
-        // Loop through each element and dispatch the event.
-        for (const element of elements) {
-            Utilities.setTextareaSize(element, 8);
-        }
-
-        // Define the configuration for the MutationObserver.
-        // This configuration listens for changes to the child nodes and the entire subtree.
-        const config = {
-            attributes: false,
-            childList: true,
-            subtree: true
-        };
-
-        // Create an Observer instance for the target node.
-        _editorObserver = new Observer(targetNode);
-
-        // Start observing the target node for DOM mutations.
-        _editorObserver.observeDOMChanges(config, (mutationsList) => {
-            // Convert each mutation's addedNodes (a NodeList) into an array and flatten them into a single array.
-            const addedNodes = mutationsList.flatMap(mutation => Array.from(mutation.addedNodes));
-
-            // If no nodes were added during the mutations, exit early.
-            if (addedNodes.length === 0) {
-                return;
-            }
-
-            // Query all elements in the document that match the provided selector.
-            const elements = document.querySelectorAll('#designer .sqd-smart-editor textarea') || [];
-
-            // Loop through each element and dispatch the event.
-            for (const element of elements) {
-                Utilities.setTextareaSize(element, 8);
-            }
-        });
-    });
-
-    /**
-     * Wait for the canvas element to be available in the DOM.
-     * Once the element is found or after 5000ms, execute the callback.
-     */
-    Utilities.waitForElement('.sqd-workspace', 5000);
+	// Get the files listed in the client.
+	_svgsCache = await _client.getSvgs();
 
 	/**
-	 * Module to enable drag-and-drop import of model definitions into the designer canvas.
-	 * @module dragAndDropImport
+	 * Wait for the timer element to be available in the DOM.
+	 * Once the element is found or after 5000ms, execute the callback.
 	 */
+	Utilities.waitForElement('#designer--timer', 5000).then(() => {
+		// Get the timer element from the DOM.
+		const timerElement = document.querySelector('#designer--timer');
+
+		// Create a new Timer instance with the timer element.
+		_timer = new Timer(timerElement);
+	});
+
+	/**
+	 * Wait for the counter element to be available in the DOM.
+	 * Once the element is found or after 5000ms, execute the callback.
+	 */
+	Utilities.waitForElement('#designer--total-actions', 5000).then(() => {
+		// Get the counter element from the DOM.
+		const counterElement = document.querySelector('#designer--total-actions');
+
+		// Create a new Counter instance with the counter element.
+		_counter = new Counter(counterElement);
+	});
+
+	/**
+	 * Wait for the average counter element to be available in the DOM.
+	 * Once the element is found or after 5000ms, execute the callback.
+	 */
+	Utilities.waitForElement('#designer--average-action-time', 5000).then(() => {
+		// Get the average counter element from the DOM.
+		const averageElement = document.querySelector('#designer--average-action-time');
+
+		// Create a new AverageCounter instance with the average counter element.
+		_averageCounter = new AverageCounter(averageElement);
+	});
+
+	/**
+	 * Wait for the smart editor element to be available in the DOM.
+	 * Once the element is found or after 5000ms, execute the callback.
+	 */
+	Utilities.waitForElement('#designer .sqd-smart-editor', 5000).then(() => {
+		// Select the target node that we want to observe for DOM changes.
+		const targetNode = document.querySelector('#designer .sqd-smart-editor');
+
+		// Query all elements in the document that match the provided selector.
+		const elements = document.querySelectorAll('#designer .sqd-smart-editor textarea') || [];
+
+		// Loop through each element and dispatch the event.
+		for (const element of elements) {
+			Utilities.setTextareaSize(element, 8);
+		}
+
+		// Define the configuration for the MutationObserver.
+		// This configuration listens for changes to the child nodes and the entire subtree.
+		const config = {
+			attributes: false,
+			childList: true,
+			subtree: true
+		};
+
+		// Create an Observer instance for the target node.
+		_editorObserver = new Observer(targetNode);
+
+		// Start observing the target node for DOM mutations.
+		_editorObserver.observeDOMChanges(config, (mutationsList) => {
+			// Convert each mutation's addedNodes (a NodeList) into an array and flatten them into a single array.
+			const addedNodes = mutationsList.flatMap(mutation => Array.from(mutation.addedNodes));
+
+			// If no nodes were added during the mutations, exit early.
+			if (addedNodes.length === 0) {
+				return;
+			}
+
+			// Query all elements in the document that match the provided selector.
+			const elements = document.querySelectorAll('#designer .sqd-smart-editor textarea') || [];
+
+			// Loop through each element and dispatch the event.
+			for (const element of elements) {
+				Utilities.setTextareaSize(element, 8);
+			}
+		});
+	});
+
+	/**
+	 * Wait for the canvas element to be available in the DOM.
+	 * Once the element is found or after 5000ms, execute the callback.
+	 */
+	Utilities.waitForElement('.sqd-workspace', 5000);
 
 	/**
 	 * Enable drag-and-drop import of model definitions into the designer canvas.
 	 * Listens for file drops on the '#designer' element, reads the file,
 	 * parses JSON or raw text, and applies the definition.
-	 */
-
-	/**
+	 * 
 	 * Waits for the '#designer' element and sets up dragover, dragleave, and drop handlers.
 	 */
 	Utilities.waitForElement('#designer', 5000).then(async (designer) => {
@@ -193,7 +194,7 @@ _connection
 			designer.classList.remove('sqd-content-dragover');
 		});
 
-        // Check if running in an Electron environment
+		// Check if running in an Electron environment
 		const isElectron = /Electron\/\d+\.\d+\.\d+/.test(navigator.userAgent);
 
 		// If running in Electron, skip drag-and-drop import setup.
@@ -208,7 +209,7 @@ _connection
 			// Prevent browser from opening the file
 			e.preventDefault();
 
-            // Remove drag highlight
+			// Remove drag highlight
 			designer.classList.remove('dragover');
 
 			// If no file, exit
@@ -269,6 +270,89 @@ _connection
 				resetView(workspaceObserver);
 			}
 		});
+	});
+
+	// Wait until the workflow designer has rendered the start/stop circle.
+	// This ensures the toolbox and step icons exist in the DOM.
+	Utilities.waitForElement(".sqd-root-start-stop-circle", 5000).then(() => {
+		// CSS selector: finds <g> elements that contain a rect.sqd-input
+		// immediately followed by an <image> element.
+		// Example target:
+		// <g>
+		//   <rect class="sqd-input" ... />
+		//   <image ... />
+		// </g>
+		const iconsSelector = ".sqd-toolbox-item-icon, g:has(> rect.sqd-input + image)";
+
+		// CSS selector: finds <g> groups whose class contains 'sqd-step-'
+		// AND that directly contain an <image> or <img> element.
+		// This is used for task icons inside workflow steps.
+		const tasksSelector =
+			"g[class*='sqd-step-']:has(>image), g[class*='sqd-step-']:has(>img)";
+
+		// CSS class applied to replaced SVG <path> elements
+		// for input connector icon styling.
+		const containerClass = "sqd-input-icon";
+
+		// CSS class applied to replaced SVG <path> elements
+		// for task icons inside steps.
+		const tasksClass = "sqd-step-task-icon";
+
+		// Replace <image> tags under input connectors with inline SVG
+		// and apply styling class to the <path> inside each SVG.
+		Utilities.switchImages(iconsSelector, containerClass, _svgsCache);
+
+		// Replace <image>/<img> tags in step task icons with inline SVG
+		// and apply styling class to the <path> inside each SVG.
+		Utilities.switchImages(tasksSelector, tasksClass, _svgsCache);
+
+        // Query all toolbox items in the workflow designer.
+		const toolboxItems = document.querySelectorAll(".sqd-scrollbox-body > div.sqd-toolbox-item");
+
+		// Loop through all toolbox items and attach a mousedown listener.
+		// This detects when the user begins dragging from the toolbox.
+		for (const item of toolboxItems) {
+			item.addEventListener("mousedown", async _ => {
+
+				// Selector that targets the drag-shadow element created by SWD
+				// during a drag operation. It looks for:
+				// .sqd-drag > svg > g that directly contains an <image>.
+				const selector = ".sqd-drag > svg g:has(> image)";
+
+				// Query the DOM for the newly-created drag-shadow group.
+				const element = document.querySelector(selector);
+
+				// If no such element exists, exit early.
+				if (!element) {
+					return;
+				}
+
+				// Convert the <image> inside this group into inline SVG.
+				// Utilities.switchImage returns the fully-constructed <svg>.
+				const svg = await Utilities.switchImage(element, _svgsCache);
+
+				// If no SVG was returned, exit early.
+				if (!svg) {
+					return;
+				}
+
+				// Determine which class list to inspect.
+				// If the <g> element itself has classes, use them.
+				// Otherwise, fall back to its parent element's classes.
+				const classList = (element.classList || []).length > 0
+					? element.classList
+					: element.parentElement.classList;
+
+				// If the class list indicates a task-step, apply the task icon class.
+				if (classList.contains("sqd-step-task")) {
+					svg.querySelector("path").classList.add(tasksClass);
+				}
+				// If the class list indicates a container-step, apply the container icon class.
+				else if (classList.contains("sqd-step-container") || classList.contains("sqd-step-switch")) {
+					svg.querySelector("path").classList.add(containerClass)
+				}
+			});
+		}
 	});
 })();
 

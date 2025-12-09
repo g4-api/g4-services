@@ -2,7 +2,6 @@
 using G4.Services.Domain.V4;
 using G4.Services.Domain.V4.Repositories;
 
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
