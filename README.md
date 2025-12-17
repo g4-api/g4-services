@@ -31,12 +31,12 @@ The **G4 Hub API** provides a comprehensive interface for managing templates, en
 
 > :warning: Important
 >  
-> This token expires 90 days after the latest release date. Please return here to update your token when it expires.
+> This token expires 180 days after the latest release date. Please return here to update your token when it expires.
 
 The unlimited version of the G4™ Hub API is available for personal or an open source non-profit use, provided it is not deployed in enterprise, governmental, or military environments. To enable full functionality, use the license token provided below. When invoking automation workflows, include this token in the `token` field under the `authentication` property.
 
 ```none
-z5lJhu8BzgvuRp161OAkWDiJPVN0SIUJaOBHxm0/jNwlnKF2/tYOMIih+4fM8u1uWB5jqD1bbu/OJBP2KPf6H7cYSUcRMCELtDRGSkgnWcj292W8O/TKPn37V7255k1b+bf9hSCALnw6curMcMb6EhH5mBYYPILgMMNbbLmzeUgV9NWdXrmbL17Dwq2VUncv2f9elh5mQPhnhTMHaHTV6MiLN0swy6QXaNItLsKUfjLjTZzt/Ezdbxr6UufjChS/LiIj0vuIgRb0Xq4j9bx6tmnvOijHPS6cyAqT9v4szbTSMDd17XtZxtjOtV0Y1IZD08edNjMZQSvAc46feKLEQ+7S2F2TRAsKLbyo6FfNA9k=
+34zUvOBoFae7vq/DnfkDbtCmXcb7mFTn6d0SyI9GgsJTzO1fMxm3Hrzy5EJzgUOz2nnLRNTd1RU3GbVETOnK5HXy1qqGuC3hGJyzh9HhCHYEAXbwu1UQ6ZdP3DaySgnG3mhMhH1Vtd2hPhqhfCNoQP1vaJH53/Woixi+eZ7aNiVYdiDtW0rGByWhCJ6ZtKlXZZ3Yq/d46uDMYD9R6ENypmCqSjUXL54fdcKuXxs3dXOvaAEqFyolSrdTgC6zI65kVvaCOPFdsZHC7UK50stSg/8j0wTPG71wDMN6IPatPsgqx/PdYw72Qets8ZidSgO8oimm/Z+1/1j3XXVxFhovpu6MRx0DKZywT9MeRGPLOUQ=
 ```
 
 ---
