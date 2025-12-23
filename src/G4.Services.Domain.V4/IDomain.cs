@@ -290,21 +290,21 @@ namespace G4.Services.Domain.V4
                 });
             };
 
-            //// Event handler for when a job has finished executing.
-            //client.Automation.JobInvoked += (sender, e) =>
-            //{
-            //    // Retrieve the SignalR connection ID tied to this automation.
-            //    var connectionId = e.Automation.GetConnection();
+            // Event handler for when a job has finished executing.
+            client.Automation.JobInvoked += (sender, e) =>
+            {
+                // Retrieve the SignalR connection ID tied to this automation.
+                var connectionId = e.Automation.GetConnection();
 
-            //    // Notify the client about the job completion.
-            //    context.SendMessage(connectionId, method: "ReceiveAutomationEndEvent", message: new EventDataModel
-            //    {
-            //        Id = e.Job.Reference.Id,
-            //        ObjectType = nameof(G4JobModel),
-            //        Type = "Job",
-            //        Value = e.Job
-            //    });
-            //};
+                // Notify the client about the job completion.
+                context.SendMessage(connectionId, method: "ReceiveAutomationEndEvent", message: new EventDataModel
+                {
+                    Id = e.Job.Reference.Id,
+                    ObjectType = nameof(G4JobModel),
+                    Type = "Job",
+                    Value = e.Job
+                });
+            };
 
             // Event handler for when a job is starting.
             client.Automation.JobInvoking += (sender, e) =>
