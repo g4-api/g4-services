@@ -1,4 +1,5 @@
 ﻿using G4.Api;
+using G4.Attributes;
 using G4.Cache;
 using G4.Extensions;
 using G4.Models;
@@ -136,6 +137,9 @@ namespace G4.Services.Domain.V4.Repositories
 
                 // Built-in: Returns the instructions for the next tool call, including policies and defaults.
                 { Name: "get_instructions" } => GetInstructions(policy: string.Empty),
+
+                // Built-in:
+                { Name: "get_template_instrcutions" } => GetTemplateInstructions(policyName: string.Empty),
 
                 // Built-in: Retrieves the locator for a specific element on the page.
                 { Name: "get_locator" } => ResolveLocator(options),
@@ -614,6 +618,203 @@ namespace G4.Services.Domain.V4.Repositories
                     ["except_tools"] = new[] { "start_g4_session" },
                     ["force_add_if_missing_in_schema"] = true
                 },
+                TtlSeconds = 60
+            };
+        }
+
+        private static object GetTemplateInstructions(string policyName)
+        {
+            return new
+            {
+                PolicyVersion = "2025.12.21.0",
+                Name = policyName,
+
+                checkList = new[]
+                {
+                    "This is a shadow policy: no inputs. The agent pulls these instructions when needed.",
+                    "Output contract: schemaExample.example is the exact expected output template object.",
+                    "ALL fields in the output template MUST be camelCase, including deep/nested objects.",
+                    "Examples are mandatory: examples[] MUST contain at least one item.",
+                    "All supporting markdown fields MUST be arrays of lines (never strings): description[], examples[].description[], summary[].",
+                    "Never return null collections: all lists must exist and be arrays (examples must be non-empty).",
+                    "Template placeholders are allowed ONLY as explicit TODO strings; never invent real values.",
+                    "protocol must contain apiDocumentation and w3c keys (string values).",
+                    "Before returning, self-check: camelCase everywhere, examples >= 1, no null lists, all md fields are arrays."
+                },
+
+                Defaults = new Dictionary<string, object>
+                {
+                    ["protocol.apiDocumentation"] = "None",
+                    ["protocol.w3c"] = "None",
+                    ["source"] = "Template",
+
+                    // Formatting / enforcement defaults
+                    ["supporting_md_is_array"] = true,
+                    ["examples_required"] = true,
+                    ["never_null_lists"] = true
+                },
+
+                Guards = new Dictionary<string, object>
+                {
+                    ["no_inputs"] = true,
+                    ["no_guessing"] = true,
+                    ["examples_required"] = true,
+                    ["supporting_md_arrays_only"] = true,
+                    ["never_null_lists"] = true,
+                    ["self_check_enabled"] = true,
+
+                    // If any invariant is violated, do not proceed silently.
+                    ["on_invariant_failure"] = "fix_or_ask_user"
+                },
+
+                // This describes the exact shape and a mandatory example output object.
+                SchemaExample = new Dictionary<string, object>
+                {
+                    ["required"] = "SchemaExample.example is the expected output template manifest object (G4PluginAttribute).",
+                    ["steps"] = new[]
+                    {
+                        "Return SchemaExample.example as a valid template manifest object.",
+                        "Ensure Examples[] has at least one example and all supporting MD fields are arrays of lines.",
+                        "Ensure no null lists exist anywhere in the object graph."
+                    },
+
+                    // This object IS the output you expect the agent to follow.
+                    ["example"] = new G4PluginAttribute
+                    {
+                        Key = "LLM Note: PlugnKey Pascal Case",
+                        Source = "Template",
+
+                        Aliases = [],
+
+                        Author = new PluginAuthorModel
+                        {
+                            Name = "LLM Note: Author name",
+                            Link = ""
+                        },
+
+                        Categories = [],
+
+                        // Supporting MD -> always array of lines
+                        Description =
+                        [
+                            "LLM Note: What the plugin does (1 line).",
+                            "LLM Note: Key behavior/constraints (optional)."
+                        ],
+
+                        // Examples -> MUST contain at least one
+                        Examples =
+                        [
+                            new PluginExampleModel
+                            {
+                                // Supporting MD -> always array of lines
+                                Description =
+                                [
+                                    "LLM Note: What this example demonstrates."
+                                ],
+                                Rule = new RuleExampleModel
+                                {
+                                    PluginName = "LLM Note: PluginName (PascalCase)",
+                                    Argument = "",
+                                    Locator = "",
+                                    OnAttribute = "",
+                                    OnElement = "",
+                                    RegularExpression = ""
+                                }
+                            }
+                        ],
+
+                        Platforms = [],
+
+                        Protocol = new Dictionary<string, string>
+                        {
+                            ["apiDocumentation"] = "None",
+                            ["w3c"] = "None"
+                        },
+
+                        Rules = [],
+
+                        Parameters =
+                        [
+                            new PluginParameterModel
+                            {
+                                Name = "LLM Note: Parameter Name",
+                                Type = "LLM Note: Parameter Type",
+                                Mandatory = true,
+                                Default = "",
+                                Description =
+                                [
+                                    "LLM Note: What this parameter controls."
+                                ],
+                                Values =
+                                [
+                                    new PluginParameterModel
+                                    {
+                                        Name = "LLM Note: AllowedValueName",
+                                        Description =
+                                        [
+                                            "LLM Note: Meaning of this value."
+                                        ]
+                                    }
+                                ]
+                            }
+                        ],
+
+                        Properties =
+                        [
+                            new PluginParameterModel
+                            {
+                                Name = "LLM Note: PropertyName",
+                                Type = "LLM Note: Type",
+                                Mandatory = true,
+                                Default = "",
+                                Description =
+                                [
+                                    "LLM Note: What this property controls."
+                                ],
+                                Values =
+                                [
+                                    new PluginParameterModel
+                                    {
+                                        Name = "LLM Note: AllowedValueName",
+                                        Description =
+                                        [
+                                            "LLM Note: Meaning of this value."
+                                        ]
+                                    }
+                                ]
+                            }
+                        ],
+
+                        // Supporting MD -> always array of lines
+                        Summary =
+                        [
+                            "The plugin ...",
+                            "It ...",
+                            "It allows ..."
+                        ]
+                    }
+                },
+
+                Params = new Dictionary<string, object>
+                {
+                    // This policy is static; these are invariants the agent must preserve when using the template.
+                    ["must_add"] = new[]
+                    {
+                        "Key",
+                        "Author",
+                        "Description",
+                        "Examples",
+                        "Protocol",
+                        "Parameters",
+                        "Properties",
+                        "Summary"
+                    },
+                    ["except_tools"] = new[] { "" },
+                    ["force_add_if_missing_in_schema"] = true,
+                    ["force_supporting_md_arrays"] = true,
+                    ["force_examples_min_count"] = 1
+                },
+
                 TtlSeconds = 60
             };
         }
@@ -1490,6 +1691,76 @@ namespace G4.Services.Domain.V4.Repositories
                     Required = ["driver_session", "value"]
                 }
             };
+
+            //[SystemTool(name: "get_template_instrcutions")]
+            //public static McpToolModel GetTemplateInstrcutions => new()
+            //{
+            //    /// <summary>
+            //    /// The unique name of the tool, used to identify it within the system.
+            //    /// </summary>
+            //    Name = "get_template_instrcutions",
+
+            //    /// <summary>
+            //    /// A brief description of what the tool does.
+            //    /// This tool returns the full list of tools that the Copilot agent can invoke, including their metadata and schemas.
+            //    /// </summary>
+            //    Description =
+            //        """
+                    
+            //        A collection of instruction templates that define the required
+            //        structure, validation rules, and examples for template-based outputs.
+                    
+            //        """,
+
+            //    /// <summary>
+            //    /// Defines the input schema for the tool, including the types and descriptions of input parameters.
+            //    /// </summary>
+            //    InputSchema = new()
+            //    {
+            //        /// <summary>
+            //        /// The data type for the input parameters (an object in this case).
+            //        /// </summary>
+            //        Type = "object",
+
+            //        /// <summary>
+            //        /// An empty list of properties, as this tool does not require any specific input parameters.
+            //        /// </summary>
+            //        Properties = [],
+
+            //        /// <summary>
+            //        /// No required input parameters for this tool.
+            //        /// </summary>
+            //        Required = []
+            //    },
+
+            //    /// <summary>
+            //    /// Defines the output schema for the tool, including the types and descriptions of output parameters.
+            //    /// </summary>
+            //    OutputSchema = new()
+            //    {
+            //        /// <summary>
+            //        /// The data type for the output parameters (an object in this case).
+            //        /// </summary>
+            //        Type = "object",
+
+            //        /// <summary>
+            //        /// A dictionary of output parameters with their names and descriptions.
+            //        /// </summary>
+            //        Properties = new(StringComparer.OrdinalIgnoreCase)
+            //        {
+            //            ["tools"] = new()
+            //            {
+            //                Type = ["array", "object"],
+            //                Description = "An array of tool objects, each containing name, description, input and output schemas."
+            //            }
+            //        },
+
+            //        /// <summary>
+            //        /// A list of required output parameters. "tools" is required as the main result of the tool.
+            //        /// </summary>
+            //        Required = ["tools"]
+            //    }
+            //};
 
             /// <summary>
             /// Represents a system tool that starts the execution of a G4 rule using the provided parameters.
