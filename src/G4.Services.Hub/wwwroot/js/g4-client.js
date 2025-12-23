@@ -635,13 +635,14 @@ class G4Client {
 
 				// Use the value from the parsed argument if available; otherwise, retain the existing value
 				if (!isDictionary) {
-					
 					step.parameters[parameterKey].value = value || step.parameters[parameterKey].value;
                     continue;
 				}
 
 				// Handle the case where the parameter is a dictionary type
-				step.parameters[parameterKey].value = convertArrayToDictionary(value);
+				if (value) {
+					step.parameters[parameterKey].value = convertArrayToDictionary(value);
+				}
 			}
 		}
 
