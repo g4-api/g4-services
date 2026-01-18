@@ -1,15 +1,11 @@
 {
 	"servers": {
-		"github-official": {
-			"command": "docker",
-			"args": [
-				"run",
-				"-i",
-				"--rm",
-				"--env-file",
-				".github.env",
-				"ghcr.io/github/github-mcp-server"
-			]
+		"github": {
+			"type": "http",
+			"url": "https://api.githubcopilot.com/mcp/",
+			"headers": {
+				"Authorization": "Bearer "
+			}
 		}
 	}
 }
