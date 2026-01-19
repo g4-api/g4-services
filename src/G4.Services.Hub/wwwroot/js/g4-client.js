@@ -627,11 +627,20 @@ class G4Client {
 				const value = parameters[key];
 				const parameterType = step.parameters[parameterKey].type?.toUpperCase() || 'STRING';
 
+                // Assert if the parameter type is boolean/switch
+                const isSwitch = parameters[key] && parameterType === 'SWITCH';
+
 				// Assert if the parameter type is dictionary or key/value
 				const isDictionary = parameters[key] && parameterType === 'DICTIONARY'
 					|| parameterType === 'KEY/VALUE'
 					|| parameterType === 'KEYVALUE'
 					|| parameterType === 'OBJECT';
+
+                // For switch types, set the value to "true" if the key is present
+				if (isSwitch) {
+					step.parameters[parameterKey].value = "true";
+                    continue;
+				}
 
 				// Use the value from the parsed argument if available; otherwise, retain the existing value
 				if (!isDictionary) {
