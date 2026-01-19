@@ -130,11 +130,13 @@
     --toolbox-filter-background: var(--vscode-sideBar-background);
     --toolbox-filter-border: 1px solid var(--vscode-input-border);
     --toolbox-filter-color: var(--vscode-input-foreground);
-    --toolbox-filter-focus-background: var(--vscode-inputOption-activeBackground);
+    --toolbox-filter-focus-background: var(--vscode-sideBar-background);
     --toolbox-filter-focus-border-color: var(--vscode-inputOption-activeBorder);
     --toolbox-filter-focus-color: var(--vscode-inputOption-activeForeground);
     --toolbox-filter-hover-border-color: var(--vscode-inputOption-activeBorder);
     --toolbox-filter-input-border: 1px solid var(--vscode-input-background);
+    --toolbox-filter-input-border-focus: 1px solid var(--vscode-inputOption-activeBorder);
+    --toolbox-filter-input-border-hover: 1px solid var(--vscode-inputOption-activeBorder);
     --toolbox-group-title-color: var(--vscode-sideBarTitle-foreground);
     --toolbox-group-title-background: var(--vscode-sideBarTitle-background);
     --toolbox-group-title-font: 700 1.3em/1.3em 'Roboto', sans-serif;

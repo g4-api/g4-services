@@ -149,24 +149,29 @@ html, body {
 
 .sqd-theme-light .sqd-toolbox-filter {
 	background: var(--toolbox-filter-background);
-	border: var(--toolbox-filter-border);
-	border-radius: var(--border-radius);
+	border: none;
+	border-radius: 0;
 	color: var(--toolbox-filter-color);
 }
 
 	.sqd-theme-light .sqd-toolbox-filter input {
-		border: var(--toolbox-filter-input-border)
+		background: var(--toolbox-filter-input-background);
+		border: none;
+		border-bottom: var(--toolbox-filter-input-border);
+		border-radius: 0;
 	}
 
-	.sqd-theme-light .sqd-toolbox-filter:focus {
-		background: var(--toolbox-filter-focus-background);
-		border-color: var(--toolbox-filter-focus-border-color);
-		color: var(--toolbox-filter-focus-color);
-	}
+		.sqd-theme-light .sqd-toolbox-filter input:focus {
+			background: var(--toolbox-filter-focus-background);
+			border: none;
+			border-bottom: var(--toolbox-filter-input-border-hover);
+			color: var(--toolbox-filter-focus-color);
+		}
 
-	.sqd-theme-light .sqd-toolbox-filter:hover {
-		border-color: var(--toolbox-filter-hover-border-color);
-	}
+		.sqd-theme-light .sqd-toolbox-filter input:hover {
+			border: none;
+			border-bottom: var(--toolbox-filter-input-border-hover);
+		}
 
 	.sqd-theme-light .sqd-toolbox-filter::placeholder {
 		color: var(--toolbox-input-placeholder-color) !important;
