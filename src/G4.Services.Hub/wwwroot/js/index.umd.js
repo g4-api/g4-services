@@ -120,7 +120,7 @@
 
 	function getAbsolutePosition(element) {
 		const rect = element.getBoundingClientRect();
-		return new Vector(rect.x + window.scrollX, rect.y + window.scrollY);
+		return new Vector(rect.left + window.scrollX, rect.top + window.scrollY);
 	}
 
 	class Uid {
@@ -436,7 +436,7 @@
 				this.cache = undefined;
 			};
 		}
-		find(vLt, vWidth, vHeight) {
+		find(vLt, vWidth, vHeight, vScale) {
 			var _a;
 			if (!this.cache) {
 				const scroll = new Vector(window.scrollX, window.scrollY);
@@ -453,8 +453,8 @@
 				});
 				this.cache.sort((a, b) => a.diagSq - b.diagSq);
 			}
-			const vR = vLt.x + vWidth;
-			const vB = vLt.y + vHeight;
+			const vR = vLt.x + vWidth * vScale;
+			const vB = vLt.y + vHeight * vScale;
 			return (_a = this.cache.find(p => {
 				return Math.max(vLt.x, p.lt.x) < Math.min(vR, p.br.x) && Math.max(vLt.y, p.lt.y) < Math.min(vB, p.br.y);
 			})) === null || _a === void 0 ? void 0 : _a.placeholder;
@@ -469,14 +469,14 @@
 		static create(designerContext, step, attachedStepComponent) {
 			const isAttached = Boolean(attachedStepComponent);
 			const view = DragStepView.create(step, isAttached, designerContext.theme, designerContext.componentContext);
-			return new DragStepBehavior(view, designerContext.workspaceController, designerContext.placeholderController, designerContext.state, step, designerContext.stateModifier, attachedStepComponent);
+			return new DragStepBehavior(view, step, designerContext.workspaceController, designerContext.placeholderController, designerContext.state, designerContext.stateModifier, attachedStepComponent);
 		}
-		constructor(view, workspaceController, placeholderController, designerState, step, stateModifier, attachedStepComponent) {
+		constructor(view, step, workspaceController, placeholderController, designerState, stateModifier, attachedStepComponent) {
 			this.view = view;
+			this.step = step;
 			this.workspaceController = workspaceController;
 			this.placeholderController = placeholderController;
 			this.designerState = designerState;
-			this.step = step;
 			this.stateModifier = stateModifier;
 			this.attachedStepComponent = attachedStepComponent;
 		}
@@ -490,13 +490,14 @@
 				if (hasSameSize) {
 					// Mouse cursor will be positioned on the same place as the source component.
 					const pagePosition = this.attachedStepComponent.view.getClientPosition();
-					offset = position.subtract(pagePosition);
+					offset = position.subtract(pagePosition).divideByScalar(this.designerState.viewport.scale);
 				}
 			}
 			if (!offset) {
 				// Mouse cursor will be positioned in the center of the component.
 				offset = new Vector(this.view.component.width, this.view.component.height).divideByScalar(2);
 			}
+			offset = offset.multiplyByScalar(this.view.component.scale);
 			this.view.setPosition(position.subtract(offset));
 			this.designerState.setIsDragging(true);
 			const { placeholders, components } = this.resolvePlaceholders(this.attachedStepComponent);
@@ -514,7 +515,7 @@
 			if (this.state) {
 				const newPosition = this.state.startPosition.subtract(delta).subtract(this.state.offset);
 				this.view.setPosition(newPosition);
-				const placeholder = this.state.finder.find(newPosition, this.view.component.width, this.view.component.height);
+				const placeholder = this.state.finder.find(newPosition, this.view.component.width, this.view.component.height, this.view.component.scale);
 				if (this.currentPlaceholder !== placeholder) {
 					if (this.currentPlaceholder) {
 						this.currentPlaceholder.setIsHover(false);
@@ -1198,7 +1199,7 @@
 		}
 	}
 
-	const defaultConfiguration$5 = {
+	const defaultConfiguration$3 = {
 		view: {
 			size: 22,
 			iconSize: 12
@@ -1206,7 +1207,7 @@
 	};
 	class ValidationErrorBadgeExtension {
 		static create(configuration) {
-			return new ValidationErrorBadgeExtension(configuration !== null && configuration !== void 0 ? configuration : defaultConfiguration$5);
+			return new ValidationErrorBadgeExtension(configuration !== null && configuration !== void 0 ? configuration : defaultConfiguration$3);
 		}
 		constructor(configuration) {
 			this.configuration = configuration;
@@ -1627,7 +1628,7 @@
 		}
 	}
 
-	const defaultViewConfiguration$2 = {
+	const defaultViewConfiguration$4 = {
 		size: 30,
 		defaultIconSize: 22,
 		folderIconSize: 18,
@@ -1646,7 +1647,7 @@
 		}
 		create(parentElement, sequence, parentPlaceIndicator, context) {
 			var _a;
-			const view = ((_a = this.configuration) === null || _a === void 0 ? void 0 : _a.view) ? Object.assign(Object.assign({}, defaultViewConfiguration$2), this.configuration.view) : defaultViewConfiguration$2;
+			const view = ((_a = this.configuration) === null || _a === void 0 ? void 0 : _a.view) ? Object.assign(Object.assign({}, defaultViewConfiguration$4), this.configuration.view) : defaultViewConfiguration$4;
 			return StartStopRootComponent.create(parentElement, sequence, parentPlaceIndicator, context, view);
 		}
 	}
@@ -2131,14 +2132,14 @@
 		}
 	}
 
-	const defaultConfiguration$4 = {
+	const defaultConfiguration$2 = {
 		scales: [0.06, 0.08, 0.1, 0.12, 0.16, 0.2, 0.26, 0.32, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1],
 		smoothDeltaYLimit: 16,
 		padding: 10
 	};
 	class DefaultViewportController {
 		static create(api, configuration) {
-			const config = configuration !== null && configuration !== void 0 ? configuration : defaultConfiguration$4;
+			const config = configuration !== null && configuration !== void 0 ? configuration : defaultConfiguration$2;
 			const nqn = new NextQuantifiedNumber(config.scales);
 			return new DefaultViewportController(config.smoothDeltaYLimit, nqn, api, config.padding);
 		}
@@ -2458,13 +2459,13 @@
 		}
 	}
 
-	const defaultConfiguration$3 = {
+	const defaultConfiguration$1 = {
 		gridSizeX: 48,
 		gridSizeY: 48
 	};
 	class LineGridExtension {
 		static create(configuration) {
-			return new LineGridExtension(configuration !== null && configuration !== void 0 ? configuration : defaultConfiguration$3);
+			return new LineGridExtension(configuration !== null && configuration !== void 0 ? configuration : defaultConfiguration$1);
 		}
 		constructor(configuration) {
 			this.configuration = configuration;
@@ -2485,7 +2486,7 @@
 		}
 	}
 
-	const defaultConfiguration$2 = {
+	const defaultConfiguration = {
 		gapWidth: 88,
 		gapHeight: 24,
 		radius: 6,
@@ -2493,7 +2494,7 @@
 	};
 	class RectPlaceholderExtension {
 		static create(configuration) {
-			return new RectPlaceholderExtension(configuration !== null && configuration !== void 0 ? configuration : defaultConfiguration$2);
+			return new RectPlaceholderExtension(configuration !== null && configuration !== void 0 ? configuration : defaultConfiguration);
 		}
 		constructor(configuration) {
 			this.configuration = configuration;
@@ -2537,35 +2538,34 @@
 		}
 	}
 
-	const defaultConfiguration$1 = {
-		view: {
-			paddingTop: 20,
-			paddingX: 20,
-			inputSize: 18,
-			inputRadius: 4,
-			inputIconSize: 14,
-			autoHideInputOnDrag: true,
-			isRegionClickable: true,
-			label: {
-				height: 22,
-				paddingX: 10,
-				minWidth: 50,
-				radius: 10
-			}
+	const defaultViewConfiguration$3 = {
+		paddingTop: 20,
+		paddingX: 20,
+		inputSize: 18,
+		inputRadius: 4,
+		inputIconSize: 14,
+		autoHideInputOnDrag: true,
+		isRegionClickable: true,
+		label: {
+			height: 22,
+			paddingX: 10,
+			minWidth: 50,
+			radius: 10
 		}
 	};
 	class ContainerStepExtension {
 		static create(configuration) {
-			return new ContainerStepExtension(configuration !== null && configuration !== void 0 ? configuration : defaultConfiguration$1);
+			return new ContainerStepExtension(configuration);
 		}
 		constructor(configuration) {
+			var _a, _b, _c, _d;
 			this.configuration = configuration;
-			this.componentType = 'container';
-			this.createComponentView = createContainerStepComponentViewFactory(this.configuration.view);
+			this.componentType = (_b = (_a = this.configuration) === null || _a === void 0 ? void 0 : _a.componentType) !== null && _b !== void 0 ? _b : 'container';
+			this.createComponentView = createContainerStepComponentViewFactory((_d = (_c = this.configuration) === null || _c === void 0 ? void 0 : _c.view) !== null && _d !== void 0 ? _d : defaultViewConfiguration$3);
 		}
 	}
 
-	const defaultViewConfiguration$1 = {
+	const defaultViewConfiguration$2 = {
 		minBranchWidth: 88,
 		paddingX: 20,
 		paddingTop1: 0,
@@ -2595,34 +2595,33 @@
 			return new SwitchStepExtension(configuration);
 		}
 		constructor(configuration) {
-			var _a, _b, _c;
+			var _a, _b, _c, _d, _e;
 			this.configuration = configuration;
-			this.componentType = 'switch';
-			this.createComponentView = createSwitchStepComponentViewFactory((_b = (_a = this.configuration) === null || _a === void 0 ? void 0 : _a.view) !== null && _b !== void 0 ? _b : defaultViewConfiguration$1, (_c = this.configuration) === null || _c === void 0 ? void 0 : _c.branchNamesResolver);
+			this.componentType = (_b = (_a = this.configuration) === null || _a === void 0 ? void 0 : _a.componentType) !== null && _b !== void 0 ? _b : 'switch';
+			this.createComponentView = createSwitchStepComponentViewFactory((_d = (_c = this.configuration) === null || _c === void 0 ? void 0 : _c.view) !== null && _d !== void 0 ? _d : defaultViewConfiguration$2, (_e = this.configuration) === null || _e === void 0 ? void 0 : _e.branchNamesResolver);
 		}
 	}
 
-	const defaultConfiguration = {
-		view: {
-			paddingLeft: 12,
-			paddingRight: 12,
-			paddingY: 10,
-			textMarginLeft: 12,
-			minTextWidth: 70,
-			iconSize: 22,
-			radius: 5,
-			inputSize: 14,
-			outputSize: 10
-		}
+	const defaultViewConfiguration$1 = {
+		paddingLeft: 12,
+		paddingRight: 12,
+		paddingY: 10,
+		textMarginLeft: 12,
+		minTextWidth: 70,
+		iconSize: 22,
+		radius: 5,
+		inputSize: 14,
+		outputSize: 10
 	};
 	class TaskStepExtension {
 		static create(configuration) {
-			return new TaskStepExtension(configuration !== null && configuration !== void 0 ? configuration : defaultConfiguration);
+			return new TaskStepExtension(configuration);
 		}
 		constructor(configuration) {
+			var _a, _b, _c, _d;
 			this.configuration = configuration;
-			this.componentType = 'task';
-			this.createComponentView = createTaskStepComponentViewFactory(false, this.configuration.view);
+			this.componentType = (_b = (_a = this.configuration) === null || _a === void 0 ? void 0 : _a.componentType) !== null && _b !== void 0 ? _b : 'task';
+			this.createComponentView = createTaskStepComponentViewFactory(false, (_d = (_c = this.configuration) === null || _c === void 0 ? void 0 : _c.view) !== null && _d !== void 0 ? _d : defaultViewConfiguration$1);
 		}
 	}
 
@@ -2641,10 +2640,10 @@
 			return new LaunchPadStepExtension(configuration);
 		}
 		constructor(configuration) {
-			var _a, _b;
+			var _a, _b, _c, _d;
 			this.configuration = configuration;
-			this.componentType = 'launchPad';
-			this.createComponentView = createLaunchPadStepComponentViewFactory(false, (_b = (_a = this.configuration) === null || _a === void 0 ? void 0 : _a.view) !== null && _b !== void 0 ? _b : defaultViewConfiguration);
+			this.componentType = (_b = (_a = this.configuration) === null || _a === void 0 ? void 0 : _a.componentType) !== null && _b !== void 0 ? _b : 'launchPad';
+			this.createComponentView = createLaunchPadStepComponentViewFactory(false, (_d = (_c = this.configuration) === null || _c === void 0 ? void 0 : _c.view) !== null && _d !== void 0 ? _d : defaultViewConfiguration);
 		}
 	}
 
@@ -2761,9 +2760,9 @@
 			const validator = new DefinitionValidator(configuration.validator, state);
 			const iconProvider = new IconProvider(configuration.steps);
 			const stepComponentFactory = new StepComponentFactory(stepExtensionResolver);
-			return new ComponentContext(configuration.shadowRoot, validator, iconProvider, placeholderController, stepComponentFactory, definitionWalker, services, preferenceStorage, i18n);
+			return new ComponentContext(configuration.shadowRoot, validator, iconProvider, placeholderController, stepComponentFactory, definitionWalker, services, preferenceStorage, i18n, state);
 		}
-		constructor(shadowRoot, validator, iconProvider, placeholderController, stepComponentFactory, definitionWalker, services, preferenceStorage, i18n) {
+		constructor(shadowRoot, validator, iconProvider, placeholderController, stepComponentFactory, definitionWalker, services, preferenceStorage, i18n, state) {
 			this.shadowRoot = shadowRoot;
 			this.validator = validator;
 			this.iconProvider = iconProvider;
@@ -2773,6 +2772,10 @@
 			this.services = services;
 			this.preferenceStorage = preferenceStorage;
 			this.i18n = i18n;
+			this.state = state;
+		}
+		getViewportScale() {
+			return this.state.viewport.scale;
 		}
 	}
 
@@ -4323,12 +4326,12 @@
 		}
 	}
 
-	const SAFE_OFFSET = 10;
+	// We need some padding around the step component to make sure shadows are not clipped.
+	const PADDING = 10;
 	class DefaultDraggedComponent {
-		static create(parent, step, _, componentContext) {
+		static create(parent, step, isAttached, componentContext) {
+			const scale = isAttached ? componentContext.getViewportScale() : 1;
 			const canvas = Dom.svg('svg');
-			canvas.style.marginLeft = -10 + 'px';
-			canvas.style.marginTop = -10 + 'px';
 			parent.appendChild(canvas);
 			const previewStepContext = {
 				parentSequence: [],
@@ -4341,15 +4344,17 @@
 			};
 			const stepComponent = componentContext.stepComponentFactory.create(canvas, previewStepContext, componentContext);
 			Dom.attrs(canvas, {
-				width: stepComponent.view.width + SAFE_OFFSET * 2,
-				height: stepComponent.view.height + SAFE_OFFSET * 2
+				width: stepComponent.view.width + PADDING * 2,
+				height: stepComponent.view.height + PADDING * 2,
+				style: `transform: scale(${scale}) translate(${-10}px, ${-10}px); transform-origin: 0 0;`
 			});
-			Dom.translate(stepComponent.view.g, SAFE_OFFSET, SAFE_OFFSET);
-			return new DefaultDraggedComponent(stepComponent.view.width, stepComponent.view.height);
+			Dom.translate(stepComponent.view.g, PADDING, PADDING);
+			return new DefaultDraggedComponent(stepComponent.view.width, stepComponent.view.height, scale);
 		}
-		constructor(width, height) {
+		constructor(width, height, scale) {
 			this.width = width;
 			this.height = height;
+			this.scale = scale;
 		}
 		destroy() {
 			// Nothing to destroy...
@@ -5478,4 +5483,5 @@
 	exports.createTaskStepComponentViewFactory = createTaskStepComponentViewFactory;
 	exports.getAbsolutePosition = getAbsolutePosition;
 	exports.race = race;
+
 }));
