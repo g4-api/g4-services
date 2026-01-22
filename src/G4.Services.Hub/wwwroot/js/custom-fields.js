@@ -3154,6 +3154,10 @@ class CustomFields {
          * @returns {HTMLElement} The newly created modal element.
          */
         const newModal = (inputId, fieldContainer) => {
+            const app = document.getElementById('app');
+
+            app.inert = true;
+
             // Escape the inputId to ensure valid and safe usage in CSS selectors
             const escapedId = CSS.escape(inputId);
 
@@ -3193,6 +3197,12 @@ class CustomFields {
             // On click, re-enable the original textarea and remove the modal
             closeButtonElement.addEventListener('click', () => {
                 const textarea = fieldContainer.querySelector(`#${escapedId}`);
+                if (!textarea) {
+                    app.inert = false;
+                    document.body.removeChild(modalElement);
+                    return;
+                }
+                app.inert = false;
                 textarea.disabled = false;
                 fieldContainer.removeChild(modalElement);
             });
