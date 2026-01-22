@@ -3186,6 +3186,7 @@ class CustomFields {
             textareaElement.addEventListener('input', () => {
                 const textarea = fieldContainer.querySelector(`#${escapedId}`);
                 textarea.value = textareaElement.value;
+                callback(textarea);
             });
 
             // Create a button to close the modal
