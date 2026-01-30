@@ -31,7 +31,7 @@
      * Gets the regular expression pattern for extracting nested CLI expressions within the template.
      */
     get nestedCliExpressionPattern() {
-        return /{{[$].*?(?<={{[$]).*}}/gis;
+        return /{{[$].*?(?<={{[$]).*?}}/gis;
     }
 
     /**

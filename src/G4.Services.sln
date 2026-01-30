@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 18
-VisualStudioVersion = 18.0.11205.157 d18.0
+VisualStudioVersion = 18.0.11205.157
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "G4.Services.Domain.V4", "G4.Services.Domain.V4\G4.Services.Domain.V4.csproj", "{C9ED73C8-B990-4D19-AAB9-ADA1B08310DB}"
 EndProject
@@ -43,7 +43,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".git", ".git", "{8A2B7547-9
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".github", ".github", "{0EA03ECD-EAEC-4BD5-8E8C-CAAA67408AD8}"
 	ProjectSection(SolutionItems) = preProject
-		.github.env = .github.env
 		.mcp.json = .mcp.json
 		..\.github\workflows\release-pipline.yml = ..\.github\workflows\release-pipline.yml
 	EndProjectSection

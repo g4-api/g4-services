@@ -140,7 +140,11 @@
 	--toolbox-filter-focus-border-color: var(--red);
 	--toolbox-filter-focus-color: var(--black);
 	--toolbox-filter-hover-border-color: var(--secondary-color);
-	--toolbox-filter-input-border: 1px solid var(--secondary-color);
+	--toolbox-filter-input-background: var(--secondary-color);
+	--toolbox-filter-input-border: 1px solid var(--primary-color);
+	--toolbox-filter-input-border-focus: 1px solid var(--red);
+	--toolbox-filter-input-border-hover: 1px solid var(--red);
+	--toolbox-filter-input-color: var(--base-font-color);
 	--toolbox-group-title-color: var(--primary-color);
 	--toolbox-group-title-background: var(--secondary-color);
 	--toolbox-group-title-font: 700 1.3em/1.3em 'Roboto', sans-serif;
