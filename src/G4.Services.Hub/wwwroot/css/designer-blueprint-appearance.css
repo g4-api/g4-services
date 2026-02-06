@@ -33,6 +33,33 @@ html, body {
 	border-radius: var(--border-radius);
 }
 
+.sqd-theme-light .sqd-listbox {
+	background-color: var(--listbox-background);
+	border-color: var(--listbox-border-color);
+	border-radius: var(--border-radius);
+	border-style: solid;
+	border-width: 1px;
+	color: var(--listbox-color);
+	display: none;
+	z-index: 100000;
+}
+
+.sqd-theme-light .sqd-listbox--option {
+	border-radius: var(--border-radius);
+	cursor: pointer;
+}
+
+	.sqd-theme-light .sqd-listbox--option:hover,
+	.sqd-theme-light .sqd-listbox--option[aria-selected="true"] {
+		background-color: var(--listbox-option-hover-background);
+		color: var(--listbox-option-hover-color);
+	}
+
+.sqd-listbox--tip {
+	color: var(--listbox-tip-color);
+	font: var(--listbox-tip-font);
+}
+
 .sqd-theme-light summary {
 	background: var(--smart-editor-group-background);
 	color: var(--smart-editor-group-color);
