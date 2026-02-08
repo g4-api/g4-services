@@ -2314,13 +2314,24 @@ class CustomFields {
             return items;
         };
 
+        /**
+         * Updates external state via a provided setter callback.
+         *
+         * This helper is intentionally defensive:
+         * - It verifies the callback is a function before invoking it
+         * - Prevents runtime errors when the setter is optional or not provided
+         */
         const updateState = (value, setCallback) => {
+            // Guard clause:
+            // If no valid setter was provided, do nothing.
+            // This avoids `TypeError: setCallback is not a function`
             if (typeof setCallback !== 'function') {
                 return;
             }
 
-            setCallback(value)
-        }
+            // Forward the value to the provided state setter
+            setCallback(value);
+        };
 
         // Generate a unique ID for the datalist input field to ensure uniqueness in the DOM
         const inputId = Utilities.newUid();
@@ -2420,7 +2431,7 @@ class CustomFields {
                 ? items
                     .filter(x => (x.value || "").toLowerCase().includes(query))
                     .slice(0, 20)
-                : items.slice(0, 8);
+                : items;
 
             // Set active option index:
             // - First item if results exist
