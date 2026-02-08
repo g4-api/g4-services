@@ -2379,7 +2379,7 @@ class CustomFields {
 
         // Select the sub-container within the field container where the input/datalist HTML will be appended
         const controllerContainer = fieldContainer.querySelector('[data-g4-role="controller"]');
-        controllerContainer.style = "position: relative; z-index: 110000; isolation: isolate;";
+        controllerContainer.style = "position: relative; isolation: isolate;";
 
         // Insert the constructed HTML for the input and datalist into the controller container
         controllerContainer.insertAdjacentHTML('beforeend', html);

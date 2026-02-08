@@ -127,6 +127,10 @@
 	margin-top: var(--base-space);
 }
 
+[data-g4-role="controller"]:has(input[aria-expanded="true"]) {
+	z-index: 110001;
+}
+
 html, body {
 	height: var(--base-height);
 	margin: 0;
