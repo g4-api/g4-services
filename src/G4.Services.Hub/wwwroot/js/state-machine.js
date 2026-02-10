@@ -22,11 +22,11 @@ class StateMachine {
 	 * @param {Object} definition - The definition of the automation sequence.
 	 */
 	constructor(definition) {
-		/**
-		 * The automation sequence definition.
-		 * @type {Object}
-		 */
+        // Store the provided definition for use in the automation process.
 		this.definition = definition;
+
+        // Initialize the G4 client for managing automation processes.
+        this.client = new G4Client();
 	}
 
 	/**
@@ -63,11 +63,8 @@ class StateMachine {
 			// Retrieve the automation definition from the current instance
 			const definition = this.definition;
 
-			// Create a new G4 client instance
-			const client = new G4Client();
-
 			// Instantiate a new automation object using the client and definition
-			const automation = client.newAutomation(definition);
+			const automation = this.client.newAutomation(definition);
 
 			// Invoke the StartAutomation method on the connection to begin the process
 			await _connection.invoke("StartAutomation", automation);
@@ -93,14 +90,33 @@ class StateMachine {
 	 *
 	 * @function interrupt
 	 */
-	interrupt() {
-		// Set the interruption flag
-		this.isInterrupted = true;
+	async interrupt() {
+		try {
+			// Set the interruption flag
+			this.isInterrupted = true;
 
-		// Perform any additional cleanup or state resetting as required
-		// For example:
-		// this.cleanupResources();
-		console.log("StateMachine has been interrupted.");
+			// Retrieve the automation definition from the current instance
+			const definition = this.definition;
+
+			// Invoke the StopAutomation method on the client to halt the ongoing process
+			this.client.stopAutomation(definition);
+		} catch (error) {
+			// Handle any errors that occur during the stop process
+			console.error("Failed to stop the automation process:", error);
+			throw error;
+		} finally {
+            // Reset the interruption flag
+			this.isInterrupted = false;
+
+			// Indicate that the automation is no longer running
+			_stateMachine.isRunning = false;
+
+			// Release the designer from read-only mode
+			_designer.setIsReadonly(false);
+
+			// Stop the timer and update the display with the final time elapsed after the automation process completes
+			_timer.stop();
+		}
 	}
 
 	/**
