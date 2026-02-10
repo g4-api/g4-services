@@ -156,6 +156,12 @@ class G4Client {
 		// The base URL for the API.
 		this.baseUrl = baseUrl;
 
+		// The URL endpoint for the cache (if needed for future use).
+		this.cacheUrl = `${this.baseUrl}/integration/cache`;
+
+		// The URL endpoint to manage files.
+		this.filesUrl = `${this.baseUrl}/integration/files`;
+		
 		// The URL endpoint to invoke an automation sequence.
 		this.invokeUrl = `${this.baseUrl}/automation/invoke`;
 
@@ -168,11 +174,8 @@ class G4Client {
 		// The URL endpoint to fetch plugin manifests.
 		this.manifestsUrl = `${this.baseUrl}/integration/manifests`;
 
-		// The URL endpoint for the cache (if needed for future use).
-		this.cacheUrl = `${this.baseUrl}/integration/cache`;
-
-        // The URL endpoint to manage files.
-		this.filesUrl = `${this.baseUrl}/integration/files`;
+        // The URL endpoint to stop an ongoing automation sequence.
+        this.stopUrl = `${this.baseUrl}/automation/stop`;
 
         // The URL endpoint to fetch SVG assets.
 		this.svgsUrl = `${this.baseUrl}/integration/svgs`;
@@ -490,176 +493,6 @@ class G4Client {
 	}
 
 	/**
-	 * Synchronizes a step object with the provided rule by updating its properties and parameters.
-	 *
-	 * This function processes the given rule to update the corresponding properties of the step.
-	 * It handles the conversion of argument strings containing templated variables into parameter dictionaries.
-	 *
-	 * @param {Object} step - The step object to be synchronized. It contains properties and parameters that may be updated.
-	 * @param {Object} rule - The rule object containing key-value pairs that dictate how the step should be updated.
-	 * 
-	 * @returns {Object} The updated step object after synchronization with the rule.
-	 */
-	syncStep(step, rule) {
-		/**
-		 * Converts an array (or object of values) of strings in "key=value" format into a dictionary object.
-		 */
-		const convertArrayToDictionary = (input) => {
-			// Normalize input into an array: if it's already an array, use it; otherwise, take the object's values.
-			const array = Array.isArray(input) ? input : Object.values(input);
-
-			// This will hold the final key/value mappings.
-			const result = {};
-
-			// Process each string item in the array
-			for (const item of array) {
-				// Locate the first "=" character
-				const firstEqualIndex = item.indexOf('=');
-
-				if (firstEqualIndex === -1) {
-					// No "=" found: use the whole string as a key and assign an empty value
-					result[item] = '';
-				} else {
-					// Split at the first "=" into key and value parts
-					const key = item.substring(0, firstEqualIndex);
-					const value = item.substring(firstEqualIndex + 1);
-					result[key] = value;
-				}
-			}
-
-			// Return the populated dictionary
-			return result;
-		};
-
-		/**
-		 * Formats an argument string into a dictionary if it contains templated variables.
-		 */
-		const formatArgumentString = (arg) =>
-			// Check if the argument contains templated variables by looking for "{{$"
-			// Return an empty object if no templated variables are found
-			// Convert to a dictionary if templated variables are present
-			!arg.includes("{{$")
-				? {}
-				: _cliFactory.convertToDictionary(arg);
-
-		/**
-		 * Formats and copies parameters from the manifest to prevent unintended mutations.
-		 *
-		 * This function extracts parameters from the provided manifest object, creates copies
-		 * of each parameter to ensure immutability, and returns an array of these copied parameters.
-		 * By doing so, it safeguards the original manifest parameters from accidental modification
-		 */
-		const formatParameters = (parameters) => {
-			// Initialize an empty array to hold the copied parameters
-			const copiedParameters = [];
-
-			// Iterate over each parameter in the manifest's parameters array
-			// If manifest or manifest.parameters is undefined, default to an empty array to prevent errors
-			for (const parameter of parameters) {
-				// Create a deep copy of the current parameter to ensure immutability
-				// Replace the following line with a deep copy method if parameters contain nested objects
-				const parameterJson = JSON.stringify(parameter);
-				const newParameter = JSON.parse(parameterJson);
-
-				// Add the copied parameter object to the copiedParameters array
-				copiedParameters.push(newParameter);
-			}
-
-			// Return the array of copied parameter objects
-			return copiedParameters;
-		};
-
-		// Retrieve the manifest for the step's plugin
-		const manifest = _manifests[step.pluginName];
-
-		// Extract parameters from the manifest or default to an empty array
-		const parameters = formatParameters(manifest?.parameters || []);
-
-		// Define the list of keys to include when updating step properties
-		const includeKeys = [
-			"argument",
-			"dataCollector",
-			"key",
-			"locator",
-			"locatorType",
-			"onAttribute",
-			"onElement",
-			"regularExpression"
-		];
-
-		// Ensure the step has a parameters object
-		step.parameters = step.parameters || {};
-
-		// Populate step.parameters with data from the manifest
-		for (const parameter of parameters) {
-			const key = Utilities.convertToCamelCase(parameter.name);
-			step.parameters[key] = parameter;
-
-			// Join the description array into a single string if it exists
-			step.parameters[key].description = Array.isArray(parameter.description)
-				? parameter.description?.join('\n').trim()
-				: parameter.description?.trim() || "";
-		}
-
-		// Iterate over each key in the rule object to update the corresponding step properties
-		for (const key in rule) {
-			// Skip keys that are not in the includeKeys list or do not exist in step.properties
-			if (!includeKeys.includes(key) || !(key in step.properties)) {
-				continue;
-			}
-
-			// Update the value of the step's property with the value from the rule
-			step.properties[key].value = rule[key];
-		}
-
-		// Check if the rule contains an 'argument' field to process parameters
-		if (rule.argument) {
-			// Parse the argument string into a dictionary of parameters
-			const parsedParameters = formatArgumentString(rule.argument);
-
-			// Convert parameter keys to uppercase for consistency
-			const parameters = Utilities.convertToUpperCase(parsedParameters);
-			const parameterKeys = Object.keys(step.parameters);
-
-			// Update step.parameters with values from the parsed argument
-			for (const parameterKey of parameterKeys) {
-				const key = parameterKey.toUpperCase();
-				const value = parameters[key];
-				const parameterType = step.parameters[parameterKey].type?.toUpperCase() || 'STRING';
-
-                // Assert if the parameter type is boolean/switch
-                const isSwitch = parameters[key] && parameterType === 'SWITCH';
-
-				// Assert if the parameter type is dictionary or key/value
-				const isDictionary = parameters[key] && parameterType === 'DICTIONARY'
-					|| parameterType === 'KEY/VALUE'
-					|| parameterType === 'KEYVALUE'
-					|| parameterType === 'OBJECT';
-
-                // For switch types, set the value to "true" if the key is present
-				if (isSwitch) {
-					step.parameters[parameterKey].value = "true";
-                    continue;
-				}
-
-				// Use the value from the parsed argument if available; otherwise, retain the existing value
-				if (!isDictionary) {
-					step.parameters[parameterKey].value = value || step.parameters[parameterKey].value;
-                    continue;
-				}
-
-				// Handle the case where the parameter is a dictionary type
-				if (value) {
-					step.parameters[parameterKey].value = convertArrayToDictionary(value);
-				}
-			}
-		}
-
-		// Return the updated step object after all synchronizations are complete
-		return step;
-	}
-
-	/**
 	 * Searches for a plugin within the provided G4 response model that matches the given reference ID.
 	 *
 	 * This function traverses the nested structure of the G4 response model, iterating through sessions,
@@ -941,28 +774,43 @@ class G4Client {
 		}
 	}
 
+	/**
+	 * Retrieves the available G4 SVG definitions from the configured endpoint.
+	 *
+	 * This asynchronous function sends a GET request to the predefined SVG URL using the Fetch API.
+	 * It validates the HTTP response status, parses the returned JSON payload, and handles
+	 * any errors that may occur during the request lifecycle.
+	 *
+	 * @async
+	 * @function getSvgs
+	 * 
+	 * @returns  {Promise<Object>} - A promise that resolves to the parsed JSON response containing the SVG definitions.
+	 * 
+	 * @throws   {Error} - Throws an error if the network response is not ok or if the fetch operation fails.
+	 */
 	async getSvgs() {
 		try {
-			// Send HTTP request to fetch the files list from the server
+			// Send an HTTP GET request to retrieve the SVG definitions from the server.
 			const response = await fetch(this.svgsUrl);
 
-			// Validate that the HTTP response status is successful (200–299)
+			// Check if the response status indicates a successful request (HTTP status code 200-299).
+			// If the response is not ok, throw an error with the status text for debugging purposes.
 			if (!response.ok) {
 				throw new Error(`Network response was not ok: ${response.statusText}`);
 			}
 
-			// Parse the response body as JSON
+			// Parse the JSON data from the successful response.
 			const data = await response.json();
 
-			// Return the parsed file list
+			// Return the parsed SVG data for further processing by the caller.
 			return data;
 		} catch (error) {
-
-			// Log the error for debugging and troubleshooting
+			// Log the error to the console for debugging and monitoring purposes.
 			console.error('Failed to fetch G4 SVGs:', error);
 
-			// Rethrow the error to ensure callers are aware of the failure
-			throw new Error(error);
+			// Rethrow the original error to ensure that the caller can handle it appropriately.
+			// Using 'throw error' preserves the original error stack and message.
+			throw error;
 		}
 	}
 
@@ -1006,53 +854,6 @@ class G4Client {
 		} catch (error) {
 			// Log the error to the console for debugging and monitoring purposes.
 			console.error('Failed to invoke G4 automation:', error);
-
-			// Rethrow the original error to ensure that the caller can handle it appropriately.
-			// Using 'throw error' preserves the original error stack and message.
-			throw error;
-		}
-	}
-
-	/**
-	 * Resolves all macros for the G4 Automation Sequence by sending a POST request with the provided definition.
-	 *
-	 * This asynchronous function sends a JSON payload to a predefined automation URL using the Fetch API.
-	 * It handles the response by parsing the returned JSON data and managing errors that may occur during the request.
-	 *
-	 * @async
-	 * @function invokeAutomation
-	 * 
-	 * @param    {Object} definition - The automation definition object to be sent in the POST request body.
-	 * 
-	 * @returns  {Promise<Object>} - A promise that resolves to the parsed JSON response data from the server.
-	 * 
-	 * @throws   {Error} - Throws an error if the network response is not ok or if the fetch operation fails.
-	 */
-	async resolveMacros(definition) {
-		try {
-			// Resolve the G4 automation sequence by sending a POST request with the automation definition.
-			const response = await fetch(this.macrosUrl, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify(definition)
-			});
-
-			// Check if the response status indicates a successful request (HTTP status code 200-299).
-			// If the response is not ok, throw an error with the status text for debugging purposes.
-			if (!response.ok) {
-				throw new Error(`Network response was not ok: ${response.statusText}`);
-			}
-
-			// Parse the JSON data from the successful response.
-			const data = await response.json();
-
-			// Return the parsed data for further processing by the caller.
-			return data;
-		} catch (error) {
-			// Log the error to the console for debugging and monitoring purposes.
-			console.error('Failed to resolve G4 automation:', error);
 
 			// Rethrow the original error to ensure that the caller can handle it appropriately.
 			// Using 'throw error' preserves the original error stack and message.
@@ -1132,9 +933,9 @@ class G4Client {
 				return undefined;
 			}
 
-            // Ensure the pluginsSettings object exists and is an object.
+			// Ensure the pluginsSettings object exists and is an object.
 			settings.pluginsSettings = settings.pluginsSettings || {};
-            settings.pluginsSettings.externalRepositories = settings.pluginsSettings.externalRepositories || {};
+			settings.pluginsSettings.externalRepositories = settings.pluginsSettings.externalRepositories || {};
 
 			// Retrieve the plugins settings; use an empty object if not present.
 			const pluginsSettings = settings.pluginsSettings || {};
@@ -1187,10 +988,10 @@ class G4Client {
 		// Extract the authentication parameters from the definition properties.
 		const authentication = definition.properties?.authentication;
 
-        // Extract the data source from the definition properties.
-        const dataSource = definition.properties?.dataSource;
+		// Extract the data source from the definition properties.
+		const dataSource = definition.properties?.dataSource;
 
-        // Extract the driver parameters if both driver and driverBinaries are provided.
+		// Extract the driver parameters if both driver and driverBinaries are provided.
 		let driverParameters = getDriverParameters(definition.properties?.driverParameters);
 
 		// Extract and format the driver parameters from the definition properties using the helper function.
@@ -1204,7 +1005,7 @@ class G4Client {
 
 		// Iterate over each stage in the definition's sequence.
 		for (const stage of definition.sequence) {
-            // Extract the driver parameters for the current stage.
+			// Extract the driver parameters for the current stage.
 			let driverParameters = getDriverParameters(stage.properties?.driverParameters);
 
 			// Construct a new stage object with minimal required properties.
@@ -1225,7 +1026,7 @@ class G4Client {
 
 			// Iterate over each job in the current stage.
 			for (const job of stage.sequence) {
-                // Extract the driver parameters for the current job.
+				// Extract the driver parameters for the current job.
 				let driverParameters = getDriverParameters(job.properties?.driverParameters);
 
 				// Construct a new job object.
@@ -1258,16 +1059,25 @@ class G4Client {
 			stages.push(newStage);
 		}
 
+		// Include a reference object with metadata about the automation.
+		// ID is aligned with the definition ID for traceability.
+		const reference = {
+			id: definition.id
+		}
+
 		// Return a newly constructed automation object containing all relevant data.
 		return {
-            // Include the authentication details in the automation object.
+			// Include the authentication details in the automation object.
 			authentication,
 
-            // Include the data source details in the automation object.
+			// Include the data source details in the automation object.
 			dataSource,
 
 			// Include optional driver parameters (e.g., session data).
 			driverParameters,
+
+			// Include a reference object with metadata about the automation.
+			reference,
 
 			// Include any additional settings (e.g., timeouts, logging).
 			settings,
@@ -1275,5 +1085,265 @@ class G4Client {
 			// Provide the fully constructed set of stages (each containing jobs and rules).
 			stages,
 		};
+	}
+
+	/**
+	 * Resolves all macros for the G4 Automation Sequence by sending a POST request with the provided definition.
+	 *
+	 * This asynchronous function sends a JSON payload to a predefined automation URL using the Fetch API.
+	 * It handles the response by parsing the returned JSON data and managing errors that may occur during the request.
+	 *
+	 * @async
+	 * @function invokeAutomation
+	 * 
+	 * @param    {Object} definition - The automation definition object to be sent in the POST request body.
+	 * 
+	 * @returns  {Promise<Object>} - A promise that resolves to the parsed JSON response data from the server.
+	 * 
+	 * @throws   {Error} - Throws an error if the network response is not ok or if the fetch operation fails.
+	 */
+	async resolveMacros(definition) {
+		try {
+			// Resolve the G4 automation sequence by sending a POST request with the automation definition.
+			const response = await fetch(this.macrosUrl, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify(definition)
+			});
+
+			// Check if the response status indicates a successful request (HTTP status code 200-299).
+			// If the response is not ok, throw an error with the status text for debugging purposes.
+			if (!response.ok) {
+				throw new Error(`Network response was not ok: ${response.statusText}`);
+			}
+
+			// Parse the JSON data from the successful response.
+			const data = await response.json();
+
+			// Return the parsed data for further processing by the caller.
+			return data;
+		} catch (error) {
+			// Log the error to the console for debugging and monitoring purposes.
+			console.error('Failed to resolve G4 automation:', error);
+
+			// Rethrow the original error to ensure that the caller can handle it appropriately.
+			// Using 'throw error' preserves the original error stack and message.
+			throw error;
+		}
+	}
+
+	/**
+	 * Synchronizes a step object with the provided rule by updating its properties and parameters.
+	 *
+	 * This function processes the given rule to update the corresponding properties of the step.
+	 * It handles the conversion of argument strings containing templated variables into parameter dictionaries.
+	 *
+	 * @param {Object} step - The step object to be synchronized. It contains properties and parameters that may be updated.
+	 * @param {Object} rule - The rule object containing key-value pairs that dictate how the step should be updated.
+	 * 
+	 * @returns {Object} The updated step object after synchronization with the rule.
+	 */
+	syncStep(step, rule) {
+		/**
+		 * Converts an array (or object of values) of strings in "key=value" format into a dictionary object.
+		 */
+		const convertArrayToDictionary = (input) => {
+			// Normalize input into an array: if it's already an array, use it; otherwise, take the object's values.
+			const array = Array.isArray(input) ? input : Object.values(input);
+
+			// This will hold the final key/value mappings.
+			const result = {};
+
+			// Process each string item in the array
+			for (const item of array) {
+				// Locate the first "=" character
+				const firstEqualIndex = item.indexOf('=');
+
+				if (firstEqualIndex === -1) {
+					// No "=" found: use the whole string as a key and assign an empty value
+					result[item] = '';
+				} else {
+					// Split at the first "=" into key and value parts
+					const key = item.substring(0, firstEqualIndex);
+					const value = item.substring(firstEqualIndex + 1);
+					result[key] = value;
+				}
+			}
+
+			// Return the populated dictionary
+			return result;
+		};
+
+		/**
+		 * Formats an argument string into a dictionary if it contains templated variables.
+		 */
+		const formatArgumentString = (arg) =>
+			// Check if the argument contains templated variables by looking for "{{$"
+			// Return an empty object if no templated variables are found
+			// Convert to a dictionary if templated variables are present
+			!arg.includes("{{$")
+				? {}
+				: _cliFactory.convertToDictionary(arg);
+
+		/**
+		 * Formats and copies parameters from the manifest to prevent unintended mutations.
+		 *
+		 * This function extracts parameters from the provided manifest object, creates copies
+		 * of each parameter to ensure immutability, and returns an array of these copied parameters.
+		 * By doing so, it safeguards the original manifest parameters from accidental modification
+		 */
+		const formatParameters = (parameters) => {
+			// Initialize an empty array to hold the copied parameters
+			const copiedParameters = [];
+
+			// Iterate over each parameter in the manifest's parameters array
+			// If manifest or manifest.parameters is undefined, default to an empty array to prevent errors
+			for (const parameter of parameters) {
+				// Create a deep copy of the current parameter to ensure immutability
+				// Replace the following line with a deep copy method if parameters contain nested objects
+				const parameterJson = JSON.stringify(parameter);
+				const newParameter = JSON.parse(parameterJson);
+
+				// Add the copied parameter object to the copiedParameters array
+				copiedParameters.push(newParameter);
+			}
+
+			// Return the array of copied parameter objects
+			return copiedParameters;
+		};
+
+		// Retrieve the manifest for the step's plugin
+		const manifest = _manifests[step.pluginName];
+
+		// Extract parameters from the manifest or default to an empty array
+		const parameters = formatParameters(manifest?.parameters || []);
+
+		// Define the list of keys to include when updating step properties
+		const includeKeys = [
+			"argument",
+			"dataCollector",
+			"key",
+			"locator",
+			"locatorType",
+			"onAttribute",
+			"onElement",
+			"regularExpression"
+		];
+
+		// Ensure the step has a parameters object
+		step.parameters = step.parameters || {};
+
+		// Populate step.parameters with data from the manifest
+		for (const parameter of parameters) {
+			const key = Utilities.convertToCamelCase(parameter.name);
+			step.parameters[key] = parameter;
+
+			// Join the description array into a single string if it exists
+			step.parameters[key].description = Array.isArray(parameter.description)
+				? parameter.description?.join('\n').trim()
+				: parameter.description?.trim() || "";
+		}
+
+		// Iterate over each key in the rule object to update the corresponding step properties
+		for (const key in rule) {
+			// Skip keys that are not in the includeKeys list or do not exist in step.properties
+			if (!includeKeys.includes(key) || !(key in step.properties)) {
+				continue;
+			}
+
+			// Update the value of the step's property with the value from the rule
+			step.properties[key].value = rule[key];
+		}
+
+		// Check if the rule contains an 'argument' field to process parameters
+		if (rule.argument) {
+			// Parse the argument string into a dictionary of parameters
+			const parsedParameters = formatArgumentString(rule.argument);
+
+			// Convert parameter keys to uppercase for consistency
+			const parameters = Utilities.convertToUpperCase(parsedParameters);
+			const parameterKeys = Object.keys(step.parameters);
+
+			// Update step.parameters with values from the parsed argument
+			for (const parameterKey of parameterKeys) {
+				const key = parameterKey.toUpperCase();
+				const value = parameters[key];
+				const parameterType = step.parameters[parameterKey].type?.toUpperCase() || 'STRING';
+
+				// Assert if the parameter type is boolean/switch
+				const isSwitch = parameters[key] && parameterType === 'SWITCH';
+
+				// Assert if the parameter type is dictionary or key/value
+				const isDictionary = parameters[key] && parameterType === 'DICTIONARY'
+					|| parameterType === 'KEY/VALUE'
+					|| parameterType === 'KEYVALUE'
+					|| parameterType === 'OBJECT';
+
+				// For switch types, set the value to "true" if the key is present
+				if (isSwitch) {
+					step.parameters[parameterKey].value = "true";
+					continue;
+				}
+
+				// Use the value from the parsed argument if available; otherwise, retain the existing value
+				if (!isDictionary) {
+					step.parameters[parameterKey].value = value || step.parameters[parameterKey].value;
+					continue;
+				}
+
+				// Handle the case where the parameter is a dictionary type
+				if (value) {
+					step.parameters[parameterKey].value = convertArrayToDictionary(value);
+				}
+			}
+		}
+
+		// Return the updated step object after all synchronizations are complete
+		return step;
+	}
+
+	/**
+	 * Stops an active G4 Automation sequence using its identifier.
+	 *
+	 * This asynchronous function sends a GET request to the predefined stop URL
+	 * with the provided automation definition ID. It validates the HTTP response,
+	 * parses the returned JSON payload, and handles any errors that may occur
+	 * during the request lifecycle.
+	 *
+	 * @async
+	 * @function stopAutomation
+	 * 
+	 * @param    {Object} definition - The automation definition object containing the automation ID to stop.
+	 * 
+	 * @returns  {Promise<Object>} - A promise that resolves to the parsed JSON response returned by the server.
+	 * 
+	 * @throws   {Error} - Throws an error if the network response is not ok or if the fetch operation fails.
+	 */
+	async stopAutomation(definition) {
+		try {
+			// Send an HTTP GET request to stop the automation using its unique identifier.
+			const response = await fetch(`${this.stopUrl}/${definition.id}`);
+
+			// Check if the response status indicates a successful request (HTTP status code 200-299).
+			// If the response is not ok, throw an error with the status text for debugging purposes.
+			if (!response.ok) {
+				throw new Error(`Network response was not ok: ${response.statusText}`);
+			}
+
+			// Parse the JSON data from the successful response.
+			const data = await response.json();
+
+			// Return the parsed response data for further processing by the caller.
+			return data;
+		} catch (error) {
+			// Log the error to the console for debugging and monitoring purposes.
+			console.error('Failed to stop G4 automation:', error);
+
+			// Rethrow the original error to ensure that the caller can handle it appropriately.
+			// Using 'throw error' preserves the original error stack and message.
+			throw error;
+		}
 	}
 }

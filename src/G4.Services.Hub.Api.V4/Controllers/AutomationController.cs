@@ -105,5 +105,16 @@ namespace G4.Services.Hub.Api.V4.Controllers
             // Return a 200 OK response with the resolved rules.
             return Ok(resolvedRules);
         }
+
+        [HttpGet]
+        [Route("stop/{automationId}")]
+        public IActionResult Stop(string automationId)
+        {
+            // Stop the automation session with the specified ID.
+            var response = _domain.G4.Automation.StopAutomation(automationId);
+
+            // Return a 200 OK response with the stop confirmation.
+            return Ok(response);
+        }
     }
 }

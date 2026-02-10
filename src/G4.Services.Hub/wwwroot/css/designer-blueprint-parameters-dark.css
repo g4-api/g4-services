@@ -223,4 +223,12 @@
 	--workflow-region-stroke: rgba(var(--base-font-color-rgb), 0.5);
 	--workflow-region-stroke-dasharray: 3;
 	--workflow-region-stroke-width: 2;
+	/* Dropdown Menu */
+	--listbox-background: var(--primary-color);
+	--listbox-border-color: var(--primary-color);
+	--listbox-color: var(--smart-editor-label-color);
+	--listbox-option-hover-background: var(--secondary-color);
+	--listbox-option-hover-color: var(--smart-editor-label-color);
+	--listbox-tip-color: var(--smart-editor-label-color);
+	--listbox-tip-font: var(--text-tiny);
 }

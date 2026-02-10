@@ -107,6 +107,30 @@
 		width: 60vw;
 	}
 
+.sqd-listbox {
+	left: 0;
+	margin-top: var(--base-space);
+	max-height: 220px;
+	overflow-x: auto;
+	overflow-y: auto;
+	position: absolute;
+	right: 0;
+	top: 100%;
+}
+
+.sqd-listbox--option {
+	margin: var(--base-space);
+	padding: var(--base-space);
+}
+
+.sqd-listbox--tip {
+	margin-top: var(--base-space);
+}
+
+[data-g4-role="controller"]:has(input[aria-expanded="true"]) {
+	z-index: 110001;
+}
+
 html, body {
 	height: var(--base-height);
 	margin: 0;

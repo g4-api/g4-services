@@ -31,7 +31,7 @@ const newFieldContainer = (id, labelDisplayName, hintText) => {
         // Create a new hint text element if it doesn't already exist.
         hintElement = document.createElement('div');
         hintElement.classList.add('sqd-help-text'); // Add the 'sqd-help-text' class for styling.
-        hintElement.innerHTML = hintText;       // Set the provided hint text as the content.
+        hintElement.innerHTML = hintText;           // Set the provided hint text as the content.
 
         // Append the newly created hint text element to the hintContainer.
         hintContainer.appendChild(hintElement);
@@ -2314,14 +2314,39 @@ class CustomFields {
             return items;
         };
 
+        /**
+         * Updates external state via a provided setter callback.
+         *
+         * This helper is intentionally defensive:
+         * - It verifies the callback is a function before invoking it
+         * - Prevents runtime errors when the setter is optional or not provided
+         */
+        const updateState = (value, setCallback) => {
+            // Guard clause:
+            // If no valid setter was provided, do nothing.
+            // This avoids `TypeError: setCallback is not a function`
+            if (typeof setCallback !== 'function') {
+                return;
+            }
+
+            // Forward the value to the provided state setter
+            setCallback(value);
+        };
+
         // Generate a unique ID for the datalist input field to ensure uniqueness in the DOM
         const inputId = Utilities.newUid();
+
+        // Escape the unique ID for safe usage in CSS selectors
+        const escapedId = CSS.escape(inputId);
 
         // Convert the label from PascalCase to a space-separated format for display
         const labelDisplayName = options.label;
 
         // Retrieve and process items from the provided item source
-        const items = getItems(options.itemSource);
+        const items = Object.entries(getItems(options.itemSource)).map(([key, value]) => ({
+            value: key,
+            manifest: value.manifest
+        }));
 
         // Validate and sanitize the initial value; default to an empty string if invalid or 'undefined'
         options.initialValue = !options.initialValue || options.initialValue === 'undefined'
@@ -2336,49 +2361,328 @@ class CustomFields {
          *    - Each subsequent option has a value, label, and display text derived from the item data.
          */
         let html = `
-        <input id="${inputId}-input" list="${inputId}-datalist" title="${options.initialValue === '' ? 'Please select an option' : options.initialValue}" />
-        <datalist id="${inputId}-datalist">
-            <option value="" disabled selected>-- Please select an option --</option>`;
-
-        // Iterate over each item key to create the datalist options
-        Object.keys(items).forEach(key => {
-            // Retrieve the summary for each item or default to 'No summary available'
-            const summary = items[key].manifest?.summary || ['No summary available'];
-
-            // Join the summary array to create a multi-line tooltip
-            const hint = summary.join("\n");
-
-            // Create an option element: use 'key' as the value, 'hint' as the label, and display text as a space-separated key
-            html += `  <option value="${key}" label="${hint}">${Utilities.convertPascalToSpaceCase(key)}</option>\n`;
-        });
-
-        // Close the datalist element
-        html += '</datalist>';
+        <input
+            id="${inputId}-input"
+            type="text"
+            autocomplete="off"
+            role="combobox"
+            aria-autocomplete="list"
+            aria-expanded="false"
+            aria-controls="${inputId}-datalist"
+            aria-activedescendant=""
+            style="z-index: 10"
+            title="${options.initialValue === '' ? 'Please select an option' : options.initialValue}"
+        />
+        
+        <div
+            id="${inputId}-datalist"
+            class="sqd-listbox"
+            role="listbox">
+        </div>
+        
+        <div class="sqd-listbox--tip">
+            ↑ ↓ to navigate, Enter to select, Esc to close.
+        </div>
+        `
 
         // Create the main field container, specifying the unique ID, display label, and optional title
         const fieldContainer = newFieldContainer(inputId, labelDisplayName, options.title);
 
         // Select the sub-container within the field container where the input/datalist HTML will be appended
         const controllerContainer = fieldContainer.querySelector('[data-g4-role="controller"]');
+        controllerContainer.style = "position: relative; isolation: isolate;";
 
         // Insert the constructed HTML for the input and datalist into the controller container
         controllerContainer.insertAdjacentHTML('beforeend', html);
 
+        const list = fieldContainer.querySelector(`#${escapedId}-datalist`);
+
         // Select the newly inserted <input> element for further setup
         const input = controllerContainer.querySelector('input ');
+
         // Apply the validated initial value to the input
         input.value = options.initialValue;
 
-        // If a valid callback function is provided, attach an event listener to handle input changes
-        if (typeof setCallback === 'function') {
-            fieldContainer.addEventListener('input', () => {
-                // Update the 'title' attribute to reflect the current value
-                input.title = input.value;
+        // Store the filtered list of items based on user input;
+        // initialized as empty until the user interacts with the input
+        let filtered = [];
 
-                // Invoke the callback with the new value
-                setCallback(input.value);
+        // Track the index of the currently active option in the listbox for keyboard navigation.
+        let activeIndex = -1;
+
+        /**
+         * Handles live filtering of listbox options based on user input.
+         *
+         * Behavior:
+         * - Filters `items` by matching `item.value` against the input text
+         * - Limits results (20 when searching, 8 when empty)
+         * - Resets and manages active option index
+         * - Rebuilds the listbox DOM on each input event
+         * - Maintains proper ARIA state for accessibility
+         */
+        input.addEventListener("input", () => {
+            // Normalize user input for case-insensitive matching
+            const query = (input.value || "").toLowerCase().trim();
+
+            // Filter items based on query:
+            // - If query exists → match value and cap at 20 results
+            // - If empty → show first 8 items only
+            filtered = query
+                ? items
+                    .filter(x => (x.value || "").toLowerCase().includes(query))
+                    .slice(0, 20)
+                : items;
+
+            // Set active option index:
+            // - First item if results exist
+            // - -1 if list is empty
+            activeIndex = filtered.length ? 0 : -1;
+
+            // Clear existing listbox content before rebuilding
+            list.innerHTML = "";
+
+            // Create a DOM option element for each filtered item
+            filtered.forEach((item, i) => {
+                const option = document.createElement("div");
+
+                // Core styling hook
+                option.classList.add("sqd-listbox--option");
+
+                // Unique id used by aria-activedescendant
+                option.id = `opt-${i}`;
+
+                // Visible label
+                option.textContent = item.value;
+
+                // Tooltip / assistive description
+                option.title = item.manifest.summary;
+
+                // Accessibility role
+                option.setAttribute("role", "option");
+
+                // Mark selected option
+                option.setAttribute("aria-selected", i === activeIndex);
+
+                /**
+                 * Handle option selection
+                 *
+                 * NOTE:
+                 * `mousedown` is used instead of `click`
+                 * to prevent input blur before selection completes
+                 */
+                option.addEventListener("mousedown", (e) => {
+                    // Prevent default to avoid input losing focus before we can process the selection
+                    e.preventDefault();
+
+                    // Close the listbox immediately
+                    list.style.display = "none";
+
+                    // Apply selected value to input
+                    input.value = item.value;
+
+                    // Store summary as tooltip on the input
+                    input.title = item.manifest.summary || "No summary available";
+
+                    // Reset ARIA expanded and active states
+                    input.setAttribute("aria-expanded", "false");
+                    input.setAttribute("aria-activedescendant", "");
+
+                    // Clear active index since list is now closed
+                    activeIndex = -1;
+
+                    // Notify external state handler
+                    updateState(input.value, setCallback);
+                });
+
+                // Append option to the listbox container
+                list.appendChild(option);
             });
-        }
+
+            // Toggle listbox visibility and ARIA state
+            if (filtered.length) {
+                list.style.display = "block";
+
+                // Indicate expanded state for assistive tech
+                input.setAttribute("aria-expanded", "true");
+
+                // Reference active option for screen readers
+                input.setAttribute(
+                    "aria-activedescendant",
+                    activeIndex >= 0 ? `opt-${activeIndex}` : ""
+                );
+            } else {
+                // Hide listbox if no results match
+                list.style.display = "none";
+
+                // Collapse listbox when no results exist
+                input.setAttribute("aria-expanded", "false");
+                input.setAttribute("aria-activedescendant", "");
+            }
+        });
+
+        /**
+         * Re-triggers the input filtering logic when the input gains focus.
+         *
+         * Purpose:
+         * - Ensures the dropdown opens when the user clicks or tabs into the input
+         * - Reuses the existing `input` event logic (no duplicated code)
+         * - Keeps filtering behavior consistent between typing and focus
+         *
+         * Notes:
+         * - Dispatching a synthetic `input` event allows the component
+         *   to behave like a native datalist
+         * - This is especially important when the input already contains a value
+         */
+        input.addEventListener("focus", () => {
+            // Manually trigger the input handler to refresh the listbox
+            input.dispatchEvent(new Event("input"));
+        });
+
+        /**
+         * Handles keyboard navigation and interaction for the listbox.
+         *
+         * Supported keys:
+         * - ArrowDown / ArrowUp → Move active selection
+         * - Enter               → Commit active selection
+         * - Escape              → Close listbox and reset state
+         *
+         * Accessibility:
+         * - Maintains `aria-activedescendant` on the input
+         * - Updates `aria-selected` on options
+         * - Ensures active option stays visible via scroll management
+         */
+        input.addEventListener("keydown", (e) => {
+            // Exit early if there are no filtered options
+            if (!filtered.length) {
+                return;
+            }
+
+            // Key intent flags (kept explicit for readability)
+            const isDown = e.key === "ArrowDown";
+            const isEscape = e.key === "Escape";
+            const isEnter = e.key === "Enter";
+            const isUp = e.key === "ArrowUp";
+
+            /**
+             * If the listbox is currently closed:
+             * - ArrowUp / ArrowDown should open it and initialize state
+             * - All other keys are ignored
+             */
+            if (list.style.display !== "block") {
+                if (isDown || isUp) {
+                    // Reuse filtering logic to open and populate the list
+                    input.dispatchEvent(new Event("input"));
+                } else {
+                    return;
+                }
+            }
+
+            /**
+             * ArrowDown → move selection forward
+             */
+            if (isDown) {
+                e.preventDefault();
+
+                // Clamp index to last available option
+                activeIndex = Math.min(activeIndex + 1, filtered.length - 1);
+
+                // Update active descendant reference
+                input.setAttribute("aria-activedescendant", `opt-${activeIndex}`);
+
+                // Sync aria-selected state across all options
+                Array
+                    .from(list.children)
+                    .forEach((c, idx) =>
+                        c.setAttribute("aria-selected", idx === activeIndex)
+                    );
+
+                // Ensure active option remains visible
+                document
+                    .getElementById(`opt-${activeIndex}`)
+                    ?.scrollIntoView({ block: "nearest" });
+            }
+
+            /**
+             * ArrowUp → move selection backward
+             */
+            if (isUp) {
+                e.preventDefault();
+
+                // Clamp index to first option
+                activeIndex = Math.max(activeIndex - 1, 0);
+
+                // Update active descendant reference
+                input.setAttribute("aria-activedescendant", `opt-${activeIndex}`);
+
+                // Sync aria-selected state across all options
+                Array
+                    .from(list.children)
+                    .forEach((c, idx) =>
+                        c.setAttribute("aria-selected", idx === activeIndex)
+                    );
+
+                // Ensure active option remains visible
+                document
+                    .getElementById(`opt-${activeIndex}`)
+                    ?.scrollIntoView({ block: "nearest" });
+            }
+
+            /**
+             * Enter → commit the active selection
+             */
+            if (isEnter) {
+                // Guard against invalid index
+                if (activeIndex < 0 || !filtered[activeIndex]) {
+                    return;
+                }
+
+                // Prevent form submission or other default behaviors
+                // associated with Enter key press in an input field
+                e.preventDefault();
+
+                // Close listbox
+                list.style.display = "none";
+
+                // Apply selected value to input
+                input.value = filtered[activeIndex].value;
+
+                // Reset ARIA state
+                input.setAttribute("aria-expanded", "false");
+                input.setAttribute("aria-activedescendant", "");
+
+                // Clear active index
+                activeIndex = -1;
+            }
+
+            /**
+             * Escape → close listbox without selection
+             */
+            if (isEscape) {
+                // Close listbox
+                list.style.display = "none";
+
+                // Reset ARIA state
+                input.setAttribute("aria-expanded", "false");
+                input.setAttribute("aria-activedescendant", "");
+
+                // Clear active index
+                activeIndex = -1;
+            }
+        });
+
+        // TODO: improve the query to exit if not displayed (display === none)
+        // Close if opened and clicking outside
+        document.addEventListener("mousedown", (e) => {
+            const dataList = document.querySelector(`#${escapedId}-datalist`)
+            if (!dataList) {
+                return;
+            }
+
+            dataList.style.display = "none";
+            input.setAttribute("aria-expanded", "false");
+            input.setAttribute("aria-activedescendant", "");
+            activeIndex = -1;
+        });
 
         // If an external container is provided, append the entire field container to it
         if (options.container) {

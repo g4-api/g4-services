@@ -212,4 +212,12 @@
     --workflow-region-stroke: var(--vscode-editor-foreground);
     --workflow-region-stroke-dasharray: 3;
     --workflow-region-stroke-width: 1;
+    /* Dropdown Menu */
+    --listbox-background: var(--vscode-sideBar-background);
+    --listbox-border-color: var(--vscode-foreground);
+    --listbox-color: var(--vscode-foreground);
+    --listbox-option-hover-background: var(--vscode-button-hoverBackground);
+    --listbox-option-hover-color: var(--vscode-button-foreground);
+    --listbox-tip-color: var(--vscode-foreground);
+    --listbox-tip-font: var(--text-tiny);
 }
