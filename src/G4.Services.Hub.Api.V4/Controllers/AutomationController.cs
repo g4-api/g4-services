@@ -108,7 +108,21 @@ namespace G4.Services.Hub.Api.V4.Controllers
 
         [HttpGet]
         [Route("stop/{automationId}")]
-        public IActionResult Stop(string automationId)
+        [SwaggerOperation(
+            summary: "Stops a running automation session.",
+            description: "Stops the currently running automation session identified by the provided automationId. " +
+                "If the automation exists, a cancellation signal is sent and the session is terminated gracefully.",
+            Tags = ["Automation"])]
+        [SwaggerResponse(StatusCodes.Status200OK,
+            description: "Automation stopped successfully. Returns a confirmation result.",
+            type: typeof(object),
+            contentTypes: MediaTypeNames.Application.Json)]
+        public IActionResult Stop(
+            [FromRoute]
+            [SwaggerParameter(
+                description: "The unique identifier of the automation session to stop.",
+                Required = true)]
+            string automationId)
         {
             // Stop the automation session with the specified ID.
             var response = _domain.G4.Automation.StopAutomation(automationId);
