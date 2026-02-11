@@ -43,6 +43,24 @@ namespace G4.Services.Domain.V4.Hubs
         [SuppressMessage("Style", "IDE0039:Use local function", Justification = "The function needs to be passed as a delegate and removed from client singleton.")]
         public async Task StartAutomation([FromBody] G4AutomationModel automation)
         {
+            // Obtain or create the environment settings from the automation model.
+            // If automation.Settings.EnvironmentsSettings is null, create a new EnvironmentsSettingsModel.
+            var settings = automation.Settings.EnvironmentsSettings ?? new EnvironmentsSettingsModel();
+
+            // Create a dictionary to hold environment-specific variables.
+            settings.EnvironmentVariables = new Dictionary<string, ApplicationParametersModel>(StringComparer.OrdinalIgnoreCase)
+            {
+                // Add an environment variable for SignalR, storing the caller's connection ID.
+                ["SignalR"] = new ApplicationParametersModel
+                {
+                    Name = "SignalR",
+                    Parameters = new Dictionary<string, object>
+                    {
+                        ["ConnectionId"] = Context.ConnectionId
+                    }
+                }
+            };
+
             // Ensures continuations do not run inline (prevents potential deadlocks)
             var creationOptions = TaskCreationOptions.RunContinuationsAsynchronously;
 
