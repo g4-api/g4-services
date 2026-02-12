@@ -26,7 +26,7 @@ class StateMachine {
 		this.definition = definition;
 
         // Initialize the G4 client for managing automation processes.
-        this.client = new G4Client();
+        this.client = _client;
 	}
 
 	/**
