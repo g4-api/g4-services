@@ -2670,11 +2670,17 @@ class CustomFields {
             }
         });
 
-        // TODO: improve the query to exit if not displayed (display === none)
         // Close if opened and clicking outside
         document.addEventListener("mousedown", (e) => {
             const dataList = document.querySelector(`#${escapedId}-datalist`)
-            if (!dataList) {
+            const isVisible = !!(
+                dataList &&
+                (dataList.offsetWidth ||
+                    dataList.offsetHeight ||
+                    dataList.getClientRects().length)
+            );
+
+            if (!isVisible) {
                 return;
             }
 
