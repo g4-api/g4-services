@@ -167,15 +167,15 @@
             }
 
             // Step is invalid — set a descriptive, user-friendly error
-            const friendlyName = Utilities.convertToPascalCase(key);
+            const displayName = propertyData?.displayName || propertyData.name;
 
             // Return an error object with a title and description
             return {
                 key: key,
                 value: {
-                    title: `Missing Required ${propertyType}: ${Utilities.convertPascalToSpaceCase(friendlyName)}`,
-                    description: `The "${friendlyName}" ${propertyType.toLowerCase()} is required but is currently missing. To fix this, ` +
-                        `add the "${friendlyName}" ${propertyType.toLowerCase() } to your step configuration with a valid value.`,
+                    title: `Missing Required ${propertyType}: ${Utilities.convertPascalToSpaceCase(displayName)}`,
+                    description: `The "${displayName}" ${propertyType.toLowerCase()} is required but is currently missing. To fix this, ` +
+                        `add the "${displayName}" ${propertyType.toLowerCase() } to your step configuration with a valid value.`,
                     level: "ERR"
                 }
             };

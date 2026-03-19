@@ -12,7 +12,9 @@ const _exportDataManifest = {
 			"sequentialWorkflow": {
 				"$type": "Extraction",
 				"componentType": "container",
-				"iconProvider": "export",
+				"iconProvider": {
+					"name": "export"
+				},
 				"model": "ExtractionRuleModel"
 			}
 		}
@@ -972,6 +974,59 @@ class G4Client {
 		};
 
 		/**
+		 * Normalizes the MCP server settings collection by converting each server entry
+		 * from an object that contains a name field into a dictionary keyed by that name.
+		 */
+		const formatMcpServers = (settings) => {
+			// Return undefined immediately when no settings object was supplied.
+			if (!settings) {
+				return undefined;
+			}
+
+			// Ensure the plugin settings container exists before accessing nested MCP server values.
+			settings.pluginsSettings = settings.pluginsSettings || {};
+
+			// Ensure the MCP servers container exists so the normalization logic can safely iterate over it.
+			settings.pluginsSettings.servers = settings.pluginsSettings.servers || {};
+
+			// Read the plugin settings object after normalizing its existence.
+			const pluginsSettings = settings.pluginsSettings || {};
+
+			// Read the raw MCP server collection, defaulting to an empty object when missing.
+			const mcpServers = pluginsSettings.servers || {};
+
+			// Get all server entry keys from the raw MCP server collection.
+			const keys = Object.keys(mcpServers);
+
+			// Create the normalized servers dictionary keyed by each server's internal name.
+			const servers = {};
+
+			// Convert each raw server entry into a name-keyed dictionary entry.
+			for (const key of keys) {
+				// Read the current MCP server definition from the source collection.
+				const mcpServer = mcpServers[key];
+
+				// Read the display or logical name that will become the new dictionary key.
+				const name = mcpServer.name;
+
+				// Copy all server fields except the name property into the new value object.
+				const value = Object
+					.fromEntries(Object
+						.entries(mcpServer)
+						.filter(([key]) => key !== 'name'));
+
+				// Store the normalized server definition under its name.
+				servers[name] = value;
+			}
+
+			// Replace the original server collection with the normalized dictionary.
+			settings.pluginsSettings.servers = servers;
+
+			// Return the updated settings object.
+			return settings;
+		};
+
+		/**
 		 * Retrieves driver parameters if both driver and driverBinaries are provided.
 		 */
 		const getDriverParameters = (driverParameters) => {
@@ -998,7 +1053,9 @@ class G4Client {
 		driverParameters = driverParameters ? formatDriverParameters(driverParameters) : undefined;
 
 		// Extract additional settings (if any) from the definition properties.
-		const settings = formatExternalRepositories(definition.properties["settings"] || undefined);
+		let settings = definition.properties["settings"] || undefined;
+		settings = formatExternalRepositories(settings);
+		settings = formatMcpServers(settings);
 
 		// Prepare an array to collect stages from the definition sequence.
 		const stages = [];
@@ -1237,7 +1294,9 @@ class G4Client {
 
 		// Populate step.parameters with data from the manifest
 		for (const parameter of parameters) {
-			const key = Utilities.convertToCamelCase(parameter.name);
+			const key = parameter.name;
+
+			parameter.displayName = step.parameters[key]?.displayName;
 			step.parameters[key] = parameter;
 
 			// Join the description array into a single string if it exists
