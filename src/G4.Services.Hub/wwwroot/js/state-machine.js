@@ -248,9 +248,16 @@ class StateMachineSteps {
 	static newG4Step(manifest, pluginName) {
 		// Creates a new bridge object from a G4 parameter object.
 		const newBridgeObject = (g4ParameterObject) => {
+			// Normalize key to ensure it is in the correct format for display and processing.
+			let displayName = Utilities.convertSnakeToPascalCase(g4ParameterObject.name);
+			displayName = Utilities.convertKebabToPascalCase(displayName);
+			displayName = Utilities.convertToPascalCase(displayName);
+			displayName = Utilities.convertPascalToSpaceCase(displayName);
+
 			let bridgeObject = {
 				description: g4ParameterObject.description.join('\n'),  // Set summary
-				name: Utilities.convertPascalToSpaceCase(g4ParameterObject.name), // Convert name to space case
+				displayName,                                            // Convert name to space case
+				name: g4ParameterObject.name,                           //Utilities.convertPascalToSpaceCase(g4ParameterObject.name),
 				required: g4ParameterObject.mandatory || false,         // Set required flag
 				type: g4ParameterObject.type || 'String',               // Set type or default to 'String'
 				value: g4ParameterObject.default || '',                 // Set default value or empty string
@@ -278,8 +285,9 @@ class StateMachineSteps {
 				componentType: "task",
 				context: {},
 				description: "Description not provided.",
+				displayName: Utilities.convertPascalToSpaceCase(pluginName || "NotAvailable"),
 				id: Utilities.newUid(),
-				name: Utilities.convertPascalToSpaceCase(pluginName || "Not Available"),
+				name: pluginName,
 				parameters: {},
 				pluginName: "MissingPlugin",
 				pluginType: "Action",
@@ -299,16 +307,22 @@ class StateMachineSteps {
 		// Process each parameter in manifest.parameters
 		if (manifest.parameters) {
 			for (const parameter of manifest.parameters) {
-				const name = Utilities.convertToCamelCase(parameter.name);
+				const name = parameter.name
 				parameters[name] = newBridgeObject(parameter);
 			}
 		}
 
+		// Normalize key to ensure it is in the correct format for display and processing.
+		let displayName = Utilities.convertSnakeToPascalCase(manifest.key);
+		displayName = Utilities.convertKebabToPascalCase(displayName);
+		displayName = Utilities.convertToPascalCase(displayName);
+		displayName = Utilities.convertPascalToSpaceCase(displayName);
+
 		// Check if the manifest has categories and determine if it is a condition or loop
 		const context = manifest.context?.integration?.sequentialWorkflow || {};
 		const componentType = context?.componentType?.toLowerCase() || "task";
-		const iconProvider = context?.iconProvider?.toLowerCase() || "task";
-		const label = context?.label || Utilities.convertPascalToSpaceCase(manifest.key);
+		const iconProvider = context?.iconProvider?.name?.toLowerCase() || "gears";
+		const label = displayName || context?.title || "Not Available";
 		const isSwitch = componentType === "switch";
 		const isLoop = componentType === "loop";
 		const isContainer = componentType === "container";

@@ -1693,119 +1693,251 @@ class CustomG4Fields {
      * @returns {HTMLElement} The container element that includes the newly created Plugins Settings field.
      */
     static newPluginsSettingsField(options, setCallback) {
-        /**
-         * Generates a data object schema for an external repository.
-         */
-        const newDataObject = (externalRepository) => {
-            // Initialize an empty object to hold the data object schema.
-            const dataObject = {};
 
-            // Define the 'url' field for the external repository.
-            dataObject['url'] = {
-                label: 'Url',
-                title: 'The URL of the external repository.',
-                type: 'STRING',
-                value: externalRepository?.url || ''
+        // Initialize MCP server data objects based on provided options and a callback for handling changes.
+        const initializeServers = (options, setCallback) => {
+            // Generates a data object schema for an external repository.
+            const newDataObject = (server) => {
+                // Initialize an empty object to hold the data object schema.
+                const dataObject = {};
+
+                dataObject['name'] = {
+                    label: 'Name',
+                    title: 'The name of the external repository.',
+                    type: 'STRING',
+                    value: server?.name
+                };
+
+                dataObject['type'] = {
+                    label: 'Type',
+                    title: 'The type of the external repository.',
+                    type: 'STRING',
+                    value: server?.type
+                };
+
+                dataObject['url'] = {
+                    label: 'Url',
+                    title: 'The URL of the external repository.',
+                    type: 'STRING',
+                    value: server?.url
+                };
+
+                dataObject['command'] = {
+                    label: 'Command',
+                    title: 'The command to execute for the external repository.',
+                    type: 'STRING',
+                    value: server?.command
+                };
+
+                dataObject['arguments'] = {
+                    label: 'Arguments',
+                    title: 'The command-line arguments passed to the external repository command.',
+                    type: 'ARRAY',
+                    value: server?.arguments || []
+                };
+
+                dataObject['headers'] = {
+                    label: 'Headers',
+                    title: 'The HTTP headers sent when connecting to the external repository.',
+                    type: 'KEYVALUE',
+                    value: server?.headers || {}
+                };
+
+                dataObject['environment'] = {
+                    label: 'Environment',
+                    title: 'The environment variables used when starting the external repository command.',
+                    type: 'KEYVALUE',
+                    value: server?.environment || {}
+                };
+
+                // Return the constructed data object schema for the external repository.
+                return dataObject;
             };
 
-            // Define the 'version' field for the external repository.
-            dataObject['version'] = {
-                label: 'Version',
-                title: 'The API version of the external repository.',
-                type: 'NUMBER',
-                value: externalRepository?.version || ''
+            // Generate a unique identifier for the plugins settings fields.
+            const inputId = Utilities.newUid();
+
+            // Initialize external repositories with existing data or a default empty object.
+            const servers = options.initialValue?.servers || {};
+
+            // Prepare an array to hold data object schemas for each external repository.
+            const dataObjects = [];
+
+            // Retrieve all keys (indices) from the servers object.
+            const keys = Object.keys(servers);
+
+            // Build a data object schema for each configured MCP server entry.
+            for (const key of keys) {
+                // Read the current server configuration from the servers dictionary.
+                const server = servers[key];
+
+                // Copy the dictionary key into the server object so the generated schema
+                // also includes the server name as a field.
+                server.name = server?.name || key;
+
+                // Create the data object schema for the current server.
+                const schema = newDataObject(server);
+
+                // Add the generated schema to the result collection.
+                dataObjects.push(schema);
+            }
+
+            // Add a new data object schema if no external repositories are provided.
+            if (dataObjects.length === 0) {
+                dataObjects.push(newDataObject(undefined));
+            }
+
+            // Configuration options for the object array fields container.
+            const arrayFieldOptions = {
+                addButtonLabel: 'Add MCP Server',
+                dataObjects: dataObjects,
+                groupName: 'Servers',
+                hintText: 'Configure MCP server settings—including authentication, headers, and capabilities—and toggle rule reference enforcement for consistent plugin behavior.',
+                itemLabel: 'MCP Server',
+                labelDisplayName: 'MCP Servers',
+                removeButtonLabel: 'Remove',
+                role: 'container',
+                title: options.title
             };
 
-            // Define the 'name' field for the external repository.
-            dataObject['name'] = {
-                label: 'Name',
-                title: 'The name of the external repository.',
-                type: 'STRING',
-                value: externalRepository?.name || ''
+            // Create the object array fields container with the provided options and callback.
+            return newObjectArrayFieldsContainer(inputId, arrayFieldOptions, setCallback);
+        }
+
+        // Initialize external repository data objects based on provided options and a callback for handling changes.
+        const initializeExternals = (options, setCallback) => {
+            // Generates a data object schema for an external repository.
+            const newDataObject = (externalRepository) => {
+                // Initialize an empty object to hold the data object schema.
+                const dataObject = {};
+
+                // Define the 'url' field for the external repository.
+                dataObject['url'] = {
+                    label: 'Url',
+                    title: 'The URL of the external repository.',
+                    type: 'STRING',
+                    value: externalRepository?.url || ''
+                };
+
+                // Define the 'version' field for the external repository.
+                dataObject['version'] = {
+                    label: 'Version',
+                    title: 'The API version of the external repository.',
+                    type: 'NUMBER',
+                    value: externalRepository?.version || ''
+                };
+
+                // Define the 'name' field for the external repository.
+                dataObject['name'] = {
+                    label: 'Name',
+                    title: 'The name of the external repository.',
+                    type: 'STRING',
+                    value: externalRepository?.name || ''
+                };
+
+                // Define the 'username' field for authenticating with the external repository.
+                dataObject['username'] = {
+                    label: 'Username',
+                    title: 'The username to authenticate with the external repository.',
+                    type: 'STRING',
+                    value: externalRepository?.username || ''
+                };
+
+                // Define the 'password' field for authenticating with the external repository.
+                dataObject['password'] = {
+                    label: 'Password',
+                    title: 'The password to authenticate with the external repository.',
+                    type: 'STRING',
+                    value: externalRepository?.password || ''
+                };
+
+                // Define the 'timeout' field for request timeout settings.
+                dataObject['timeout'] = {
+                    label: 'Timeout',
+                    title: 'The time in seconds to wait before the request times out (default 300 seconds).',
+                    type: 'NUMBER',
+                    value: externalRepository?.timeout || '300'
+                };
+
+                // Define the 'headers' field for request headers.
+                dataObject['headers'] = {
+                    label: 'Headers',
+                    title: 'A collection of headers to be included in the request.',
+                    type: 'KEYVALUE',
+                    value: externalRepository?.headers || {}
+                };
+
+                // Define the 'capabilities' field for additional custom information.
+                dataObject['capabilities'] = {
+                    label: 'Capabilities',
+                    title: 'A collection of capabilities with additional custom information for the invocation.',
+                    type: 'KEYVALUE',
+                    value: externalRepository?.capabilities || {}
+                };
+
+                // Return the fully constructed data object schema for the external repository.
+                return dataObject;
             };
 
-            // Define the 'username' field for authenticating with the external repository.
-            dataObject['username'] = {
-                label: 'Username',
-                title: 'The username to authenticate with the external repository.',
-                type: 'STRING',
-                value: externalRepository?.username || ''
+            // Generate a unique identifier for the plugins settings fields.
+            const inputId = Utilities.newUid();
+
+            // Initialize external repositories with existing data or a default empty object.
+            const externalRepositories = options.initialValue?.externalRepositories || [{}];
+
+            // Prepare an array to hold data object schemas for each external repository.
+            const dataObjects = [];
+
+            // Retrieve all keys (indices) from the externalRepositories object.
+            const indexes = Object.keys(externalRepositories);
+
+            // Iterate over each external repository to create its data object schema.
+            for (const index of indexes) {
+                const schema = newDataObject(externalRepositories[index]);
+                dataObjects.push(schema);
+            }
+
+            // Add a new data object schema if no external repositories are provided.
+            if (dataObjects.length === 0) {
+                dataObjects.push(newDataObject(undefined));
+            }
+
+            // Configuration options for the object array fields container.
+            const arrayFieldOptions = {
+                addButtonLabel: 'Add External Repository',
+                dataObjects: dataObjects,
+                groupName: 'ExternalRepositories',
+                hintText: 'Configure external repository definitions—including authentication, headers, and capabilities—and toggle rule reference enforcement for consistent plugin behavior.',
+                itemLabel: 'External Repositories',
+                labelDisplayName: 'External Repositories',
+                removeButtonLabel: 'Remove',
+                role: 'container',
+                title: options.title
             };
 
-            // Define the 'password' field for authenticating with the external repository.
-            dataObject['password'] = {
-                label: 'Password',
-                title: 'The password to authenticate with the external repository.',
-                type: 'STRING',
-                value: externalRepository?.password || ''
-            };
-
-            // Define the 'timeout' field for request timeout settings.
-            dataObject['timeout'] = {
-                label: 'Timeout',
-                title: 'The time in seconds to wait before the request times out (default 300 seconds).',
-                type: 'NUMBER',
-                value: externalRepository?.timeout || '300'
-            };
-
-            // Define the 'headers' field for request headers.
-            dataObject['headers'] = {
-                label: 'Headers',
-                title: 'A collection of headers to be included in the request.',
-                type: 'KEYVALUE',
-                value: externalRepository?.headers || {}
-            };
-
-            // Define the 'capabilities' field for additional custom information.
-            dataObject['capabilities'] = {
-                label: 'Capabilities',
-                title: 'A collection of capabilities with additional custom information for the invocation.',
-                type: 'KEYVALUE',
-                value: externalRepository?.capabilities || {}
-            };
-
-            // Return the fully constructed data object schema for the external repository.
-            return dataObject;
-        };
+            // Create the object array fields container with the provided options and callback.
+            return newObjectArrayFieldsContainer(inputId, arrayFieldOptions, setCallback);
+        }
 
         // Generate a unique identifier for the plugins settings fields.
         const inputId = Utilities.newUid();
 
-        // Initialize external repositories with existing data or a default empty object.
-        const externalRepositories = options.initialValue?.externalRepositories || [{}];
-
-        // Prepare an array to hold data object schemas for each external repository.
-        const dataObjects = [];
-
-        // Retrieve all keys (indices) from the externalRepositories object.
-        const indexes = Object.keys(externalRepositories);
-
-        // Iterate over each external repository to create its data object schema.
-        for (const index of indexes) {
-            const schema = newDataObject(externalRepositories[index]);
-            dataObjects.push(schema);
-        }
-
-        // Add a new data object schema if no external repositories are provided.
-        if (dataObjects.length === 0) {
-            dataObjects.push(newDataObject(undefined));
-        }
-
-        // Configuration options for the object array fields container.
-        const arrayFieldOptions = {
-            addButtonLabel: 'Add External Repository',
-            dataObjects: dataObjects,
-            groupName: 'ExternalRepositories',
-            hintText: "Configure external repository definitions—including authentication, headers, and capabilities—and toggle rule reference enforcement for consistent plugin behavior.",
-            itemLabel: 'External Repository',
+        // Create a container with multiple plugin settings fields
+        // and passing the generated ID, label, title, and role 'container'.
+        const fieldContainer = newMultipleFieldsContainer(inputId, {
             labelDisplayName: options.label,
-            removeButtonLabel: 'Remove',
             role: 'container',
-            title: options.title
-        };
+            hintText: 'Configure external plugin sources and rule initialization behavior.',
+            isOpen: options.isOpen
+        });
 
-        // Create the object array fields container with the provided options and callback.
-        const fieldContainer = newObjectArrayFieldsContainer(inputId, arrayFieldOptions, setCallback);
+        // Initialize the servers and external repositories containers using the respective functions defined above.
+        const serversContainer = initializeServers(options, setCallback);
+        const repositoriesContainer = initializeExternals(options, setCallback);
+
+        // Append the servers and external repositories containers to the main field container.
+        fieldContainer.appendChild(serversContainer);
+        fieldContainer.appendChild(repositoriesContainer);
 
         // Set the initial forceRuleReference value to true if not provided.
         const initialValue = options.initialValue;
@@ -1971,7 +2103,6 @@ class CustomG4Fields {
         return options.container ? options.container : fieldContainer;
     }
 }
-
 class CustomFields {
     // TODO: Add support for text fields with data list suggestions.
     /**
@@ -2670,11 +2801,17 @@ class CustomFields {
             }
         });
 
-        // TODO: improve the query to exit if not displayed (display === none)
         // Close if opened and clicking outside
         document.addEventListener("mousedown", (e) => {
             const dataList = document.querySelector(`#${escapedId}-datalist`)
-            if (!dataList) {
+            const isVisible = !!(
+                dataList &&
+                (dataList.offsetWidth ||
+                    dataList.offsetHeight ||
+                    dataList.getClientRects().length)
+            );
+
+            if (!isVisible) {
                 return;
             }
 

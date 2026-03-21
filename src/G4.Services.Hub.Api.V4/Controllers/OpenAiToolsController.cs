@@ -9,6 +9,7 @@ using Swashbuckle.AspNetCore.Annotations;
 
 using System.Linq;
 using System.Net.Mime;
+using System.Text.Json;
 
 namespace G4.Services.Hub.Api.V4.Controllers
 {
@@ -185,13 +186,13 @@ namespace G4.Services.Hub.Api.V4.Controllers
                 description: "The input schema containing an optional intent (purpose) and/or tool types to filter the returned tools.",
                 Required = false
             )]
-            GetToolsInputSchema schema)
+            JsonElement schema)
         {
             // Normalize the input schema to ensure it's not null.
-            schema ??= new GetToolsInputSchema();
+            //schema ??= new GetToolsInputSchema();
 
             // Retrieve the collection of available tools, applying any provided filters.
-            var tools = _domain.Tools.GetTools(schema.Intent, schema.Types);
+            var tools = _domain.Tools.GetTools(schema);
 
             // Format the result as a collection of tool names and descriptions.
             var result = (tools

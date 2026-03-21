@@ -1,6 +1,7 @@
 ﻿using G4.Extensions;
 using G4.Models;
 using G4.Services.Domain.V4;
+using G4.Services.Domain.V4.Models;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -10,8 +11,8 @@ using Swashbuckle.AspNetCore.Annotations;
 
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.IO.Compression;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Net.Mime;
 using System.Text.Json;
@@ -63,6 +64,49 @@ namespace G4.Services.Hub.Api.V4.Controllers
         }
 
         [HttpGet]
+        [Route("cache/credentials")]
+        [SwaggerOperation(
+            summary: "Get all credentials",
+            description: "Returns all saved credential records from the in-memory cache (not from the underlying persistent store).",
+            Tags = ["Integration", "Cache"])]
+        [Produces(MediaTypeNames.Application.Json)]
+        [SwaggerResponse(StatusCodes.Status200OK, description: "Credentials returned successfully.", type: typeof(object), contentTypes: MediaTypeNames.Application.Json)]
+        public IActionResult GetCredentials()
+        {
+            // Fetch all cached credentials from the domain layer (served from cache, not the underlying store).
+            var credentials = _domain.G4.Integration.GetCredentials();
+
+            // Return the credentials as a JSON response.
+            return Ok(credentials);
+        }
+
+        [HttpGet]
+        [Route("cache/credentials/{idOrName}")]
+        [SwaggerOperation(
+            summary: "Get a credential by id or name",
+            description: "Returns a single credential record from the in-memory cache (not from the underlying persistent store) matching the provided id or name.",
+            Tags = ["Integration", "Cache"])]
+        [Produces(MediaTypeNames.Application.Json)]
+        [SwaggerResponse(StatusCodes.Status200OK, description: "Credential returned successfully.", type: typeof(object), contentTypes: MediaTypeNames.Application.Json)]
+        [SwaggerResponse(StatusCodes.Status404NotFound, description: "Credential was not found.", type: typeof(GenericErrorModel), contentTypes: MediaTypeNames.Application.Json)]
+        public IActionResult GetCredential(
+            [FromRoute][SwaggerParameter(description: "Credential id or credential name.", Required = true)] string idOrName)
+        {
+            // Lookup the credential in the cache using either its id or its name.
+            var credential = _domain.G4.Integration.GetCredentials(idOrName);
+
+            // If no credential exists in the cache for the provided key, return a structured 404 error payload.
+            if (credential == null)
+            {
+                return NotFound(new GenericErrorModel(HttpContext)
+                    .AddError(name: "CredentialNotFound", value: $"The credential with the ID or name '{idOrName}' was not found."));
+            }
+
+            // Return the credential as a JSON response.
+            return Ok(credential);
+        }
+
+        [HttpGet]
         [Route("cache/sync")]
         [SwaggerOperation(
             summary: "Synchronizes the internal plugin cache.",
@@ -81,17 +125,25 @@ namespace G4.Services.Hub.Api.V4.Controllers
         [HttpPost]
         [Route("cache/sync")]
         [SwaggerOperation(
-            summary: "Synchronizes the plugin cache with external repositories.",
-            description: "Triggers the synchronization of the plugin cache, updating cached data from the specified external repositories. This operation ensures that the cache is aligned with the latest data from the provided repositories.",
+            summary: "Synchronizes the plugin cache with external repositories and MCP servers.",
+            description: "Triggers plugin cache synchronization using the provided external repositories and Model Context Protocol (MCP) servers. This operation refreshes the cache so it reflects the latest plugin metadata available from the supplied sources.",
             Tags = ["Integration", "Cache"])]
-        [SwaggerResponse(StatusCodes.Status204NoContent, description: "Successfully synchronized the plugin cache from the provided external repositories. No content is returned.")]
+        [SwaggerResponse(
+            StatusCodes.Status204NoContent,
+            description: "Successfully synchronized the plugin cache from the provided external repositories and MCP servers. No content is returned.")]
         public IActionResult SyncCache(
-            [SwaggerParameter(description: "An array of external repository details to sync the plugin cache with.", Required = true)][FromBody] G4ExternalRepositoryModel[] repositories)
+            [SwaggerParameter(
+                description: "The cache synchronization payload containing external repositories and MCP servers.",
+                Required = true)]
+            [FromBody] CacheSyncModel syncModel)
         {
             // Synchronize the plugin cache using the provided external repositories.
-            _domain.G4.Integration.SyncCache(_domain.Cache, repositories);
+            _domain.G4.Integration.SyncCache(_domain.Cache, syncModel.Repositories);
 
-            // Return a 204 No Content response, indicating successful synchronization with no response body.
+            // Synchronize the plugin cache using the provided MCP server definitions.
+            _domain.G4.Integration.SyncCache(_domain.Cache, syncModel.Servers);
+
+            // Return 204 No Content to indicate the synchronization completed successfully.
             return NoContent();
         }
 

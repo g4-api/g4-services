@@ -42,6 +42,36 @@
     }
 
     /**
+     * Converts a kebab-case string to PascalCase.
+     * 
+     * @param {string} str - The kebab-case string to convert.
+     *
+     *  @returns {string} The converted PascalCase string.
+     */
+    static convertKebabToPascalCase(str) {
+        if (!str.includes('-')) {
+            return str;
+        }
+
+        return str
+            .split('-')
+            .filter(part => part.length > 0)
+            .map(part => part[0].toUpperCase() + part.slice(1).toLowerCase())
+            .join('');
+    }
+
+    /**
+     * Converts a PascalCase string to a space-separated string.
+     *
+     * @param {string} str - The PascalCase string to convert.
+     * 
+     * @returns {string} - The converted space-separated string.
+     */
+    static convertPascalToSpaceCase(str) {
+        return str.replace(/([A-Z])/g, ' $1').trim();
+    }
+
+    /**
      * Parses a given string and converts it to its corresponding boolean value.
      *
      * The function recognizes the following case-insensitive string representations:
@@ -79,14 +109,22 @@
     }
 
     /**
-     * Converts a PascalCase string to a space-separated string.
-     *
-     * @param {string} str - The PascalCase string to convert.
+     * Converts a snake_case string to PascalCase.
      * 
-     * @returns {string} - The converted space-separated string.
+     * @param {string} str - The snake_case string to convert.
+     *
+     *  @returns {string} The converted PascalCase string.
      */
-    static convertPascalToSpaceCase(str) {
-        return str.replace(/([A-Z])/g, ' $1').trim();
+    static convertSnakeToPascalCase(str) {
+        if (!str.includes('_')) {
+            return str;
+        }
+
+        return str
+            .split('_')
+            .filter(part => part.length > 0)
+            .map(part => part[0].toUpperCase() + part.slice(1).toLowerCase())
+            .join('');
     }
 
     /**

@@ -308,7 +308,7 @@ function newConfiguration() {
 				const supportedIcons = Array.from(
 					new Set(
 						Object.values(_manifests).map(manifest =>
-							manifest?.context?.integration?.sequentialWorkflow?.iconProvider || 'gears'
+							manifest?.context?.integration?.sequentialWorkflow?.iconProvider?.name || 'gears'
 						)
 					)
 				);
@@ -1204,7 +1204,7 @@ function stepEditorProvider(step, editorContext) {
 
 		// Determine the nature of the parameter to decide which input field to create.
 		const parameterType = parameter.type?.toUpperCase();
-		const label = Utilities.convertPascalToSpaceCase(Utilities.convertToPascalCase(key));
+		const label = parameter?.displayName || parameter.name;
 		const isListField = _cacheKeys.includes(parameterType);
 		const isOptionsField = parameter.optionsList && parameter.optionsList.length > 0;
 		const isArray = parameterType === 'ARRAY';
@@ -1679,7 +1679,7 @@ function stepEditorProvider(step, editorContext) {
 	 */
 	CustomFields.newTitle({
 		container: stepEditorContainer,
-		titleText: Utilities.convertPascalToSpaceCase(step.pluginName),
+		titleText: step.name,// Utilities.convertPascalToSpaceCase(step.pluginName),
 		subTitleText: step.pluginType,
 		helpText: step.description
 	});
