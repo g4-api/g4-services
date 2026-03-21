@@ -102,8 +102,22 @@ namespace G4.Services.Domain.V4.Repositories
         /// <inheritdoc />
         public ToolOutputSchema GetTools(object id, string intent, params string[] types)
         {
-            // Filter the tools based on the specified types.
-            var toolsCollection = tools.GetTools(intent, types);
+            // Build the JSON-RPC style envelope expected by GetTools
+            var envelope = new Dictionary<string, object>
+            {
+                ["arguments"] = new Dictionary<string, object>
+                {
+                    ["intent"] = intent,
+                    ["types"] = types
+                }
+            };
+
+            // Create a JsonElement directly (no Serialize→Deserialize string round-trip).
+            // Uses your configured JsonOptions (snake_case, ignore nulls, etc.).
+            var parameters = JsonSerializer.SerializeToElement(envelope, ICopilotRepository.JsonOptions);
+
+            // Delegate to the tools repository with the JSON parameters.
+            var toolsCollection = tools.GetTools(parameters);
 
             // Return a new CopilotToolsResponseModel with the list of tools from the registry.
             return new()

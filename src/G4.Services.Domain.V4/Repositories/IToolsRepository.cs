@@ -43,10 +43,9 @@ namespace G4.Services.Domain.V4.Repositories
         /// Retrieves a collection of available tools, optionally filtered by intent and/or type(s).  
         /// If neither filter is applied, all tools are returned.
         /// </summary>
-        /// <param name="intent">Optional intent filter. If provided, only tools relevant to the specified intent are returned. If <c>null</c> or empty, no intent-based filtering is applied.</param>
-        /// <param name="types">Optional tool type filters. If provided, only tools matching one of the given types are returned. If none are provided, no type-based filtering is applied.</param>
+        /// <param name="parameters">A <see cref="JsonElement"/> containing the tool retrieval parameters, such as intent and types.</param>
         /// <returns>A dictionary mapping tool names (<see cref="string"/>) to their corresponding <see cref="McpToolModel"/> definitions. If both filters are omitted, all available tools are returned.</returns>
-        IDictionary<string, McpToolModel> GetTools(string intent, params string[] types);
+        IDictionary<string, McpToolModel> GetTools(JsonElement parameters);
 
         /// <summary>
         /// Invokes a tool dynamically using its input parameters.
