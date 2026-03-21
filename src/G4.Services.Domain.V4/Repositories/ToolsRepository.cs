@@ -151,8 +151,11 @@ namespace G4.Services.Domain.V4.Repositories
             // If the tool is not found, 'tool' will be null and handled in the default branch below.
             var tool = s_tools.GetValueOrDefault(options.ToolName);
 
-            // Extract the "intent" from the arguments, which describes the purpose or goal of the tool invocation.
-            var intent = options.Arguments.GetProperty("intent").GetString() ?? string.Empty;
+            // Read the friendly intent text used to retrieve relevant tools.
+            // Default to an empty string when the argument is missing.
+            var intent = options.Arguments.TryGetProperty("intent", out var intentProperty)
+                ? intentProperty.GetString() ?? string.Empty
+                : string.Empty;
 
             // Match the tool by name and execute the corresponding handler.
             // Some tools are built-in system tools, others are dynamically loaded plugins.
