@@ -310,6 +310,29 @@ namespace G4.Services.Hub.Api.V4.Controllers
         }
 
         [HttpGet]
+        [Route("manifests/drivers")]
+        [SwaggerOperation(
+            summary: "Retrieves all registered drivers.",
+            description: "Fetches all drivers available through the integration layer and returns them in JSON format.",
+            Tags = ["Integration", "Drivers"])]
+        [SwaggerResponse(StatusCodes.Status200OK, description: "Successfully retrieved the registered drivers.", type: typeof(object[]), contentTypes: MediaTypeNames.Application.Json)]
+        public IActionResult GetDrivers()
+        {
+            // Retrieve all registered drivers from the integration layer.
+            var manifests = _domain
+                .G4
+                .Integration
+                .GetDrivers()
+                .ToArray();
+
+            // Return a custom response header indicating the total number of returned drivers.
+            Response.Headers.Append("X-Manifest-Count", $"{manifests.Length}");
+
+            // Return the driver collection in JSON format.
+            return Ok(manifests);
+        }
+
+        [HttpGet]
         [Route("manifests/key/{key}")]
         [SwaggerOperation(
             summary: "Retrieves the plugin manifest by key.",
