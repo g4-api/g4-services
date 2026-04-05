@@ -1,4 +1,11 @@
-﻿#spinner {
+﻿#loading-indicator {
+	position: fixed;
+	inset: 0;
+	background: var(--primary-color);
+	z-index: 9999;
+}
+
+#spinner {
 	display: block;
 	position: absolute;
 	top: 50%;
@@ -14,7 +21,7 @@
 		bottom: 10px;
 		width: 9px;
 		height: 15px;
-		background: rgba(var(--primary-color-rgb), 0.25);
+		background: rgba(var(--electric-blue-rgb, var(--primary-color-rgb)), 0.25);
 		-webkit-animation: spinner 2s infinite ease-in;
 		animation: spinner 2s infinite ease-in;
 	}
@@ -45,36 +52,36 @@
 
 @keyframes spinner {
 	0% {
-		background: rgba(var(--primary-color-rgb), 0.25);
+		background: rgba(var(--electric-blue-rgb, var(--primary-color-rgb)), 0.25);
 	}
 
 	25% {
-		background: var(--primary-color);
+		background: var(--electric-blue, var(--primary-color));
 	}
 
 	50% {
-		background: rgba(var(--primary-color-rgb), 0.25);
+		background: rgba(var(--electric-blue-rgb, var(--primary-color-rgb)), 0.25);
 	}
 
 	100% {
-		background: rgba(var(--primary-color-rgb), 0.25);
+		background: rgba(var(--electric-blue-rgb, var(--primary-color-rgb)), 0.25);
 	}
 }
 
 @-webkit-keyframes spinner {
 	0% {
-		background: rgba(var(--primary-color-rgb), 0.25);
+		background: rgba(var(--electric-blue-rgb, var(--primary-color-rgb)), 0.25);
 	}
 
 	25% {
-		background: var(--primary-color);
+		background: var(--electric-blue, var(--primary-color));
 	}
 
 	50% {
-		background: rgba(var(--primary-color-rgb), 0.25);
+		background: rgba(var(--electric-blue-rgb, var(--primary-color-rgb)), 0.25);
 	}
 
 	100% {
-		background: rgba(var(--primary-color-rgb), 0.25);
+		background: rgba(var(--electric-blue-rgb, var(--primary-color-rgb)), 0.25);
 	}
 }
