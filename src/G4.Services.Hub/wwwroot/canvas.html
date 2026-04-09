@@ -8,6 +8,7 @@
 	<title>G4™ Engine API - Blueprint Designer</title>
 
 	<link rel="icon" href="./images/favicon.ico" />
+	<link href="./css/fonts.css" rel="stylesheet" />
 	<link href="./css/designer.css" rel="stylesheet">
 	<link href="./css/designer-blueprint-parameters-g4.css" rel="stylesheet" id="theme-stylesheet" />
 	<link href="./css/designer-blueprint-spinner.css" rel="stylesheet" />
@@ -49,25 +50,37 @@
 
 	<div id="app">
 		<div id="designer--header" class="sqd-header">
-			<div class="column">
-				<!-- Button to toggle the theme -->
-				<div class="sqd-title">G4&trade; Engine API</div>
-				<div class="sqd-subtitle">Blueprint Designer for Automation Workflows</div>
-				<div class="sqd-text--tiny sqd-margin-top-03">Powered by <b><a href="https://github.com/nocode-js/sequential-workflow-designer" target="_blank">Sequential Workflow Designer</a></b></div>
-				<div class="sqd-text--tiny sqd-margin-top-03">Powered by <b><a href="https://github.com/g4-api/g4-services" target="_blank">G4&trade; Engine</a></b></div>
+
+			<!-- Branding -->
+			<div class="sqd-header__brand">
+				<!-- Connection LED -->
+				<div class="sqd-conn sqd-conn--connecting" id="connIndicator">
+					<span class="sqd-conn__led"></span>
+				</div>
+				<div class="sqd-header__brand-text">
+					<div class="sqd-title">G4&trade; Engine API</div>
+					<div class="sqd-subtitle">Compose and execute deterministic capability flows</div>
+					<div class="sqd-text--tiny sqd-margin-top-03">Powered by <b><a href="https://github.com/nocode-js/sequential-workflow-designer" target="_blank">Sequential Workflow Designer</a></b></div>
+					<div class="sqd-text--tiny sqd-margin-top-03">Powered by <b><a href="https://github.com/g4-api/g4-services" target="_blank">G4&trade; Engine</a></b></div>
+				</div>
 			</div>
-			<div class="column sqd-card">
-				<div class="sqd-card--label">Actions Invoked</div>
-				<div id="designer--total-actions" class="sqd-card--content">0</div>
+
+			<!-- Stats cards -->
+			<div class="sqd-header__stats">
+				<div class="sqd-card">
+					<div class="sqd-card--label">Actions Invoked</div>
+					<div id="designer--total-actions" class="sqd-card--content">0</div>
+				</div>
+				<div class="sqd-card">
+					<div class="sqd-card--label">Avg. Action Time (sec.)</div>
+					<div id="designer--average-action-time" class="sqd-card--content">0.00</div>
+				</div>
+				<div class="sqd-card">
+					<div class="sqd-card--label">Time Elapsed</div>
+					<div id="designer--timer" class="sqd-card--content">00:00:00</div>
+				</div>
 			</div>
-			<div class="column sqd-card">
-				<div class="sqd-card--label">Avg. Action Time (sec.)</div>
-				<div id="designer--average-action-time" class="sqd-card--content">0.00</div>
-			</div>
-			<div class="column sqd-card">
-				<div class="sqd-card--label">Time Elapsed</div>
-				<div id="designer--timer" class="sqd-card--content">00:00:00</div>
-			</div>
+
 		</div>
 
 		<div id="designer" class="sqd-content"></div>
@@ -89,9 +102,9 @@
 	<script src="./js/g4-client.js"></script>
 	<script src="./js/global.js"></script>
 	<script src="./js/custom-fields.js"></script>
-	<script src="./js/index.umd.js"></script>
+	<script src="./js/canvas.umd.js"></script>
 	<script src="./js/state-machine.js"></script>
-	<script src="./js/index.js"></script>
+	<script src="./js/canvas.js"></script>
 
 	<script>
 		// Create a new instance of the G4Client class
@@ -253,6 +266,22 @@
 		}
 
 		initializeWorkspace();
+
+		// Connection LED
+		(function () {
+			const indicator = document.getElementById('connIndicator');
+			function setLed(state) {
+				if (indicator) indicator.className = `sqd-conn sqd-conn--${state}`;
+			}
+			_connection.onclose(() => setLed('disconnected'));
+			_connection.onreconnecting(() => setLed('connecting'));
+			_connection.onreconnected(() => setLed('connected'));
+			(function poll() {
+				if (_connection.state === 'Connected')    { setLed('connected');    return; }
+				if (_connection.state === 'Disconnected') { setLed('disconnected'); return; }
+				setTimeout(poll, 250);
+			})();
+		})();
 	</script>
 </body>
 

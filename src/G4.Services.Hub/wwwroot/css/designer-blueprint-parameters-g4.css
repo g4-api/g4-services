@@ -4,15 +4,15 @@
 	--a-hover: var(--electric-blue);
 	--a-link: var(--electric-blue);
 	--a-visited: var(--electric-blue);
-	--base-font: 400 1.5vmin 'Roboto', sans-serif;
+	--base-font: 400 1.5vmin 'Inter', sans-serif;
 	--base-font-color: var(--light-gray);
 	--base-font-color-rgb: var(--light-gray-rgb);
-	--border-radius: 4px;
+	--border-radius: 0px;
 	--card-border: 1px solid var(--electric-blue-dim);
 	--card-background: var(--surface-color);
 	--card-content-color: var(--base-font-color);
-	--card-contet-font: 700 2.7vmin 'Roboto', sans-serif;
-	--card-label-font: 400 1.2vmin 'Roboto', sans-serif;
+	--card-contet-font: 700 2.7vmin 'Inter', sans-serif;
+	--card-label-font: 400 1.2vmin 'Inter', sans-serif;
 	/* Colors */
 	--black: #000000;
 	--black-rgb: 0, 0, 0;
@@ -32,7 +32,7 @@
 	--secondary-color-rgb: 5, 5, 8;
 	--surface-color: #11111C;
 	--surface-color-rgb: 17, 17, 28;
-	--text-tiny: 400 0.8em 'Roboto', sans-serif;
+	--text-tiny: 400 0.8em 'Inter', sans-serif;
 	--white: #FFFFFF;
 	--white-rgb: 255, 255, 255;
 	--yellow: #FFB300;
@@ -41,25 +41,25 @@
 	--context-menu-border: 1px solid var(--electric-blue-dim);
 	--context-menu-box-shadow: 0 0 12px rgba(var(--electric-blue-rgb), 0.15);
 	--context-menu-color: var(--light-gray);
-	--context-menu-font: 400 1.0em 'Roboto', sans-serif;
+	--context-menu-font: 400 1.0em 'Inter', sans-serif;
 	--context-menu-group-color: var(--electric-blue);
-	--context-menu-group-font: 700 1.0em 'Roboto', sans-serif;
+	--context-menu-group-font: 700 1.0em 'Inter', sans-serif;
 	--context-menu-item-border: 1px solid #1A1A2A;
 	--context-menu-item-color: var(--light-gray);
-	--context-menu-item-font: 400 1.0em 'Roboto', sans-serif;
+	--context-menu-item-font: 400 1.0em 'Inter', sans-serif;
 	--context-menu-item-hover-background: #1A1A2A;
 	--context-menu-item-hover-border: 1px solid var(--electric-blue);
 	--context-menu-item-hover-color: var(--electric-blue);
-	--context-menu-item-hover-font: 400 1.0em 'Roboto', sans-serif;
+	--context-menu-item-hover-font: 400 1.0em 'Inter', sans-serif;
 	/* Designer */
 	--designer-background: var(--primary-color);
 	--designer-header-background: var(--secondary-color);
 	--designer-header-border: 2px solid var(--electric-blue-dim);
 	--designer-header-color: var(--light-gray);
 	--designer-header-title-color: var(--electric-blue);
-	--designer-header-title-font: 700 2.5vmin 'Roboto', sans-serif;
+	--designer-header-title-font: 700 2.5vmin 'Space Grotesk', 'Inter', sans-serif;
 	--designer-header-subtitle-color: var(--gray);
-	--designer-header-subtitle-font: 700 1.6vmin 'Roboto', sans-serif;
+	--designer-header-subtitle-font: 700 1.6vmin 'Inter', sans-serif;
 	/* Control Bar */
 	--control-bar-background: var(--secondary-color);
 	--control-bar-border: 1px solid var(--electric-blue-dim);
@@ -80,7 +80,7 @@
 	--modal-button-background: var(--surface-color);
 	--modal-button-border: 1px solid var(--electric-blue-dim);
 	--modal-button-color: var(--light-gray);
-	--modal-button-font: 400 1.0em 'Roboto', sans-serif;
+	--modal-button-font: 400 1.0em 'Inter', sans-serif;
 	--modal-button-hover-background: var(--surface-color);
 	--modal-button-hover-border: 1px solid var(--electric-blue);
 	/* Smart Editor */
@@ -89,7 +89,7 @@
 	--smart-editor-button-background: var(--surface-color);
 	--smart-editor-button-border: 1px solid var(--electric-blue-dim);
 	--smart-editor-button-color: var(--light-gray);
-	--smart-editor-button-font: 400 1.0em 'Roboto', sans-serif;
+	--smart-editor-button-font: 400 1.0em 'Inter', sans-serif;
 	--smart-editor-button-hover-background: var(--surface-color);
 	--smart-editor-button-hover-border: 1px solid var(--electric-blue);
 	--smart-editor-color: var(--light-gray);
@@ -104,12 +104,12 @@
 	--smart-editor-error-title-font: var(--smart-editor-label-font);
 	--smart-editor-group-background: transparent;
 	--smart-editor-group-color: var(--electric-blue);
-	--smart-editor-group-font: 400 1.2em/1.2em 'Roboto', sans-serif;
-	--smart-editor-font: 400 1.0em 'Roboto', sans-serif;
+	--smart-editor-group-font: 400 1.2em/1.2em 'Inter', sans-serif;
+	--smart-editor-font: 400 1.0em 'Inter', sans-serif;
 	--smart-editor-help-text-background: var(--surface-color);
 	--smart-editor-help-text-border: 1px solid var(--electric-blue-dim);
 	--smart-editor-help-text-color: var(--light-gray);
-	--smart-editor-help-text-font: 400 1.0em 'Roboto', sans-serif;
+	--smart-editor-help-text-font: 400 1.0em 'Inter', sans-serif;
 	--smart-editor-input-background: var(--surface-color);
 	--smart-editor-input-border: 1px solid var(--electric-blue-dim);
 	--smart-editor-input-color: var(--light-gray);
@@ -121,7 +121,7 @@
 	--smart-editor-input-readonly-background: var(--primary-color);
 	--smart-editor-input-readonly-border: 1px solid var(--electric-blue-dim);
 	--smart-editor-input-readonly-color: var(--gray);
-	--smart-editor-label-font: 700 1.1em/1.1em 'Roboto', sans-serif;
+	--smart-editor-label-font: 700 1.1em/1.1em 'Inter', sans-serif;
 	--smart-editor-label-help-icon-container-background: var(--surface-color);
 	--smart-editor-label-help-icon-container-fill: var(--electric-blue-dim);
 	--smart-editor-label-help-icon-container-hover-background: var(--surface-color);
@@ -130,10 +130,10 @@
 	--smart-editor-label-color: var(--light-gray);
 	--smart-editor-subtitle-background: var(--secondary-color);
 	--smart-editor-subtitle-color: var(--gray);
-	--smart-editor-subtitle-font: 400 1.2em 'Roboto', sans-serif;
+	--smart-editor-subtitle-font: 400 1.2em 'Inter', sans-serif;
 	--smart-editor-title-background: var(--secondary-color);
 	--smart-editor-title-color: var(--electric-blue);
-	--smart-editor-title-font: 700 1.5em 'Roboto', sans-serif;
+	--smart-editor-title-font: 700 1.5em 'Inter', sans-serif;
 	--smart-editor-toggle-background: var(--secondary-color);
 	--smart-editor-toggle-icon-path: var(--electric-blue-dim);
 	--smart-editor-toggle-icon-hover-path: var(--electric-blue);
@@ -156,9 +156,9 @@
 	--toolbox-filter-input-color: var(--light-gray);
 	--toolbox-group-title-color: var(--electric-blue);
 	--toolbox-group-title-background: var(--secondary-color);
-	--toolbox-group-title-font: 700 1.3em/1.3em 'Roboto', sans-serif;
+	--toolbox-group-title-font: 700 1.3em/1.3em 'Inter', sans-serif;
 	--toolbox-header-title-color: var(--electric-blue);
-	--toolbox-header-title-font: 700 1.5em/1.5em 'Roboto', sans-serif;
+	--toolbox-header-title-font: 700 1.5em/1.5em 'Inter', sans-serif;
 	--toolbox-icon-path: var(--electric-blue-dim);
 	--toolbox-icon-hover-path: var(--electric-blue);
 	--toolbox-input-placeholder-color: rgba(var(--light-gray-rgb), 0.35);
@@ -188,12 +188,12 @@
 	--step-label-primary-rect-stroke: var(--electric-blue-dim);
 	--step-label-primary-rect-stroke-width: 1;
 	--step-label-primary-text-fill: var(--light-gray);
-	--step-label-primary-text-font: 700 1.0em 'Roboto', sans-serif;
+	--step-label-primary-text-font: 700 1.0em 'Inter', sans-serif;
 	--step-label-secondary-rect-fill: var(--primary-color);
 	--step-label-secondary-rect-stroke: var(--electric-blue);
 	--step-label-secondary-rect-stroke-width: 2;
 	--step-label-secondary-text-fill: var(--electric-blue);
-	--step-label-secondary-text-font: 700 1.0em 'Roboto', sans-serif;
+	--step-label-secondary-text-font: 700 1.0em 'Inter', sans-serif;
 	--step-task-empty-icon-fill: rgba(var(--electric-blue-rgb), 0.2);
 	--step-task-icon-fill: var(--electric-blue);
 	--step-task-rect-fill: transparent;
@@ -203,7 +203,7 @@
 	--step-task-selected-rect-stroke: var(--electric-blue);
 	--step-task-selected-rect-stroke-width: 2;
 	--step-task-text-fill: var(--light-gray);
-	--step-task-text-font: 400 1.0em 'Roboto', sans-serif;
+	--step-task-text-font: 400 1.0em 'Inter', sans-serif;
 	--validation-error-path-fill: var(--yellow);
 	--validation-error-icon-path-fill: var(--black);
 	--workflow-input-fill: var(--primary-color);

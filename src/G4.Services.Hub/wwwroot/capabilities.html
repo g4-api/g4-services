@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>G4™ Capabilities</title>
+	<link rel="icon" href="./images/favicon.ico" />
+	<link rel="stylesheet" href="./css/fonts.css" />
+	<link rel="stylesheet" href="./css/site.css" />
+	<link rel="stylesheet" href="./css/capabilities.css" />
+</head>
+<body>
+
+<div class="cache-page">
+
+	<!-- ═══════════════════════════════════════════════════════════
+	     STICKY HEADER (topbar + cards + search)
+	     ═══════════════════════════════════════════════════════════ -->
+	<div class="cache-sticky-top" id="cacheStickyTop">
+
+	<div class="cache-topbar" id="cacheTopbar">
+
+		<!-- Header row -->
+		<header class="cache-header">
+			<a class="cache-header__back" href="./index.html" aria-label="Back to home">
+				<svg viewBox="0 0 640 640" fill="#B8CCD8" aria-hidden="true">
+					<path d="M201.4 297.4C188.9 309.9 188.9 330.2 201.4 342.7L361.4 502.7C373.9 515.2 394.2 515.2 406.7 502.7C419.2 490.2 419.2 469.9 406.7 457.4L269.3 320L406.6 182.6C419.1 170.1 419.1 149.8 406.6 137.3C394.1 124.8 373.8 124.8 361.3 137.3L201.3 297.3z"/>
+				</svg>
+			</a>
+
+			<img class="cache-header__avatar" src="./images/g4-avatar.png" alt="G4 Logo" />
+
+			<div class="cache-header__brand">
+				<h1 class="cache-header__title">G4 Capabilities</h1>
+				<p class="cache-header__subtitle">Metadata catalog — discoverable, self-contained execution units</p>
+			</div>
+
+			<!-- Readiness indicator -->
+			<div class="cache-conn cache-conn--loading" id="readinessIndicator" aria-live="polite">
+				<span class="cache-conn__dot"></span>
+				<span class="cache-conn__label" id="readinessLabel">Loading…</span>
+			</div>
+		</header>
+
+		<div class="cache-divider"></div>
+
+		<!-- Toolbar row: stat chips + action buttons -->
+		<div class="cache-toolbar">
+
+			<!-- Live stat chips -->
+			<div class="cache-summary" role="status" aria-label="Capabilities summary">
+				<div class="stat-chip">
+					<span class="stat-chip__num" id="chipTotal">—</span>
+					<span class="stat-chip__label">Capabilities</span>
+				</div>
+				<div class="stat-chip">
+					<span class="stat-chip__num" id="chipTypes">—</span>
+					<span class="stat-chip__label">Types</span>
+				</div>
+				<div class="stat-chip">
+					<span class="stat-chip__num" id="chipTemplate">—</span>
+					<span class="stat-chip__label">Template</span>
+				</div>
+				<div class="stat-chip">
+					<span class="stat-chip__num" id="chipMcp">—</span>
+					<span class="stat-chip__label">MCP</span>
+				</div>
+				<div class="stat-chip">
+					<span class="stat-chip__num" id="chipExt">—</span>
+					<span class="stat-chip__label">External</span>
+				</div>
+			</div>
+
+			<!-- Action buttons -->
+			<div class="cache-actions">
+
+				<!-- Refresh -->
+				<button class="cache-btn cache-btn--icon" id="btnRefresh"
+						title="Reload capabilities from server" aria-label="Refresh capabilities">
+					<svg viewBox="0 0 640 640" aria-hidden="true">
+						<path d="M545.7 304.1C528.1 302.9 512.8 316.1 511.5 333.8C508.2 380.8 487.9 423.2 456.7 454.8L425 423C418.1 416.1 407.8 414.1 398.8 417.8C389.8 421.5 384 430.3 384 440L384 552C384 565.3 394.7 576 408 576L520 576C529.7 576 538.5 570.2 542.2 561.2C545.9 552.2 543.9 541.9 537 535L502 500C543.7 457.8 570.9 401.2 575.4 338.2C576.6 320.6 563.4 305.3 545.7 304zM103 105L138 140C96.3 182.2 69.1 238.8 64.6 301.8C63.4 319.4 76.6 334.7 94.3 336C112 337.3 127.2 324 128.5 306.3C131.8 259.3 152.1 216.9 183.3 185.3L215 217C221.9 223.9 232.2 225.9 241.2 222.2C250.2 218.5 256 209.7 256 200L256 88C256 74.7 245.3 64 232 64L120 64C110.3 64 101.5 69.8 97.8 78.8C94.1 87.8 96.2 98.1 103 105zM304 94.3C302.8 111.9 316 127.2 333.7 128.5C380.7 131.8 423.1 152.1 454.7 183.3L423 215C416.1 221.9 414.1 232.2 417.8 241.2C421.5 250.2 430.3 256 440 256L552 256C565.3 256 576 245.3 576 232L576 120C576 110.3 570.2 101.5 561.2 97.8C552.2 94.1 541.9 96.2 535 103L500 138C457.8 96.3 401.2 69.1 338.2 64.6C320.6 63.4 305.3 76.6 304 94.3zM105 537L140 502C182.2 543.7 238.8 570.9 301.8 575.4C319.4 576.6 334.7 563.4 336 545.7C337.3 528 324 512.8 306.3 511.5C259.3 508.2 216.9 487.9 185.3 456.7L217 425C223.9 418.1 225.9 407.8 222.2 398.8C218.5 389.8 209.7 384 200 384L88 384C74.7 384 64 394.7 64 408L64 520C64 529.7 69.8 538.5 78.8 542.2C87.8 545.9 98.1 543.8 105 537z"/>
+					</svg>
+				</button>
+
+				<div class="btn-rule" aria-hidden="true"></div>
+
+				<!-- Sync internal -->
+				<button class="cache-btn" id="btnSyncInternal" title="Synchronize internal capabilities from G4 engine sources">
+					<svg viewBox="0 0 640 640" aria-hidden="true">
+						<path d="M500.7 138.7L512 149.4L512 96C512 78.3 526.3 64 544 64C561.7 64 576 78.3 576 96L576 224C576 241.7 561.7 256 544 256L416 256C398.3 256 384 241.7 384 224C384 206.3 398.3 192 416 192L463.9 192L456.3 184.8C456.1 184.6 455.9 184.4 455.7 184.2C380.7 109.2 259.2 109.2 184.2 184.2C109.2 259.2 109.2 380.7 184.2 455.7C259.2 530.7 380.7 530.7 455.7 455.7C463.9 447.5 471.2 438.8 477.6 429.6C487.7 415.1 507.7 411.6 522.2 421.7C536.7 431.8 540.2 451.8 530.1 466.3C521.6 478.5 511.9 490.1 501 501C401 601 238.9 601 139 501C39.1 401 39 239 139 139C238.9 39.1 400.7 39 500.7 138.7z"/>
+					</svg>
+					<span>Sync Internal</span>
+				</button>
+
+				<!-- Sync external -->
+				<button class="cache-btn" id="btnSyncExternal" title="Synchronize capabilities from external repositories and MCP servers">
+					<svg viewBox="0 0 640 640" aria-hidden="true">
+						<path d="M500.7 138.7L512 149.4L512 96C512 78.3 526.3 64 544 64C561.7 64 576 78.3 576 96L576 224C576 241.7 561.7 256 544 256L416 256C398.3 256 384 241.7 384 224C384 206.3 398.3 192 416 192L463.9 192L456.3 184.8C456.1 184.6 455.9 184.4 455.7 184.2C380.7 109.2 259.2 109.2 184.2 184.2C109.2 259.2 109.2 380.7 184.2 455.7C259.2 530.7 380.7 530.7 455.7 455.7C463.9 447.5 471.2 438.8 477.6 429.6C487.7 415.1 507.7 411.6 522.2 421.7C536.7 431.8 540.2 451.8 530.1 466.3C521.6 478.5 511.9 490.1 501 501C401 601 238.9 601 139 501C39.1 401 39 239 139 139C238.9 39.1 400.7 39 500.7 138.7z"/>
+					</svg>
+					<span>Sync External</span>
+				</button>
+
+				<!-- Sync MCP -->
+				<button class="cache-btn" id="btnAddMcp" title="Synchronize capabilities from MCP servers">
+					<svg viewBox="0 0 640 640" aria-hidden="true">
+						<path d="M500.7 138.7L512 149.4L512 96C512 78.3 526.3 64 544 64C561.7 64 576 78.3 576 96L576 224C576 241.7 561.7 256 544 256L416 256C398.3 256 384 241.7 384 224C384 206.3 398.3 192 416 192L463.9 192L456.3 184.8C456.1 184.6 455.9 184.4 455.7 184.2C380.7 109.2 259.2 109.2 184.2 184.2C109.2 259.2 109.2 380.7 184.2 455.7C259.2 530.7 380.7 530.7 455.7 455.7C463.9 447.5 471.2 438.8 477.6 429.6C487.7 415.1 507.7 411.6 522.2 421.7C536.7 431.8 540.2 451.8 530.1 466.3C521.6 478.5 511.9 490.1 501 501C401 601 238.9 601 139 501C39.1 401 39 239 139 139C238.9 39.1 400.7 39 500.7 138.7z"/>
+					</svg>
+					<span>Sync MCP</span>
+				</button>
+
+				<div class="btn-rule" aria-hidden="true"></div>
+
+				<!-- Expand / collapse -->
+				<button class="cache-btn" id="btnExpandAll">Expand All</button>
+				<button class="cache-btn" id="btnCollapseAll">Collapse All</button>
+
+				<div class="btn-rule" aria-hidden="true"></div>
+
+				<!-- Dev view / copy diagnostics -->
+				<button class="cache-btn cache-btn--ghost" id="btnDevView" title="Open full raw JSON developer view">
+					Dev View
+				</button>
+				<button class="cache-btn cache-btn--ghost" id="btnCopyDiag" title="Copy diagnostics snapshot to clipboard">
+					Copy Diag
+				</button>
+
+			</div>
+		</div>
+
+	</div>
+	<!-- /.cache-topbar -->
+
+	<!-- ═══════════════════════════════════════════════════════════
+	     SUMMARY CARDS
+	     ═══════════════════════════════════════════════════════════ -->
+	<div class="cache-cards-row" role="region" aria-label="Capabilities metrics">
+
+		<div class="cache-card">
+			<svg class="cache-card__icon" viewBox="0 0 640 640" aria-hidden="true">
+				<path d="M96 96C78.3 96 64 110.3 64 128L64 256C64 273.7 78.3 288 96 288L256 288C273.7 288 288 273.7 288 256L288 128C288 110.3 273.7 96 256 96L96 96zM384 96C366.3 96 352 110.3 352 128L352 256C352 273.7 366.3 288 384 288L544 288C561.7 288 576 273.7 576 256L576 128C576 110.3 561.7 96 544 96L384 96zM64 384C64 366.3 78.3 352 96 352L256 352C273.7 352 288 366.3 288 384L288 512C288 529.7 273.7 544 256 544L96 544C78.3 544 64 529.7 64 512L64 384zM384 352C366.3 352 352 366.3 352 384L352 512C352 529.7 366.3 544 384 544L544 544C561.7 544 576 529.7 576 512L576 384C576 366.3 561.7 352 544 352L384 352z"/>
+			</svg>
+			<span class="cache-card__value" id="cardTotal">—</span>
+			<span class="cache-card__label">Total Capabilities</span>
+		</div>
+
+		<div class="cache-card">
+			<svg class="cache-card__icon" viewBox="0 0 640 640" aria-hidden="true">
+				<path d="M320 32C145.1 32 2 175.1 2 350C2 524.9 145.1 668 320 668C494.9 668 638 524.9 638 350C638 175.1 494.9 32 320 32zM320 96C460.9 96 574 209.1 574 350C574 490.9 460.9 604 320 604C179.1 604 66 490.9 66 350C66 209.1 179.1 96 320 96zM288 192L288 320L160 320C142.3 320 128 334.3 128 352C128 369.7 142.3 384 160 384L320 384C337.7 384 352 369.7 352 352L352 192C352 174.3 337.7 160 320 160C302.3 160 288 174.3 288 192z"/>
+			</svg>
+			<span class="cache-card__value" id="cardTypes">—</span>
+			<span class="cache-card__label">Capability Types</span>
+		</div>
+
+		<div class="cache-card">
+			<svg class="cache-card__icon" viewBox="0 0 640 640" aria-hidden="true">
+				<path d="M64 128C64 92.7 92.7 64 128 64L512 64C547.3 64 576 92.7 576 128L576 256C576 291.3 547.3 320 512 320L128 320C92.7 320 64 291.3 64 256L64 128zM128 192C128 209.7 142.3 224 160 224C177.7 224 192 209.7 192 192C192 174.3 177.7 160 160 160C142.3 160 128 174.3 128 192zM256 160C238.3 160 224 174.3 224 192C224 209.7 238.3 224 256 224C273.7 224 288 209.7 288 192C288 174.3 273.7 160 256 160zM64 384C64 366.3 78.3 352 96 352L544 352C561.7 352 576 366.3 576 384L576 576C576 593.7 561.7 608 544 608L96 608C78.3 608 64 593.7 64 576L64 384zM160 448C142.3 448 128 462.3 128 480C128 497.7 142.3 512 160 512C177.7 512 192 497.7 192 480C192 462.3 177.7 448 160 448zM224 480C224 497.7 238.3 512 256 512C273.7 512 288 497.7 288 480C288 462.3 273.7 448 256 448C238.3 448 224 462.3 224 480z"/>
+			</svg>
+			<span class="cache-card__value" id="cardInternal">—</span>
+			<span class="cache-card__label">Internal</span>
+		</div>
+
+		<div class="cache-card cache-card--template">
+			<svg class="cache-card__icon" viewBox="0 0 640 640" aria-hidden="true">
+				<path d="M96 64C60.7 64 32 92.7 32 128L32 512C32 547.3 60.7 576 96 576L544 576C579.3 576 608 547.3 608 512L608 224L448 224C412.7 224 384 195.3 384 160L384 64L96 64zM448 64L448 160L608 160L448 64zM160 256L480 256C497.7 256 512 270.3 512 288C512 305.7 497.7 320 480 320L160 320C142.3 320 128 305.7 128 288C128 270.3 142.3 256 160 256zM160 384L480 384C497.7 384 512 398.3 512 416C512 433.7 497.7 448 480 448L160 448C142.3 448 128 433.7 128 416C128 398.3 142.3 384 160 384z"/>
+			</svg>
+			<span class="cache-card__value" id="cardTemplate">—</span>
+			<span class="cache-card__label">Templates</span>
+		</div>
+
+		<div class="cache-card cache-card--mcp">
+			<svg class="cache-card__icon" viewBox="0 0 640 640" aria-hidden="true">
+				<path d="M102.8 57.3C108.2 51.9 116.6 51.1 123 55.3L241.9 134.5C250.8 140.4 256.1 150.4 256.1 161.1L256.1 210.7L346.9 301.5C380.2 286.5 420.8 292.6 448.1 320L574.2 446.1C592.9 464.8 592.9 495.2 574.2 514L514.1 574.1C495.4 592.8 465 592.8 446.2 574.1L320.1 448C292.7 420.6 286.6 380.1 301.6 346.8L210.8 256L161.2 256C150.5 256 140.5 250.7 134.6 241.8L55.4 122.9C51.2 116.6 52 108.1 57.4 102.7L102.8 57.3zM247.8 360.8C241.5 397.7 250.1 436.7 274 468L179.1 563C151 591.1 105.4 591.1 77.3 563C49.2 534.9 49.2 489.3 77.3 461.2L212.7 325.7L247.9 360.8zM416.1 64C436.2 64 455.5 67.7 473.2 74.5C483.2 78.3 485 91 477.5 98.6L420.8 155.3C417.8 158.3 416.1 162.4 416.1 166.6L416.1 208C416.1 216.8 423.3 224 432.1 224L473.5 224C477.7 224 481.8 222.3 484.8 219.3L541.5 162.6C549.1 155.1 561.8 156.9 565.6 166.9C572.4 184.6 576.1 203.9 576.1 224C576.1 267.2 558.9 306.3 531.1 335.1L482 286C448.9 253 403.5 240.3 360.9 247.6L304.1 190.8L304.1 161.1L303.9 156.1C303.1 143.7 299.5 131.8 293.4 121.2C322.8 86.2 366.8 64 416.1 63.9z"/>
+			</svg>
+			<span class="cache-card__value" id="cardMcp">—</span>
+			<span class="cache-card__label">MCP Sourced</span>
+		</div>
+
+		<div class="cache-card cache-card--ext">
+			<svg class="cache-card__icon" viewBox="0 0 640 640" aria-hidden="true">
+				<path d="M415.9 344L225 344C227.9 408.5 242.2 467.9 262.5 511.4C273.9 535.9 286.2 553.2 297.6 563.8C308.8 574.3 316.5 576 320.5 576C324.5 576 332.2 574.3 343.4 563.8C354.8 553.2 367.1 535.8 378.5 511.4C398.8 467.9 413.1 408.5 416 344zM224.9 296L415.8 296C413 231.5 398.7 172.1 378.4 128.6C367 104.2 354.7 86.8 343.3 76.2C332.1 65.7 324.4 64 320.4 64C316.4 64 308.7 65.7 297.5 76.2C286.1 86.8 273.8 104.2 262.4 128.6C242.1 172.1 227.8 231.5 224.9 296zM176.9 296C180.4 210.4 202.5 130.9 234.8 78.7C142.7 111.3 74.9 195.2 65.5 296L176.9 296zM65.5 344C74.9 444.8 142.7 528.7 234.8 561.3C202.5 509.1 180.4 429.6 176.9 344L65.5 344zM463.9 344C460.4 429.6 438.3 509.1 406 561.3C498.1 528.6 565.9 444.8 575.3 344L463.9 344zM575.3 296C565.9 195.2 498.1 111.3 406 78.7C438.3 130.9 460.4 210.4 463.9 296L575.3 296z"/>
+			</svg>
+			<span class="cache-card__value" id="cardExt">—</span>
+			<span class="cache-card__label">External Repos</span>
+		</div>
+
+		<div class="cache-card cache-card--ready">
+			<svg class="cache-card__icon" viewBox="0 0 640 640" aria-hidden="true">
+				<path d="M320 64C177.3 64 62 179.3 62 322C62 464.7 177.3 580 320 580C462.7 580 578 464.7 578 322C578 179.3 462.7 64 320 64zM320 128C429.3 128 514 212.7 514 322C514 431.3 429.3 516 320 516C210.7 516 126 431.3 126 322C126 212.7 210.7 128 320 128zM444.7 231.3C432.2 218.8 412 218.8 399.5 231.3L285.3 345.4L240.5 300.7C228 288.2 207.8 288.2 195.3 300.7C182.8 313.2 182.8 333.3 195.3 345.8L262.7 413.3C275.2 425.8 295.3 425.8 307.8 413.3L444.7 276.3C457.2 263.8 457.2 243.8 444.7 231.3z"/>
+			</svg>
+			<span class="cache-card__value" id="cardSync">—</span>
+			<span class="cache-card__label">Last Sync</span>
+		</div>
+
+	</div>
+	<!-- /.cache-cards-row -->
+
+	<!-- ═══════════════════════════════════════════════════════════
+	     SEARCH + FILTER BAR
+	     ═══════════════════════════════════════════════════════════ -->
+	<div class="cache-search-bar">
+
+		<div class="cache-search">
+			<svg class="cache-search__icon" viewBox="0 0 640 640" fill="#4A6070" aria-hidden="true">
+				<path d="M276 64C157.1 64 60 161.1 60 280C60 398.9 157.1 496 276 496C394.9 496 492 398.9 492 280C492 161.1 394.9 64 276 64zM276 128C360.7 128 428 195.3 428 280C428 364.7 360.7 432 276 432C191.3 432 124 364.7 124 280C124 195.3 191.3 128 276 128zM454.3 403.3L599.5 548.5C612 561 612 581.2 599.5 593.7C587 606.2 566.8 606.2 554.3 593.7L409.2 448.5C372.7 478.3 326.4 496 276 496C157.1 496 60 398.9 60 280C60 161.1 157.1 64 276 64C394.9 64 492 161.1 492 280C492 320.4 484.1 366.8 454.3 403.3z"/>
+			</svg>
+			<input type="search"
+				   class="cache-search__input"
+				   id="cacheSearchInput"
+				   placeholder="Search capabilities…"
+				   aria-label="Search capabilities by name or description"
+				   autocomplete="off" />
+		</div>
+
+		<div class="cache-filter-chips" role="group" aria-label="Filter by source">
+			<button class="filter-chip filter-chip--internal" data-filter="internal">Internal</button>
+			<button class="filter-chip filter-chip--template" data-filter="template">Template</button>
+			<button class="filter-chip filter-chip--mcp"      data-filter="mcp">MCP</button>
+			<button class="filter-chip filter-chip--external" data-filter="external">External</button>
+		</div>
+
+	</div>
+	<!-- /.cache-search-bar -->
+
+	</div>
+	<!-- /.cache-sticky-top -->
+
+	<!-- ═══════════════════════════════════════════════════════════
+	     SPLIT LAYOUT: DOMAIN LIST + INSPECTOR
+	     ═══════════════════════════════════════════════════════════ -->
+	<div class="cache-split" id="cacheSplit">
+
+		<!-- ── Domain list panel ── -->
+		<div class="cache-list-panel">
+
+			<!-- Loading state -->
+			<div class="cache-state" id="stateLoading">
+				<div class="cache-spinner"></div>
+				<p class="cache-state__title">Loading capabilities…</p>
+				<p class="cache-state__msg">Fetching pre-resolved execution metadata from the G4 engine.</p>
+			</div>
+
+			<!-- Error state -->
+			<div class="cache-state hidden" id="stateError">
+				<svg class="cache-state__icon" viewBox="0 0 640 640" aria-hidden="true">
+					<path d="M320 64C177.3 64 62 179.3 62 322C62 464.7 177.3 580 320 580C462.7 580 578 464.7 578 322C578 179.3 462.7 64 320 64zM320 128C429.3 128 514 212.7 514 322C514 431.3 429.3 516 320 516C210.7 516 126 431.3 126 322C126 212.7 210.7 128 320 128zM288 192L288 344C288 361.7 302.3 376 320 376C337.7 376 352 361.7 352 344L352 192C352 174.3 337.7 160 320 160C302.3 160 288 174.3 288 192zM320 416C302.3 416 288 430.3 288 448C288 465.7 302.3 480 320 480C337.7 480 352 465.7 352 448C352 430.3 337.7 416 320 416z"/>
+				</svg>
+				<p class="cache-state__title">Capabilities unavailable</p>
+				<p class="cache-state__msg state-message">Unable to load capabilities. Check that the G4 engine is running and accessible.</p>
+				<button class="cache-btn cache-btn--primary" id="btnRetry" style="margin-top:.5rem">Retry</button>
+			</div>
+
+			<!-- Domain sections (rendered by JS) -->
+			<div class="cache-domains" id="cacheDomains"></div>
+
+		</div>
+		<!-- /.cache-list-panel -->
+
+		<!-- ── Details inspector (hidden until plugin selected) ── -->
+		<aside class="cache-inspector hidden" id="cacheInspector" aria-label="Capability details">
+
+			<div class="inspector-header">
+				<div class="inspector-header__info">
+					<div class="inspector-title" id="inspectorTitle">—</div>
+					<div class="inspector-meta">
+						<span class="inspector-type" id="inspectorType"></span>
+						<span id="inspectorSource"></span>
+					</div>
+				</div>
+				<button class="inspector-close" id="btnCloseInspector" aria-label="Close inspector">
+					<svg viewBox="0 0 640 640" aria-hidden="true">
+						<path d="M491.3 171.7C504.8 158.2 504.8 136.1 491.3 122.7C477.8 109.2 455.7 109.2 442.3 122.7L320 244.9L197.7 122.7C184.3 109.2 162.2 109.2 148.7 122.7C135.2 136.1 135.2 158.2 148.7 171.7L270.9 293.9L148.7 416.2C135.2 429.6 135.2 451.7 148.7 465.2C162.2 478.6 184.3 478.6 197.7 465.2L320 342.9L442.3 465.2C455.7 478.6 477.8 478.6 491.3 465.2C504.8 451.7 504.8 429.6 491.3 416.2L369.1 293.9L491.3 171.7z"/>
+					</svg>
+				</button>
+			</div>
+
+			<div class="inspector-tabs" role="tablist">
+				<button class="inspector-tab inspector-tab--active" data-tab="overview"    role="tab">Overview</button>
+				<button class="inspector-tab"                        data-tab="parameters"  role="tab">Parameters</button>
+				<button class="inspector-tab"                        data-tab="examples"    role="tab">Examples</button>
+				<button class="inspector-tab"                        data-tab="raw"         role="tab">Raw JSON</button>
+			</div>
+
+			<div class="inspector-body" id="inspectorBody" role="tabpanel">
+				<!-- populated by JS -->
+			</div>
+
+		</aside>
+		<!-- /.cache-inspector -->
+
+	</div>
+	<!-- /.cache-split -->
+
+</div>
+<!-- /.cache-page -->
+
+<!-- ═══════════════════════════════════════════════════════════════
+     TOAST CONTAINER
+     ═══════════════════════════════════════════════════════════════ -->
+<div id="toastContainer" class="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     DIALOG: SYNC EXTERNAL REPOSITORY
+     ═══════════════════════════════════════════════════════════════ -->
+<div class="dialog-overlay hidden" id="dlgSyncExternal" role="dialog" aria-modal="true" aria-labelledby="dlgSyncExtTitle">
+	<div class="dialog dialog--wide">
+		<h2 class="dialog__title" id="dlgSyncExtTitle">Sync External Repository</h2>
+		<p class="dialog__subtitle">Register an external G4 capability repository and synchronize it into capabilities.</p>
+
+		<div class="form-section">
+			<div class="form-section__title">Repository</div>
+			<div class="form-row">
+				<div class="form-field">
+					<label class="form-label" for="extName">Name <span class="req">*</span></label>
+					<input class="form-input" type="text" id="extName" placeholder="my-capability-repo" autocomplete="off" />
+				</div>
+				<div class="form-field">
+					<label class="form-label" for="extVersion">Version <span class="req">*</span></label>
+					<input class="form-input" type="number" id="extVersion" value="1" min="1" />
+				</div>
+			</div>
+			<div class="form-row form-row--full">
+				<div class="form-field">
+					<label class="form-label" for="extUrl">URL <span class="req">*</span></label>
+					<input class="form-input" type="url" id="extUrl" placeholder="https://example.com/capabilities" autocomplete="off" />
+				</div>
+			</div>
+			<div class="form-row">
+				<div class="form-field">
+					<label class="form-label" for="extTimeout">Timeout (s)</label>
+					<input class="form-input" type="number" id="extTimeout" placeholder="30" min="1" />
+				</div>
+			</div>
+		</div>
+
+		<div class="form-section">
+			<div class="form-section__title">Credentials (optional)</div>
+			<div class="form-row form-row--3">
+				<div class="form-field">
+					<label class="form-label" for="extUsername">Username</label>
+					<input class="form-input" type="text" id="extUsername" autocomplete="off" />
+				</div>
+				<div class="form-field">
+					<label class="form-label" for="extPassword">Password</label>
+					<input class="form-input" type="password" id="extPassword" autocomplete="new-password" />
+				</div>
+				<div class="form-field">
+					<label class="form-label" for="extToken">Token</label>
+					<input class="form-input" type="password" id="extToken" autocomplete="new-password" />
+				</div>
+			</div>
+		</div>
+
+		<div class="form-section">
+			<div class="form-section__title">Headers (optional)</div>
+			<div class="kv-list" id="extHeaders"></div>
+			<button type="button" class="kv-add" id="btnAddExtHeader">+ Add header</button>
+		</div>
+
+		<div class="form-section">
+			<div class="form-section__title">Capabilities (optional)</div>
+			<div class="kv-list" id="extCapabilities"></div>
+			<button type="button" class="kv-add" id="btnAddExtCap">+ Add capability</button>
+		</div>
+
+		<div class="dialog__actions">
+			<button class="cache-btn" id="btnCancelSyncExt">Cancel</button>
+			<button class="cache-btn cache-btn--primary" id="btnSubmitSyncExt">
+				<span>Sync</span>
+			</button>
+		</div>
+	</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     DIALOG: ADD MCP SERVER
+     ═══════════════════════════════════════════════════════════════ -->
+<div class="dialog-overlay hidden" id="dlgAddMcp" role="dialog" aria-modal="true" aria-labelledby="dlgMcpTitle">
+	<div class="dialog dialog--wide">
+		<h2 class="dialog__title" id="dlgMcpTitle">Sync MCP</h2>
+		<p class="dialog__subtitle">Synchronize capabilities from a Model Context Protocol server. Changes are applied to the in-memory hash and are not persisted across server restarts unless defined in the project manifest.</p>
+
+		<div class="form-section">
+			<div class="form-section__title">Server Identity</div>
+			<div class="form-row">
+				<div class="form-field">
+					<label class="form-label" for="mcpServerName">Server Name (key) <span class="req">*</span></label>
+					<input class="form-input" type="text" id="mcpServerName" placeholder="my-mcp-server" autocomplete="off" />
+				</div>
+				<div class="form-field">
+					<label class="form-label" for="mcpType">Transport Type</label>
+					<select class="form-input form-select" id="mcpType">
+						<option value="">— select —</option>
+						<option value="stdio">stdio</option>
+						<option value="sse">sse</option>
+						<option value="http">http</option>
+					</select>
+				</div>
+			</div>
+		</div>
+
+		<div class="form-section">
+			<div class="form-section__title">Connection</div>
+			<div class="form-row form-row--full">
+				<div class="form-field">
+					<label class="form-label" for="mcpUrl">URL (for SSE / HTTP)</label>
+					<input class="form-input" type="url" id="mcpUrl" placeholder="https://mcp.example.com" autocomplete="off" />
+				</div>
+			</div>
+			<div class="form-row">
+				<div class="form-field">
+					<label class="form-label" for="mcpCommand">Command (for stdio)</label>
+					<input class="form-input" type="text" id="mcpCommand" placeholder="npx my-mcp-server" autocomplete="off" />
+				</div>
+			</div>
+			<div class="form-row form-row--full">
+				<div class="form-field">
+					<label class="form-label" for="mcpArgs">Args (space-separated)</label>
+					<input class="form-input" type="text" id="mcpArgs" placeholder="--port 3000 --verbose" autocomplete="off" />
+				</div>
+			</div>
+		</div>
+
+		<div class="form-section">
+			<div class="form-section__title">Environment Variables (optional)</div>
+			<div class="kv-list" id="mcpEnv"></div>
+			<button type="button" class="kv-add" id="btnAddMcpEnv">+ Add variable</button>
+		</div>
+
+		<div class="form-section">
+			<div class="form-section__title">Headers (optional)</div>
+			<div class="kv-list" id="mcpHeaders"></div>
+			<button type="button" class="kv-add" id="btnAddMcpHeader">+ Add header</button>
+		</div>
+
+		<div class="dialog__actions">
+			<button class="cache-btn" id="btnCancelAddMcp">Cancel</button>
+			<button class="cache-btn cache-btn--primary" id="btnSubmitAddMcp">
+				<span>Add MCP</span>
+			</button>
+		</div>
+	</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     DIALOG: DEVELOPER VIEW (full raw JSON)
+     ═══════════════════════════════════════════════════════════════ -->
+<div class="dialog-overlay hidden" id="dlgDevView" role="dialog" aria-modal="true" aria-labelledby="dlgDevTitle">
+	<div class="dialog dialog--full">
+		<div class="dialog__devbar">
+			<h2 class="dialog__title" id="dlgDevTitle">Developer View — Raw Capabilities</h2>
+			<div style="display:flex;gap:.5rem;">
+				<button class="cache-btn" id="btnCopyRaw">Copy</button>
+				<button class="cache-btn" id="btnCancelDevView">Close</button>
+			</div>
+		</div>
+		<div class="dialog__scroll">
+			<pre class="devview-pre" id="devViewRaw"></pre>
+		</div>
+	</div>
+</div>
+
+<script src="./js/marked.umd.js"></script>
+<script src="./js/capabilities.js"></script>
+</body>
+</html>
