@@ -179,7 +179,6 @@ namespace G4.Services.Domain.V4.Repositories
                 // Built-in: Retrieves the locator for a specific element on the page.
                 { Name: "get_locator" } => ResolveLocator(options),
 
-                // TODO: Imporve with cache instead of calling the engine every time.
                 // Built-in: Lists all available tools.
                 { Name: "get_tools" } => new LexicalRetrievalManager(cache).FindTools(intent),
 
@@ -271,8 +270,48 @@ namespace G4.Services.Domain.V4.Repositories
             Interlocked.Exchange(ref s_tools, rebuilt);
         }
 
+        /// <inheritdoc />
+        public IDictionary<string, McpToolModel> FindTools(string prompt)
+        {
+            // Delegate to the main overload with default maxResult=3 and threshold=0
+            return FindTools(prompt, maxResult: 3, threshold: 0);
+        }
+
+        /// <inheritdoc />
+        public IDictionary<string, McpToolModel> FindTools(string prompt, int maxResult)
+        {
+            // Delegate to the main overload with threshold=0
+            return FindTools(prompt, maxResult, threshold: 0);
+        }
+
+        /// <inheritdoc />
+        public IDictionary<string, McpToolModel> FindTools(string intent, int maxResult, int threshold)
+        {
+            // Validate and sanitize input parameters,
+            // ensuring maxResult is positive and threshold is non-negative.
+            maxResult = maxResult <= 0 ? 3 : maxResult;
+            threshold = threshold < 0 ? 0 : threshold;
+
+            // Initialize the lexical retrieval manager with the current plugin cache
+            var retrievalManager = new LexicalRetrievalManager(cache);
+
+            // Retrieve the most relevant tool names based on lexical matching
+            var results = retrievalManager
+                .FindTools(prompt: intent, take: maxResult)
+                .Where(i => i.Score >= threshold);
+
+            // Map the tool names to their corresponding McpToolModel instances
+            return results
+                .Select(i => s_tools.GetValueOrDefault(i.Name))
+                .Where(i => i != null)
+                .ToDictionary(
+                    i => i.Name,
+                    i => i,
+                    StringComparer.OrdinalIgnoreCase);
+        }
+
         // Finds and returns a tool model from the available tool collection
-        // using the tool name provided in the <see cref="InvokeOptions"/> arguments.
+        // using the tool name provided in the InvokeOptions arguments.
         private static object FindTool(InvokeOptions options)
         {
             // Extract the "tool_name" argument from the provided options.
@@ -1722,76 +1761,6 @@ namespace G4.Services.Domain.V4.Repositories
                 }
             };
 
-            //[SystemTool(name: "get_template_instrcutions")]
-            //public static McpToolModel GetTemplateInstrcutions => new()
-            //{
-            //    /// <summary>
-            //    /// The unique name of the tool, used to identify it within the system.
-            //    /// </summary>
-            //    Name = "get_template_instrcutions",
-
-            //    /// <summary>
-            //    /// A brief description of what the tool does.
-            //    /// This tool returns the full list of tools that the Copilot agent can invoke, including their metadata and schemas.
-            //    /// </summary>
-            //    Description =
-            //        """
-                    
-            //        A collection of instruction templates that define the required
-            //        structure, validation rules, and examples for template-based outputs.
-                    
-            //        """,
-
-            //    /// <summary>
-            //    /// Defines the input schema for the tool, including the types and descriptions of input parameters.
-            //    /// </summary>
-            //    InputSchema = new()
-            //    {
-            //        /// <summary>
-            //        /// The data type for the input parameters (an object in this case).
-            //        /// </summary>
-            //        Type = "object",
-
-            //        /// <summary>
-            //        /// An empty list of properties, as this tool does not require any specific input parameters.
-            //        /// </summary>
-            //        Properties = [],
-
-            //        /// <summary>
-            //        /// No required input parameters for this tool.
-            //        /// </summary>
-            //        Required = []
-            //    },
-
-            //    /// <summary>
-            //    /// Defines the output schema for the tool, including the types and descriptions of output parameters.
-            //    /// </summary>
-            //    OutputSchema = new()
-            //    {
-            //        /// <summary>
-            //        /// The data type for the output parameters (an object in this case).
-            //        /// </summary>
-            //        Type = "object",
-
-            //        /// <summary>
-            //        /// A dictionary of output parameters with their names and descriptions.
-            //        /// </summary>
-            //        Properties = new(StringComparer.OrdinalIgnoreCase)
-            //        {
-            //            ["tools"] = new()
-            //            {
-            //                Type = ["array", "object"],
-            //                Description = "An array of tool objects, each containing name, description, input and output schemas."
-            //            }
-            //        },
-
-            //        /// <summary>
-            //        /// A list of required output parameters. "tools" is required as the main result of the tool.
-            //        /// </summary>
-            //        Required = ["tools"]
-            //    }
-            //};
-
             /// <summary>
             /// Represents a system tool that starts the execution of a G4 rule using the provided parameters.
             /// The rule execution involves interacting with the browser session and processing the rule's logic to produce a result.
@@ -2259,14 +2228,37 @@ namespace G4.Services.Domain.V4.Repositories
         /// Provides lexical retrieval over cached plugin tools in order to find the most
         /// relevant matches for a prompt.
         /// </summary>
-        /// <param name="cache">The cache manager that supplies the plugin catalog.</param>
-        private sealed class LexicalRetrievalManager(CacheManager cache)
+        private sealed class LexicalRetrievalManager
         {
             // Defines the plugin types that are allowed to participate in lexical retrieval.
-            private static readonly string[] _included = ["Action"];
+            private readonly string[] _included;
 
             // Holds the initialized in-memory tool catalog built from the supplied cache.
-            private readonly IEnumerable<ToolScoreModel> _tools = InitializeCatalog(cache);
+            private readonly IEnumerable<ToolScoreModel> _tools;
+
+            /// <summary>
+            /// Initializes a new instance of <see cref="LexicalRetrievalManager"/> including only tools of type "Action".
+            /// </summary>
+            /// <param name="cache">The <see cref="CacheManager"/> instance containing cached tools.</param>
+            public LexicalRetrievalManager(CacheManager cache)
+                : this(cache, "Action")
+            { }
+
+            /// <summary>
+            /// Initializes a new instance of <see cref="LexicalRetrievalManager"/> with specified tool types to include in the catalog.
+            /// </summary>
+            /// <param name="cache">The <see cref="CacheManager"/> instance containing cached tools.</param>
+            /// <param name="included">Array of tool types to include (e.g., "Action", "Flow"). If null or empty, defaults to ["Action"].</param>
+            public LexicalRetrievalManager(CacheManager cache, params string[] included)
+            {
+                // Set included tool types; default to ["Action"] if none provided
+                _included = included == null || included.Length == 0
+                    ? ["Action"]
+                    : included;
+
+                // Initialize the tool catalog from cache for the included types
+                _tools = InitializeCatalog(cache, _included);
+            }
 
             /// <summary>
             /// Finds the most relevant tools for the supplied prompt using lexical scoring.
@@ -2287,21 +2279,39 @@ namespace G4.Services.Domain.V4.Repositories
 
                 // Score all cataloged tools, keep only positive matches, sort by relevance,
                 // and return up to the requested number of results.
-                return _tools
-                    .Select(i => new ToolScoreResultModel
+                var tools = new List<ToolScoreResultModel>();
+
+                // Evaluate each tool in the initialized catalog against
+                // the normalized prompt and its tokens.
+                foreach (var tool in _tools)
+                {
+                    // Initialize a new result model for this tool,
+                    // preserving original metadata and computing the relevance score.
+                    var score = new ToolScoreResultModel
                     {
                         // Preserve the original tool description in the result model.
-                        Description = i.Description,
+                        Description = tool.Description,
 
                         // Preserve the original tool name in the result model.
-                        Name = i.Name,
+                        Name = tool.Name,
 
                         // Preserve the tool namespace for secondary sorting and display.
-                        NameSpace = i.Name,
+                        NameSpace = tool.Namespace,
 
-                        // Compute the lexical relevance score for the current tool.
-                        Score = SetScore(i, normalizedPrompt, promptTokens)
-                    })
+                        // Compute the relevance score for this tool based on
+                        // the normalized prompt and its tokens.
+                        Score = SetScore(tool, normalizedPrompt, promptTokens)
+                    };
+
+                    // Add the scored tool to the list of results for
+                    // further filtering and sorting.
+                    tools.Add(score);
+                }
+
+                // Return only tools with a positive relevance score,
+                // ordered by descending score,
+                return tools
+                    .DistinctBy(x => new { x.Name, x.NameSpace })
                     .Where(i => i.Score > 0)
                     .OrderByDescending(i => i.Score)
                     .ThenBy(i => i.NameSpace, StringComparer.OrdinalIgnoreCase)
@@ -2309,12 +2319,8 @@ namespace G4.Services.Domain.V4.Repositories
                     .Take(take);
             }
 
-            /// <summary>
-            /// Builds the lexical retrieval catalog from the current plugin cache.
-            /// </summary>
-            /// <param name="cache">The cache manager that contains the discovered plugin manifests.</param>
-            /// <returns>A sequence of <see cref="ToolScoreModel"/> entries created from eligible cached plugins. Only plugins whose type is included in the retrieval allowlist are added to the catalog.</returns>
-            public static IEnumerable<ToolScoreModel> InitializeCatalog(CacheManager cache)
+            // Builds the lexical retrieval catalog from the current plugin cache.
+            private static IEnumerable<ToolScoreModel> InitializeCatalog(CacheManager cache, string[] included)
             {
                 // Enumerate all cached plugins across all plugin type groups.
                 return cache
@@ -2323,7 +2329,7 @@ namespace G4.Services.Domain.V4.Repositories
                     .SelectMany(i => i.Values)
 
                     // Keep only plugin types that are allowed in the lexical retrieval catalog.
-                    .Where(i => _included.Contains(i.Manifest.PluginType, StringComparer.OrdinalIgnoreCase))
+                    .Where(i => included.Contains(i.Manifest.PluginType, StringComparer.OrdinalIgnoreCase))
 
                     // Convert each eligible plugin manifest into a scored catalog entry.
                     .Select(i => new ToolScoreModel
@@ -2401,7 +2407,7 @@ namespace G4.Services.Domain.V4.Repositories
                 // Read normalized fields from the tool and fall back to empty strings when missing.
                 var ns = tool.NormalizedNamespace ?? string.Empty;
                 var name = tool.NormalizedName ?? string.Empty;
-                var desc = tool.NormalizedDescription ?? string.Empty;
+                var description = tool.NormalizedDescription ?? string.Empty;
                 var labels = tool.NormalizedLabels ?? string.Empty;
 
                 // Award the highest score when the full normalized prompt exactly matches the tool name.
@@ -2444,7 +2450,7 @@ namespace G4.Services.Domain.V4.Repositories
                     }
 
                     // Description matches provide weaker relevance support.
-                    if (desc.Contains(token, StringComparison.Ordinal))
+                    if (description.Contains(token, StringComparison.Ordinal))
                     {
                         score += 2;
                     }
@@ -2456,7 +2462,7 @@ namespace G4.Services.Domain.V4.Repositories
                 if (promptTokens.Any(t => name.Contains(t, StringComparison.Ordinal))) matchedFields++;
                 if (promptTokens.Any(t => labels.Contains(t, StringComparison.Ordinal))) matchedFields++;
                 if (promptTokens.Any(t => ns.Contains(t, StringComparison.Ordinal))) matchedFields++;
-                if (promptTokens.Any(t => desc.Contains(t, StringComparison.Ordinal))) matchedFields++;
+                if (promptTokens.Any(t => description.Contains(t, StringComparison.Ordinal))) matchedFields++;
 
                 // Add a bonus when matches are spread across multiple fields.
                 if (matchedFields >= 2)
@@ -2473,6 +2479,32 @@ namespace G4.Services.Domain.V4.Repositories
                 // Return the final relevance score.
                 return score;
             }
+        }
+
+        /// <summary>
+        /// Represents a scored lexical retrieval result for a tool.
+        /// </summary>
+        private sealed class ToolScoreResultModel
+        {
+            /// <summary>
+            /// Gets or sets the tool description.
+            /// </summary>
+            public string Description { get; set; }
+
+            /// <summary>
+            /// Gets or sets the tool name.
+            /// </summary>
+            public string Name { get; set; }
+
+            /// <summary>
+            /// Gets or sets the tool namespace.
+            /// </summary>
+            public string NameSpace { get; set; }
+
+            /// <summary>
+            /// Gets or sets the computed lexical relevance score.
+            /// </summary>
+            public int Score { get; set; }
         }
 
         /// <summary>
@@ -2520,32 +2552,6 @@ namespace G4.Services.Domain.V4.Repositories
             /// Gets or sets the normalized tool namespace used for matching.
             /// </summary>
             public string NormalizedNamespace { get; set; }
-        }
-
-        /// <summary>
-        /// Represents a scored lexical retrieval result for a tool.
-        /// </summary>
-        sealed class ToolScoreResultModel
-        {
-            /// <summary>
-            /// Gets or sets the tool description.
-            /// </summary>
-            public string Description { get; set; }
-
-            /// <summary>
-            /// Gets or sets the tool name.
-            /// </summary>
-            public string Name { get; set; }
-
-            /// <summary>
-            /// Gets or sets the tool namespace.
-            /// </summary>
-            public string NameSpace { get; set; }
-
-            /// <summary>
-            /// Gets or sets the computed lexical relevance score.
-            /// </summary>
-            public int Score { get; set; }
         }
         #endregion
 

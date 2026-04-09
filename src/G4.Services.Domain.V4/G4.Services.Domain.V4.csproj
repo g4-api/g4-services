@@ -12,16 +12,16 @@
 		<IsPackable>false</IsPackable>
 
 		<!-- https://learn.microsoft.com/en-us/dotnet/fundamentals/syslib-diagnostics/syslib1040-1049 -->
-		<NoWarn>$(NoWarn);SYSLIB1045;IDE0130</NoWarn>
+		<NoWarn>$(NoWarn);SYSLIB1045;IDE0130;CA1873</NoWarn>
 	</PropertyGroup>
 
 	<ItemGroup>
 		<PackageReference Include="G4.Api" Version="2026.3.21.40" />
-		<PackageReference Include="G4.Plugins" Version="2026.3.19.59" />
+		<PackageReference Include="G4.Plugins" Version="2026.4.6.60" />
 		<PackageReference Include="G4.Plugins.Common" Version="2026.3.20.123" />
 		<PackageReference Include="G4.Plugins.Ui" Version="2026.3.20.123" />
 		<PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.5" />
-		<PackageReference Include="Swashbuckle.AspNetCore.Annotations" Version="10.1.5" />
+		<PackageReference Include="Swashbuckle.AspNetCore.Annotations" Version="10.1.7" />
 	</ItemGroup>
 
 	<ItemGroup>

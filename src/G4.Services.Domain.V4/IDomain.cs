@@ -7,7 +7,6 @@ using G4.Models.Events;
 using G4.Services.Domain.V4.Clients;
 using G4.Services.Domain.V4.Extensions;
 using G4.Services.Domain.V4.Hubs;
-using G4.Services.Domain.V4.Models;
 using G4.Services.Domain.V4.Repositories;
 
 using Microsoft.AspNetCore.Builder;

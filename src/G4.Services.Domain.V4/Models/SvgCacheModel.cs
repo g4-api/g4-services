@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace G4.Services.Domain.V4.Models
+namespace G4.Models
 {
     /// <summary>
     /// Represents a cache for storing SVG data with their corresponding names as keys.

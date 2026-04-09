@@ -22,6 +22,30 @@ namespace G4.Services.Domain.V4.Repositories
         McpToolModel FindTool(string intent, string toolName);
 
         /// <summary>
+        /// Finds the most relevant MCP tools for the given prompt using default parameters.
+        /// </summary>
+        /// <param name="prompt">The text prompt describing the intended tool usage.</param>
+        /// <returns>A dictionary of tool name → <see cref="McpToolModel"/> containing up to 3 tools with no threshold applied.</returns>
+        IDictionary<string, McpToolModel> FindTools(string prompt);
+
+        /// <summary>
+        /// Finds the most relevant MCP tools for the given prompt with a specified maximum number of results.
+        /// </summary>
+        /// <param name="prompt">The text prompt describing the intended tool usage.</param>
+        /// <param name="maxResults">Maximum number of tools to return.</param>
+        /// <returns>A dictionary of tool name → <see cref="McpToolModel"/> containing up to <paramref name="maxResults"/> tools.</returns>
+        IDictionary<string, McpToolModel> FindTools(string prompt, int maxResults);
+
+        /// <summary>
+        /// Finds the most relevant MCP tools for the given intent, allowing control over the number of results and threshold.
+        /// </summary>
+        /// <param name="intent">The textual description of the intended action or tool usage.</param>
+        /// <param name="maxResults">Maximum number of tools to return.</param>
+        /// <param name="threshold">Relevance threshold for tool selection. Only tools with a score above this value will be considered.</param>
+        /// <returns>A dictionary mapping tool names to <see cref="McpToolModel"/> objects that match the provided intent.</returns>
+        IDictionary<string, McpToolModel> FindTools(string intent, int maxResults, int threshold);
+
+        /// <summary>
         /// Retrieves the document model (DOM) of the active session using the G4 engine.  
         /// The document model is returned as a dictionary of key–value pairs representing
         /// the structure of the application’s DOM at the time of the request.

@@ -134,7 +134,7 @@ namespace G4.Services.Domain.V4.Hubs
             connectedBot.LastModifiedOn = DateTime.UtcNow;
 
             // Log the update for auditing or monitoring purposes
-            _logger.LogInformation(
+            _logger?.LogInformation(
                 message: "Bot updated: {ConnectionId}, Status:{Status}",
                 Context.ConnectionId,
                 connectedBot.Status

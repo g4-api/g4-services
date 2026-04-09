@@ -1,8 +1,6 @@
-﻿using G4.Models;
+﻿using System.Collections.Generic;
 
-using System.Collections.Generic;
-
-namespace G4.Services.Domain.V4.Models
+namespace G4.Models
 {
     /// <summary>
     /// Represents the external plugin sources used during cache synchronization.
