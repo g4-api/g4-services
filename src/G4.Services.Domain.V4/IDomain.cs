@@ -106,7 +106,7 @@ namespace G4.Services.Domain.V4
         /// Configures and registers the necessary dependencies for the G4 domain.
         /// </summary>
         /// <param name="builder">The web application builder used to register services.</param>
-        static void SetDependencies(WebApplicationBuilder builder)
+        public static void SetDependencies(WebApplicationBuilder builder)
         {
             // Get the singleton instance of the cache manager
             var cache = CacheManager.Instance;

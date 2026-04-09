@@ -1,9 +1,12 @@
 using G4.Converters;
+using G4.Extensions;
 using G4.Services.Domain.V4;
 using G4.Services.Domain.V4.Extensions;
 using G4.Services.Domain.V4.Formatters;
 using G4.Services.Domain.V4.Hubs;
 using G4.Services.Domain.V4.Middlewares;
+using G4.Services.Domain.V4.Models;
+using G4.Services.Domain.V4.Repositories;
 using G4.Settings;
 
 using Microsoft.AspNetCore.Builder;
@@ -13,13 +16,11 @@ using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.OpenApi;
-
-using Swashbuckle.AspNetCore.Annotations;
 
 using System;
 using System.IO;
 using System.Linq;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -70,6 +71,10 @@ builder.Services
         // Use camelCase naming for JSON properties to follow JavaScript conventions.
         i.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
 
+        // Configure the JSON serializer to allow unsafe relaxed JSON escaping, which can be useful for
+        // certain scenarios where you want to allow characters that are normally escaped.
+        i.JsonSerializerOptions.Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping;
+
         // Enable case-insensitive property name matching during deserialization.
         i.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
 
@@ -92,90 +97,12 @@ builder.Services
 // Add and configure Swagger for API documentation and testing.
 builder.Services.AddSwaggerGen(i =>
 {
-    // Define a Swagger document named "v4" with title and version information.
-    i.SwaggerDoc(
-        name: $"g4",
-        info: new OpenApiInfo
-        {
-            Title = "G4™ Hub Endpoints",
-            Version = $"v{AppSettings.ApiVersion}",
-            Description = "G4™ Hub Controllers provide endpoints for G4™ Orchestrator, Automation, Bots, and Tools. " +
-                "This API is designed to be used by G4™ clients and services to interact with the G4™ ecosystem."
-        });
-
-    // Define a Swagger document named "tools" for G4™ Tools endpoints.
-    i.SwaggerDoc(
-        name: "tools",
-        info: new OpenApiInfo
-        {
-            Title = "G4™ Tools Endpoints",
-            Version = $"v{AppSettings.ApiVersion}",
-            Description = "Proxy for MCP tools, exposing each tool as a function-callable endpoint."
-        });
-
-    // Define a Swagger document named "bots" for G4™ Bots endpoints.
-    i.SwaggerDoc(
-        name: "bots",
-        info: new OpenApiInfo
-        {
-            Title = "G4™ Bots Management Endpoints",
-            Version = $"v{AppSettings.ApiVersion}",
-            Description = "Endpoints"
-        });
-
-    // Define a Swagger document named "cache" for G4™ Cache endpoints.
-    i.SwaggerDoc(
-        name: "cache",
-        info: new OpenApiInfo
-        {
-            Title = "G4™ Cache Management Endpoints",
-            Version = $"v{AppSettings.ApiVersion}",
-            Description = "Endpoints"
-        });
+    // Add the Swagger document for the G4 Hub API,
+    // using the documents defined in OpenApiManager.
+    i.AddDocuments([.. OpenApiDocuments.Documents.Values]);
 
     // Filter to include only controllers that have the "Tool" tag in their Swagger documentation.
-    i.DocInclusionPredicate((docName, apiDesc) =>
-    {
-        // For the "bots" document, include only API actions that
-        // have the "Bots" tag in their Swagger documentation.
-        if (docName.Equals("bots", StringComparison.OrdinalIgnoreCase))
-        {
-            // look for a SwaggerOperationAttribute in the metadata with the "Bots" tag
-            return apiDesc
-                .ActionDescriptor
-                .EndpointMetadata
-                .OfType<SwaggerOperationAttribute>()
-                .Any(attr => attr.Tags?.Contains("Bots", StringComparer.OrdinalIgnoreCase) == true);
-        }
-
-        // For the "tools" document, include only API actions
-        // that have the "AiTools" tag in their Swagger documentation.
-        if (docName.Equals("tools", StringComparison.OrdinalIgnoreCase))
-        {
-            // look for a SwaggerOperationAttribute in the metadata with the "AiTools" tag
-            return apiDesc
-                .ActionDescriptor
-                .EndpointMetadata
-                .OfType<SwaggerOperationAttribute>()
-                .Any(attr => attr.Tags?.Contains("AiTools") == true);
-        }
-
-        // For the "cache" document, include only API actions
-        // that have the "Cache" tag in their Swagger documentation.
-        if (docName.Equals("cache", StringComparison.OrdinalIgnoreCase))
-        {
-            // look for a SwaggerOperationAttribute in the metadata with the "Cache" tag
-            return apiDesc
-                .ActionDescriptor
-                .EndpointMetadata
-                .OfType<SwaggerOperationAttribute>()
-                .Any(attr => attr.Tags?.Contains("Cache") == true);
-        }
-
-        // For the "g4" document, include all API actions that do not
-        // have the "AiTools" or "Bots" tags in their Swagger documentation.
-        return true;
-    });
+    i.DocInclusionPredicate((name, description) => description.FilterG4Documents(name));
 
     // Order API actions in the Swagger UI by HTTP method for better organization.
     i.OrderActionsBy(a => a.HttpMethod);
@@ -284,6 +211,17 @@ app.UseWhen(
     }
 );
 
+// Middleware to set the Content-Type header for Swagger JSON
+// responses to ensure UTF-8 encoding
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path.StartsWithSegments("/swagger"))
+    {
+        context.Response.ContentType = "application/json; charset=utf-8";
+    }
+    await next();
+});
+
 // Configure the application to use the response caching middleware
 app.UseResponseCaching();
 
@@ -308,17 +246,9 @@ app.UseSwaggerUI(i =>
     // Serve the UI at /tools/docs
     i.RoutePrefix = "swagger";
 
-    // Add the Swagger document for the G4 Hub API
-    i.SwaggerEndpoint("g4/docs.json", "G4 Hub");
-
-    // Add the Swagger document for the G4 OpenAi Tools API
-    i.SwaggerEndpoint("tools/docs.json", "Openai Tools");
-
-    // Add the Swagger document for the G4 OpenAi Tools API
-    i.SwaggerEndpoint("bots/docs.json", "Bots Management");
-
-    // Add the Swagger document for the G4 Cache Management API
-    i.SwaggerEndpoint("cache/docs.json", "Cache Management");
+    // Add the Swagger document for the G4 Hub API,
+    // using the documents defined in OpenApiManager.
+    i.AddEndpoints([.. OpenApiDocuments.Documents.Values]);
 
     // Show how long each request takes
     i.DisplayRequestDuration();
@@ -328,6 +258,9 @@ app.UseSwaggerUI(i =>
 
     // Turn on “Try it out” by default
     i.EnableTryItOutByDefault();
+
+    // Set header content to specify UTF-8 character encoding for the Swagger UI page
+    i.HeadContent = "<meta charset='UTF-8'>";
 });
 
 app.MapDefaultControllerRoute();
