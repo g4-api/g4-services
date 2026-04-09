@@ -113,21 +113,68 @@ builder.Services.AddSwaggerGen(i =>
             Description = "Proxy for MCP tools, exposing each tool as a function-callable endpoint."
         });
 
+    // Define a Swagger document named "bots" for G4™ Bots endpoints.
+    i.SwaggerDoc(
+        name: "bots",
+        info: new OpenApiInfo
+        {
+            Title = "G4™ Bots Management Endpoints",
+            Version = $"v{AppSettings.ApiVersion}",
+            Description = "Endpoints"
+        });
+
+    // Define a Swagger document named "cache" for G4™ Cache endpoints.
+    i.SwaggerDoc(
+        name: "cache",
+        info: new OpenApiInfo
+        {
+            Title = "G4™ Cache Management Endpoints",
+            Version = $"v{AppSettings.ApiVersion}",
+            Description = "Endpoints"
+        });
+
     // Filter to include only controllers that have the "Tool" tag in their Swagger documentation.
     i.DocInclusionPredicate((docName, apiDesc) =>
     {
-        // for your “v4” doc, include everything
-        if (docName != "tools")
+        // For the "bots" document, include only API actions that
+        // have the "Bots" tag in their Swagger documentation.
+        if (docName.Equals("bots", StringComparison.OrdinalIgnoreCase))
         {
-            return true;
+            // look for a SwaggerOperationAttribute in the metadata with the "Bots" tag
+            return apiDesc
+                .ActionDescriptor
+                .EndpointMetadata
+                .OfType<SwaggerOperationAttribute>()
+                .Any(attr => attr.Tags?.Contains("Bots", StringComparer.OrdinalIgnoreCase) == true);
         }
 
-        // look for a SwaggerOperationAttribute in the metadata
-        return apiDesc
-            .ActionDescriptor
-            .EndpointMetadata
-            .OfType<SwaggerOperationAttribute>()
-            .Any(attr => attr.Tags?.Contains("AiTools") == true);
+        // For the "tools" document, include only API actions
+        // that have the "AiTools" tag in their Swagger documentation.
+        if (docName.Equals("tools", StringComparison.OrdinalIgnoreCase))
+        {
+            // look for a SwaggerOperationAttribute in the metadata with the "AiTools" tag
+            return apiDesc
+                .ActionDescriptor
+                .EndpointMetadata
+                .OfType<SwaggerOperationAttribute>()
+                .Any(attr => attr.Tags?.Contains("AiTools") == true);
+        }
+
+        // For the "cache" document, include only API actions
+        // that have the "Cache" tag in their Swagger documentation.
+        if (docName.Equals("cache", StringComparison.OrdinalIgnoreCase))
+        {
+            // look for a SwaggerOperationAttribute in the metadata with the "Cache" tag
+            return apiDesc
+                .ActionDescriptor
+                .EndpointMetadata
+                .OfType<SwaggerOperationAttribute>()
+                .Any(attr => attr.Tags?.Contains("Cache") == true);
+        }
+
+        // For the "g4" document, include all API actions that do not
+        // have the "AiTools" or "Bots" tags in their Swagger documentation.
+        return true;
     });
 
     // Order API actions in the Swagger UI by HTTP method for better organization.
@@ -265,7 +312,13 @@ app.UseSwaggerUI(i =>
     i.SwaggerEndpoint("g4/docs.json", "G4 Hub");
 
     // Add the Swagger document for the G4 OpenAi Tools API
-    i.SwaggerEndpoint("tools/docs.json", "OpenAi Tools");
+    i.SwaggerEndpoint("tools/docs.json", "Openai Tools");
+
+    // Add the Swagger document for the G4 OpenAi Tools API
+    i.SwaggerEndpoint("bots/docs.json", "Bots Management");
+
+    // Add the Swagger document for the G4 Cache Management API
+    i.SwaggerEndpoint("cache/docs.json", "Cache Management");
 
     // Show how long each request takes
     i.DisplayRequestDuration();
