@@ -15,7 +15,8 @@ namespace G4.Services.Hub.Api.V4.Controllers
 {
     [ApiController]
     [Route("/api/v4/g4/[controller]")]
-    [SwaggerTag(description: "Provides endpoints to create OAuth credentials for a specific provider and to persist credentials after the OAuth callback completes.")]
+    [SwaggerTag(description: "Provides endpoints to create OAuth credentials for a " +
+        "specific provider and to persist credentials after the OAuth callback completes.")]
     [ApiExplorerSettings(GroupName = "G4 Hub")]
     public class CredentialsController(IDomain domain) : ControllerBase
     {

@@ -15,6 +15,9 @@ namespace G4.Services.Hub.Api.V4.Controllers
 {
     [ApiController]
     [Route("/api/v4/g4/tools")]
+    [SwaggerTag(description: "Endpoints for discovering and utilizing tools within the G4 platform. " +
+        "This includes finding tools by name or intent, retrieving application DOMs, resolving locators, " +
+        "and managing G4 driver sessions and rules. All responses are standardized for G4 internal use.")]
     [ApiExplorerSettings(GroupName = "OpenAi Tools")]
     public class OpenAiToolsController(IDomain domain) : ControllerBase
     {

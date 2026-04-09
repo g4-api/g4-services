@@ -15,7 +15,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
 {
     [ApiController]
     [Route("/api/v4/g4/[controller]")]
-    [SwaggerTag(description: "Handles automation-related operations in the G4™ Engine.")]
+    [SwaggerTag(description: "Provides endpoints to manage automation tasks within the G4 platform.")]
     [ApiExplorerSettings(GroupName = "G4 Hub")]
     public class AutomationController(IDomain domain) : ControllerBase
     {

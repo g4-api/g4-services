@@ -18,7 +18,9 @@ namespace G4.Services.Hub.Api.V4.Controllers
 {
     [ApiController]
     [Route("/api/v4/g4/mcp")]
-    [SwaggerTag(description: "GitHub Copilot Agent endpoint for integration and context exchange with AI agents.")]
+    [SwaggerTag(description: "Provides endpoints for managing and exchanging context with MCP-based agents within the G4 platform. " +
+        "These endpoints facilitate the integration and interaction of the G4 engine with external agents, enabling dynamic capabilities " +
+        "and workflow execution through the Management Control Protocol (MCP).")]
     [ApiExplorerSettings(GroupName = "G4 Hub")]
     public class ToolsController(IDomain domain) : ControllerBase
     {
@@ -26,10 +28,14 @@ namespace G4.Services.Hub.Api.V4.Controllers
         private readonly IDomain _domain = domain;
 
         [HttpGet]
+        #region *** OpenApi Documentation ***
         [SwaggerOperation(
             Summary = "Establish SSE stream",
-            Description = "Opens a text/event-stream channel for real-time updates and heartbeats (n8n-compatible).")]
+            Description = "Opens a text/event-stream channel for real-time updates and heartbeats (n8n-compatible).",
+            Tags = ["MCP"]
+        )]
         [SwaggerResponse(StatusCodes.Status200OK, description: "SSE stream established.", contentTypes: "text/event-stream")]
+        #endregion
         public async Task Get(CancellationToken token)
         {
             // Required SSE headers (n8n is strict about these)
@@ -80,7 +86,8 @@ namespace G4.Services.Hub.Api.V4.Controllers
         #region *** OpenApi Documentation ***
         [SwaggerOperation(
             Summary = "Handle Copilot agent requests",
-            Description = "Processes JSON-RPC methods for initializing, listing tools, invoking tools, and handling notifications."
+            Description = "Processes JSON-RPC methods for initializing, listing tools, invoking tools, and handling notifications.",
+            Tags = ["MCP"]
         )]
         [SwaggerResponse(StatusCodes.Status200OK,
             description: "Initialization result with context (CopilotInitializeResponseModel), list of available tools (CopilotListResponseModel), or result of tool invocation (object)",
@@ -126,7 +133,8 @@ namespace G4.Services.Hub.Api.V4.Controllers
         #region *** OpenApi Documentation ***
         [SwaggerOperation(
             Summary = "Sync the list of tools available to the Copilot agent",
-            Description = "Refreshes the cached tool definitions so that the Copilot agent has the most up-to-date list of tools."
+            Description = "Refreshes the cached tool definitions so that the Copilot agent has the most up-to-date list of tools.",
+            Tags = ["MCP"]
         )]
         [SwaggerResponse(StatusCodes.Status204NoContent, description: "The tools list was successfully synced. No content is returned.")]
         [SwaggerResponse(StatusCodes.Status500InternalServerError,

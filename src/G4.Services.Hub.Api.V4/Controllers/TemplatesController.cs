@@ -16,6 +16,10 @@ namespace G4.Services.Hub.Api.V4.Controllers
 {
     [ApiController]
     [Route("api/v4/g4/[controller]")]
+    [SwaggerTag(description: "Endpoints for managing templates within the G4 platform. " +
+        "This controller allows for adding, retrieving, and removing templates based on their manifests. " +
+        "Templates are flow-based capabilities, defined by G4PluginAttribute, and serve as the manifest definitions that configure " +
+        "various workflows and automation tasks within the G4 engine.")]
     [ApiExplorerSettings(GroupName = "G4 Hub")]
     public class TemplatesController(IDomain domain) : ControllerBase
     {
@@ -62,7 +66,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         [SwaggerOperation(
             summary: "Clear all templates",
             description: "Removes all templates from the cache. Returns a 204 No Content response upon successful removal.",
-            Tags = ["Environments"])]
+            Tags = ["Templates"])]
         [Produces(MediaTypeNames.Application.Json)]
         [SwaggerResponse(StatusCodes.Status204NoContent, description: "All templates were successfully cleared from the cache.", type: typeof(void))]
         public IActionResult ClearTemplates()
@@ -124,7 +128,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         [SwaggerOperation(
             summary: "Remove a template by key",
             description: "Removes the specified template identified by its key from the cache. If the template is successfully removed, a 204 No Content response is returned. If the template is not found, a 404 Not Found response is returned with an error message.",
-            Tags = ["Environments"])]
+            Tags = ["Templates"])]
         [Produces(MediaTypeNames.Application.Json)]
         [SwaggerResponse(StatusCodes.Status204NoContent, description: "The template was successfully removed from the cache.", type: typeof(void))]
         [SwaggerResponse(StatusCodes.Status404NotFound, description: "Template not found with the specified key.", type: typeof(GenericErrorModel))]

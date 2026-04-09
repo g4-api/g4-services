@@ -20,7 +20,8 @@ namespace G4.Services.Hub.Api.V4.Controllers
 {
     [ApiController]
     [Route("/api/v4/g4/[controller]")]
-    [SwaggerTag(description: "Provides endpoints to retrieve G4™ engine metadata, enabling seamless integration with external client applications.")]
+    [SwaggerTag(description: "Provides endpoints to retrieve G4™ engine metadata, " +
+        "enabling seamless integration with external client applications.")]
     [ApiExplorerSettings(GroupName = "G4 Hub")]
     public class IntegrationController(IDomain domain) : ControllerBase
     {
@@ -237,7 +238,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         [SwaggerOperation(
             summary: "Retrieves plugin Markdown documentation by key.",
             description: "Fetches the plugin Markdown documentation identified by the specified plugin name key. Returns the documentation content in Markdown format if found.",
-            Tags = ["Integration", "Documents"])]
+            Tags = ["Documents"])]
         [SwaggerResponse(StatusCodes.Status200OK, description: "Successfully retrieved the plugin Markdown documentation.", contentTypes: MediaTypeNames.Text.Markdown)]
         [SwaggerResponse(StatusCodes.Status404NotFound, description: "Plugin Markdown documentation not found for the provided plugin name.", type: typeof(GenericErrorModel), contentTypes: MediaTypeNames.Application.ProblemJson)]
         public IActionResult GetDocument(
@@ -265,7 +266,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         [SwaggerOperation(
             summary: "Retrieves plugin Markdown documentation by plugin type and key.",
             description: "Fetches the plugin Markdown documentation identified by the specified plugin type and name key. Returns the documentation content in Markdown format if found.",
-            Tags = ["Integration", "Documents"])]
+            Tags = ["Documents"])]
         [SwaggerResponse(StatusCodes.Status200OK, description: "Successfully retrieved the plugin Markdown documentation.", contentTypes: MediaTypeNames.Text.Markdown)]
         [SwaggerResponse(StatusCodes.Status404NotFound, description: "Plugin Markdown documentation not found for the provided plugin type and name.", type: typeof(GenericErrorModel), contentTypes: MediaTypeNames.Application.ProblemJson)]
         public IActionResult GetDocument(
@@ -296,7 +297,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         [SwaggerOperation(
             summary: "Retrieves plugin Markdown documentation by key and repository.",
             description: "Fetches the plugin Markdown documentation identified by the specified plugin name key and external repository information. Returns the documentation content in Markdown format if found.",
-            Tags = ["Integration", "Documents"])]
+            Tags = ["Documents"])]
         [SwaggerResponse(StatusCodes.Status200OK, description: "Successfully retrieved the plugin Markdown documentation.", type: typeof(string), contentTypes: MediaTypeNames.Text.Markdown)]
         [SwaggerResponse(StatusCodes.Status404NotFound, description: "Plugin Markdown documentation not found for the provided plugin name and repository.", type: typeof(GenericErrorModel), contentTypes: MediaTypeNames.Application.ProblemJson)]
         public IActionResult GetDocument(
@@ -327,7 +328,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         [SwaggerOperation(
             summary: "Retrieves plugin Markdown documentation by plugin type, key, and repository.",
             description: "Fetches the plugin Markdown documentation identified by the specified plugin type, name key, and external repository information. Returns the documentation content in Markdown format if found.",
-            Tags = ["Integration", "Documents"])]
+            Tags = ["Documents"])]
         [SwaggerResponse(StatusCodes.Status200OK, description: "Successfully retrieved the plugin Markdown documentation.", type: typeof(string), contentTypes: MediaTypeNames.Text.Markdown)]
         [SwaggerResponse(StatusCodes.Status404NotFound, description: "Plugin Markdown documentation not found for the provided plugin type, name, or repository.", type: typeof(GenericErrorModel), contentTypes: MediaTypeNames.Application.ProblemJson)]
         public IActionResult GetDocument(
@@ -381,7 +382,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         [SwaggerOperation(
             summary: "Retrieves the plugin manifest by key.",
             description: "Fetches the plugin manifest, including optional Markdown documentation, identified by the specified plugin name key. Optionally includes specified fields in the response. Returns the manifest content in JSON format if found.",
-            Tags = ["Integration", "Manifests"])]
+            Tags = ["Manifests"])]
         [SwaggerResponse(StatusCodes.Status200OK, description: "Successfully retrieved the plugin manifest.", type: typeof(IG4PluginManifest), contentTypes: MediaTypeNames.Application.Json)]
         [SwaggerResponse(StatusCodes.Status404NotFound, description: "Plugin manifest not found for the provided plugin name.", type: typeof(GenericErrorModel), contentTypes: MediaTypeNames.Application.ProblemJson)]
         public IActionResult GetManifest(
@@ -411,7 +412,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         [SwaggerOperation(
             summary: "Retrieves plugin manifest by plugin type and key.",
             description: "Fetches the plugin manifest identified by the specified plugin type and name key. Optionally includes specified fields in the response. Returns the manifest data in JSON format if found.",
-            Tags = ["Integration", "Manifests"])]
+            Tags = ["Manifests"])]
         [SwaggerResponse(StatusCodes.Status200OK, description: "Successfully retrieved the plugin manifest.", type: typeof(IG4PluginManifest), contentTypes: MediaTypeNames.Application.Json)]
         [SwaggerResponse(StatusCodes.Status404NotFound, description: "Plugin manifest not found for the provided plugin type and name.", type: typeof(GenericErrorModel), contentTypes: MediaTypeNames.Application.ProblemJson)]
         public IActionResult GetManifest(
@@ -443,7 +444,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         [SwaggerOperation(
             summary: "Retrieves plugin manifest by key and repository.",
             description: "Fetches the plugin manifest identified by the specified plugin name key and external repository information. Optionally includes specified fields in the response. Returns the manifest data in JSON format if found.",
-            Tags = ["Integration", "Manifests"])]
+            Tags = ["Manifests"])]
         [SwaggerResponse(StatusCodes.Status200OK, description: "Successfully retrieved the plugin manifest.", type: typeof(IG4PluginManifest), contentTypes: MediaTypeNames.Application.Json)]
         [SwaggerResponse(StatusCodes.Status404NotFound, description: "Plugin manifest not found for the provided plugin name and repository.", type: typeof(GenericErrorModel), contentTypes: MediaTypeNames.Application.ProblemJson)]
         public IActionResult GetManifest(
@@ -476,7 +477,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         [SwaggerOperation(
             summary: "Retrieves plugin manifest by plugin type, key, and repository.",
             description: "Fetches the plugin manifest identified by the specified plugin type, name key, and external repository information. Returns the manifest data in JSON format if found.",
-            Tags = ["Integration", "Manifests"])]
+            Tags = ["Manifests"])]
         [SwaggerResponse(StatusCodes.Status200OK, description: "Successfully retrieved the plugin manifest.", type: typeof(IG4PluginManifest), contentTypes: MediaTypeNames.Application.Json)]
         [SwaggerResponse(StatusCodes.Status404NotFound, description: "Plugin manifest not found for the provided plugin type, name, or repository.", type: typeof(GenericErrorModel), contentTypes: MediaTypeNames.Application.ProblemJson)]
         public IActionResult GetManifest(
@@ -508,7 +509,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         [SwaggerOperation(
             summary: "Retrieves all plugin manifests.",
             description: "Fetches all available plugin manifests, optionally filtering the response based on the fields provided in the `expandFields` query parameter. Returns the manifest data in JSON format.",
-            Tags = ["Integration", "Manifests"])]
+            Tags = ["Manifests"])]
         [SwaggerResponse(StatusCodes.Status200OK, description: "Successfully retrieved the list of plugin manifests.", type: typeof(IG4PluginManifest[]), contentTypes: MediaTypeNames.Application.Json)]
         [ResponseCache(Duration = 60, Location = ResponseCacheLocation.Client, NoStore = false)]
         public IActionResult GetManifests(
@@ -534,7 +535,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         [SwaggerOperation(
             summary: "Retrieves plugin manifests from external repositories.",
             description: "Fetches plugin manifests from the specified external repositories. Optionally includes specific fields in the response based on the `expandFields` query parameter. Returns the manifest data in JSON format.",
-            Tags = ["Integration", "Manifests"])]
+            Tags = ["Manifests"])]
         [SwaggerResponse(StatusCodes.Status200OK, description: "Successfully retrieved the plugin manifests.", type: typeof(IG4PluginManifest[]), contentTypes: MediaTypeNames.Application.Json)]
         [ResponseCache(Duration = 60, Location = ResponseCacheLocation.Client, NoStore = false)]
         public IActionResult GetManifests(
@@ -561,7 +562,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         [SwaggerOperation(
             summary: "Lists all static files in wwwroot.",
             description: "Recursively scans the wwwroot directory and returns a list of all static file paths, relative to wwwroot. Useful for discovering available static resources such as HTML, JS, CSS, images, etc.",
-            Tags = new[] { "Integration", "Files" })]
+            Tags = ["Files"])]
         [SwaggerResponse(StatusCodes.Status200OK, description: "Successfully returned a list of all static files found under wwwroot.", type: typeof(List<string>), contentTypes: MediaTypeNames.Application.Json)]
         [ResponseCache(Duration = 60, Location = ResponseCacheLocation.Client, NoStore = false)]
         public IActionResult GetStaticFilesList()
@@ -589,7 +590,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         [SwaggerOperation(
             summary: "Lists all SVG files in wwwroot.",
             description: "Recursively scans the wwwroot directory for SVG files and returns a dictionary with the formatted file names (as keys) and their relative paths (as values). Useful for discovering and using SVG resources for UI components, icons, etc.",
-            Tags = new[] { "Integration", "Files" })]
+            Tags = ["Files"])]
         [SwaggerResponse(StatusCodes.Status200OK, description: "Successfully returned a dictionary of all SVG files found under wwwroot.", type: typeof(Dictionary<string, string>), contentTypes: MediaTypeNames.Application.Json)]
         [ResponseCache(Duration = 60, Location = ResponseCacheLocation.Client, NoStore = false)]
         public IActionResult GetSvgs()

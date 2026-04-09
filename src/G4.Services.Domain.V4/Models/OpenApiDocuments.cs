@@ -45,6 +45,15 @@ namespace G4.Services.Domain.V4.Models
 
             new()
             {
+                Name = "documents",
+                Url = "documents/docs.json",
+                Description = "API documentation for the G4 platform's document management features.",
+                Summary = "Comprehensive API documentation for the G4 platform's document management capabilities.",
+                Tags = ["Documents"]
+            },
+
+            new()
+            {
                 Name = "environments",
                 Url = "environments/docs.json",
                 Description = "API documentation for the G4 platform's environment management features.",
@@ -54,11 +63,47 @@ namespace G4.Services.Domain.V4.Models
 
             new()
             {
+                Name = "files",
+                Url = "files/docs.json",
+                Description = "API documentation for the G4 platform's file management features.",
+                Summary = "Comprehensive API documentation for the G4 platform's file management capabilities.",
+                Tags = ["Files"]
+            },
+
+            new()
+            {
+                Name = "manifests",
+                Url = "manifests/docs.json",
+                Description = "API documentation for the G4 platform's manifest management features.",
+                Summary = "Comprehensive API documentation for the G4 platform's manifest management capabilities.",
+                Tags = ["Manifests"]
+            },
+
+            new()
+            {
+                Name = "openai",
+                Url = "openai/docs.json",
+                Description = "API documentation for the G4 platform's OpenAI-compatible proxy features.",
+                Summary = "Comprehensive API documentation for the G4 platform's OpenAI-compatible proxy capabilities.",
+                Tags = ["OpenAi"]
+            },
+
+            new()
+            {
                 Name = "openai-tools",
                 Url = "openai-tools/docs.json",
                 Description = "API documentation for the G4 platform's OpenAI tools management features.",
                 Summary = "Comprehensive API documentation for the G4 platform's OpenAI tools management capabilities.",
                 Tags = ["AiTools"]
+            },
+
+            new()
+            {
+                Name = "templates",
+                Url = "templates/docs.json",
+                Description = "API documentation for the G4 platform's template management features.",
+                Summary = "Comprehensive API documentation for the G4 platform's template management capabilities.",
+                Tags = ["Templates"]
             }
         ];
 
