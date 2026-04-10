@@ -27,6 +27,15 @@ namespace G4.Services.Domain.V4.Models
 
             new()
             {
+                Name = "automation",
+                Url = "automation/docs.json",
+                Description = "API documentation for the G4 platform's automation features.",
+                Summary = "Comprehensive API documentation for the G4 platform's automation capabilities.",
+                Tags = ["Automation"]
+            },
+
+            new()
+            {
                 Name = "bots",
                 Url = "bots/docs.json",
                 Description = "API documentation for the G4 platform's bot management features.",

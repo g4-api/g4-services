@@ -6,7 +6,6 @@ using G4.Services.Domain.V4.Formatters;
 using G4.Services.Domain.V4.Hubs;
 using G4.Services.Domain.V4.Middlewares;
 using G4.Services.Domain.V4.Models;
-using G4.Services.Domain.V4.Repositories;
 using G4.Settings;
 
 using Microsoft.AspNetCore.Builder;
@@ -109,6 +108,10 @@ builder.Services.AddSwaggerGen(i =>
 
     // Enable annotations to allow for additional metadata in Swagger documentation.
     i.EnableAnnotations();
+
+    // Add a custom document filter to remove any controllers that do not have any
+    // actions defined, keeping the Swagger documentation clean and relevant.
+    i.DocumentFilter<RemoveEmptyControllersDocumentMiddleware>();
 });
 
 // Configure cookie policy options to manage user consent and cookie behavior.
@@ -256,7 +259,7 @@ app.UseSwaggerUI(i =>
     // Enable the built-in filter box
     i.EnableFilter();
 
-    // Turn on “Try it out” by default
+    // Turn on ï¿½Try it outï¿½ by default
     i.EnableTryItOutByDefault();
 
     // Set header content to specify UTF-8 character encoding for the Swagger UI page
