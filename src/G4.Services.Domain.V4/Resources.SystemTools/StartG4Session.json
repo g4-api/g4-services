@@ -1,0 +1,43 @@
+{
+    "name": "start_g4_session",
+    "title": "Start G4 Session",
+    "description": "Starts a new G4 session using specified driver binaries, browser (platform) name, and headless option.",
+    "inputSchema": {
+        "type": "object",
+        "properties": {
+            "driverParameters": {
+                "type": "object",
+                "description": "Optional parameters for configuring the browser driver, such as headless mode, window size, or custom capabilities."
+            },
+            "driver": {
+                "type": "string",
+                "description": "The name of the browser driver to use (e.g., ChromeDriver, GeckoDriver). This is necessary for the automation to interact with the browser."
+            },
+            "driverBinaries": {
+                "type": "string",
+                "description": "The path to the browser driver executable (e.g., ChromeDriver) or the URL of the Selenium Grid endpoint. This is necessary for the automation to interact with the browser."
+            },
+            "token": {
+                "type": "string",
+                "description": "The G4 Authentication token used to authenticate the session initiation process. This is required to authorize the session creation."
+            }
+        },
+        "required": [
+            "driver",
+            "driverBinaries",
+            "token"
+        ]
+    },
+    "outputSchema": {
+        "type": "object",
+        "properties": {
+            "driverSession": {
+                "type": "string",
+                "description": "A unique identifier assigned to the newly created browser session. This identifier can be used for further interaction with the session."
+            }
+        },
+        "required": [
+            "driverSession"
+        ]
+    }
+}

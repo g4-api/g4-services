@@ -1,4 +1,7 @@
-﻿using Swashbuckle.AspNetCore.Annotations;
+﻿using ModelContextProtocol.Client;
+using ModelContextProtocol.Protocol;
+
+using Swashbuckle.AspNetCore.Annotations;
 
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
@@ -69,7 +72,7 @@ namespace G4.Models.Schema
 
         /// <summary>
         /// Wraps the payload returned by the "list tools" method.
-        /// Contains the collection of <see cref="McpToolModel"/> instances.
+        /// Contains the collection of <see cref="Tool"/> instances.
         /// </summary>
         [SwaggerSchema(description: "Result payload wrapping the list of available tools.")]
         public class ToolsResultSchema
@@ -78,7 +81,7 @@ namespace G4.Models.Schema
             /// Gets or sets the list of tools available in the registry.
             /// </summary>
             [SwaggerSchema(description: "Collection of available tools in the registry.")]
-            public IEnumerable<McpToolModel> Tools { get; set; } = [];
+            public IEnumerable<Tool> Tools { get; set; } = [];
         }
         #endregion
     }

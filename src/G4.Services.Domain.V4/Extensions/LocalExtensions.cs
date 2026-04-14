@@ -1,9 +1,15 @@
 ﻿using G4.Models;
+using G4.Settings;
 
 using HtmlAgilityPack;
 
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.OpenApi;
+
+using ModelContextProtocol.Client;
+using ModelContextProtocol.Protocol;
+
+//using Newtonsoft.Json;
 
 using System;
 using System.Collections.Generic;
@@ -105,88 +111,101 @@ namespace G4.Extensions
         extension(IG4PluginManifest manifest)
         {
             /// <summary>
-            /// Converts a plugin manifest into an <see cref="McpToolModel"/>, 
-            /// extracting its name, description, and input schema (parameters & properties).
+            /// Converts the current manifest into an MCP tool model.
             /// </summary>
-            /// <returns>A fully populated <see cref="McpToolModel"/> representing the same plugin, ready for JSON‐RPC schema generation.</returns>
+            /// <returns>A fully constructed <see cref="McpToolModel"/> built from the current manifest.</returns>
+            /// <remarks>
+            /// This method normalizes the manifest key into an MCP-safe tool name, builds the
+            /// input schema from both manifest parameters and properties, and creates the final
+            /// client-facing tool definition together with the internal metadata wrapper.
+            /// </remarks>
             public McpToolModel ConvertToTool()
             {
-                // Converts PluginParameterModel to McpToolModel.ScehmaPropertyModel for input schema
-                static McpToolModel.ScehmaPropertyModel ConvertToInputSchema(PluginParameterModel parameterModel)
-                {
-                    // Converts various naming styles (kebab-case, camelCase) to snake_case
-                    static string ConvertToSnakeCase(string input) => input
-                        .Replace("-", " ")
-                        .ConvertToKebabCase()
-                        .Replace("-", "_")
-                        .ToLower();
-
-                    // Parses and normalizes the 'Type' string into valid JSON schema types
-                    static string[] ConvertType(string input)
-                    {
-                        // List of approved JSON schema types for validation and normalization
-                        var approvedTypes = new[] { "null", "boolean", "object", "array", "number", "integer", "string" };
-
-                        // Create a set of approved types for input validation and normalization
-                        return [.. input
-                        .Split('|')
-                        .Select(i => (approvedTypes.Contains(i, StringComparer.OrdinalIgnoreCase) ? i.Trim().ToLower() : "string"))
-                        .Distinct()
-                        .Select(i => (i == "switch" || i == "bool") ? "boolean" : i)
-                        .Distinct()];
-                    }
-
-                    // Construct the schema property model from the parameter metadata
-                    // Return the created schema property and its 'Mandatory' flag
-                    var schema = new McpToolModel.ScehmaPropertyModel
-                    {
-                        Description = string.Join(" ", parameterModel.Description ?? []),
-                        //Enum = [],
-                        Name = ConvertToSnakeCase(parameterModel.Name),
-                        G4Required = parameterModel.Mandatory,
-                        Type = ConvertType(parameterModel.Type)
-                    };
-
-                    // If the parameter is "Rules", add a specific schema for nested rules
-                    if (parameterModel.Name.Equals("Rules", StringComparison.OrdinalIgnoreCase))
-                    {
-                        schema.Items = new McpToolModel.ParameterSchemaModel
-                        {
-                            Description = "Array of nested rule objects—each item’s tool_name must first be looked up via find_tool to " +
-                                "retrieve its inputSchema before its parameters are included in the parent rule for invoke_g4_tool to process as one.",
-                            Type = "object"
-                        };
-                    }
-
-                    // Return the constructed schema property model
-                    return schema;
-                }
-
-                // Derive a standardized plugin key by replacing non-word characters with spaces.
+                // Normalize the manifest key by replacing non-word characters with spaces.
+                // This creates a stable intermediate value that can later be converted into
+                // the target MCP tool naming convention.
                 var pluginKey = Regex.Replace(manifest.Key, pattern: @"\W+", replacement: " ");
 
-                // Derive a standardized tool name: replace hyphens with spaces,
-                // kebab‑case it, then turn hyphens into underscores and lowercase all.
+                // Convert the normalized key into the final MCP tool name.
+                // The result is lowercase and uses underscores for separation.
                 var name = pluginKey
                     .Replace("-", " ")
                     .ConvertToKebabCase()
                     .Replace("-", "_")
                     .ToLower();
 
-                // Join all summary lines into a single human-readable description.
+                // Combine the manifest summary lines into a single description string
+                // for the tool and client model.
                 var description = string.Join(' ', manifest.Summary);
 
-                // Convert each declared parameter in the manifest into a schema property.
+                // Convert all declared manifest parameters into schema entries keyed by name.
                 var pluginParameters = (manifest.Parameters ?? [])
                     .Select(ConvertToInputSchema)
                     .ToDictionary(i => i.Name, i => i);
 
-                // Likewise convert any additional manifest properties into schema properties.
+                // Convert all declared manifest properties into schema entries keyed by name.
                 var pluginProperties = (manifest.Properties ?? [])
                     .Select(ConvertToInputSchema)
                     .ToDictionary(i => i.Name, i => i);
 
-                // Build and return the final MCP tool model.
+                // Build the schema map for the Properties section.
+                // Property names are normalized to camelCase for the final input schema.
+                var properties = pluginProperties.ToDictionary(i => i.Value.Name.ConvertToCamelCase(), i => i.Value.Schema);
+
+                // Collect the required property names from the converted property schema entries.
+                var requiredProperties = pluginProperties
+                    .Where(i => i.Value.Required)
+                    .Select(i => i.Value.Name)
+                    .ToArray();
+
+                // Build the schema map for the Parameters section.
+                var parameters = pluginParameters.ToDictionary(i => i.Value.Name, i => i.Value.Schema);
+
+                // Collect the required parameter names from the converted parameter schema entries.
+                var requiredParameters = pluginParameters
+                    .Where(i => i.Value.Required)
+                    .Select(i => i.Value.Name)
+                    .ToArray();
+
+                // Build the input schema payload expected by the MCP client tool model.
+                // The schema is divided into two top-level sections:
+                // 1. Properties  - standard G4 engine fields.
+                // 2. Parameters  - tool-specific custom inputs.
+                var inputSchema = new
+                {
+                    Type = "object",
+                    Properties = new
+                    {
+                        Type = "object",
+                        Description = "Standard input fields defined by the G4 Engine API. " +
+                            "These provide the core operational context for the tool, such as element locators, attributes, and matching rules.",
+                        Properties = properties,
+                        Required = requiredProperties
+
+                    },
+                    Parameters = new
+                    {
+                        Type = "object",
+                        Description = "Custom, tool-specific parameters that extend or refine the tool's functionality. " +
+                            "These may include additional metadata, behavior modifiers, or configuration settings unique to this tool’s purpose.",
+                        Properties = parameters,
+                        Required = requiredParameters
+                    },
+                    Required = Array.Empty<string>()
+                };
+
+                // Serialize the generated schema object into JSON so it can be parsed
+                // into a JsonElement for the MCP client tool definition.
+                var json = JsonSerializer.Serialize(
+                    value: inputSchema,
+                    options: AppSettings.JsonOptions);
+
+                // Create and return the final MCP tool model.
+                // This includes:
+                // - the internal G4-facing metadata,
+                // - the normalized MCP tool name,
+                // - the human-readable description,
+                // - and the client tool definition with its generated input schema.
                 return new McpToolModel
                 {
                     Description = description,
@@ -199,31 +218,62 @@ namespace G4.Extensions
                         Type = "g4-tool"
                     },
                     Type = "g4-tool",
-                    InputSchema = new McpToolModel.ParameterSchemaModel
+                    ClientTool = new()
                     {
-                        Type = "object",
-                        Properties = new()
-                        {
-                            ["properties"] = new()
-                            {
-                                Type = ["object"],
-                                Description = "Standard input fields defined by the G4 Engine API. " +
-                                    "These provide the core operational context for the tool, such as element locators, attributes, and matching rules.",
-                                Properties = pluginProperties,
-                                Required = [.. pluginProperties.Where(i => i.Value.G4Required).Select(i => i.Value.Name)]
-                            },
-                            ["parameters"] = new()
-                            {
-                                Type = ["object"],
-                                Description = "Custom, tool-specific parameters that extend or refine the tool's functionality. " +
-                                    "These may include additional metadata, behavior modifiers, or configuration settings unique to this tool’s purpose.",
-                                Properties = pluginParameters,
-                                Required = [.. pluginParameters.Where(i => i.Value.G4Required).Select(i => i.Value.Name)]
-                            }
-                        },
-                        Required = []
+                        Description = description,
+                        InputSchema = JsonElement.Parse(json),
+                        Name = name,
+                        OutputSchema = null,
+                        // TODO: Take from context.integration
+                        Title = name,
                     }
                 };
+
+                // Parses and normalizes the 'Type' string into valid JSON schema types
+                static string[] ConvertType(string input)
+                {
+                    // List of approved JSON schema types for validation and normalization
+                    var approvedTypes = new[] { "null", "boolean", "object", "array", "number", "integer", "string" };
+
+                    // Create a set of approved types for input validation and normalization
+                    return [.. input
+                        .Split('|')
+                        .Select(i => (approvedTypes.Contains(i, StringComparer.OrdinalIgnoreCase) ? i.Trim().ToLower() : "string"))
+                        .Distinct()
+                        .Select(i => (i == "switch" || i == "bool") ? "boolean" : i)
+                        .Distinct()
+                    ];
+                }
+
+                // Converts a plugin parameter definition into an input schema element
+                // that can be used in the generated tool schema.
+                static (string Name, bool Required, JsonElement Schema) ConvertToInputSchema(PluginParameterModel parameterModel)
+                {
+                    // Check whether the current parameter represents the special Rules collection,
+                    // which requires an item schema for nested rule objects.
+                    var isRules = parameterModel.Name.Equals("Rules", StringComparison.OrdinalIgnoreCase);
+
+                    // Build the schema payload from the plugin parameter metadata.
+                    // The parameter name is normalized to snake_case, the type is mapped
+                    // into the target schema type, and the required flag is preserved.
+                    var schema = new
+                    {
+                        Description = string.Join(" ", parameterModel.Description ?? []),
+                        Type = ConvertType(parameterModel.Type),
+                        Items = isRules ? new
+                        {
+                            Description = "Array of nested rule objects—each item’s tool_name must first be looked up via find_tool to " +
+                                "retrieve its inputSchema before its parameters are included in the parent rule for invoke_g4_tool to process as one.",
+                            Type = "object"
+                        } : null
+                    };
+
+                    // Serialize the anonymous schema object into JSON using the shared serializer options.
+                    var json = JsonSerializer.Serialize(schema, AppSettings.JsonOptions);
+
+                    // Parse the JSON payload into a JsonElement and return it.
+                    return (parameterModel.Name, parameterModel.Mandatory, JsonElement.Parse(json));
+                }
             }
         }
 

@@ -1,0 +1,34 @@
+{
+    "name": "find_tool",
+    "title": "Find Tool",
+    "description": "Retrieves the metadata and schema for a tool. Uses the tool name if available, otherwise falls back to intent matching to find the best match.",
+    "inputSchema": {
+        "type": "object",
+        "properties": {
+            "intent": {
+                "type": "string",
+                "description": "The intent or purpose for which the tool is being sought."
+            },
+            "toolName": {
+                "type": "string",
+                "description": "The unique identifier of the tool to find."
+            }
+        },
+        "required": [
+            "intent",
+            "toolName"
+        ]
+    },
+    "outputSchema": {
+        "type": "object",
+        "properties": {
+            "tool": {
+                "type": "object",
+                "description": "The tool's metadata including name, description, input and output schemas."
+            }
+        },
+        "required": [
+            "tool"
+        ]
+    }
+}

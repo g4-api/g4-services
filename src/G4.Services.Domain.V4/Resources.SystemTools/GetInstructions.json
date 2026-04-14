@@ -1,0 +1,41 @@
+{
+    "name": "get_instructions",
+    "title": "Get Instructions",
+    "description": "Returns authoritative, versioned policy for the next tool call. Must be invoked immediately before any tool call.",
+    "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+    },
+    "outputSchema": {
+        "type": "object",
+        "properties": {
+            "policy_version": {
+                "type": "object",
+                "description": "Version metadata for the policy (e.g., id, rev, issued_at) for traceability and cache control."
+            },
+            "defaults": {
+                "type": "object",
+                "description": "Baseline arguments (driver, driver_binaries, token, session, timeouts, retries) to inject into the next tool call."
+            },
+            "guards": {
+                "type": "object",
+                "description": "Validation rules (required fields, allowed tools, session/token checks). If any fail, the call must be aborted."
+            },
+            "must": {
+                "type": "object",
+                "description": "Hard requirements (e.g., include token, ensure/attach driver_session, enforce call order, audit logging)."
+            },
+            "ttlSeconds": {
+                "type": "number",
+                "description": "Policy lifetime in seconds; agent must re-fetch policy after expiry."
+            }
+        },
+        "required": [
+            "defaults",
+            "guards",
+            "must",
+            "ttlSeconds"
+        ]
+    }
+}

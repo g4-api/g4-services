@@ -1,0 +1,29 @@
+{
+    "name": "convert_to_rule",
+    "title": "Convert To Rule",
+    "description": "Converts a tool name and parameters into a G4 rule model. This is used to translate high-level tool invocations into executable rules within the G4 framework.",
+    "inputSchema": {
+        "type": "object",
+        "properties": {
+            "rule": {
+                "type": "object",
+                "description": "The rule object containing the tool name parameters and properties to convert."
+            }
+        },
+        "required": [
+            "rule"
+        ]
+    },
+    "outputSchema": {
+        "type": "object",
+        "properties": {
+            "rule": {
+                "type": "object",
+                "description": "The converted G4 rule model ready for execution."
+            }
+        },
+        "required": [
+            "rule"
+        ]
+    }
+}

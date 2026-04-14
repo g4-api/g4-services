@@ -1,0 +1,39 @@
+{
+    "name": "get_application_dom",
+    "title": "Get Application DOM",
+    "description": "Retrieves the full HTML markup of the application's Document Object Model (DOM) for the current browser session. Useful for inspecting or analyzing the current state of the loaded web page.",
+    "inputSchema": {
+        "type": "object",
+        "properties": {
+            "driverSession": {
+                "type": "string",
+                "description": "The unique session ID associated with the current browser session. This ID is used to retrieve the appropriate browser driver for interacting with the session and performing automation tasks."
+            },
+            "token": {
+                "type": "string",
+                "description": "The G4 Authentication token used to authenticate the session initiation process. This is required to authorize the session creation."
+            }
+        },
+        "required": [
+            "driverSession",
+            "token"
+        ]
+    },
+    "outputSchema": {
+        "type": "object",
+        "properties": {
+            "driverSession": {
+                "type": "string",
+                "description": "The session key for the browser session from which the DOM was retrieved."
+            },
+            "value": {
+                "type": "string",
+                "description": "A string containing the full HTML markup of the page's Document Object Model."
+            }
+        },
+        "required": [
+            "driverSession",
+            "value"
+        ]
+    }
+}

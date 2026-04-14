@@ -2,6 +2,8 @@
 using G4.Models.Schema;
 using G4.Services.Domain.V4.Models.Schema;
 
+using ModelContextProtocol.Client;
+
 using System.Collections.Generic;
 using System.Text.Json;
 

@@ -5,6 +5,7 @@ using G4.Models.Schema;
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
 
@@ -29,11 +30,38 @@ namespace G4.Services.Domain.V4.Repositories
         /// <inheritdoc />
         public ToolOutputSchema FindTool(string toolName, object id)
         {
+            // Guard against invalid input early to produce a clear failure mode.
+            if (string.IsNullOrWhiteSpace(toolName))
+            {
+                throw new ArgumentException("Tool name must be provided.", nameof(toolName));
+            }
+
+            // Build the JSON-RPC style envelope expected by FindG4Tool
+            var envelope = new Dictionary<string, object>
+            {
+                ["arguments"] = new Dictionary<string, object>
+                {
+                    ["tool_name"] = toolName
+                }
+            };
+
+            // Create a JsonElement directly (no Serialize→Deserialize string round-trip).
+            // Uses your configured JsonOptions (snake_case, ignore nulls, etc.).
+            var arguments = JsonSerializer.SerializeToElement(envelope, ICopilotRepository.JsonOptions);
+
+            // Delegate to the generic finder with the shared registry and protocol version.
+            return FindTool(
+                tools: tools,
+                jsonrpcVersion: JsonRpcVersion,
+                arguments,
+                id);
+
+            // Encapsulate the logic for finding a tool and constructing the response.
             static ToolOutputSchema FindTool(
-                        IToolsRepository tools,
-                        string jsonrpcVersion,
-                        JsonElement arguments,
-                        object id)
+                IToolsRepository tools,
+                string jsonrpcVersion,
+                JsonElement arguments,
+                object id)
             {
                 // Extract the tool name from the arguments.
                 var toolName = arguments.TryGetProperty("tool_name", out var toolNameOut)
@@ -71,32 +99,6 @@ namespace G4.Services.Domain.V4.Repositories
                 // Return the response, either with the tool data or an error.
                 return response;
             }
-
-            // Guard against invalid input early to produce a clear failure mode.
-            if (string.IsNullOrWhiteSpace(toolName))
-            {
-                throw new ArgumentException("Tool name must be provided.", nameof(toolName));
-            }
-
-            // Build the JSON-RPC style envelope expected by FindG4Tool
-            var envelope = new Dictionary<string, object>
-            {
-                ["arguments"] = new Dictionary<string, object>
-                {
-                    ["tool_name"] = toolName
-                }
-            };
-
-            // Create a JsonElement directly (no Serialize→Deserialize string round-trip).
-            // Uses your configured JsonOptions (snake_case, ignore nulls, etc.).
-            var arguments = JsonSerializer.SerializeToElement(envelope, ICopilotRepository.JsonOptions);
-
-            // Delegate to the generic finder with the shared registry and protocol version.
-            return FindTool(
-                tools: tools,
-                jsonrpcVersion: JsonRpcVersion,
-                arguments,
-                id);
         }
 
         /// <inheritdoc />
@@ -128,7 +130,7 @@ namespace G4.Services.Domain.V4.Repositories
                 Result = new ToolOutputSchema.ToolsResultSchema()
                 {
                     // Provide the list of tools contained in the registry as the result.
-                    Tools = toolsCollection.Values
+                    Tools = toolsCollection.Values.Select(i=>i.ClientTool)
                 }
             };
         }

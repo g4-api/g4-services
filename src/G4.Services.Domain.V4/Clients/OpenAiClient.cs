@@ -58,7 +58,7 @@ namespace G4.Services.Domain.V4.Clients
             var jsonContent = await response.Content.ReadAsStringAsync();
 
             // Deserialize the JSON into a strongly-typed model list using configured options
-            var models = JsonSerializer.Deserialize<OpenAiModelListResponse>(jsonContent, AppSettings.OpenAiJsonOptions);
+            var models = JsonSerializer.Deserialize<OpenAiModelListResponse>(jsonContent, AppSettings.JsonOptions);
 
             // Apply the provided prefix to each model ID
             foreach (var model in models.Data)
@@ -162,7 +162,7 @@ namespace G4.Services.Domain.V4.Clients
             var apiKey = AppSettings.OpenAi.ApiKey;
 
             // Serialize the completions payload using the configured JSON options
-            var content = JsonSerializer.Serialize(completions, AppSettings.OpenAiJsonOptions);
+            var content = JsonSerializer.Serialize(completions, AppSettings.JsonOptions);
 
             // Wrap the serialized content in a StringContent with application/json media type
             var stringContent = new StringContent(content, Encoding.UTF8, MediaTypeNames.Application.Json);
