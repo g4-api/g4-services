@@ -6,9 +6,6 @@ using HtmlAgilityPack;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.OpenApi;
 
-using ModelContextProtocol.Client;
-using ModelContextProtocol.Protocol;
-
 //using Newtonsoft.Json;
 
 using System;

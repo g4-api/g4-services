@@ -1,7 +1,5 @@
-﻿using ModelContextProtocol.Client;
-using ModelContextProtocol.Protocol;
+﻿using ModelContextProtocol.Protocol;
 
-using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
 namespace G4.Models

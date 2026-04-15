@@ -2,6 +2,7 @@
 using G4.Cache;
 using G4.Models;
 using G4.Models.Schema;
+using G4.Settings;
 
 using System;
 using System.Collections.Generic;
@@ -19,7 +20,7 @@ namespace G4.Services.Domain.V4.Repositories
     /// <param name="clientFactory">Factory to create <see cref="HttpClient"/> instances with named configurations.</param>
     /// <param name="cache">The <see cref="CacheManager"/> instance containing plugin caches.</param>
     /// <param name="client">The <see cref="G4Client"/> used for any external service interactions.</param>
-    public class CopilotRepository(IToolsRepository tools) : ICopilotRepository
+    public class McpRepository(IToolsRepository tools) : IMcpRepository
     {
         #region *** Constants    ***
         // The JSON-RPC protocol version used in all responses.
@@ -47,7 +48,7 @@ namespace G4.Services.Domain.V4.Repositories
 
             // Create a JsonElement directly (no Serialize→Deserialize string round-trip).
             // Uses your configured JsonOptions (snake_case, ignore nulls, etc.).
-            var arguments = JsonSerializer.SerializeToElement(envelope, ICopilotRepository.JsonOptions);
+            var arguments = JsonSerializer.SerializeToElement(envelope, IMcpRepository.JsonOptions);
 
             // Delegate to the generic finder with the shared registry and protocol version.
             return FindTool(
@@ -116,7 +117,7 @@ namespace G4.Services.Domain.V4.Repositories
 
             // Create a JsonElement directly (no Serialize→Deserialize string round-trip).
             // Uses your configured JsonOptions (snake_case, ignore nulls, etc.).
-            var parameters = JsonSerializer.SerializeToElement(envelope, ICopilotRepository.JsonOptions);
+            var parameters = JsonSerializer.SerializeToElement(envelope, IMcpRepository.JsonOptions);
 
             // Delegate to the tools repository with the JSON parameters.
             var toolsCollection = tools.GetTools(parameters);
@@ -136,7 +137,7 @@ namespace G4.Services.Domain.V4.Repositories
         }
 
         /// <inheritdoc />
-        public CopilotInitializeResponseModel Initialize(object id) => new()
+        public McpInitializeResponseModel Initialize(object id) => new()
         {
             // Set the request ID and JSON-RPC version for the response.
             Id = id,
@@ -160,7 +161,7 @@ namespace G4.Services.Domain.V4.Repositories
                 // Define the server information (name and version).
                 ServerInfo = new()
                 {
-                    Name = "g4-engine-copilot-mcp",
+                    Name = "g4-engine-mcp",
                     Version = "4.0.0"
                 }
             }
@@ -191,7 +192,7 @@ namespace G4.Services.Domain.V4.Repositories
                         new
                         {
                             Type = "text",
-                            Text = JsonSerializer.Serialize(result, ICopilotRepository.JsonOptions)
+                            Text = JsonSerializer.Serialize(result, AppSettings.JsonOptions)
                         }
                     },
 

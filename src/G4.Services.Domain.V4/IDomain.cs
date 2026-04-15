@@ -47,9 +47,9 @@ namespace G4.Services.Domain.V4
         CacheManager Cache { get; set; }
 
         /// <summary>
-        /// Gets or sets the repository for Copilot integration and data operations.
+        /// Gets or sets the repository for MCP integration and data operations.
         /// </summary>
-        ICopilotRepository Copilot { get; set; }
+        IMcpRepository Mcp { get; set; }
 
         /// <summary>
         /// Gets or sets the hosting environment information (e.g., Development, Production).
@@ -142,7 +142,7 @@ namespace G4.Services.Domain.V4
             builder.Services.AddSingleton<IBotsRepository, BotsRepository>();
 
             // Register Copilot repository as a singleton service
-            builder.Services.AddSingleton<ICopilotRepository, CopilotRepository>();
+            builder.Services.AddSingleton<IMcpRepository, McpRepository>();
 
             // Register open AI client as a singleton service implementing IOpenAiClient interface
             builder.Services.AddSingleton<IOpenAiClient, OpenAiClient>();

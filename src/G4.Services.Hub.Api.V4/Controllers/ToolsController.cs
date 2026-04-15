@@ -1,6 +1,7 @@
 ﻿using G4.Models;
 using G4.Services.Domain.V4;
 using G4.Services.Domain.V4.Repositories;
+using G4.Settings;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -107,22 +108,22 @@ namespace G4.Services.Hub.Api.V4.Controllers
                 "The Copilot request payload following the JSON-RPC structure. " +
                 "It contains the method to invoke (e.g., 'initialize', 'tools/list', 'tools/call'), " +
                 "the request identifier, and any required parameters for the method execution."
-            )] CopilotRequestModel copilotRequest)
+            )] McpRequestModel copilotRequest)
         {
             // Dispatch based on the JSON-RPC method
             return copilotRequest.Method switch
             {
                 "initialize" => NewContentResult(
                     StatusCodes.Status200OK,
-                    value: _domain.Copilot.Initialize(copilotRequest.Id),
-                    options: ICopilotRepository.G4JsonOptions),
+                    value: _domain.Mcp.Initialize(copilotRequest.Id),
+                    options: IMcpRepository.G4JsonOptions),
                 "notifications/initialized" => Accepted(),
                 "tools/list" => NewContentResult(
                     StatusCodes.Status200OK,
-                    value: _domain.Copilot.GetTools(copilotRequest.Id, intent: default, "system-tool")),
+                    value: _domain.Mcp.GetTools(copilotRequest.Id, intent: default, "system-tool")),
                 "tools/call" => NewContentResult(
                     StatusCodes.Status200OK,
-                    value: _domain.Copilot.InvokeTool(copilotRequest.Parameters, copilotRequest.Id)),
+                    value: _domain.Mcp.InvokeTool(copilotRequest.Parameters, copilotRequest.Id)),
                 _ => NewContentResult(
                     StatusCodes.Status400BadRequest,
                     value: new { error = $"Unknown method '{copilotRequest.Method}'" })
@@ -146,7 +147,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         public IActionResult SyncTools()
         {
             // Update the list of tools available to the Copilot agent
-            _domain.Copilot.SyncTools();
+            _domain.Mcp.SyncTools();
 
             // Return an empty 204 No Content response
             return NoContent();
@@ -156,7 +157,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         // Creates a new ContentResult with a JSON-formatted response body.
         private static ContentResult NewContentResult(int statusCode, object value)
         {
-            return NewContentResult(statusCode, value, ICopilotRepository.JsonOptions);
+            return NewContentResult(statusCode, value, AppSettings.JsonOptions);
         }
 
         // Creates a new ContentResult with a JSON-formatted response body.

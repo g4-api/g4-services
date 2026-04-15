@@ -1,5 +1,4 @@
-﻿using ModelContextProtocol.Client;
-using ModelContextProtocol.Protocol;
+﻿using ModelContextProtocol.Protocol;
 
 using Swashbuckle.AspNetCore.Annotations;
 

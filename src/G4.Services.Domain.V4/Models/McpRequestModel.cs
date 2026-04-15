@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 
 namespace G4.Models
 {
-    public class CopilotRequestModel
+    public class McpRequestModel
     {
         public object Id { get; set; }
 

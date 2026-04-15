@@ -5,9 +5,16 @@
     "inputSchema": {
         "type": "object",
         "properties": {
-            "driverParameters": {
+            "capabilities": {
                 "type": "object",
-                "description": "Optional parameters for configuring the browser driver, such as headless mode, window size, or custom capabilities."
+                "description": "W3C WebDriver capabilities object applied to every session match (alwaysMatch). Use to set browser name, platform, or vendor-specific options such as headless mode, window size, or custom browser arguments."
+            },
+            "firstMatch": {
+                "type": "array",
+                "description": "An ordered list of W3C WebDriver capability objects. The driver selects the first set it can satisfy, allowing fallback configurations across browsers or environments.",
+                "items": {
+                    "type": "object"
+                }
             },
             "driver": {
                 "type": "string",

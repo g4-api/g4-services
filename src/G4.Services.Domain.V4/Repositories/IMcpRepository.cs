@@ -11,7 +11,7 @@ namespace G4.Services.Domain.V4.Repositories
     /// Defines methods for persisting and retrieving Copilot JSON-RPC operations,
     /// including tool discovery, initialization, and invocation.
     /// </summary>
-    public interface ICopilotRepository
+    public interface IMcpRepository
     {
         /// <summary>
         /// Ges the JSON serialization options used for Copilot operations.
@@ -118,8 +118,8 @@ namespace G4.Services.Domain.V4.Repositories
         /// and server information.
         /// </summary>
         /// <param name="id">The JSON-RPC request identifier to correlate response.</param>
-        /// <returns>A <see cref="CopilotInitializeResponseModel"/> containing protocol version,supported features, and server details.</returns>
-        CopilotInitializeResponseModel Initialize(object id);
+        /// <returns>A <see cref="McpInitializeResponseModel"/> containing protocol version,supported features, and server details.</returns>
+        McpInitializeResponseModel Initialize(object id);
 
         /// <summary>
         /// Invokes the specified tool with the provided parameters and returns a JSON-RPC response containing the tool's result.

@@ -33,7 +33,7 @@ namespace G4.Services.Domain.V4
         public CacheManager Cache { get; set; } = resourcesAdapter.Cache;
 
         /// <inheritdoc />
-        public ICopilotRepository Copilot { get; set; } = g4Adapter.Copilot;
+        public IMcpRepository Mcp { get; set; } = g4Adapter.Copilot;
 
         /// <inheritdoc />
         public IWebHostEnvironment Environment { get; set; } = aspAdapter.Environment;
@@ -102,7 +102,7 @@ namespace G4.Services.Domain.V4
     /// </summary>
     internal class G4Adapter(
         IBotsRepository bots,
-        ICopilotRepository copilot,
+        IMcpRepository copilot,
         G4Client g4,
         IOpenAiClient openAi,
         IToolsRepository tools)
@@ -117,7 +117,7 @@ namespace G4.Services.Domain.V4
         /// Repository for managing copilot-related data and interactions.
         /// Allows handling copilot-related functionalities like training, interaction, and state management.
         /// </summary>
-        public ICopilotRepository Copilot { get; set; } = copilot;
+        public IMcpRepository Copilot { get; set; } = copilot;
 
         /// <summary>
         /// The G4 client instance used for interacting with the G4 platform.
