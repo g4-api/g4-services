@@ -1,0 +1,1756 @@
+/* ============================================================
+   G4™ Services — Swagger UI Dark Theme
+   Complete override of swagger-ui.css + index.css
+   Applies the G4 dark / electric-blue design system.
+
+   Strategy: every selector that sets a color, background,
+   border, box-shadow, fill, stroke, opacity or font in the
+   original stylesheet is overridden here so nothing leaks
+   through from the default light theme.
+   ============================================================ */
+
+/* ── 1. Design tokens ─────────────────────────────────────── */
+:root {
+    --g4-bg:            #050508;
+    --g4-surface:       #11111C;
+    --g4-surface2:      #14142A;
+    --g4-border:        #0077B6;
+    --g4-border-hi:     #00B4FF;
+    --g4-blue:          #00B4FF;
+    --g4-blue-dim:      #0077B6;
+    --g4-blue-glow:     rgba(0, 180, 255, 0.22);
+    --g4-text:          #B8CCD8;
+    --g4-muted:         #4A6070;
+    --g4-bright:        #FFFFFF;
+    --g4-green:         #00E676;
+    --g4-red:           #FF3D3D;
+    --g4-amber:         #E5A020;
+    --g4-font:          'Inter', 'Segoe UI', system-ui, sans-serif;
+    --g4-mono:          'Consolas', 'Fira Mono', monospace;
+    --g4-r:             3px;
+}
+
+/* ── 2. index.css page shell ──────────────────────────────── */
+html {
+    overflow-y: scroll;
+}
+
+body {
+    background: var(--g4-bg);
+    color: var(--g4-text);
+    margin: 0;
+}
+
+/* ── 3. Swagger-UI root ───────────────────────────────────── */
+.swagger-ui,
+.swagger-ui * {
+    -webkit-font-smoothing: antialiased;
+}
+
+.swagger-ui {
+    color: var(--g4-text);
+    font-family: var(--g4-font);
+}
+
+/* reset mark from default #ff0 / #000 */
+.swagger-ui mark {
+    background-color: rgba(229, 160, 32, 0.35);
+    color: var(--g4-bright);
+}
+
+/* fonts */
+.swagger-ui button,
+.swagger-ui input,
+.swagger-ui optgroup,
+.swagger-ui select,
+.swagger-ui textarea {
+    font-family: var(--g4-font);
+}
+
+.swagger-ui .code,
+.swagger-ui code,
+.swagger-ui kbd,
+.swagger-ui samp,
+.swagger-ui pre {
+    font-family: var(--g4-mono);
+}
+
+/* ── 4. Topbar ────────────────────────────────────────────── */
+.swagger-ui .topbar {
+    background-color: var(--g4-surface);
+    border-bottom: 1px solid var(--g4-border);
+    padding: 6px 0;
+}
+
+.swagger-ui .topbar a {
+    color: var(--g4-blue);
+    font-family: var(--g4-font);
+}
+
+.swagger-ui .topbar .download-url-wrapper input[type=text] {
+    background: var(--g4-bg);
+    border: 2px solid var(--g4-border);
+    border-radius: var(--g4-r);
+    color: var(--g4-text);
+}
+
+.swagger-ui .topbar .download-url-wrapper input[type=text]:focus {
+    border-color: var(--g4-border-hi);
+    outline: none;
+    box-shadow: 0 0 0 2px var(--g4-blue-glow);
+}
+
+.swagger-ui .topbar .download-url-wrapper .select-label {
+    color: var(--g4-text);
+}
+
+.swagger-ui .topbar .download-url-wrapper .select-label select {
+    background: var(--g4-surface);
+    border: 2px solid var(--g4-border);
+    color: var(--g4-text);
+}
+
+.swagger-ui .topbar .download-url-wrapper .download-url-button {
+    background: var(--g4-blue-dim);
+    border-radius: var(--g4-r);
+    color: var(--g4-bright);
+    font-family: var(--g4-font);
+}
+
+.swagger-ui .topbar .download-url-wrapper .download-url-button:hover {
+    background: var(--g4-border-hi);
+}
+
+.swagger-ui .topbar .download-url-wrapper .failed {
+    color: var(--g4-red);
+}
+
+.swagger-ui .topbar .download-url-wrapper .loading {
+    color: var(--g4-muted);
+}
+
+.swagger-ui .topbar .dark-mode-toggle button svg {
+    fill: var(--g4-blue);
+}
+
+/* ── 5. Info block ────────────────────────────────────────── */
+.swagger-ui .info h1,
+.swagger-ui .info h2,
+.swagger-ui .info h3,
+.swagger-ui .info h4,
+.swagger-ui .info h5,
+.swagger-ui .info li,
+.swagger-ui .info p,
+.swagger-ui .info table {
+    color: var(--g4-text);
+    font-family: var(--g4-font);
+}
+
+.swagger-ui .info li,
+.swagger-ui .info p,
+.swagger-ui .info pre,
+.swagger-ui .info table {
+    font-size: 14px;
+}
+
+.swagger-ui .info .title {
+    color: var(--g4-blue);
+    font-family: var(--g4-font);
+    font-size: 36px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+.swagger-ui .info .title small {
+    background: var(--g4-surface2);
+    border: 1px solid var(--g4-border);
+    border-radius: 100px;
+}
+
+.swagger-ui .info .title small.version-stamp {
+    background-color: var(--g4-blue-dim);
+}
+
+.swagger-ui .info .title small pre {
+    color: var(--g4-bright);
+    font-family: var(--g4-font);
+}
+
+.swagger-ui .info .base-url {
+    color: var(--g4-muted);
+    font-family: var(--g4-mono);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.swagger-ui .info a {
+    color: var(--g4-blue);
+    font-family: var(--g4-font);
+    font-size: 14px;
+}
+
+.swagger-ui .info a:hover {
+    color: var(--g4-bright);
+}
+
+.swagger-ui .info .errors-wrapper {
+    background: rgba(255, 61, 61, 0.10);
+    border: 2px solid var(--g4-red);
+}
+
+.swagger-ui .info .errors-wrapper h4,
+.swagger-ui .info .errors-wrapper span {
+    color: var(--g4-text);
+}
+
+.swagger-ui .info .errors-wrapper .btn.errors__clear-btn {
+    border-color: var(--g4-red);
+    color: var(--g4-red);
+}
+
+/* ── 6. Scheme container ──────────────────────────────────── */
+.swagger-ui .scheme-container {
+    background: var(--g4-surface);
+    border-bottom: 1px solid var(--g4-border);
+    box-shadow: none;
+    padding: 10px 20px;
+}
+
+.swagger-ui .scheme-container .schemes > .schemes-server-container > label,
+.swagger-ui .scheme-container .schemes > label {
+    color: var(--g4-muted);
+    font-family: var(--g4-font);
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.swagger-ui .scheme-container .btn.authorize {
+    border-color: var(--g4-green);
+    color: var(--g4-green);
+}
+
+.swagger-ui .scheme-container .btn.authorize svg {
+    fill: var(--g4-green);
+}
+
+/* ── 7. Servers label ─────────────────────────────────────── */
+.swagger-ui .servers > label {
+    color: var(--g4-muted);
+    font-family: var(--g4-font);
+    font-size: 12px;
+}
+
+/* ── 8. Filter bar ────────────────────────────────────────── */
+.swagger-ui .filter .operation-filter-input {
+    background: var(--g4-surface);
+    border: 2px solid var(--g4-border);
+    border-radius: var(--g4-r);
+    color: var(--g4-text);
+    font-family: var(--g4-font);
+    width: 100%;
+    padding: 6px 10px;
+}
+
+.swagger-ui .filter .operation-filter-input:focus {
+    border-color: var(--g4-border-hi);
+    outline: none;
+    box-shadow: 0 0 0 2px var(--g4-blue-glow);
+}
+
+.swagger-ui .filter .failed {
+    color: var(--g4-red);
+}
+
+.swagger-ui .filter .loading {
+    color: var(--g4-muted);
+}
+
+/* ── 9. Operation tag section headers ─────────────────────── */
+.swagger-ui .opblock-tag {
+    border-bottom: 1px solid var(--g4-border);
+    color: var(--g4-bright);
+    font-family: var(--g4-font);
+    font-size: 20px;
+    font-weight: 600;
+}
+
+.swagger-ui .opblock-tag:hover {
+    background: rgba(0, 180, 255, 0.04);
+}
+
+.swagger-ui .opblock-tag small {
+    color: var(--g4-muted);
+    font-family: var(--g4-font);
+    font-size: 14px;
+    font-weight: 400;
+}
+
+.swagger-ui .opblock-tag a.link {
+    color: var(--g4-blue);
+}
+
+/* ── 10. Operation blocks — shared ───────────────────────── */
+.swagger-ui .opblock {
+    border: 1px solid var(--g4-border);
+    border-radius: var(--g4-r);
+    box-shadow: none;
+}
+
+.swagger-ui .opblock.is-open .opblock-summary {
+    border-bottom: 1px solid var(--g4-border);
+}
+
+.swagger-ui .opblock .opblock-section-header {
+    background: var(--g4-surface2);
+    border-top: 1px solid var(--g4-border);
+    border-bottom: 1px solid var(--g4-border);
+    box-shadow: none;
+}
+
+.swagger-ui .opblock .opblock-section-header > label,
+.swagger-ui .opblock .opblock-section-header h4 {
+    color: var(--g4-text);
+    font-family: var(--g4-font);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.swagger-ui .opblock .opblock-section-header .try-out__btn {
+    border-color: var(--g4-border);
+    color: var(--g4-text);
+}
+
+.swagger-ui .opblock .opblock-section-header .try-out__btn.cancel {
+    border-color: var(--g4-red);
+    color: var(--g4-red);
+}
+
+.swagger-ui .opblock .opblock-summary-method {
+    background: var(--g4-surface2);
+    border-radius: var(--g4-r);
+    color: var(--g4-bright);
+    font-family: var(--g4-font);
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.swagger-ui .opblock .opblock-summary-operation-id,
+.swagger-ui .opblock .opblock-summary-path,
+.swagger-ui .opblock .opblock-summary-path__deprecated {
+    color: var(--g4-bright);
+    font-family: var(--g4-mono);
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.swagger-ui .opblock .opblock-summary-operation-id {
+    font-size: 14px;
+}
+
+.swagger-ui .opblock .opblock-summary-description {
+    color: var(--g4-muted);
+    font-family: var(--g4-font);
+    font-size: 13px;
+}
+
+.swagger-ui .opblock .tab-header .tab-item.active h4 span:after {
+    background: var(--g4-border-hi);
+}
+
+.swagger-ui .opblock-description-wrapper,
+.swagger-ui .opblock-external-docs-wrapper,
+.swagger-ui .opblock-title_normal {
+    color: var(--g4-text);
+    font-family: var(--g4-font);
+    font-size: 12px;
+}
+
+.swagger-ui .opblock-description-wrapper h4,
+.swagger-ui .opblock-external-docs-wrapper h4,
+.swagger-ui .opblock-title_normal h4 {
+    color: var(--g4-text);
+    font-family: var(--g4-font);
+    font-size: 12px;
+}
+
+.swagger-ui .opblock-description-wrapper p,
+.swagger-ui .opblock-external-docs-wrapper p,
+.swagger-ui .opblock-title_normal p {
+    color: var(--g4-text);
+    font-family: var(--g4-font);
+    font-size: 14px;
+}
+
+.swagger-ui .opblock .opblock-external-docs a.link {
+    color: var(--g4-blue);
+}
+
+.swagger-ui .opblock .body-param-options label span,
+.swagger-ui .opblock .opblock-description-wrapper i,
+.swagger-ui .opblock .opblock-description-wrapper p,
+.swagger-ui .opblock .opblock-external-docs-wrapper,
+.swagger-ui .opblock .opblock-summary-description,
+.swagger-ui .opblock .opblock-summary-operation-id,
+.swagger-ui .opblock .opblock-summary-path,
+.swagger-ui .opblock .opblock-summary-path__deprecated,
+.swagger-ui .opblock .opblock-title_normal,
+.swagger-ui .opblock .parameter__in,
+.swagger-ui .opblock .parameter__name,
+.swagger-ui .opblock .parameter__type,
+.swagger-ui .opblock .parameter__type .prop-format,
+.swagger-ui .opblock .response-col_links,
+.swagger-ui .opblock .response-col_status,
+.swagger-ui .opblock .response-col_undocumented {
+    color: var(--g4-text);
+}
+
+.swagger-ui .opblock .parameter__name.required span,
+.swagger-ui .opblock .parameter__name.required:after {
+    color: var(--g4-red);
+}
+
+.swagger-ui .opblock .parameter__empty_value_toggle {
+    color: var(--g4-text);
+}
+
+.swagger-ui .opblock .btn.execute {
+    background: var(--g4-blue);
+    border-color: var(--g4-blue);
+    color: var(--g4-bg);
+}
+
+.swagger-ui .opblock .btn.btn-clear {
+    border-color: var(--g4-border);
+    color: var(--g4-text);
+}
+
+.swagger-ui .opblock .btn.json-schema-form-item-add,
+.swagger-ui .opblock .btn.json-schema-form-item-remove {
+    border-color: var(--g4-border);
+    color: var(--g4-text);
+}
+
+.swagger-ui .opblock .validation-errors.errors-wrapper {
+    background: rgba(255, 61, 61, 0.10);
+    border-color: var(--g4-red);
+    color: var(--g4-text);
+}
+
+.swagger-ui .opblock .highlight-code pre.microlight,
+.swagger-ui .opblock pre.microlight,
+.swagger-ui .opblock-body pre.microlight {
+    background: var(--g4-bg);
+    color: var(--g4-text);
+    font-family: var(--g4-mono);
+    font-weight: 400;
+    font-size: 12px;
+    border: 1px solid var(--g4-border);
+    border-radius: var(--g4-r);
+    padding: 10px;
+}
+
+.swagger-ui .opblock .curl-command .btn {
+    background: var(--g4-surface2);
+    border-color: var(--g4-border);
+    color: var(--g4-text);
+}
+
+.swagger-ui .opblock .curl-command .btn.active {
+    background: var(--g4-bg);
+    color: var(--g4-bright);
+}
+
+.swagger-ui .opblock .model-example .tab button {
+    color: var(--g4-text);
+}
+
+.swagger-ui .opblock .model-example .tabitem:after {
+    background: var(--g4-border);
+}
+
+.swagger-ui .opblock .responses-inner h4,
+.swagger-ui .opblock .responses-inner h5 {
+    color: var(--g4-text);
+    font-family: var(--g4-font);
+    font-size: 12px;
+}
+
+.swagger-ui .opblock .response-control-media-type--accept-controller select.content-type {
+    border-color: var(--g4-green);
+}
+
+.swagger-ui .opblock .response-control-media-type--accept-controller .response-control-media-type__accept-message {
+    color: var(--g4-green);
+}
+
+/* ── 11. Operation blocks — HTTP method colors ────────────── */
+
+/* GET — electric blue */
+.swagger-ui .opblock.opblock-get {
+    background: rgba(0, 180, 255, 0.04);
+    border-color: rgba(0, 180, 255, 0.30);
+}
+.swagger-ui .opblock.opblock-get .opblock-summary {
+    border-color: rgba(0, 180, 255, 0.30);
+}
+.swagger-ui .opblock.opblock-get .opblock-summary-method {
+    background: #0077B6;
+    color: #fff;
+}
+.swagger-ui .opblock.opblock-get .opblock-section-header {
+    background: rgba(0, 180, 255, 0.06);
+    border-color: rgba(0, 180, 255, 0.20);
+}
+.swagger-ui .opblock.opblock-get .opblock-section-header .tab-header .tab-item .opblock-title span:after {
+    background: var(--g4-blue);
+}
+.swagger-ui .opblock.opblock-get thead tr td,
+.swagger-ui .opblock.opblock-get thead tr th {
+    border-color: rgba(0, 180, 255, 0.20);
+    opacity: 1;
+}
+.swagger-ui .opblock.opblock-get .opblock-body > .opblock-description-wrapper,
+.swagger-ui .opblock.opblock-get .opblock-body > .opblock-title_normal {
+    border-top: 1px solid rgba(0, 180, 255, 0.20);
+}
+
+/* POST — green */
+.swagger-ui .opblock.opblock-post {
+    background: rgba(0, 230, 118, 0.04);
+    border-color: rgba(0, 230, 118, 0.25);
+}
+.swagger-ui .opblock.opblock-post .opblock-summary {
+    border-color: rgba(0, 230, 118, 0.25);
+}
+.swagger-ui .opblock.opblock-post .opblock-summary-method {
+    background: #00874A;
+    color: #fff;
+}
+.swagger-ui .opblock.opblock-post .opblock-section-header {
+    background: rgba(0, 230, 118, 0.06);
+    border-color: rgba(0, 230, 118, 0.20);
+}
+.swagger-ui .opblock.opblock-post .opblock-section-header .tab-header .tab-item .opblock-title span:after {
+    background: var(--g4-green);
+}
+.swagger-ui .opblock.opblock-post thead tr td,
+.swagger-ui .opblock.opblock-post thead tr th {
+    border-color: rgba(0, 230, 118, 0.20);
+    opacity: 1;
+}
+.swagger-ui .opblock.opblock-post .opblock-body > .opblock-description-wrapper,
+.swagger-ui .opblock.opblock-post .opblock-body > .opblock-title_normal {
+    border-top: 1px solid rgba(0, 230, 118, 0.20);
+}
+
+/* PUT — amber */
+.swagger-ui .opblock.opblock-put {
+    background: rgba(229, 160, 32, 0.04);
+    border-color: rgba(229, 160, 32, 0.25);
+}
+.swagger-ui .opblock.opblock-put .opblock-summary {
+    border-color: rgba(229, 160, 32, 0.25);
+}
+.swagger-ui .opblock.opblock-put .opblock-summary-method {
+    background: #C8900A;
+    color: #fff;
+}
+.swagger-ui .opblock.opblock-put .opblock-section-header {
+    background: rgba(229, 160, 32, 0.08);
+    border-color: rgba(229, 160, 32, 0.20);
+}
+.swagger-ui .opblock.opblock-put .opblock-section-header .tab-header .tab-item .opblock-title span:after {
+    background: var(--g4-amber);
+}
+.swagger-ui .opblock.opblock-put thead tr td,
+.swagger-ui .opblock.opblock-put thead tr th {
+    border-color: rgba(229, 160, 32, 0.20);
+    opacity: 1;
+}
+.swagger-ui .opblock.opblock-put .opblock-body > .opblock-description-wrapper,
+.swagger-ui .opblock.opblock-put .opblock-body > .opblock-title_normal {
+    border-top: 1px solid rgba(229, 160, 32, 0.20);
+}
+
+/* DELETE — red */
+.swagger-ui .opblock.opblock-delete {
+    background: rgba(255, 61, 61, 0.04);
+    border-color: rgba(255, 61, 61, 0.25);
+}
+.swagger-ui .opblock.opblock-delete .opblock-summary {
+    border-color: rgba(255, 61, 61, 0.25);
+}
+.swagger-ui .opblock.opblock-delete .opblock-summary-method {
+    background: #C0392B;
+    color: #fff;
+}
+.swagger-ui .opblock.opblock-delete .opblock-section-header {
+    background: rgba(255, 61, 61, 0.06);
+    border-color: rgba(255, 61, 61, 0.20);
+}
+.swagger-ui .opblock.opblock-delete .opblock-section-header .tab-header .tab-item .opblock-title span:after {
+    background: var(--g4-red);
+}
+.swagger-ui .opblock.opblock-delete thead tr td,
+.swagger-ui .opblock.opblock-delete thead tr th {
+    border-color: rgba(255, 61, 61, 0.20);
+    opacity: 1;
+}
+.swagger-ui .opblock.opblock-delete .opblock-body > .opblock-description-wrapper,
+.swagger-ui .opblock.opblock-delete .opblock-body > .opblock-title_normal {
+    border-top: 1px solid rgba(255, 61, 61, 0.20);
+}
+
+/* PATCH — teal */
+.swagger-ui .opblock.opblock-patch {
+    background: rgba(0, 212, 200, 0.04);
+    border-color: rgba(0, 212, 200, 0.25);
+}
+.swagger-ui .opblock.opblock-patch .opblock-summary {
+    border-color: rgba(0, 212, 200, 0.25);
+}
+.swagger-ui .opblock.opblock-patch .opblock-summary-method {
+    background: #007B85;
+    color: #fff;
+}
+.swagger-ui .opblock.opblock-patch .opblock-section-header {
+    background: rgba(0, 212, 200, 0.06);
+    border-color: rgba(0, 212, 200, 0.20);
+}
+.swagger-ui .opblock.opblock-patch .opblock-section-header .tab-header .tab-item .opblock-title span:after {
+    background: #00D4C8;
+}
+.swagger-ui .opblock.opblock-patch thead tr td,
+.swagger-ui .opblock.opblock-patch thead tr th {
+    border-color: rgba(0, 212, 200, 0.20);
+    opacity: 1;
+}
+.swagger-ui .opblock.opblock-patch .opblock-body > .opblock-description-wrapper,
+.swagger-ui .opblock.opblock-patch .opblock-body > .opblock-title_normal {
+    border-top: 1px solid rgba(0, 212, 200, 0.20);
+}
+
+/* HEAD — purple */
+.swagger-ui .opblock.opblock-head {
+    background: rgba(168, 85, 247, 0.04);
+    border-color: rgba(168, 85, 247, 0.25);
+}
+.swagger-ui .opblock.opblock-head .opblock-summary {
+    border-color: rgba(168, 85, 247, 0.25);
+}
+.swagger-ui .opblock.opblock-head .opblock-summary-method {
+    background: #6D28D9;
+    color: #fff;
+}
+.swagger-ui .opblock.opblock-head .opblock-section-header {
+    background: rgba(168, 85, 247, 0.06);
+    border-color: rgba(168, 85, 247, 0.20);
+}
+.swagger-ui .opblock.opblock-head .opblock-section-header .tab-header .tab-item .opblock-title span:after {
+    background: #A855F7;
+}
+.swagger-ui .opblock.opblock-head thead tr td,
+.swagger-ui .opblock.opblock-head thead tr th {
+    border-color: rgba(168, 85, 247, 0.20);
+    opacity: 1;
+}
+.swagger-ui .opblock.opblock-head .opblock-body > .opblock-description-wrapper,
+.swagger-ui .opblock.opblock-head .opblock-body > .opblock-title_normal {
+    border-top: 1px solid rgba(168, 85, 247, 0.20);
+}
+
+/* OPTIONS — dim blue */
+.swagger-ui .opblock.opblock-options {
+    background: rgba(0, 119, 182, 0.06);
+    border-color: rgba(0, 119, 182, 0.30);
+}
+.swagger-ui .opblock.opblock-options .opblock-summary {
+    border-color: rgba(0, 119, 182, 0.30);
+}
+.swagger-ui .opblock.opblock-options .opblock-summary-method {
+    background: #004D80;
+    color: #fff;
+}
+.swagger-ui .opblock.opblock-options .opblock-section-header {
+    background: rgba(0, 119, 182, 0.08);
+    border-color: rgba(0, 119, 182, 0.20);
+}
+.swagger-ui .opblock.opblock-options .opblock-section-header .tab-header .tab-item .opblock-title span:after {
+    background: var(--g4-blue-dim);
+}
+.swagger-ui .opblock.opblock-options thead tr td,
+.swagger-ui .opblock.opblock-options thead tr th {
+    border-color: rgba(0, 119, 182, 0.20);
+    opacity: 1;
+}
+.swagger-ui .opblock.opblock-options .opblock-body > .opblock-description-wrapper,
+.swagger-ui .opblock.opblock-options .opblock-body > .opblock-title_normal {
+    border-top: 1px solid rgba(0, 119, 182, 0.20);
+}
+
+/* QUERY — light-purple */
+.swagger-ui .opblock.opblock-query {
+    background: rgba(192, 132, 252, 0.04);
+    border-color: rgba(192, 132, 252, 0.25);
+}
+.swagger-ui .opblock.opblock-query .opblock-summary {
+    border-color: rgba(192, 132, 252, 0.25);
+}
+.swagger-ui .opblock.opblock-query .opblock-summary-method {
+    background: #7C3AED;
+    color: #fff;
+}
+.swagger-ui .opblock.opblock-query .opblock-section-header {
+    background: rgba(192, 132, 252, 0.06);
+    border-color: rgba(192, 132, 252, 0.20);
+}
+.swagger-ui .opblock.opblock-query .opblock-section-header .tab-header .tab-item .opblock-title span:after {
+    background: #C084FC;
+}
+.swagger-ui .opblock.opblock-query thead tr td,
+.swagger-ui .opblock.opblock-query thead tr th {
+    border-color: rgba(192, 132, 252, 0.20);
+    opacity: 1;
+}
+.swagger-ui .opblock.opblock-query .opblock-body > .opblock-description-wrapper,
+.swagger-ui .opblock.opblock-query .opblock-body > .opblock-title_normal {
+    border-top: 1px solid rgba(192, 132, 252, 0.20);
+}
+
+/* DEPRECATED */
+.swagger-ui .opblock.opblock-deprecated {
+    background: rgba(74, 96, 112, 0.06);
+    border-color: rgba(74, 96, 112, 0.25);
+    opacity: 0.7;
+}
+.swagger-ui .opblock.opblock-deprecated .opblock-summary {
+    border-color: rgba(74, 96, 112, 0.25);
+}
+.swagger-ui .opblock.opblock-deprecated .opblock-summary-method {
+    background: #2D3748;
+    color: var(--g4-muted);
+}
+.swagger-ui .opblock.opblock-deprecated .opblock-section-header {
+    background: rgba(74, 96, 112, 0.08);
+    border-color: rgba(74, 96, 112, 0.20);
+}
+.swagger-ui .opblock.opblock-deprecated .opblock-section-header .tab-header .tab-item .opblock-title span:after {
+    background: var(--g4-muted);
+}
+.swagger-ui .opblock.opblock-deprecated thead tr td,
+.swagger-ui .opblock.opblock-deprecated thead tr th {
+    border-color: rgba(74, 96, 112, 0.20);
+    opacity: 1;
+}
+.swagger-ui .opblock.opblock-deprecated .opblock-body > .opblock-description-wrapper,
+.swagger-ui .opblock.opblock-deprecated .opblock-body > .opblock-title_normal {
+    border-top: 1px solid rgba(74, 96, 112, 0.20);
+}
+
+/* ── 12. Tab items ────────────────────────────────────────── */
+.swagger-ui .tab li {
+    color: var(--g4-text);
+    font-family: var(--g4-font);
+    font-size: 12px;
+}
+
+.swagger-ui .tab li:first-of-type:after {
+    background: var(--g4-border);
+}
+
+/* ── 13. Responses block ──────────────────────────────────── */
+.swagger-ui .responses-inner h4,
+.swagger-ui .responses-inner h5 {
+    color: var(--g4-text);
+    font-family: var(--g4-font);
+    font-size: 12px;
+}
+
+.swagger-ui .response-col_status {
+    color: var(--g4-blue);
+    font-family: var(--g4-font);
+    font-size: 14px;
+}
+
+.swagger-ui .response-col_status .response-undocumented {
+    color: var(--g4-muted);
+    font-family: var(--g4-mono);
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.swagger-ui .response-col_links {
+    color: var(--g4-text);
+    font-family: var(--g4-font);
+    font-size: 14px;
+}
+
+.swagger-ui .response-col_links .response-undocumented {
+    color: var(--g4-muted);
+    font-family: var(--g4-mono);
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.swagger-ui .response-control-media-type--accept-controller select {
+    border-color: var(--g4-green);
+}
+
+.swagger-ui .response-control-media-type__accept-message {
+    color: var(--g4-green);
+}
+
+/* ── 14. Buttons ──────────────────────────────────────────── */
+.swagger-ui .btn {
+    background: var(--g4-surface);
+    border: 2px solid var(--g4-border);
+    border-radius: var(--g4-r);
+    box-shadow: none;
+    color: var(--g4-text);
+    font-family: var(--g4-font);
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.swagger-ui .btn:hover {
+    background: var(--g4-surface2);
+    border-color: var(--g4-border-hi);
+    box-shadow: none;
+    color: var(--g4-blue);
+}
+
+.swagger-ui .btn:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--g4-blue-glow);
+}
+
+.swagger-ui .btn.cancel {
+    background-color: transparent;
+    border-color: var(--g4-red);
+    color: var(--g4-red);
+    font-family: var(--g4-font);
+}
+
+.swagger-ui .btn.cancel:hover {
+    background: rgba(255, 61, 61, 0.10);
+}
+
+.swagger-ui .btn.authorize {
+    background-color: transparent;
+    border-color: var(--g4-green);
+    color: var(--g4-green);
+}
+
+.swagger-ui .btn.authorize:hover {
+    background: rgba(0, 230, 118, 0.10);
+}
+
+.swagger-ui .btn.authorize svg {
+    fill: var(--g4-green);
+}
+
+.swagger-ui .btn.execute {
+    background-color: var(--g4-blue);
+    border-color: var(--g4-blue);
+    color: var(--g4-bg);
+}
+
+.swagger-ui .btn.execute:hover {
+    background-color: var(--g4-border-hi);
+    border-color: var(--g4-border-hi);
+}
+
+.swagger-ui .authorization__btn .locked {
+    opacity: 1;
+}
+
+.swagger-ui .authorization__btn .unlocked {
+    opacity: 0.5;
+}
+
+.swagger-ui button.invalid {
+    animation: shake 0.4s 1;
+    background: rgba(255, 61, 61, 0.10);
+    border-color: var(--g4-red);
+}
+
+/* ── 15. Expand / collapse controls ───────────────────────── */
+.swagger-ui .expand-methods svg,
+.swagger-ui .expand-operation svg,
+.swagger-ui .opblock-control-arrow svg {
+    fill: var(--g4-muted);
+    opacity: 1;
+}
+
+.swagger-ui .expand-methods:hover svg,
+.swagger-ui .authorization__btn svg {
+    fill: var(--g4-blue);
+}
+
+/* ── 16. Select ───────────────────────────────────────────── */
+.swagger-ui select {
+    appearance: none;
+    background: var(--g4-surface);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24'%3E%3Cpath fill='%2300B4FF' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    border: 2px solid var(--g4-border);
+    border-radius: var(--g4-r);
+    color: var(--g4-text);
+    font-family: var(--g4-font);
+    font-size: 14px;
+    font-weight: 700;
+    padding: 5px 28px 5px 10px;
+    cursor: pointer;
+}
+
+.swagger-ui select[multiple] {
+    background: var(--g4-surface);
+}
+
+.swagger-ui select:focus {
+    border-color: var(--g4-border-hi);
+    outline: none;
+    box-shadow: 0 0 0 2px var(--g4-blue-glow);
+}
+
+.swagger-ui select.invalid {
+    animation: shake 0.4s 1;
+    background: rgba(255, 61, 61, 0.10);
+    border-color: var(--g4-red);
+}
+
+.swagger-ui select[disabled] {
+    background-color: var(--g4-surface);
+    border-color: var(--g4-muted);
+    color: var(--g4-muted);
+    cursor: not-allowed;
+}
+
+/* ── 17. Labels ───────────────────────────────────────────── */
+.swagger-ui label {
+    color: var(--g4-muted);
+    font-family: var(--g4-font);
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+/* ── 18. Text inputs & textarea ───────────────────────────── */
+.swagger-ui input[type=email],
+.swagger-ui input[type=file],
+.swagger-ui input[type=password],
+.swagger-ui input[type=search],
+.swagger-ui input[type=text],
+.swagger-ui textarea {
+    background: var(--g4-surface);
+    border: 1px solid var(--g4-border);
+    border-radius: var(--g4-r);
+    color: var(--g4-text);
+    font-family: var(--g4-font);
+}
+
+.swagger-ui input[type=email]:focus,
+.swagger-ui input[type=file]:focus,
+.swagger-ui input[type=password]:focus,
+.swagger-ui input[type=search]:focus,
+.swagger-ui input[type=text]:focus {
+    border-color: var(--g4-border-hi);
+    outline: none;
+    box-shadow: 0 0 0 2px var(--g4-blue-glow);
+}
+
+.swagger-ui input[type=email].invalid,
+.swagger-ui input[type=file].invalid,
+.swagger-ui input[type=password].invalid,
+.swagger-ui input[type=search].invalid,
+.swagger-ui input[type=text].invalid,
+.swagger-ui textarea.invalid {
+    animation: shake 0.4s 1;
+    background: rgba(255, 61, 61, 0.10);
+    border-color: var(--g4-red);
+}
+
+.swagger-ui input::placeholder,
+.swagger-ui textarea::placeholder {
+    color: var(--g4-muted);
+}
+
+.swagger-ui input[disabled],
+.swagger-ui textarea[disabled] {
+    background-color: var(--g4-surface);
+    color: var(--g4-muted);
+    cursor: not-allowed;
+}
+
+/* textarea specifics */
+.swagger-ui textarea {
+    background: var(--g4-surface);
+    border: 1px solid var(--g4-border);
+    color: var(--g4-text);
+    font-family: var(--g4-mono);
+    font-size: 12px;
+    font-weight: 400;
+}
+
+.swagger-ui textarea:focus {
+    border: 2px solid var(--g4-border-hi);
+    outline: none;
+    box-shadow: 0 0 0 2px var(--g4-blue-glow);
+}
+
+.swagger-ui textarea.curl {
+    background: var(--g4-bg);
+    border: 1px solid var(--g4-border);
+    color: var(--g4-text);
+    font-family: var(--g4-mono);
+    font-size: 12px;
+    font-weight: 400;
+}
+
+.swagger-ui textarea[disabled] {
+    background-color: var(--g4-bg);
+    border-color: var(--g4-border);
+    color: var(--g4-muted);
+}
+
+/* ── 19. Checkbox ─────────────────────────────────────────── */
+.swagger-ui .checkbox {
+    color: var(--g4-text);
+}
+
+.swagger-ui .checkbox p {
+    color: var(--g4-text);
+    font-family: var(--g4-mono);
+    font-weight: 600;
+}
+
+.swagger-ui .checkbox input[type=checkbox] + label > .item {
+    background: var(--g4-surface2);
+    box-shadow: 0 0 0 2px var(--g4-border);
+}
+
+.swagger-ui .checkbox input[type=checkbox]:checked + label > .item {
+    background: var(--g4-border-hi);
+    box-shadow: 0 0 0 2px var(--g4-border-hi);
+}
+
+/* ── 20. Authorization dialog ─────────────────────────────── */
+.swagger-ui .dialog-ux .backdrop-ux {
+    background: rgba(5, 5, 8, 0.82);
+    backdrop-filter: blur(4px);
+}
+
+.swagger-ui .dialog-ux .modal-ux {
+    background: var(--g4-surface);
+    border: 1px solid var(--g4-border);
+    border-top: 2px solid var(--g4-blue);
+    box-shadow: 0 10px 40px 0 rgba(0, 0, 0, 0.7);
+    border-radius: var(--g4-r);
+}
+
+.swagger-ui .dialog-ux .modal-ux-content p {
+    color: var(--g4-text);
+    font-family: var(--g4-font);
+    font-size: 12px;
+}
+
+.swagger-ui .dialog-ux .modal-ux-content h4,
+.swagger-ui .dialog-ux .modal-ux h2,
+.swagger-ui .dialog-ux .modal-ux h3,
+.swagger-ui .dialog-ux .modal-ux h4,
+.swagger-ui .dialog-ux .modal-ux h5,
+.swagger-ui .dialog-ux .modal-ux label,
+.swagger-ui .dialog-ux .modal-ux p {
+    color: var(--g4-text);
+    font-family: var(--g4-font);
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.swagger-ui .dialog-ux .modal-ux-header {
+    background: var(--g4-surface2);
+    border-bottom: 1px solid var(--g4-border);
+    padding: 14px 20px;
+}
+
+.swagger-ui .dialog-ux .modal-ux-header h3 {
+    color: var(--g4-bright);
+    font-family: var(--g4-font);
+    font-size: 20px;
+    font-weight: 600;
+}
+
+.swagger-ui .dialog-ux .modal-ux-header .close-modal {
+    background: transparent;
+    border: none;
+    color: var(--g4-muted);
+    cursor: pointer;
+}
+
+.swagger-ui .dialog-ux .modal-ux-header .close-modal:hover {
+    color: var(--g4-bright);
+}
+
+.swagger-ui .dialog-ux .modal-ux-header .close-modal svg {
+    fill: var(--g4-muted);
+}
+
+.swagger-ui .dialog-ux .modal-ux .scopes a {
+    color: var(--g4-blue);
+}
+
+.swagger-ui .dialog-ux .modal-ux .btn.modal-btn {
+    border-color: var(--g4-green);
+    color: var(--g4-green);
+}
+
+.swagger-ui .dialog-ux .modal-ux .btn.modal-btn.btn-done {
+    border-color: var(--g4-border);
+    color: var(--g4-text);
+}
+
+.swagger-ui .dialog-ux .modal-ux .auth-container {
+    border-color: var(--g4-border);
+}
+
+.swagger-ui .dialog-ux .modal-ux .checkbox input[type=checkbox] + label > .item {
+    background: var(--g4-surface2);
+    color: var(--g4-text);
+}
+
+.swagger-ui .dialog-ux .modal-ux .checkbox input[type=checkbox]:checked + label > .item {
+    background: var(--g4-blue);
+}
+
+/* ── 21. Auth container ───────────────────────────────────── */
+.swagger-ui .auth-container {
+    border-bottom: 1px solid var(--g4-border);
+}
+
+.swagger-ui .auth-container .errors {
+    background-color: rgba(255, 61, 61, 0.10);
+    border-radius: var(--g4-r);
+    color: var(--g4-red);
+    font-family: var(--g4-mono);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.swagger-ui .scopes h2 {
+    color: var(--g4-text);
+    font-family: var(--g4-font);
+    font-size: 14px;
+}
+
+.swagger-ui .scopes h2 a {
+    color: var(--g4-blue);
+    font-size: 12px;
+}
+
+/* ── 22. Error wrappers ───────────────────────────────────── */
+.swagger-ui .errors-wrapper {
+    animation: scaleUp 0.5s;
+    background: rgba(255, 61, 61, 0.08);
+    border: 2px solid var(--g4-red);
+    border-radius: var(--g4-r);
+}
+
+.swagger-ui .errors-wrapper .errors h4 {
+    color: var(--g4-text);
+    font-family: var(--g4-mono);
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.swagger-ui .errors-wrapper .errors small {
+    color: var(--g4-muted);
+}
+
+.swagger-ui .errors-wrapper hgroup h4 {
+    color: var(--g4-text);
+    font-family: var(--g4-font);
+    font-size: 20px;
+}
+
+/* ── 23. Parameters table ─────────────────────────────────── */
+.swagger-ui .parameter__type {
+    color: var(--g4-blue);
+    font-family: var(--g4-mono);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.swagger-ui .parameter__name {
+    color: var(--g4-bright);
+    font-family: var(--g4-font);
+    font-size: 16px;
+    font-weight: 400;
+}
+
+.swagger-ui .parameter__name.required {
+    font-weight: 700;
+}
+
+.swagger-ui .parameter__name.required span {
+    color: var(--g4-red);
+}
+
+.swagger-ui .parameter__name.required:after {
+    color: rgba(255, 61, 61, 0.8);
+    font-size: 10px;
+}
+
+.swagger-ui .parameter__extension,
+.swagger-ui .parameter__in {
+    color: var(--g4-muted);
+    font-family: var(--g4-mono);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.swagger-ui .parameter__deprecated {
+    color: var(--g4-red);
+    font-family: var(--g4-mono);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.swagger-ui .response__extension {
+    color: var(--g4-muted);
+    font-family: var(--g4-mono);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+/* ── 24. Tables ───────────────────────────────────────────── */
+.swagger-ui table {
+    border-collapse: collapse;
+}
+
+.swagger-ui table.headers td {
+    color: var(--g4-text);
+    font-family: var(--g4-mono);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.swagger-ui table.headers .header-example {
+    color: var(--g4-muted);
+}
+
+.swagger-ui table thead tr td,
+.swagger-ui table thead tr th {
+    background: var(--g4-surface2);
+    border-bottom: 1px solid var(--g4-border);
+    color: var(--g4-muted);
+    font-family: var(--g4-font);
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.swagger-ui table tbody tr td {
+    border-bottom: 1px solid rgba(0, 119, 182, 0.15);
+    color: var(--g4-text);
+    padding: 8px 10px;
+    vertical-align: top;
+}
+
+.swagger-ui table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* ── 25. Models / Schemas section ─────────────────────────── */
+.swagger-ui section.models {
+    background: var(--g4-surface);
+    border: 1px solid var(--g4-border);
+    border-radius: var(--g4-r);
+    margin-top: 16px;
+    overflow: hidden;
+}
+
+.swagger-ui section.models.is-open h4 {
+    border-bottom: 1px solid var(--g4-border);
+}
+
+.swagger-ui section.models h4 {
+    background: var(--g4-surface);
+    color: var(--g4-blue);
+    font-family: var(--g4-font);
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    padding: 12px 20px;
+    transition: background 0.15s;
+}
+
+.swagger-ui section.models h4 span {
+    color: var(--g4-text);
+}
+
+.swagger-ui section.models h4:hover {
+    background: var(--g4-surface2);
+}
+
+.swagger-ui section.models h5 {
+    color: var(--g4-muted);
+    font-family: var(--g4-font);
+    font-size: 16px;
+    padding: 10px 20px;
+}
+
+.swagger-ui section.models .model-container {
+    background: rgba(0, 180, 255, 0.03);
+    border-bottom: 1px solid rgba(0, 119, 182, 0.15);
+    padding: 10px 20px;
+}
+
+.swagger-ui section.models .model-container:hover {
+    background: rgba(0, 180, 255, 0.06);
+}
+
+.swagger-ui section.models .models-control svg {
+    fill: var(--g4-muted);
+}
+
+.swagger-ui .model {
+    color: var(--g4-text);
+    font-family: var(--g4-mono);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.swagger-ui .model .deprecated span,
+.swagger-ui .model .deprecated td {
+    color: var(--g4-muted);
+}
+
+.swagger-ui .model .property {
+    color: var(--g4-muted);
+}
+
+.swagger-ui .model .property.primitive {
+    color: var(--g4-blue);
+}
+
+.swagger-ui .model .property-row,
+.swagger-ui .model .brace-open,
+.swagger-ui .model .brace-close,
+.swagger-ui .model .description {
+    color: var(--g4-text);
+}
+
+.swagger-ui .model .property-row.required .star {
+    color: var(--g4-red);
+}
+
+.swagger-ui .model .external-docs,
+.swagger-ui table.model tr.description {
+    color: var(--g4-muted);
+    font-weight: 400;
+}
+
+.swagger-ui table.model tr.extension {
+    color: var(--g4-muted);
+}
+
+.swagger-ui table.model tr td {
+    border-bottom: 1px solid rgba(0, 119, 182, 0.12);
+    color: var(--g4-text);
+    padding: 5px 8px;
+}
+
+.swagger-ui table.model tr:last-child td {
+    border-bottom: none;
+}
+
+.swagger-ui .model-box {
+    background: rgba(0, 180, 255, 0.04);
+    border: 1px solid rgba(0, 119, 182, 0.20);
+    border-radius: var(--g4-r);
+    padding: 10px;
+}
+
+.swagger-ui .model-box .model,
+.swagger-ui .model-box .model-title {
+    color: var(--g4-text);
+}
+
+.swagger-ui .model-box.deprecated {
+    opacity: 0.5;
+}
+
+.swagger-ui .model-title {
+    color: var(--g4-bright);
+    font-family: var(--g4-font);
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.swagger-ui .model-deprecated-warning {
+    color: var(--g4-red);
+    font-family: var(--g4-font);
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.swagger-ui .model-toggle:after {
+    background: var(--g4-blue);
+    filter: invert(0);
+}
+
+.swagger-ui .prop-type {
+    color: var(--g4-blue);
+}
+
+.swagger-ui .prop-format {
+    color: var(--g4-muted);
+}
+
+/* ── 26. Fallback / misc text ─────────────────────────────── */
+.swagger-ui a.nostyle,
+.swagger-ui a.nostyle:visited {
+    color: inherit;
+}
+
+.swagger-ui .fallback {
+    color: var(--g4-muted);
+}
+
+.swagger-ui .no-margin {
+    border: none;
+}
+
+.swagger-ui section h3 {
+    color: var(--g4-text);
+    font-family: var(--g4-font);
+}
+
+.swagger-ui .version-pragma__message code {
+    background-color: var(--g4-surface2);
+    border: 1px solid var(--g4-border);
+    border-radius: var(--g4-r);
+    color: var(--g4-blue);
+}
+
+/* ── 27. Token/syntax highlighting ───────────────────────── */
+.swagger-ui span.token-string {
+    color: var(--g4-text);
+}
+
+.swagger-ui span.token-not-formatted {
+    color: var(--g4-text);
+    font-weight: 700;
+}
+
+/* ── 28. Download / copy buttons ──────────────────────────── */
+.swagger-ui .download-contents {
+    background: var(--g4-surface2);
+    border: 1px solid var(--g4-border);
+    border-radius: var(--g4-r);
+    color: var(--g4-text);
+    font-family: var(--g4-font);
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.swagger-ui .copy-to-clipboard {
+    background: var(--g4-surface2);
+    border: 1px solid var(--g4-border);
+    border-radius: var(--g4-r);
+}
+
+.swagger-ui .copy-to-clipboard:active {
+    background: var(--g4-bg);
+}
+
+.swagger-ui .copy-to-clipboard button,
+.swagger-ui .download-contents button {
+    background: transparent;
+    color: var(--g4-text);
+}
+
+/* ── 29. Loading spinner ──────────────────────────────────── */
+.swagger-ui .loading-container .loading:after {
+    color: var(--g4-text);
+    font-family: var(--g4-font);
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.swagger-ui .loading-container .loading:before {
+    border: 2px solid var(--g4-border);
+    border-top-color: var(--g4-blue);
+}
+
+/* ── 30. Markdown ─────────────────────────────────────────── */
+.swagger-ui .markdown pre,
+.swagger-ui .renderedMarkdown pre {
+    background: var(--g4-bg);
+    border: 1px solid var(--g4-border);
+    border-radius: var(--g4-r);
+    color: var(--g4-text);
+    font-weight: 400;
+    padding: 10px;
+}
+
+.swagger-ui .markdown code,
+.swagger-ui .renderedMarkdown code {
+    background: rgba(0, 180, 255, 0.07);
+    color: var(--g4-blue);
+    font-family: var(--g4-mono);
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 2px;
+    padding: 1px 5px;
+}
+
+.swagger-ui .markdown p,
+.swagger-ui .renderedMarkdown p {
+    color: var(--g4-text);
+}
+
+/* ── 31. JSON Schema 2020-12 ──────────────────────────────── */
+.swagger-ui .json-schema-2020-12 {
+    background-color: rgba(0, 180, 255, 0.04);
+    border-radius: var(--g4-r);
+}
+
+.swagger-ui .json-schema-2020-12,
+.swagger-ui .json-schema-2020-12 button {
+    background: var(--g4-surface);
+}
+
+.swagger-ui .json-schema-2020-12 button svg {
+    fill: var(--g4-text);
+}
+
+.swagger-ui .json-schema-2020-12 a {
+    color: var(--g4-blue);
+}
+
+.swagger-ui .json-schema-2020-12__title {
+    color: var(--g4-bright);
+    font-family: var(--g4-font);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.swagger-ui .json-schema-2020-12-property .json-schema-2020-12__title {
+    color: var(--g4-text);
+    font-family: var(--g4-mono);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.swagger-ui .json-schema-2020-12-property--required > .json-schema-2020-12:first-of-type > .json-schema-2020-12-head .json-schema-2020-12__title:after {
+    color: var(--g4-red);
+}
+
+.swagger-ui .json-schema-2020-12-keyword__children {
+    border-left: 1px dashed var(--g4-border);
+}
+
+.swagger-ui .json-schema-2020-12-keyword__name {
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.swagger-ui .json-schema-2020-12-keyword__name--primary {
+    color: var(--g4-bright);
+}
+
+.swagger-ui .json-schema-2020-12-keyword__name--secondary {
+    color: var(--g4-muted);
+}
+
+.swagger-ui .json-schema-2020-12-keyword__name--extension {
+    color: var(--g4-muted);
+}
+
+.swagger-ui .json-schema-2020-12-keyword__value {
+    color: var(--g4-muted);
+    font-size: 12px;
+    font-weight: 400;
+}
+
+.swagger-ui .json-schema-2020-12-keyword__value--primary {
+    color: var(--g4-text);
+}
+
+.swagger-ui .json-schema-2020-12-keyword__value--secondary {
+    color: var(--g4-muted);
+}
+
+.swagger-ui .json-schema-2020-12-keyword__value--extension {
+    color: var(--g4-muted);
+}
+
+.swagger-ui .json-schema-2020-12-keyword__value--warning {
+    border: 1px dashed var(--g4-red);
+    color: var(--g4-red);
+    font-family: var(--g4-mono);
+    font-weight: 600;
+}
+
+.swagger-ui .json-schema-2020-12-keyword--\$vocabulary ul {
+    border-left: 1px dashed var(--g4-border);
+}
+
+.swagger-ui .json-schema-2020-12-keyword--const .json-schema-2020-12-json-viewer__name,
+.swagger-ui .json-schema-2020-12-keyword--const .json-schema-2020-12-json-viewer__value {
+    color: var(--g4-text);
+}
+
+.swagger-ui .json-schema-2020-12-keyword--default .json-schema-2020-12-json-viewer__name,
+.swagger-ui .json-schema-2020-12-keyword--default .json-schema-2020-12-json-viewer__value {
+    color: var(--g4-text);
+}
+
+.swagger-ui .json-schema-2020-12-keyword--description {
+    color: var(--g4-muted);
+    font-size: 12px;
+}
+
+.swagger-ui .json-schema-2020-12-keyword--enum .json-schema-2020-12-json-viewer__name,
+.swagger-ui .json-schema-2020-12-keyword--enum .json-schema-2020-12-json-viewer__value,
+.swagger-ui .json-schema-2020-12-keyword--examples .json-schema-2020-12-json-viewer__name,
+.swagger-ui .json-schema-2020-12-keyword--examples .json-schema-2020-12-json-viewer__value {
+    color: var(--g4-text);
+}
+
+.swagger-ui .json-schema-2020-12-json-viewer-extension-keyword .json-schema-2020-12-json-viewer__name,
+.swagger-ui .json-schema-2020-12-json-viewer-extension-keyword .json-schema-2020-12-json-viewer__value {
+    color: var(--g4-muted);
+}
+
+.swagger-ui .json-schema-2020-12-keyword--patternProperties .json-schema-2020-12__title:first-of-type:after,
+.swagger-ui .json-schema-2020-12-keyword--patternProperties .json-schema-2020-12__title:first-of-type:before {
+    color: var(--g4-blue);
+}
+
+.swagger-ui .json-schema-2020-12__attribute {
+    color: var(--g4-text);
+    font-family: var(--g4-mono);
+    font-size: 12px;
+}
+
+.swagger-ui .json-schema-2020-12__attribute--primary {
+    color: var(--g4-blue);
+}
+
+.swagger-ui .json-schema-2020-12__attribute--muted {
+    color: var(--g4-muted);
+}
+
+.swagger-ui .json-schema-2020-12__attribute--warning {
+    color: var(--g4-red);
+}
+
+.swagger-ui .json-schema-2020-12-json-viewer__children {
+    border-left: 1px dashed var(--g4-border);
+}
+
+.swagger-ui .json-schema-2020-12-json-viewer__name {
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.swagger-ui .json-schema-2020-12-json-viewer__name--primary {
+    color: var(--g4-bright);
+}
+
+.swagger-ui .json-schema-2020-12-json-viewer__name--secondary {
+    color: var(--g4-muted);
+}
+
+.swagger-ui .json-schema-2020-12-json-viewer__name--extension {
+    color: var(--g4-muted);
+}
+
+.swagger-ui .json-schema-2020-12-json-viewer__value {
+    color: var(--g4-muted);
+    font-size: 12px;
+    font-weight: 400;
+}
+
+.swagger-ui .json-schema-2020-12-json-viewer__value--primary {
+    color: var(--g4-text);
+}
+
+.swagger-ui .json-schema-2020-12-json-viewer__value--secondary {
+    color: var(--g4-muted);
+}
+
+.swagger-ui .json-schema-2020-12-json-viewer__value--extension {
+    color: var(--g4-muted);
+}
+
+.swagger-ui .json-schema-2020-12-json-viewer__value--warning {
+    border: 1px dashed var(--g4-red);
+    color: var(--g4-red);
+    font-family: var(--g4-mono);
+    font-weight: 600;
+}
+
+.swagger-ui .json-schema-2020-12__constraint {
+    background-color: var(--g4-blue-dim);
+    color: var(--g4-bright);
+    font-family: var(--g4-mono);
+    font-weight: 600;
+    border-radius: var(--g4-r);
+    font-size: 11px;
+    padding: 1px 5px;
+}
+
+.swagger-ui .json-schema-2020-12__constraint--string {
+    background-color: var(--g4-amber);
+    color: var(--g4-bg);
+}
+
+.swagger-ui .json-schema-2020-12-expand-deep-button {
+    color: var(--g4-muted);
+}
+
+.swagger-ui .json-schema-2020-12-body {
+    border-color: var(--g4-border);
+}
+
+/* ── 32. Scrollbars ───────────────────────────────────────── */
+.swagger-ui ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.swagger-ui ::-webkit-scrollbar-track {
+    background: var(--g4-bg);
+}
+
+.swagger-ui ::-webkit-scrollbar-thumb {
+    background: var(--g4-border);
+    border-radius: 3px;
+}
+
+.swagger-ui ::-webkit-scrollbar-thumb:hover {
+    background: var(--g4-border-hi);
+}
+
+/* ── 33. Suppress built-in dark-mode (prevent double-dark) ── */
+/* The html.dark-mode rules from swagger-ui.css are not triggered
+   because we never add that class. These declarations ensure
+   our overrides always win even if the class is accidentally set. */
+html.dark-mode {
+    background: var(--g4-bg);
+}
+
+html.dark-mode .swagger-ui {
+    background: var(--g4-bg);
+    color: var(--g4-text);
+}
