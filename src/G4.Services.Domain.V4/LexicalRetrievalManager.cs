@@ -1,6 +1,7 @@
 ﻿using G4.Cache;
 using G4.Extensions;
 using G4.Models;
+using G4.Services.Domain.V4.Models;
 
 using System;
 using System.Collections.Generic;
@@ -17,8 +18,14 @@ namespace G4.Services.Domain.V4
     public sealed class LexicalRetrievalManager
     {
         #region *** Fields       ***
+        // Holds a reference to the cache manager used to build the retrieval catalog.
+        private readonly CacheManager _cache;
+
         // Defines the plugin types that are allowed to participate in lexical retrieval.
         private readonly string[] _included;
+
+        // Holds the raw plugin manifests from the cache for quick access during retrieval.
+        private readonly Dictionary<string, IG4PluginManifest> _manifests;
 
         // Holds the initialized in-memory tool catalog built from the supplied cache.
         private readonly IEnumerable<ToolScoreModel> _tools;
@@ -40,10 +47,23 @@ namespace G4.Services.Domain.V4
         /// <param name="included">Array of tool types to include (e.g., "Action", "Flow"). If null or empty, defaults to ["Action"].</param>
         public LexicalRetrievalManager(CacheManager cache, params string[] included)
         {
+            // Store the supplied cache reference for use in catalog
+            // initialization and potential future cache access.
+            _cache = cache;
+
             // Set included tool types; default to ["Action"] if none provided
             _included = included == null || included.Length == 0
                 ? ["Action"]
                 : included;
+
+            // Build a lookup dictionary of plugin manifests from the
+            // cache for quick access during retrieval.
+            _manifests = _cache
+                .PluginsCache
+                .Values
+                .SelectMany(i => i.Values)
+                .Select(i => i.Manifest)
+                .ToDictionary(i => $"{(string.IsNullOrEmpty(i.Namespace) ? "" : $"{i.Namespace}.")}{i.Key}", i => i);
 
             // Initialize the tool catalog from cache for the included types
             _tools = InitializeCatalog(cache, _included);
@@ -51,6 +71,28 @@ namespace G4.Services.Domain.V4
         #endregion
 
         #region *** Methods      ***
+        public ResultModel FindExamples(string toolName, string @namespace, string prompt, int take = 3)
+        {
+            var key = $"{(string.IsNullOrEmpty(@namespace) ? "" : $"{@namespace}.")}{toolName}";
+            var manifest = _manifests[key];
+
+            // IMPLEMENT
+            var examples = manifest.Examples;
+        }
+
+        /// <summary>
+        /// Finds the most relevant tools for the supplied prompt using lexical scoring.
+        /// </summary>
+        /// <param name="prompt">The user prompt used to score and rank matching tools.</param>
+        /// <returns>
+        /// A sequence of <see cref="ToolScoreResultModel"/> entries ordered by descending relevance score.
+        /// Only tools with a positive score are returned.
+        /// </returns>
+        public ResultModel FindTools(string prompt)
+        {
+            return FindTools(prompt, take: 3);
+        }
+
         /// <summary>
         /// Finds the most relevant tools for the supplied prompt using lexical scoring.
         /// </summary>
@@ -203,6 +245,10 @@ namespace G4.Services.Domain.V4
                     };
                 }
             }
+        }
+
+        private static Dictionary<string, ExampleScoreModel> InitializeManifest(CacheManager cache, string[] included)
+        {
         }
 
         // Splits the supplied text into distinct normalized tokens for retrieval processing.
@@ -679,6 +725,34 @@ namespace G4.Services.Domain.V4
         #endregion
 
         #region *** Nested Types ***
+        public sealed class ExampleScoreResultModel
+        {
+            /// <summary>
+            /// Gets or sets the tool description.
+            /// </summary>
+            public string Description { get; set; }
+
+            public ExampleScoreModel[] Examples { get; set; }
+
+            public IntentModel Intent { get; set; }
+
+            /// <summary>
+            /// Gets or sets the tool name.
+            /// </summary>
+            public string Name { get; set; }
+
+            /// <summary>
+            /// Gets or sets the tool namespace.
+            /// </summary>
+            public string NameSpace { get; set; }
+        }
+
+        public sealed class ExampleScoreModel : PluginExampleModel
+        {
+            public int Score { get; set; }
+        }
+
+
         /// <summary>
         /// Represents a scored lexical retrieval result for a tool.
         /// </summary>
@@ -710,6 +784,11 @@ namespace G4.Services.Domain.V4
         /// </summary>
         public sealed class ResultModel
         {
+            /// <summary>
+            /// Gets or sets the collection of example score results associated with the model.
+            /// </summary>
+            public ExampleScoreResultModel[] Examples { get; set; }
+
             /// <summary>
             /// Gets or sets the scored tools returned by the matching operation.
             /// </summary>
