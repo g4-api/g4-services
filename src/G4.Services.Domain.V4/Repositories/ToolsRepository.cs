@@ -1,11 +1,12 @@
 ﻿using G4.Api;
-using G4.Attributes;
 using G4.Cache;
 using G4.Extensions;
 using G4.Models;
 using G4.Models.Schema;
+using G4.Services.Domain.V4.Models;
 using G4.Services.Domain.V4.Models.Schema;
 using G4.Settings;
+using G4.WebDriver.Exceptions;
 
 using HtmlAgilityPack;
 
@@ -27,9 +28,23 @@ using System.Threading;
 
 namespace G4.Services.Domain.V4.Repositories
 {
-    public class ToolsRepository(IHttpClientFactory clientFactory, CacheManager cache, G4Client client) : IToolsRepository
+    /// <summary>
+    /// Provides access to available MCP and G4 tool definitions, including
+    /// retrieval, lookup, and execution support through the underlying services.
+    /// </summary>
+    /// <remarks>
+    /// This repository coordinates tool discovery and invocation by using the
+    /// shared HTTP client factory, cache manager, and G4 client dependencies.
+    /// It acts as the main entry point for working with the registered tool catalog.
+    /// </remarks>
+    public class ToolsRepository(
+        IHttpClientFactory clientFactory,
+        CacheManager cache,
+        G4Client client) : IToolsRepository
     {
         #region *** Fields       ***
+        // Buffer for storing intermediate results or state
+        // related to G4 rules, keyed by a string identifier.
         private static readonly ConcurrentDictionary<string, ConcurrentBag<(long Timestamp, G4RuleModelBase Rule)>> s_buffer = [];
 
         // Tracks active browser or agent sessions by session ID.
@@ -41,9 +56,154 @@ namespace G4.Services.Domain.V4.Repositories
 
         // HTTP client configured for OpenAI API interactions, using a named configuration.
         private readonly HttpClient _httpClient = clientFactory.CreateClient(name: "openai");
+
+        // Lexical retrieval manager instance used for finding relevant tools based on intent.
+        private readonly LexicalRetrievalManager _retrievalManager = new(CacheManager.Instance);
         #endregion
 
         #region *** Methods      ***
+        /// <inheritdoc />
+        public object CallTool(JsonElement parameters)
+        {
+            // Extract the "arguments" object from the JSON parameters.
+            // This contains tool-specific input such as driver settings, session IDs, etc.
+            var options = new InvokeOptions(parameters)
+            {
+                Buffer = s_buffer,
+                G4Client = client,
+                HttpClient = _httpClient,
+                Sessions = s_sessions,
+                Tools = s_tools
+            };
+
+            // Extract and convert the "arguments" to an executable rule format.
+            options.Rule = ConvertToRule(options.Arguments, options.Intent, s_tools);
+
+            // Look up the tool definition in the registered tools dictionary.
+            // If the tool is not found, 'tool' will be null and handled in the default branch below.
+            var tool = s_tools.GetValueOrDefault(options.ToolName);
+
+            // Read the friendly intent text used to retrieve relevant tools.
+            // Default to an empty string when the argument is missing.
+            //var intent = options.Arguments.TryGetProperty("intent", out var intentProperty)
+            //    ? intentProperty.GetString() ?? string.Empty
+            //    : string.Empty;
+            var intent = options.Intent?.AgentIntent ?? string.Empty;
+
+            // Match the tool by name and execute the corresponding handler.
+            // Some tools are built-in system tools, others are dynamically loaded plugins.
+            return tool switch
+            {
+                // Built-in: Converts input parameters into executable rules.
+                { Name: "g4.ConvertToRule" } => new { options.Rule },
+
+                // Built-in: Finds and returns metadata about a tool by its name.
+                { Name: "g4.FindTool" } => FindTool(options),
+
+                // Built-in: Lists all available tools.
+                { Name: "g4.FindTools" } => _retrievalManager.FindTools(intent),
+
+                // Built-in: Retrieves the current application's DOM (Document Object Model).
+                { Name: "g4.GetApplicationDom" } => GetApplicationDom(options),
+
+                // Built-in: Retrieves the current set of rules stored in the buffer for a given key.
+                { Name: "g4.GetBuffer" } => GetBuffer(options),
+
+                // Built-in: Clears the rules stored in the buffer for a given key.
+                { Name: "g4.RemoveBuffer" } => RemoveBuffer(options),
+
+                // Built-in: Removes an active session from the sessions registry.
+                { Name: "g4.RemoveSession" } => RemoveSession(options),
+
+                // Built-in: Retrieves the locator for a specific element on the page.
+                { Name: "g4.ResolveLocator" } => ResolveLocator(options),
+
+                // Built-in: Starts a new G4 browser automation session.
+                { Name: "g4.StartSession" } => StartSession(options),
+
+                // Default: Assumes this is a plugin-based tool and converts parameters into an executable rule.
+                _ => SendRule(options)
+            };
+
+            // Finds and returns a tool model from the available tool collection
+            // using the tool name provided in the InvokeOptions arguments.
+            static object FindTool(InvokeOptions options)
+            {
+                // Read the "tool_name" argument from the invocation payload.
+                // When it is missing, default to an empty string.
+                var toolName = options.Arguments.GetOrDefault("tool_name", () => string.Empty);
+
+                // Fall back to "toolName" when "tool_name" is not present.
+                toolName = string.IsNullOrEmpty(toolName)
+                    ? options.Arguments.GetOrDefault("toolName", () => string.Empty)
+                    : toolName;
+
+                // Try to resolve the tool directly from the available tools dictionary.
+                var isName = options.Tools.TryGetValue(key: toolName, out var tool);
+
+                // If the direct lookup failed, try matching by the tool's G4 name instead.
+                tool = isName
+                    ? tool
+                    : options.Tools.Values.FirstOrDefault(i => i.QualifiedName.Equals(toolName, StringComparison.OrdinalIgnoreCase));
+
+                // Return the matched tool when a tool name was provided.
+                // Return null when the caller did not supply any tool name.
+                return !string.IsNullOrEmpty(toolName)
+                    ? new { Tool = tool.ClientTool }
+                    : null;
+            }
+        }
+
+
+
+
+
+
+
+        public IDictionary<string, McpToolModel> FindExamples(string prompt)
+        {
+            throw new NotImplementedException();
+        }
+
+        public IDictionary<string, McpToolModel> FindExamples(string prompt, int maxResults)
+        {
+            throw new NotImplementedException();
+        }
+
+        public IDictionary<string, McpToolModel> FindExamples(string intent, int maxResults, int threshold)
+        {
+            throw new NotImplementedException();
+        }
+
+        public IDictionary<string, McpToolModel> FindExamples(JsonElement parameters)
+        {
+            throw new NotImplementedException();
+        }
+
+
+        public IEnumerable<(PluginExampleModel Example, int Score)> FindExamples(string toolName, string @namespace, string intent, int maxResults)
+        {
+            return _retrievalManager
+                .FindExamples(toolName, @namespace, intent, take: maxResults)
+                .Examples
+                .Select(i=> (Example: i.Example.Example, Score: i.Score));
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         /// <inheritdoc />
         public McpToolModel FindTool(string intent, string toolName)
         {
@@ -52,38 +212,7 @@ namespace G4.Services.Domain.V4.Repositories
         }
 
         /// <inheritdoc />
-        public IDictionary<string, object> GetDocumentModel(string driverSession, string token)
-        {
-            // Prepare the invocation options that contain all the required context
-            // for retrieving the DOM from the G4 engine.
-            var options = new InvokeOptions
-            {
-                DriverSession = driverSession, // Session identifier to fetch the DOM for
-                Token = token,                 // Token authorizing the G4 engine to perform DOM retrieval
-                G4Client = client,             // Reference to the G4 engine client instance
-                HttpClient = _httpClient,      // HTTP client used for underlying communication
-                Sessions = s_sessions,         // Active sessions collection used by the engine
-                Tools = s_tools                // Registered tools available in the current context
-            };
-
-            // Delegate the actual DOM retrieval to the helper method,
-            // which uses the constructed options.
-            return GetApplicationDom(options);
-        }
-
-        /// <inheritdoc />
-        public object GetInstructions(string policy)
-        {
-            // If no policy name is provided, fall back to the "default" policy.
-            policy = string.IsNullOrEmpty(policy) ? "default" : policy;
-
-            // Delegate to the shadow instructions provider to retrieve
-            // the actual instruction set for the resolved policy name.
-            return GetShadowInstructions(policy);
-        }
-
-        /// <inheritdoc />
-        public IDictionary<string, McpToolModel> GetTools(JsonElement parameters)
+        public IDictionary<string, McpToolModel> FindTools(JsonElement parameters)
         {
             // Use case-insensitive matching for tool names and type comparisons.
             var comparer = StringComparer.OrdinalIgnoreCase;
@@ -91,12 +220,6 @@ namespace G4.Services.Domain.V4.Repositories
             // Wrap the raw JSON payload so the arguments object can be accessed
             // through a consistent model.
             var options = new InvokeOptions(parameters);
-
-            // Read the friendly intent text used to retrieve relevant tools.
-            // Default to an empty string when the argument is missing.
-            var intent = options.Arguments.TryGetProperty("intent", out var intentProperty)
-                ? intentProperty.GetString() ?? string.Empty
-                : string.Empty;
 
             // Read the requested tool types from the arguments payload.
             // Ignore null, empty, or whitespace entries and default to an empty array when missing.
@@ -122,7 +245,7 @@ namespace G4.Services.Domain.V4.Repositories
             if (!types.Any(i => i.Equals("system-tool", StringComparison.OrdinalIgnoreCase)))
             {
                 return new LexicalRetrievalManager(cache)
-                    .FindTools(prompt: intent, take: take)
+                    .FindTools(prompt: options.Intent?.AgentIntent ?? string.Empty, take: take)
                     .Tools
                     .Select(result => s_tools.GetValueOrDefault(result.Name))
                     .Where(tool => tool != null)
@@ -132,6 +255,8 @@ namespace G4.Services.Domain.V4.Repositories
             // Otherwise, return all tools whose type matches one of the requested types.
             var toolsResult = new ConcurrentDictionary<string, McpToolModel>(comparer);
 
+            // Iterate through the entire tool collection
+            // and filter by the requested types.
             foreach (var tool in s_tools)
             {
                 // Check whether the current tool type is included in the requested type list.
@@ -146,147 +271,6 @@ namespace G4.Services.Domain.V4.Repositories
 
             // Return the filtered tool set.
             return toolsResult;
-        }
-
-        // TODO: Get policy from the parameters and return different instructions based on policy.
-        /// <inheritdoc />
-        public object InvokeTool(JsonElement parameters)
-        {
-            // Extract the "arguments" object from the JSON parameters.
-            // This contains tool-specific input such as driver settings, session IDs, etc.
-            var options = new InvokeOptions(parameters)
-            {
-                Buffer = s_buffer,
-                G4Client = client,
-                HttpClient = _httpClient,
-                Sessions = s_sessions,
-                Tools = s_tools
-            };
-
-            // Extract and convert the "arguments" to an executable rule format.
-            options.Rule = ConvertToRule(options.Arguments, s_tools);
-
-            // Look up the tool definition in the registered tools dictionary.
-            // If the tool is not found, 'tool' will be null and handled in the default branch below.
-            var tool = s_tools.GetValueOrDefault(options.ToolName);
-
-            // Read the friendly intent text used to retrieve relevant tools.
-            // Default to an empty string when the argument is missing.
-            var intent = options.Arguments.TryGetProperty("intent", out var intentProperty)
-                ? intentProperty.GetString() ?? string.Empty
-                : string.Empty;
-
-            // Match the tool by name and execute the corresponding handler.
-            // Some tools are built-in system tools, others are dynamically loaded plugins.
-            return tool switch
-            {
-                // Built-in: Converts input parameters into executable rules.
-                { Name: "convert_to_rule" } => options.Rule,
-
-                // Built-in: Finds and returns metadata about a tool by its name.
-                { Name: "find_tool" } => FindTool(options),
-
-                // Built-in: Retrieves the current application's DOM (Document Object Model).
-                { Name: "get_application_dom" } => GetApplicationDom(options),
-
-                // Built-in: Returns the instructions for the next tool call, including policies and defaults.
-                { Name: "get_instructions" } => GetInstructions(policy: string.Empty),
-
-                // Built-in:
-                { Name: "get_template_instrcutions" } => GetTemplateInstructions(policyName: string.Empty),
-
-                // Built-in: Retrieves the locator for a specific element on the page.
-                { Name: "get_locator" } => ResolveLocator(options),
-
-                // Built-in: Lists all available tools.
-                { Name: "get_tools" } => new LexicalRetrievalManager(cache).FindTools(intent),
-
-                // Built-in: Starts a new G4 browser automation session.
-                { Name: "start_g4_session" } => StartG4Session(options),
-
-                // Default: Assumes this is a plugin-based tool and converts parameters into an executable rule.
-                _ => StartG4Rule(options)
-            };
-        }
-
-        /// <inheritdoc />
-        public object ResolveLocator(ResolveLocatorInputSchema schema)
-        {
-            // Prepare the invocation options that contain all the required context
-            // for retrieving the DOM from the G4 engine.
-            var options = new InvokeOptions
-            {
-                DriverSession = schema.DriverSession, // Session identifier to fetch the DOM for
-                G4Client = client,                    // Reference to the G4 engine client instance
-                HttpClient = _httpClient,             // HTTP client used for underlying communication
-                Intent = schema.Intent,               // The intent describing the element to locate
-                OpenaiApiKey = schema.OpenaiApiKey,   // OpenAI API key for authentication
-                OpenaiModel = schema.OpenaiModel,     // OpenAI model to use for locator resolution
-                OpenaiUri = schema.OpenaiUri,         // OpenAI API endpoint URI
-                Sessions = s_sessions,                // Active sessions collection used by the engine
-                Token = schema.Token,                 // Token authorizing the G4 engine to perform DOM retrieval
-                Tools = s_tools                       // Registered tools available in the current context
-            };
-
-            // Return the resolved locator using the provided intent and the retrieved DOM.
-            return ResolveLocator(options);
-        }
-
-        /// <inheritdoc />
-        public object StartSession(StartSessionInputSchema schema)
-        {
-            // Build the invocation options using the required driver information
-            // provided in the input schema.
-            var options = new InvokeOptions
-            {
-                Driver = schema.Driver,
-                DriverBinaries = schema.DriverBinaries,
-                G4Client = client,
-                HttpClient = _httpClient,
-                Sessions = s_sessions,
-                Token = schema.Token,
-                Tools = s_tools
-            };
-
-            // Delegate session creation to the G4 engine.
-            return StartG4Session(options);
-        }
-
-        public object StartRule(StartRuleInputSchema schema)
-        {
-            var arguments = new
-            {
-                schema.Rule
-            };
-
-            var json = JsonSerializer.Serialize(value: arguments, AppSettings.JsonOptions);
-            var jsonElement = JsonDocument.Parse(json).RootElement;
-
-            // Build the invocation options using the required driver information
-            // provided in the input schema.
-            var options = new InvokeOptions
-            {
-                DriverSession = schema.DriverSession,
-                G4Client = client,
-                HttpClient = _httpClient,
-                Rule = ConvertToRule(arguments: jsonElement, s_tools),
-                Sessions = s_sessions,
-                Token = schema.Token,
-                Tools = s_tools
-            };
-
-            // Delegate session creation to the G4 engine.
-            return StartG4Rule(options);
-        }
-
-        /// <inheritdoc />
-        public void SyncTools()
-        {
-            // Rebuild the tools collection from the cache manager.
-            var rebuilt = new ConcurrentDictionary<string, McpToolModel>(FormatTools(cache));
-
-            // Atomically replace the current tools collection with the rebuilt one.
-            Interlocked.Exchange(ref s_tools, rebuilt);
         }
 
         /// <inheritdoc />
@@ -330,23 +314,200 @@ namespace G4.Services.Domain.V4.Repositories
                     StringComparer.OrdinalIgnoreCase);
         }
 
-        // Finds and returns a tool model from the available tool collection
-        // using the tool name provided in the InvokeOptions arguments.
-        private static object FindTool(InvokeOptions options)
+        /// <inheritdoc />
+        public IDictionary<string, object> GetDocumentModel(string driverSession, string token)
         {
-            // Extract the "tool_name" argument from the provided options.
-            // If no argument exists, default to an empty string.
-            var toolName = options.Arguments.GetOrDefault("tool_name", () => string.Empty);
-            toolName = string.IsNullOrEmpty(toolName)
-                ? options.Arguments.GetOrDefault("toolName", () => string.Empty)
-                : toolName;
+            // Prepare the invocation options that contain all the required context
+            // for retrieving the DOM from the G4 engine.
+            var options = new InvokeOptions
+            {
+                DriverSession = driverSession, // Session identifier to fetch the DOM for
+                Token = token,                 // Token authorizing the G4 engine to perform DOM retrieval
+                G4Client = client,             // Reference to the G4 engine client instance
+                HttpClient = _httpClient,      // HTTP client used for underlying communication
+                Sessions = s_sessions,         // Active sessions collection used by the engine
+                Tools = s_tools                // Registered tools available in the current context
+            };
 
-            // Check if the tool name is non-empty. If so, attempt to retrieve
-            // the corresponding tool from the Tools dictionary.
-            // If the tool name is empty or not found in the collection, return null.
-            return !string.IsNullOrEmpty(toolName)
-                ? new { Tool = options.Tools.GetValueOrDefault(toolName) }
-                : null;
+            // Delegate the actual DOM retrieval to the helper method,
+            // which uses the constructed options.
+            return GetApplicationDom(options);
+        }
+
+        /// <inheritdoc />
+        public object ResolveLocator(ResolveLocatorInputSchema schema)
+        {
+            // Prepare the invocation options that contain all the required context
+            // for retrieving the DOM from the G4 engine.
+            var options = new InvokeOptions
+            {
+                DriverSession = schema.DriverSession, // Session identifier to fetch the DOM for
+                G4Client = client,                    // Reference to the G4 engine client instance
+                HttpClient = _httpClient,             // HTTP client used for underlying communication
+                Intent = schema.Intent,               // The intent describing the element to locate
+                OpenaiApiKey = schema.OpenaiApiKey,   // OpenAI API key for authentication
+                OpenaiModel = schema.OpenaiModel,     // OpenAI model to use for locator resolution
+                OpenaiUri = schema.OpenaiUri,         // OpenAI API endpoint URI
+                Sessions = s_sessions,                // Active sessions collection used by the engine
+                Token = schema.Token,                 // Token authorizing the G4 engine to perform DOM retrieval
+                Tools = s_tools                       // Registered tools available in the current context
+            };
+
+            // Return the resolved locator using the provided intent and the retrieved DOM.
+            return ResolveLocator(options);
+        }
+
+        /// <inheritdoc />
+        public object StartSession(StartSessionInputSchema schema)
+        {
+            // Build the invocation options using the required driver information
+            // provided in the input schema.
+            var options = new InvokeOptions
+            {
+                Driver = schema.Driver,
+                DriverBinaries = schema.DriverBinaries,
+                G4Client = client,
+                HttpClient = _httpClient,
+                Sessions = s_sessions,
+                Token = schema.Token,
+                Tools = s_tools
+            };
+
+            // Delegate session creation to the G4 engine.
+            return StartSession(options);
+        }
+
+        /// <inheritdoc />
+        public object SendRule(SendRuleInputSchema schema)
+        {
+            // Wrap the incoming rule in an anonymous arguments object so it can be
+            // serialized and converted through the standard rule conversion pipeline.
+            var arguments = new
+            {
+                schema.Rule
+            };
+
+            // Serialize the arguments payload using the shared JSON settings.
+            var json = JsonSerializer.Serialize(value: arguments, AppSettings.JsonOptions);
+
+            // Parse the serialized payload into a JsonElement so it can be passed
+            // into the rule conversion routine.
+            var jsonElement = JsonDocument.Parse(json).RootElement;
+
+            // Build the invocation options using the driver session, token,
+            // tool catalog, and shared runtime services required by the G4 engine.
+            var options = new InvokeOptions
+            {
+                DriverSession = schema.DriverSession,
+                G4Client = client,
+                HttpClient = _httpClient,
+                Rule = ConvertToRule(arguments: jsonElement, schema.Intent, s_tools),
+                Sessions = s_sessions,
+                Token = schema.Token,
+                Tools = s_tools
+            };
+
+            // Delegate the rule execution to the G4 engine and return its result.
+            return SendRule(options);
+        }
+
+        /// <inheritdoc />
+        public void SyncTools()
+        {
+            // Rebuild the tools collection from the cache manager.
+            var rebuilt = new ConcurrentDictionary<string, McpToolModel>(FormatTools(cache));
+
+            // Atomically replace the current tools collection with the rebuilt one.
+            Interlocked.Exchange(ref s_tools, rebuilt);
+        }
+
+        // TODO: Implement logic to handle all types of G4 rules.
+        // Converts the given tool name and parameters into a G4 rule model.
+        // This method retrieves the plugin name associated with the tool and uses the parameters to create a rule model.
+        private static ActionRuleModel ConvertToRule(
+            JsonElement arguments,
+            IntentModel intent,
+            ConcurrentDictionary<string, McpToolModel> tools)
+        {
+            // Try to extract the rule data from the arguments JSON.
+            var ruleData = arguments.TryGetProperty("rule", out var ruleOut)
+                ? ruleOut
+                : JsonDocument.Parse("{}").RootElement;
+
+            // Retrieve the "name" of the tool to be invoked. Defaults to null if not provided.
+            var includes = new[] { "tool_name", "toolName", "name", "tool" };
+            var toolName = includes
+                    .Select(k => ruleData.GetOrDefault(k, () => string.Empty)?.Trim())
+                    .FirstOrDefault(v => !string.IsNullOrWhiteSpace(v))
+                ?? string.Empty;
+
+            // Retrieve the plugin name associated with the provided tool name from the internal tool registry (_tools)
+            var pluginName = tools.GetValueOrDefault(key: toolName)?.QualifiedName ?? string.Empty;
+
+            // Get the parameters from the ruleData, defaulting to an empty JSON object if not provided.
+            var parameters = ruleData.TryGetProperty("parameters", out var parametersOut)
+                ? parametersOut
+                : JsonDocument.Parse("{}").RootElement;
+
+            // Format the parameters into a command-line style string (e.g., "--param1:value1 --param2:value2").
+            var parametersCli = FormatParameters(parameters);
+
+            // Get the properties from the ruleData, defaulting to a JSON object with the plugin name if not provided.
+            var properties = ruleData.TryGetProperty("properties", out var propertiesOut)
+                ? propertiesOut.GetRawText()
+                : "{\"toolName\":\"" + pluginName + "\"}";
+
+            // Deserialize the JSON string into the G4RuleModelBase object using the provided JSON options (JsonOptions)
+            var rule = JsonSerializer.Deserialize<ActionRuleModel>(
+                json: properties,
+                options: AppSettings.JsonOptions);
+
+            // Ensure the rule's Capabilities dictionary is initialized and add the intent to it.
+            rule.Capabilities ??= new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+            rule.Capabilities["intent"] = intent;
+
+            // Set the PluginName property of the rule to the retrieved plugin name
+            rule.PluginName = pluginName;
+
+            // Set the Argument property of the rule to the formatted parameters if provided
+            rule.Argument = string.IsNullOrEmpty(parametersCli) || parametersCli.Equals("{{$ }}")
+                ? rule.Argument
+                : parametersCli;
+
+            // Return the created rule
+            return rule;
+
+            // Formats a JSON parameters object into a templated, G4 CLI-style string,
+            static string FormatParameters(JsonElement parameters)
+            {
+                if (parameters.ValueKind != JsonValueKind.Object)
+                {
+                    // If the parameters are not an object, return an empty string.
+                    return string.Empty;
+                }
+
+                // Build a case-insensitive dictionary of name → textual value.
+                // $"{i.Value}" calls JsonElement.ToString() (see boolean casing note above).
+                var parametersObject = parameters
+                    .EnumerateObject()
+                    .ToDictionary(i => i.Name, i => $"{i.Value}", StringComparer.OrdinalIgnoreCase);
+
+                // Round-trip through System.Text.Json to apply G4JsonOptions policies (e.g., snake_case keys).
+                var json = JsonSerializer.Serialize(value: parametersObject, options: AppSettings.JsonOptions);
+                var parametersCollection = JsonSerializer.Deserialize<Dictionary<string, string>>(
+                    json,
+                    options: AppSettings.JsonOptions)!;
+
+                // Convert keys to PascalCase and render as --Key[:Value] (omit :Value when empty).
+                var parametersExpression = parametersCollection
+                    .Select(i =>
+                        $"--{i.Key}" +
+                        (string.IsNullOrEmpty(i.Value) ? "" : $":{i.Value}"))
+                    .ToArray();
+
+                // Wrap with G4 template delimiters.
+                return "{{$ " + string.Join(" ", parametersExpression) + "}}";
+            }
         }
 
         // Formats the tools available in the G4 framework, combining both
@@ -459,7 +620,7 @@ namespace G4.Services.Domain.V4.Repositories
                         var systemTool = new McpToolModel
                         {
                             ClientTool = clientTool,
-                            G4Name = ConvertToPascalCase(value: clientTool.Name),
+                            QualifiedName = $"system.{clientTool.Name}",
                             Name = clientTool.Name,
                             Description = clientTool.Description,
                             Metadata = new()
@@ -487,38 +648,6 @@ namespace G4.Services.Domain.V4.Repositories
 
                 // Return all successfully loaded system tools as an array.
                 return [.. systemTools];
-
-                // Converts a snake_case value into PascalCase.
-                static string ConvertToPascalCase(string value)
-                {
-                    // Split the input value into segments using underscores and skip empty segments.
-                    var parts = value.Split('_', StringSplitOptions.RemoveEmptyEntries);
-
-                    // Create a builder for the converted PascalCase value.
-                    var result = new StringBuilder();
-
-                    // Convert each segment into PascalCase form and append it to the result.
-                    foreach (var part in parts)
-                    {
-                        // Skip any empty segment that may still appear during processing.
-                        if (part.Length == 0)
-                        {
-                            continue;
-                        }
-
-                        // Append the first character in uppercase.
-                        result.Append(char.ToUpperInvariant(part[0]));
-
-                        // Append the remaining characters in lowercase.
-                        if (part.Length > 1)
-                        {
-                            result.Append(part[1..].ToLowerInvariant());
-                        }
-                    }
-
-                    // Return the final PascalCase value.
-                    return result.ToString();
-                }
             }
         }
 
@@ -526,6 +655,48 @@ namespace G4.Services.Domain.V4.Repositories
         // to extract the HTML content and then processing it to remove unwanted elements.
         private static Dictionary<string, object> GetApplicationDom(InvokeOptions options)
         {
+            // JavaScript to get the entire HTML content of the document.
+            var script = "return document.body.outerHTML;";
+
+            // Create the action rule to register the document object output as a session parameter.
+            var registerParameterRule = new ActionRuleModel
+            {
+                Argument = "{{$ " +
+                    "--Name:DocumentObjectOutput " +
+                    "--Value:{{$New-ScriptResult --Src:" + script + "}} " +
+                    "--Scope:Session}}",
+                PluginName = "RegisterParameter"
+            };
+
+            // Create the automation model and invoke it using the provided client.
+            var automation = NewAutomation(options.DriverSession, options.Token, registerParameterRule);
+            var response = options.G4Client.Automation.Invoke(automation);
+
+            // Extract the session information from the response.
+            var session = response.Values.Last().Sessions.Last();
+
+            // Retrieve the document object (HTML content) stored as a session parameter and decode it from base64.
+            var documentObject = session
+                .Value
+                .Environment
+                .SessionParameters
+                .Get(key: "DocumentObjectOutput", defaultValue: "<html></html>".ConvertToBase64())
+                .ConvertFromBase64();
+
+            // Import the HTML content and clean the document (removing unwanted tags/elements).
+            var cleanHtml = new HtmlDocument()
+                .ImportHtml(documentObject)
+                .DocumentNode
+                .Clean();
+
+            // Return the cleaned DOM as part of an anonymous object.
+            return new Dictionary<string, object>
+            {
+                ["driverSession"] = session.Key,
+                ["policy"] = GetLocatorGeneratorPolicy(),
+                ["value"] = cleanHtml.OuterHtml
+            };
+
             // Locator Generator policy object – same structure style as your shadow policy
             static object GetLocatorGeneratorPolicy()
             {
@@ -558,7 +729,7 @@ namespace G4.Services.Domain.V4.Repositories
                             ["prefer"] = "subset of [data-testid|aria|id|label|role|text|css|xpath]",
                             ["forbid"] = "strategies to exclude (e.g., 'nth-child', 'brittle-css')"
                         },
-                        ["driver_session"] = "string (opaque; do not echo)",
+                        ["driverSession"] = "string (opaque; do not echo)",
                         ["token"] = "string (opaque; do not echo)"
                     },
 
@@ -645,7 +816,7 @@ namespace G4.Services.Domain.V4.Repositories
                     Guards = new Dictionary<string, object>()
                     {
                         ["no_guessing"] = true,
-                        ["no_secret_leaks"] = new[] { "token", "driver_session" },
+                        ["no_secret_leaks"] = new[] { "token", "driverSession" },
                         ["respect_constraints_prefer"] = true,
                         ["respect_constraints_forbid"] = true,
                         ["forbid_strategies"] = new[] { "pure nth-child chains", "brittle deep CSS", "auto-generated attributes", "unstable classes" },
@@ -664,7 +835,7 @@ namespace G4.Services.Domain.V4.Repositories
                         "Primary has uniqueness==1 and confidence ≥ 0.85, OR disambiguation.needed=true with ≤3 clear candidates",
                         "Strategy honors constraints.prefer/forbid",
                         "Output exactly matches contract keys and field constraints",
-                        "No leakage of token or driver_session"
+                        "No leakage of token or driverSession"
                     },
 
                     FailureTemplate = new Dictionary<string, object>()
@@ -718,308 +889,40 @@ namespace G4.Services.Domain.V4.Repositories
 
                     Params = new Dictionary<string, object>()
                     {
-                        ["must_not_echo"] = new[] { "driver_session", "token" }
+                        ["mustNotEcho"] = new[] { "driverSession", "token" }
                     },
 
                     TtlSeconds = 60
                 };
             }
-
-            // JavaScript to get the entire HTML content of the document.
-            var script = "return document.body.outerHTML;";
-
-            // Create the action rule to register the document object output as a session parameter.
-            var registerParameterRule = new ActionRuleModel
-            {
-                Argument = "{{$ " +
-                    "--Name:DocumentObjectOutput " +
-                    "--Value:{{$New-ScriptResult --Src:" + script + "}} " +
-                    "--Scope:Session}}",
-                PluginName = "RegisterParameter"
-            };
-
-            // Create the automation model and invoke it using the provided client.
-            var automation = NewAutomation(options.DriverSession, options.Token, registerParameterRule);
-            var response = options.G4Client.Automation.Invoke(automation);
-
-            // Extract the session information from the response.
-            var session = response.Values.Last().Sessions.Last();
-
-            // Retrieve the document object (HTML content) stored as a session parameter and decode it from base64.
-            var documentObject = session
-                .Value
-                .Environment
-                .SessionParameters
-                .Get(key: "DocumentObjectOutput", defaultValue: "<html></html>".ConvertToBase64())
-                .ConvertFromBase64();
-
-            // Import the HTML content and clean the document (removing unwanted tags/elements).
-            var cleanHtml = new HtmlDocument()
-                .ImportHtml(documentObject)
-                .DocumentNode
-                .Clean();
-
-            // Return the cleaned DOM as part of an anonymous object.
-            return new Dictionary<string, object>
-            {
-                ["driver_session"] = session.Key,
-                ["policy"] = GetLocatorGeneratorPolicy(),
-                ["value"] = cleanHtml.OuterHtml
-            };
         }
 
-        // Return a new object containing the instructions for the next tool call.
-        private static object GetShadowInstructions(string policyName)
+        // Retrieves the buffered rules associated with the session identifier
+        // provided in the invocation arguments.
+        private static List<(long Timestamp, G4RuleModelBase Rule)> GetBuffer(InvokeOptions options)
         {
-            return new
+            // Read the session identifier from the invocation arguments.
+            // When the argument is missing, keep the value as null.
+            var sessionId = options.Arguments.TryGetProperty("sessionId", out var sessionIdOut)
+                ? sessionIdOut.GetString()
+                : null;
+
+            // Try to retrieve the buffered rules for the resolved session identifier.
+            var buffer = options.Buffer.GetValueOrDefault(key: sessionId, defaultValue: null);
+
+            // Reject the request when the session identifier is missing or when
+            // no buffer exists for the requested session.
+            if (string.IsNullOrEmpty(sessionId) || buffer == null)
             {
-                PolicyVersion = "2025.08.24.0",
-                Name = policyName,
-                CheckList = new[]
-                {
-                    "Read G4_API_KEY from .env (ask if missing) and cache as token",
-                    "Read OPENAI_API_KEY from .env (ask if missing) and cache as openai_api_key",
-                    "Read OPENAI_URI from .env (ask if missing) and cache as openai_uri",
-                    "Read OPENAI_MODEL from .env (ask if missing) and cache as openai_model",
-                    "If no driver_session, call start_g4_session with .env defaults: driver=WEB_DRIVER, driver_binaries=WEB_DRIVER_REPOSITORY, token=G4_API_KEY; save the returned session id",
-                    "Sequence (every call): get_tools → find_tool → (get_locator|get_application_dom if needed) → build inputs per schema → add token → add driver_session (if not start_g4_session) → call",
-                    "Required params: inputs MUST include token (all tools) and driver_session (all tools except start_g4_session); if schema lacks them, add them before calling",
-                    "DOM discipline (page tools): 1) Call get_locator with { intent, action, hints, constraints, driver_session, token }. 2) Use only the returned primary locator (or an explicit fallback). Never guess. 3) Use OPENAI_API_KEY/OPENAI_URI/OPENAI_MODEL from .env; if missing, ask the user. 4) If no OpenAI-specific info is provided, call get_application_dom and derive the locator from its DOM data/instructions.",
-                    "Self-check before sending: verify tool exists, inputs match schema, and required token/driver_session are present. If any check fails, fix or ask—don’t call.",
-                    "No guessing: never invent tool names, parameters, or locators. Ask when policy/schema/DOM info is missing or ambiguous."
-                },
-                Defaults = new Dictionary<string, object>()
-                {
-                    ["global.token"] = "ENV:G4_API_KEY",
-                    ["get_locator.openai_api_key"] = "ENV:OPENAI_API_KEY",
-                    ["get_locator.openai_uri"] = "ENV:OPENAI_URI",
-                    ["get_locator.openai_model"] = "ENV:OPENAI_MODEL",
-                    ["start_g4_session.driver"] = "ENV:WEB_DRIVER",
-                    ["start_g4_session.driver_binaries"] = "ENV:WEB_DRIVER_REPOSITORY",
-                },
-                Guards = new Dictionary<string, object>()
-                {
-                    ["no_guessing"] = true,
-                    ["retry_find_tool_once"] = true,
-                    ["on_locator_failure"] = "ask_user",
-                    ["self_check_enabled"] = true
-                },
-                PageTool = new Dictionary<string, object>()
-                {
-                    ["required"] = "ONLY when interacting with the page",
-                    ["steps"] = new[]
-                    {
-                        "Call get_locator { intent:'<brief action>', action:'<click|type|select|read|...>', hints:{...}, constraints:{...}, driver_session, token }",
-                        "If OpenAI info is missing, ask the user; if none provided, call get_application_dom and derive the locator",
-                        "Use ONLY the returned primary locator (or explicit fallback) — never guess"
-                    }
-                },
-                Params = new Dictionary<string, object>()
-                {
-                    ["must_add"] = new[] { "driver_session", "token" },
-                    ["except_tools"] = new[] { "start_g4_session" },
-                    ["force_add_if_missing_in_schema"] = true
-                },
-                TtlSeconds = 60
-            };
-        }
+                var message = string.IsNullOrEmpty(sessionId)
+                    ? "The sessionId argument is required to retrieve the current buffer."
+                    : $"No buffer was found for sessionId '{sessionId}'. The session may be invalid, expired, or not initialized.";
 
-        // Return a new object containing the template instructions for plugin manifests.
-        private static object GetTemplateInstructions(string policyName)
-        {
-            return new
-            {
-                PolicyVersion = "2025.12.21.0",
-                Name = policyName,
+                throw new InvalidSessionIdException(message);
+            }
 
-                checkList = new[]
-                {
-                    "This is a shadow policy: no inputs. The agent pulls these instructions when needed.",
-                    "Output contract: schemaExample.example is the exact expected output template object.",
-                    "ALL fields in the output template MUST be camelCase, including deep/nested objects.",
-                    "Examples are mandatory: examples[] MUST contain at least one item.",
-                    "All supporting markdown fields MUST be arrays of lines (never strings): description[], examples[].description[], summary[].",
-                    "Never return null collections: all lists must exist and be arrays (examples must be non-empty).",
-                    "Template placeholders are allowed ONLY as explicit TODO strings; never invent real values.",
-                    "protocol must contain apiDocumentation and w3c keys (string values).",
-                    "Before returning, self-check: camelCase everywhere, examples >= 1, no null lists, all md fields are arrays."
-                },
-
-                Defaults = new Dictionary<string, object>
-                {
-                    ["protocol.apiDocumentation"] = "None",
-                    ["protocol.w3c"] = "None",
-                    ["source"] = "Template",
-
-                    // Formatting / enforcement defaults
-                    ["supporting_md_is_array"] = true,
-                    ["examples_required"] = true,
-                    ["never_null_lists"] = true
-                },
-
-                Guards = new Dictionary<string, object>
-                {
-                    ["no_inputs"] = true,
-                    ["no_guessing"] = true,
-                    ["examples_required"] = true,
-                    ["supporting_md_arrays_only"] = true,
-                    ["never_null_lists"] = true,
-                    ["self_check_enabled"] = true,
-
-                    // If any invariant is violated, do not proceed silently.
-                    ["on_invariant_failure"] = "fix_or_ask_user"
-                },
-
-                // This describes the exact shape and a mandatory example output object.
-                SchemaExample = new Dictionary<string, object>
-                {
-                    ["required"] = "SchemaExample.example is the expected output template manifest object (G4PluginAttribute).",
-                    ["steps"] = new[]
-                    {
-                        "Return SchemaExample.example as a valid template manifest object.",
-                        "Ensure Examples[] has at least one example and all supporting MD fields are arrays of lines.",
-                        "Ensure no null lists exist anywhere in the object graph."
-                    },
-
-                    // This object IS the output you expect the agent to follow.
-                    ["example"] = new G4PluginAttribute
-                    {
-                        Key = "LLM Note: PlugnKey Pascal Case",
-                        Source = "Template",
-
-                        Aliases = [],
-
-                        Author = new PluginAuthorModel
-                        {
-                            Name = "LLM Note: Author name",
-                            Link = ""
-                        },
-
-                        Categories = [],
-
-                        // Supporting MD -> always array of lines
-                        Description =
-                        [
-                            "LLM Note: What the plugin does (1 line).",
-                            "LLM Note: Key behavior/constraints (optional)."
-                        ],
-
-                        // Examples -> MUST contain at least one
-                        Examples =
-                        [
-                            new PluginExampleModel
-                            {
-                                // Supporting MD -> always array of lines
-                                Description =
-                                [
-                                    "LLM Note: What this example demonstrates."
-                                ],
-                                Rule = new RuleExampleModel
-                                {
-                                    PluginName = "LLM Note: PluginName (PascalCase)",
-                                    Argument = "",
-                                    Locator = "",
-                                    OnAttribute = "",
-                                    OnElement = "",
-                                    RegularExpression = ""
-                                }
-                            }
-                        ],
-
-                        Platforms = [],
-
-                        Protocol = new Dictionary<string, string>
-                        {
-                            ["apiDocumentation"] = "None",
-                            ["w3c"] = "None"
-                        },
-
-                        Rules = [],
-
-                        Parameters =
-                        [
-                            new PluginParameterModel
-                            {
-                                Name = "LLM Note: Parameter Name",
-                                Type = "LLM Note: Parameter Type",
-                                Mandatory = true,
-                                Default = "",
-                                Description =
-                                [
-                                    "LLM Note: What this parameter controls."
-                                ],
-                                Values =
-                                [
-                                    new PluginParameterModel
-                                    {
-                                        Name = "LLM Note: AllowedValueName",
-                                        Description =
-                                        [
-                                            "LLM Note: Meaning of this value."
-                                        ]
-                                    }
-                                ]
-                            }
-                        ],
-
-                        Properties =
-                        [
-                            new PluginParameterModel
-                            {
-                                Name = "LLM Note: PropertyName",
-                                Type = "LLM Note: Type",
-                                Mandatory = true,
-                                Default = "",
-                                Description =
-                                [
-                                    "LLM Note: What this property controls."
-                                ],
-                                Values =
-                                [
-                                    new PluginParameterModel
-                                    {
-                                        Name = "LLM Note: AllowedValueName",
-                                        Description =
-                                        [
-                                            "LLM Note: Meaning of this value."
-                                        ]
-                                    }
-                                ]
-                            }
-                        ],
-
-                        // Supporting MD -> always array of lines
-                        Summary =
-                        [
-                            "The plugin ...",
-                            "It ...",
-                            "It allows ..."
-                        ]
-                    }
-                },
-
-                Params = new Dictionary<string, object>
-                {
-                    // This policy is static; these are invariants the agent must preserve when using the template.
-                    ["must_add"] = new[]
-                    {
-                        "Key",
-                        "Author",
-                        "Description",
-                        "Examples",
-                        "Protocol",
-                        "Parameters",
-                        "Properties",
-                        "Summary"
-                    },
-                    ["except_tools"] = new[] { "" },
-                    ["force_add_if_missing_in_schema"] = true,
-                    ["force_supporting_md_arrays"] = true,
-                    ["force_examples_min_count"] = 1
-                },
-
-                TtlSeconds = 60
-            };
+            // Return a materialized copy of the buffered rule entries.
+            return [.. buffer];
         }
 
         // Creates a new G4 automation model with the provided session details and rule parameters.
@@ -1088,26 +991,20 @@ namespace G4.Services.Domain.V4.Repositories
             // Fetch the current page DOM for the active driver session.
             var documentObject = GetApplicationDom(options);
 
-            // Parse the incoming "arguments" JSON into a mutable dictionary.
-            // Assumes options.Arguments contains valid JSON.
-            var inputObject = JsonSerializer.Deserialize<Dictionary<string, object>>(
-                json: options.Arguments.GetRawText(),
-                options: IMcpRepository.JsonOptions);
-
             // Build the model input: carry over "intent" and inject the DOM so the model has page context.
             var intentObject = new Dictionary<string, object>
             {
-                ["intent"] = inputObject.GetValueOrDefault(key: "intent", defaultValue: string.Empty),
+                ["intent"] = options.Intent?.AgentIntent ?? string.Empty,
                 ["dom"] = documentObject.GetValueOrDefault("value", "<html></html>"),
             };
 
             // Serialize the model input that will go into the user message content.
             var userContent = JsonSerializer.Serialize(
                 value: intentObject,
-                options: IMcpRepository.JsonOptions);
+                options: AppSettings.JsonOptions);
 
             // Prepare a Chat Completions–style payload (model + messages).
-            // The system prompt is loaded from "LocatorsSystemPrompt.md".
+            // The system prompt is loaded from "LocatorSystemPrompt.md".
             var openAiRequest = new
             {
                 Model = options.OpenaiModel,
@@ -1116,7 +1013,7 @@ namespace G4.Services.Domain.V4.Repositories
                     new
                     {
                         Role = "system",
-                        Content = InvokeOptions.SystemPrompts.Get(key: "LocatorsSystemPrompt.md", defaultValue: "")
+                        Content = InvokeOptions.SystemPrompts.Get(key: "LocatorSystemPrompt.md", defaultValue: "")
                     },
                     new
                     {
@@ -1129,7 +1026,7 @@ namespace G4.Services.Domain.V4.Repositories
             // Serialize the request payload to JSON.
             var value = JsonSerializer.Serialize(
                 value: openAiRequest,
-                options: IMcpRepository.JsonOptions);
+                options: AppSettings.JsonOptions);
 
             // Create the HTTP POST request to the (OpenAI-compatible) endpoint.
             var request = new HttpRequestMessage
@@ -1163,12 +1060,53 @@ namespace G4.Services.Domain.V4.Repositories
 
             // The model is expected to return JSON in message.content.
             // Deserialize that JSON into a JsonElement and return it.
-            return JsonSerializer.Deserialize<JsonElement>(content, IMcpRepository.JsonOptions);
+            return JsonSerializer.Deserialize<JsonElement>(content, AppSettings.JsonOptions);
         }
 
-        // Starts the automation rule execution by invoking the specified rule on the client, 
+        // Removes the buffer associated with the session identifier provided in the invocation arguments.
+        // This is typically used to clean up resources when a session is closed or no longer needed.
+        private static object RemoveBuffer(InvokeOptions options)
+        {
+            // Read the session identifier from the invocation arguments.
+            // When the argument is missing, keep the value as null.
+            var sessionId = options.Arguments.TryGetProperty("sessionId", out var sessionIdOut)
+                ? sessionIdOut.GetString()
+                : null;
+
+            // Try to remove the buffer for the resolved session identifier.
+            var removed = !string.IsNullOrEmpty(sessionId) && options.Buffer.TryRemove(sessionId, out _);
+
+            // Return an indication of whether the buffer was successfully removed.
+            return new { 
+                sessionId,
+                removed
+            };
+        }
+
+        // Removes the session associated with the session identifier provided in the invocation arguments.
+        // This is typically used to clean up resources when a session is closed or no longer needed.
+        private static object RemoveSession(InvokeOptions options)
+        {
+            // Read the session identifier from the invocation arguments.
+            // When the argument is missing, keep the value as null.
+            var sessionId = options.Arguments.TryGetProperty("sessionId", out var sessionIdOut)
+                ? sessionIdOut.GetString()
+                : null;
+
+            // Try to remove the session for the resolved session identifier.
+            var removed = !string.IsNullOrEmpty(sessionId) && options.Sessions.TryRemove(sessionId, out _);
+
+            // Return an indication of whether the session was successfully removed.
+            return new
+            {
+                sessionId,
+                removed
+            };
+        }
+
+        // Starts the automation rule execution by invoking the specified rule on the client,
         // and retrieves the response, including the driver session and the value of the executed rule.
-        private static object StartG4Rule(InvokeOptions options)
+        private static object SendRule(InvokeOptions options)
         {
             // Create a new automation model using the provided driver binaries, authentication token, and rule.
             var automation = NewAutomation(options.DriverSession, options.Token, options.Rule);
@@ -1193,7 +1131,8 @@ namespace G4.Services.Domain.V4.Repositories
                 .ResponseTree
                 .Stages.Last()
                 .Jobs.Last()
-                .Plugins.Last();
+                .Plugins
+                .Last();
 
             // Get the current buffer for the session, defaulting to an empty list if none exists.
             var bufferOut = buffer ?? [];
@@ -1222,7 +1161,7 @@ namespace G4.Services.Domain.V4.Repositories
 
         // Starts a new G4 session by invoking the automation process with the provided parameters.
         // The session information is returned, and the session is added to the provided dictionary of active sessions.
-        private static object StartG4Session(InvokeOptions options)
+        private static object StartSession(InvokeOptions options)
         {
             // Parse the "arguments" into a JSON string for further processing.
             var arguments = options.Arguments.ToString();
@@ -1259,88 +1198,6 @@ namespace G4.Services.Domain.V4.Repositories
                 DriverSession = session.Key
             };
         }
-
-        // TODO: Implement logic to handle all types of G4 rules.
-        // Converts the given tool name and parameters into a G4 rule model.
-        // This method retrieves the plugin name associated with the tool and uses the parameters to create a rule model.
-        private static ActionRuleModel ConvertToRule(JsonElement arguments, ConcurrentDictionary<string, McpToolModel> tools)
-        {
-            // Formats a JSON parameters object into a templated, G4 CLI-style string,
-            static string FormatParameters(JsonElement parameters)
-            {
-                if (parameters.ValueKind != JsonValueKind.Object)
-                {
-                    // If the parameters are not an object, return an empty string.
-                    return string.Empty;
-                }
-
-                // Build a case-insensitive dictionary of name → textual value.
-                // $"{i.Value}" calls JsonElement.ToString() (see boolean casing note above).
-                var parametersObject = parameters
-                    .EnumerateObject()
-                    .ToDictionary(i => i.Name, i => $"{i.Value}", StringComparer.OrdinalIgnoreCase);
-
-                // Round-trip through System.Text.Json to apply G4JsonOptions policies (e.g., snake_case keys).
-                var json = JsonSerializer.Serialize(value: parametersObject, options: IMcpRepository.G4JsonOptions);
-                var parametersCollection = JsonSerializer.Deserialize<Dictionary<string, string>>(
-                    json,
-                    options: IMcpRepository.G4JsonOptions)!;
-
-                // Convert keys to PascalCase and render as --Key[:Value] (omit :Value when empty).
-                var parametersExpression = parametersCollection
-                    .Select(i =>
-                        $"--{i.Key.ConvertToPascalCase()}" +
-                        (string.IsNullOrEmpty(i.Value) ? "" : $":{i.Value}"))
-                    .ToArray();
-
-                // Wrap with G4 template delimiters.
-                return "{{$ " + string.Join(" ", parametersExpression) + "}}";
-            }
-
-            // Try to extract the rule data from the arguments JSON.
-            var ruleData = arguments.TryGetProperty("rule", out var ruleOut)
-                ? ruleOut
-                : JsonDocument.Parse("{}").RootElement;
-
-            // Retrieve the "name" of the tool to be invoked. Defaults to null if not provided.
-            var includes = new[] { "tool_name", "toolName", "name", "tool" };
-            var toolName = includes
-                    .Select(k => ruleData.GetOrDefault(k, () => string.Empty)?.Trim())
-                    .FirstOrDefault(v => !string.IsNullOrWhiteSpace(v))
-                ?? string.Empty;
-
-            // Retrieve the plugin name associated with the provided tool name from the internal tool registry (_tools)
-            var pluginName = tools.GetValueOrDefault(key: toolName)?.G4Name ?? string.Empty;
-
-            // Get the parameters from the ruleData, defaulting to an empty JSON object if not provided.
-            var parameters = ruleData.TryGetProperty("parameters", out var parametersOut)
-                ? parametersOut
-                : JsonDocument.Parse("{}").RootElement;
-
-            // Format the parameters into a command-line style string (e.g., "--param1:value1 --param2:value2").
-            var parametersCli = FormatParameters(parameters);
-
-            // Get the properties from the ruleData, defaulting to a JSON object with the plugin name if not provided.
-            var properties = ruleData.TryGetProperty("properties", out var propertiesOut)
-                ? propertiesOut.GetRawText()
-                : "{\"tool_name\":\"" + pluginName + "\"}";
-
-            // Deserialize the JSON string into the G4RuleModelBase object using the provided JSON options (JsonOptions)
-            var rule = JsonSerializer.Deserialize<ActionRuleModel>(
-                json: properties,
-                options: IMcpRepository.JsonOptions);
-
-            // Set the PluginName property of the rule to the retrieved plugin name
-            rule.PluginName = pluginName;
-
-            // Set the Argument property of the rule to the formatted parameters if provided
-            rule.Argument = string.IsNullOrEmpty(parametersCli) || parametersCli.Equals("{{$ }}")
-                ? rule.Argument
-                : parametersCli;
-
-            // Return the created rule
-            return rule;
-        }
         #endregion
 
         #region *** Nested Types ***
@@ -1376,23 +1233,27 @@ namespace G4.Services.Domain.V4.Repositories
 
                 // Retrieve the "driver_binaries" argument (path or URL to driver binaries).
                 // Defaults to null if not provided.
-                DriverBinaries = arguments.GetOrDefault("driver_binaries", () => default(string));
+                DriverBinaries = arguments.GetOrDefault("driverBinaries", () => default(string));
 
-                // Retrieve the "driver_session" argument (existing session ID for reusing a browser session).
+                // Retrieve the "driverSession" argument (existing session ID for reusing a browser session).
                 // Defaults to null if not provided.
-                DriverSession = arguments.GetOrDefault("driver_session", () => default(string));
+                DriverSession = arguments.GetOrDefault("driverSession", () => default(string));
+
+                // Retrieve the "intent" argument, which describes the purpose of
+                // the invocation for semantic lookup.
+                Intent = arguments.GetOrDefault("intent", () => default(IntentModel));
 
                 // Retrieve the OpenAI API key for authentication with the OpenAI API.
                 // Defaults to null if not provided.
-                OpenaiApiKey = arguments.GetOrDefault("openai_api_key", () => default(string));
+                OpenaiApiKey = arguments.GetOrDefault("openaiApiKey", () => default(string));
 
                 // Retrieve the OpenAI model identifier (e.g., gpt-4, gpt-5).
                 // Defaults to null if not provided.
-                OpenaiModel = arguments.GetOrDefault("openai_model", () => default(string));
+                OpenaiModel = arguments.GetOrDefault("openaiModel", () => default(string));
 
                 // Retrieve the OpenAI API base URI (custom endpoint if applicable).
                 // Defaults to null if not provided.
-                OpenaiUri = arguments.GetOrDefault("openai_uri", () => default(string));
+                OpenaiUri = arguments.GetOrDefault("openaiUri", () => default(string));
 
                 // Retrieve the "token" argument (general-purpose authentication or API token).
                 // Defaults to null if not provided.
@@ -1403,9 +1264,12 @@ namespace G4.Services.Domain.V4.Repositories
                 ToolName = parameters.GetOrDefault("name", () => default(string));
             }
 
-            public static ReadOnlyDictionary<string, string> SystemPrompts => new(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            /// <summary>
+            /// Gets the system prompts used for tool invocation, loaded from embedded resources.
+            /// </summary>
+            public static ReadOnlyDictionary<string, string> SystemPrompts = new(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
-                ["LocatorsSystemPrompt.md"] = ReadSystemPrompt(instrcutionsManifest: "LocatorsSystemPrompt.md")
+                ["LocatorSystemPrompt.md"] = ReadSystemPrompt(instrcutionsManifest: "LocatorSystemPrompt.md")
             });
 
             /// <summary>
@@ -1413,6 +1277,9 @@ namespace G4.Services.Domain.V4.Repositories
             /// </summary>
             public JsonElement Arguments { get; set; }
 
+            /// <summary>
+            /// Gets or sets the buffer that tracks recently executed rules for each session.
+            /// </summary>
             public ConcurrentDictionary<string, ConcurrentBag<(long Timestamp, G4RuleModelBase Rule)>> Buffer { get; set; }
 
             /// <summary>
@@ -1444,7 +1311,7 @@ namespace G4.Services.Domain.V4.Repositories
             /// The intent that describes the purpose of the invocation,
             /// which can be used for semantic or vector-based lookup of tools.
             /// </summary>
-            public string Intent { get; set; }
+            public IntentModel Intent { get; set; }
 
             /// <summary>
             /// The OpenAI API key used for authentication.
@@ -1520,23 +1387,6 @@ namespace G4.Services.Domain.V4.Repositories
                     return string.Empty;
                 }
             }
-        }
-        #endregion
-
-        #region *** Attributes   ***
-        /// <summary>
-        /// Custom attribute used to mark properties that represent system tools.
-        /// This attribute is applied to properties to indicate that they correspond to a system tool, 
-        /// which can be used for automation or other tool-based operations.
-        /// </summary>
-        /// <param name="name">The name of the system tool.</param>
-        [AttributeUsage(AttributeTargets.Property)]
-        private sealed class SystemToolAttribute(string name) : Attribute
-        {
-            /// <summary>
-            /// Gets the name of the system tool.
-            /// </summary>
-            public string Name { get; } = name;
         }
         #endregion
     }

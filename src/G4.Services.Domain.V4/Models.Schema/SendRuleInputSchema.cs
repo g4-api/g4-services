@@ -1,7 +1,5 @@
 ﻿using Swashbuckle.AspNetCore.Annotations;
 
-using System.Text.Json.Serialization;
-
 namespace G4.Services.Domain.V4.Models.Schema
 {
     /// <summary>
@@ -9,17 +7,23 @@ namespace G4.Services.Domain.V4.Models.Schema
     /// Requires a driver session identifier, the rule definition to execute, and an authorization token.
     /// </summary>
     [SwaggerSchema(description: "Schema for starting a rule execution within an active G4 driver session.")]
-    public class StartRuleInputSchema
+    public class SendRuleInputSchema
     {
         /// <summary>
-        /// Gets or sets the driver session identifier.  
+        /// Gets or sets the driver session identifier.
         /// Specifies the active session in which the rule should be executed.
         /// </summary>
-        [JsonPropertyName("driver_session")]
         [SwaggerSchema(description: "The unique session ID associated with the current browser session. " +
             "This ID is used to retrieve the appropriate browser driver for interacting with " +
             "the session and performing automation tasks.")]
         public string DriverSession { get; set; }
+
+        /// <summary>
+        /// Gets or sets the user intent or natural-language request
+        /// that describes the purpose of the rule being sent.
+        /// </summary>
+        [SwaggerSchema(description: "The user intent or natural-language request that describes the purpose of the rule being sent.")]
+        public IntentModel Intent { get; set; }
 
         /// <summary>
         /// Gets or sets the rule definition to execute.  

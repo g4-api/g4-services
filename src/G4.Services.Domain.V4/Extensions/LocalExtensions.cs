@@ -6,13 +6,10 @@ using HtmlAgilityPack;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.OpenApi;
 
-//using Newtonsoft.Json;
-
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 
 
 namespace G4.Extensions
@@ -118,18 +115,9 @@ namespace G4.Extensions
             /// </remarks>
             public McpToolModel ConvertToTool()
             {
-                // Normalize the manifest key by replacing non-word characters with spaces.
-                // This creates a stable intermediate value that can later be converted into
-                // the target MCP tool naming convention.
-                var pluginKey = Regex.Replace(manifest.Key, pattern: @"\W+", replacement: " ");
-
                 // Convert the normalized key into the final MCP tool name.
                 // The result is lowercase and uses underscores for separation.
-                var name = pluginKey
-                    .Replace("-", " ")
-                    .ConvertToKebabCase()
-                    .Replace("-", "_")
-                    .ToLower();
+                var name = manifest.Key;
 
                 // Combine the manifest summary lines into a single description string
                 // for the tool and client model.
@@ -206,7 +194,7 @@ namespace G4.Extensions
                 return new McpToolModel
                 {
                     Description = description,
-                    G4Name = manifest.Key,
+                    QualifiedName = manifest.Key,
                     Name = name,
                     Metadata = new McpToolModel.ToolMetadataModel
                     {
@@ -259,8 +247,8 @@ namespace G4.Extensions
                         Type = ConvertType(parameterModel.Type),
                         Items = isRules ? new
                         {
-                            Description = "Array of nested rule objects—each item’s tool_name must first be looked up via find_tool to " +
-                                "retrieve its inputSchema before its parameters are included in the parent rule for invoke_g4_tool to process as one.",
+                            Description = "Array of nested rule objects—each item’s toolName must first be looked up via g4.FindTool to " +
+                                "retrieve its inputSchema before its parameters are included in the parent rule for g4.SendRule to process as one.",
                             Type = "object"
                         } : null
                     };
@@ -334,6 +322,10 @@ namespace G4.Extensions
 
                     // If it's a boolean false, return false.
                     JsonValueKind.False => (T)(object)false,
+
+                    // If it's an object, deserialize it into the
+                    // target type T using the shared JSON options.
+                    JsonValueKind.Object => JsonSerializer.Deserialize<T>(tokenOut.GetRawText(), AppSettings.JsonOptions),
 
                     // If it's any other type (array, object, null, undefined, etc.), 
                     // fall back to the default value from the factory.

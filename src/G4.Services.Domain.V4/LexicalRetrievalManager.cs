@@ -1,7 +1,6 @@
 ﻿using G4.Cache;
 using G4.Extensions;
 using G4.Models;
-using G4.Services.Domain.V4.Models;
 
 using System;
 using System.Collections.Generic;
@@ -26,6 +25,10 @@ namespace G4.Services.Domain.V4
 
         // Holds the raw plugin manifests from the cache for quick access during retrieval.
         private readonly Dictionary<string, IG4PluginManifest> _manifests;
+
+        // Holds the initialized in-memory example catalog built from the supplied cache,
+        // keyed by "{namespace.}toolName".
+        private readonly Dictionary<string, ExampleScoreModel[]> _examples;
 
         // Holds the initialized in-memory tool catalog built from the supplied cache.
         private readonly IEnumerable<ToolScoreModel> _tools;
@@ -58,26 +61,88 @@ namespace G4.Services.Domain.V4
 
             // Build a lookup dictionary of plugin manifests from the
             // cache for quick access during retrieval.
-            _manifests = _cache
+            var a = _cache
                 .PluginsCache
                 .Values
                 .SelectMany(i => i.Values)
-                .Select(i => i.Manifest)
-                .ToDictionary(i => $"{(string.IsNullOrEmpty(i.Namespace) ? "" : $"{i.Namespace}.")}{i.Key}", i => i);
+                .Select(i => i.Manifest);
+
+            _manifests ??= new Dictionary<string, IG4PluginManifest>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var i in a)
+            {
+                var key = $"{(string.IsNullOrEmpty(i.Namespace) ? "" : $"{i.Namespace}.")}{i.Key}";
+                _manifests[key] = i;
+            }
+
+            //.ToDictionary(i => $"{(string.IsNullOrEmpty(i.Namespace) ? "" : $"{i.Namespace}.")}{i.Key}", i => i);
 
             // Initialize the tool catalog from cache for the included types
             _tools = InitializeCatalog(cache, _included);
+
+            // Initialize the example catalog from cache for the included types
+            _examples = InitializeExamples(cache, _included);
         }
         #endregion
 
         #region *** Methods      ***
+        /// <summary>
+        /// Finds the most relevant examples for the supplied prompt within the specified tool.
+        /// </summary>
+        /// <param name="toolName">The key name of the tool whose examples are searched.</param>
+        /// <param name="namespace">The namespace of the tool.</param>
+        /// <param name="prompt">The user prompt used to score and rank matching examples.</param>
+        /// <param name="take">The maximum number of matching examples to return. Defaults to 3.</param>
+        /// <returns>A ResultModel whose <c>Examples</c> array contains the scored examples ordered by descending relevance. Only examples with a positive score are returned.</returns>
         public ResultModel FindExamples(string toolName, string @namespace, string prompt, int take = 3)
         {
-            var key = $"{(string.IsNullOrEmpty(@namespace) ? "" : $"{@namespace}.")}{toolName}";
-            var manifest = _manifests[key];
+            // Build the lookup key using the same format as the example catalog.
+            var key = $"{(string.IsNullOrEmpty(@namespace)
+                ? ""
+                : $"{@namespace}.")}{toolName}";
 
-            // IMPLEMENT
-            var examples = manifest.Examples;
+            // Retrieve the pre-built example catalog entries for this tool.
+            // Return an empty result when the tool key is not found in the catalog.
+            if (!_examples.TryGetValue(key, out ExampleScoreModel[] catalogEntries))
+            {
+                return new ResultModel { Examples = [] };
+            }
+
+            // Normalize the incoming prompt so matching is performed against a consistent text format.
+            var normalizedPrompt = Normalize(prompt);
+
+            // Split the normalized prompt into tokens used for field-level scoring.
+            var promptTokens = FormatTokens(normalizedPrompt).ToArray();
+
+            // Retrieve the tool description once so it can be attached to every result entry.
+            _manifests.TryGetValue(key, out IG4PluginManifest manifest);
+            var toolDescription = manifest == null ? string.Empty : string.Join('\n', manifest.Summary);
+
+            // Score each catalog entry against the prompt. Each entry already carries the original
+            // PluginExampleModel data and the normalized fields; only the score is computed here.
+            // The catalog entries are never mutated — a new ExampleScoreResultModel is produced
+            // for each entry and the catalog entry itself is surfaced as the Example payload.
+            var scored = catalogEntries
+                .Select(entry => new ExampleScoreResultModel
+                {
+                    // Attach the tool-level context to every result entry.
+                    Description = toolDescription,
+                    Name        = toolName,
+                    NameSpace   = @namespace,
+
+                    // Surface the catalog entry as the example payload.
+                    // It holds the original PluginExampleModel data alongside the normalized fields.
+                    Example = entry,
+
+                    // Compute the relevance score for this example against the prompt.
+                    Score = SetExampleScore(entry, normalizedPrompt, promptTokens)
+                })
+                .Where(e => e.Score > 0)
+                .OrderByDescending(e => e.Score)
+                .Take(take)
+                .ToArray();
+
+            return new ResultModel { Examples = scored };
         }
 
         /// <summary>
@@ -133,7 +198,7 @@ namespace G4.Services.Domain.V4
 
                     // Compute the relevance score for this tool based on
                     // the normalized prompt and its tokens.
-                    Score = SetScore(tool, normalizedPrompt, promptTokens)
+                    Score = SetToolScore(tool, normalizedPrompt, promptTokens)
                 };
 
                 // Add the scored tool to the list of results for
@@ -247,9 +312,108 @@ namespace G4.Services.Domain.V4
             }
         }
 
-        private static Dictionary<string, ExampleScoreModel> InitializeManifest(CacheManager cache, string[] included)
+
+
+
+
+
+
+
+        // Builds the per-tool example catalog from the current plugin cache.
+        // Each dictionary entry maps a "{namespace.}toolName" key to the full array of
+        // ExampleScoreModel entries for that tool — ready for scoring at query time.
+        private static Dictionary<string, ExampleScoreModel[]> InitializeExamples(CacheManager cache, string[] included)
         {
+            var a = cache
+                .PluginsCache
+                .Values
+                .SelectMany(i => i.Values)
+                .Where(i => included.Contains(i.Manifest.PluginType, StringComparer.OrdinalIgnoreCase));
+                //.ToDictionary(
+                //    i => $"{(string.IsNullOrEmpty(i.Manifest.Namespace) ? "" : $"{i.Manifest.Namespace}.")}{i.Manifest.Key}",
+                //    i => i.Manifest.Examples.Select(e => NewExampleScoreModel(i.Manifest, e)).ToArray());
+
+            var d = new Dictionary<string, ExampleScoreModel[]>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var i in a)
+            {
+                var key = $"{(string.IsNullOrEmpty(i.Manifest.Namespace) ? "" : $"{i.Manifest.Namespace}.")}{i.Manifest.Key}";
+                var value = i.Manifest.Examples.Select(e => NewExampleScoreModel(i.Manifest, e));
+
+                d[key] = [.. value];
+            }
+
+            return d;
+
+
+            // Maps a raw PluginExampleModel into an ExampleScoreModel by preserving the original
+            // example as the returnable payload and computing the normalized fields used for scoring.
+            // NormalizedDescription holds the normalized example text; NormalizedName holds the
+            // normalized label text — the two primary signals for per-example scoring.
+            static ExampleScoreModel NewExampleScoreModel(IG4PluginManifest manifest, PluginExampleModel pluginExample)
+            {
+                // Check whether the example contains a context dictionary.
+                var isContext = pluginExample.Context?.Any() == true;
+
+                // Try to read the labels value from the example context.
+                // When no labels are present, use an empty string array.
+                var labelsValue = isContext && pluginExample.Context.TryGetValue("labels", out object labelsOut)
+                    ? labelsOut
+                    : Array.Empty<string>();
+
+                // Join the example description lines into a single text block.
+                var description = pluginExample.Description?.Any() == true
+                    ? string.Join("\n", pluginExample.Description)
+                    : string.Empty;
+
+                try
+                {
+                    // Serialize and deserialize the labels value to normalize it into
+                    // a string array regardless of its original runtime shape.
+                    var labelsJson = JsonSerializer.Serialize(labelsValue);
+                    var labels = JsonSerializer.Deserialize<string[]>(labelsJson) ?? [];
+
+                    return new ExampleScoreModel
+                    {
+                        // Preserve the original PluginExampleModel as the returnable payload.
+                        Example = pluginExample,
+
+                        // Store tool-level metadata for context in the result model.
+                        Name      = manifest.Key,
+                        Namespace = manifest.Namespace,
+
+                        // NormalizedDescription holds the normalized example text for token scoring.
+                        NormalizedDescription = Normalize(description),
+
+                        // NormalizedName holds the normalized label text — the primary intent signal.
+                        NormalizedName = labels.Length > 0 ? Normalize(string.Join(' ', labels)) : string.Empty,
+
+                        // NormalizedNamespace provides a supporting namespace-level signal.
+                        NormalizedNamespace = Normalize(manifest.Namespace)
+                    };
+                }
+                catch
+                {
+                    // If labels cannot be parsed, return the entry without label scoring support.
+                    return new ExampleScoreModel
+                    {
+                        Example   = pluginExample,
+                        Name      = manifest.Key,
+                        Namespace = manifest.Namespace,
+
+                        NormalizedDescription = Normalize(description),
+                        NormalizedName        = string.Empty,
+                        NormalizedNamespace   = Normalize(manifest.Namespace)
+                    };
+                }
+            }
         }
+
+
+
+
+
+
 
         // Splits the supplied text into distinct normalized tokens for retrieval processing.
         private static IEnumerable<string> FormatTokens(string value)
@@ -294,11 +458,98 @@ namespace G4.Services.Domain.V4
             return value;
         }
 
+        // Calculates the relevance score for a single example against the supplied prompt.
+        // Labels (NormalizedName) are treated as curated intent tags and carry a stronger
+        // weight than free-text example content (NormalizedDescription). Signals reward both
+        // per-token presence and phrase-level intent alignment.
+        private static int SetExampleScore(ExampleScoreModel example, string normalizedPrompt, string[] promptTokens)
+        {
+            // Define the string comparison used for all field checks.
+            const StringComparison comparison = StringComparison.Ordinal;
+
+            // Initialize the score accumulator.
+            var score = 0;
+
+            // Pad the normalized fields so token matching respects word boundaries via simple
+            // contains checks rather than full regex evaluation.
+            // NormalizedDescription = normalized example text; NormalizedName = normalized labels.
+            var paddedExample = $" {example.NormalizedDescription ?? string.Empty} ";
+            var paddedLabels = $" {example.NormalizedName ?? string.Empty} ";
+
+            // Per-token scoring across both fields.
+            foreach (var token in promptTokens)
+            {
+                var paddedToken = $" {token} ";
+
+                // Labels are curated intent tags and therefore carry the strongest per-token weight.
+                if (paddedLabels.Contains(paddedToken, comparison))
+                {
+                    score += 10;
+                }
+
+                // Example text provides a supporting relevance signal.
+                if (paddedExample.Contains(paddedToken, comparison))
+                {
+                    score += 6;
+                }
+            }
+
+            // Leading-token bonus — the first prompt token usually carries the primary user intent.
+            if (promptTokens.Length > 0)
+            {
+                var paddedFirstToken = $" {promptTokens[0]} ";
+
+                if (paddedLabels.Contains(paddedFirstToken, comparison))
+                {
+                    score += 20;
+                }
+
+                if (paddedExample.Contains(paddedFirstToken, comparison))
+                {
+                    score += 12;
+                }
+            }
+
+            // Leading-phrase bonus — the first two tokens often form an action phrase such as
+            // "send keys" or "go to", which is a strong intent signal when it matches.
+            if (promptTokens.Length > 1)
+            {
+                var paddedLeadingPhrase = $" {promptTokens[0]} {promptTokens[1]} ";
+
+                if (paddedLabels.Contains(paddedLeadingPhrase, comparison))
+                {
+                    score += 22;
+                }
+
+                if (paddedExample.Contains(paddedLeadingPhrase, comparison))
+                {
+                    score += 14;
+                }
+            }
+
+            // Full-prompt substring bonus — rewards an example whose text or labels closely
+            // mirror the entire normalized prompt.
+            if (!string.IsNullOrEmpty(normalizedPrompt))
+            {
+                if (paddedLabels.Contains(normalizedPrompt, comparison))
+                {
+                    score += 20;
+                }
+
+                if (paddedExample.Contains(normalizedPrompt, comparison))
+                {
+                    score += 20;
+                }
+            }
+
+            return score;
+        }
+
         // Calculates the final relevance score for a tool against the supplied prompt.
         // Combines multiple scoring heuristics, including example matches,
         // field coverage, leading token intent, leading phrase intent, and full tool
         // name presence in the normalized prompt.
-        private static int SetScore(ToolScoreModel tool, string normalizedPrompt, string[] promptTokens)
+        private static int SetToolScore(ToolScoreModel tool, string normalizedPrompt, string[] promptTokens)
         {
             // Define the string comparison method used for all full-name checks so
             // matching behavior stays consistent with the other scoring methods.
@@ -732,9 +983,7 @@ namespace G4.Services.Domain.V4
             /// </summary>
             public string Description { get; set; }
 
-            public ExampleScoreModel[] Examples { get; set; }
-
-            public IntentModel Intent { get; set; }
+            public ExampleScoreModel Example { get; set; }
 
             /// <summary>
             /// Gets or sets the tool name.
@@ -745,12 +994,48 @@ namespace G4.Services.Domain.V4
             /// Gets or sets the tool namespace.
             /// </summary>
             public string NameSpace { get; set; }
-        }
 
-        public sealed class ExampleScoreModel : PluginExampleModel
-        {
+            /// <summary>
+            /// Gets or sets the computed lexical relevance score.
+            /// </summary>
             public int Score { get; set; }
         }
+
+        public sealed class ExampleScoreModel
+        {
+            /// <summary>
+            /// Gets or sets the collection of example strings associated with this instance.
+            /// </summary>
+            public PluginExampleModel Example { get; set; }
+
+            /// <summary>
+            /// Gets or sets the original tool name.
+            /// </summary>
+            public string Name { get; set; } = "";
+
+            /// <summary>
+            /// Gets or sets the original tool namespace.
+            /// </summary>
+            public string Namespace { get; set; } = "";
+
+            /// <summary>
+            /// Gets or sets the normalized tool description used for matching.
+            /// </summary>
+            public string NormalizedDescription { get; set; }
+
+            /// <summary>
+            /// Gets or sets the normalized tool name used for matching.
+            /// </summary>
+            public string NormalizedName { get; set; }
+
+            /// <summary>
+            /// Gets or sets the normalized tool namespace used for matching.
+            /// </summary>
+            public string NormalizedNamespace { get; set; }
+        }
+
+
+
 
 
         /// <summary>

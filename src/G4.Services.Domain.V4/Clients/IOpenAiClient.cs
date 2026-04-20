@@ -6,6 +6,15 @@ using System.Threading.Tasks;
 
 namespace G4.Services.Domain.V4.Clients
 {
+    /// <summary>
+    /// Defines the contract for interacting with the configured OpenAI API endpoint.
+    /// </summary>
+    /// <remarks>
+    /// Provides operations for retrieving the available model list
+    /// and sending both standard and streaming chat completion requests.
+    /// Implementations are responsible for applying authentication, building the
+    /// outbound HTTP requests, and returning the results in the expected format.
+    /// </remarks>
     public interface IOpenAiClient
     {
         #region *** Methods      ***

@@ -4,11 +4,14 @@ using G4.Models;
 using G4.Plugins.Engine;
 using G4.Services.Domain.V4.Models;
 using G4.Services.Domain.V4.Repositories;
+using G4.Settings.Models;
 using G4.WebDriver.Remote;
 using G4.WebDriver.Simulator;
 
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ApiExplorer;
+using Microsoft.AspNetCore.SignalR;
 
 using Swashbuckle.AspNetCore.SwaggerGen;
 using Swashbuckle.AspNetCore.SwaggerUI;
@@ -138,6 +141,41 @@ namespace G4.Extensions
             }
         }
 
+        extension(HubOptions options)
+        {
+            /// <summary>
+            /// Applies the configured hub settings to the target <see cref="HubOptions"/> instance.
+            /// </summary>
+            /// <param name="settings">The settings model that provides the hub option values to apply.</param>
+            /// <returns>The updated <see cref="HubOptions"/> instance.</returns>
+            /// <remarks>
+            /// This method copies the supported runtime hub settings from the supplied
+            /// <see cref="HubOptionsSettings"/> model into the target SignalR
+            /// <see cref="HubOptions"/> instance and applies default values when needed.
+            /// </remarks>
+            public HubOptions New(HubOptionsSettings settings)
+            {
+                // Enable or disable detailed server-side errors.
+                // Default to true when the setting is not provided.
+                options.EnableDetailedErrors = settings.EnableDetailedErrors ?? true;
+
+                // Set the maximum allowed size for a single incoming hub message.
+                // Default to the largest possible value when not configured.
+                options.MaximumReceiveMessageSize = settings.MaximumReceiveMessageSize ?? long.MaxValue;
+
+                // Configure how often the server sends keep-alive pings to connected clients.
+                // Default to 15 seconds when not explicitly configured.
+                options.KeepAliveInterval = settings.KeepAliveInterval ?? TimeSpan.FromSeconds(15);
+
+                // Configure how long the server waits before considering a client disconnected.
+                // Default to 60 seconds when not explicitly configured.
+                options.ClientTimeoutInterval = settings.ClientTimeoutInterval ?? TimeSpan.FromSeconds(60);
+
+                // Return the updated hub options instance.
+                return options;
+            }
+        }
+
         extension(IG4PluginManifest manifest)
         {
             /// <summary>
@@ -204,6 +242,47 @@ namespace G4.Extensions
             }
         }
 
+        extension(JsonOptions option)
+        {
+            /// <summary>
+            /// Copies the relevant serializer settings from the supplied
+            /// <see cref="JsonSerializerOptions"/> into the current <see cref="JsonOptions"/> instance.
+            /// </summary>
+            /// <param name="serializerOptions">The serializer options whose settings and converters will be applied to the wrapped <see cref="JsonOptions"/> instance.</param>
+            /// <returns>The current <see cref="JsonOptions"/> instance after applying the supplied settings.</returns>
+            /// <remarks>
+            /// This method updates the underlying <c>JsonSerializerOptions</c> instance by
+            /// copying the configured ignore behavior, naming policy, encoder,
+            /// case-insensitive matching setting, and registered converters.
+            /// </remarks>
+            public JsonOptions New(JsonSerializerOptions serializerOptions)
+            {
+                // Disable indentation so serialized JSON stays compact.
+                option.JsonSerializerOptions.WriteIndented = false;
+
+                // Copy the null-handling behavior from the supplied serializer options.
+                option.JsonSerializerOptions.DefaultIgnoreCondition = serializerOptions.DefaultIgnoreCondition;
+
+                // Copy the property naming policy, such as camelCase.
+                option.JsonSerializerOptions.PropertyNamingPolicy = serializerOptions.PropertyNamingPolicy;
+
+                // Copy the encoder configuration used during JSON serialization.
+                option.JsonSerializerOptions.Encoder = serializerOptions.Encoder;
+
+                // Copy the case-insensitive property matching behavior used during deserialization.
+                option.JsonSerializerOptions.PropertyNameCaseInsensitive = serializerOptions.PropertyNameCaseInsensitive;
+
+                // Copy all registered converters from the supplied serializer options.
+                foreach (var converter in serializerOptions.Converters)
+                {
+                    option.JsonSerializerOptions.Converters.Add(converter);
+                }
+
+                // Return the updated JsonOptions instance.
+                return option;
+            }
+        }
+
         extension(object instance)
         {
             /// <summary>
@@ -226,6 +305,106 @@ namespace G4.Extensions
 
                 // Return the validation status and any validation results
                 return (isValid, validationResults);
+            }
+
+            /// <summary>
+            /// Exports the public instance and static properties of the current object,
+            /// excluding properties whose names are supplied in the exclude list.
+            /// </summary>
+            /// <param name="exclude">The property names to exclude from the export operation.</param>
+            /// <returns>A dictionary that contains the exported property names and values. Only properties with non-default values are included.</returns>
+            public Dictionary<string, object> ExportProperties(params string[] exclude)
+            {
+                // Use the default binding flags for exporting public instance and static properties.
+                var flags = BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public;
+
+                // Delegate to the overload that accepts explicit binding flags.
+                return instance.ExportProperties(flags, exclude);
+            }
+
+            /// <summary>
+            /// Exports the properties of the current object that match the supplied binding flags,
+            /// excluding properties whose names are supplied in the exclude list.
+            /// </summary>
+            /// <param name="flags">The binding flags used to select the properties to export.</param>
+            /// <param name="exclude">The property names to exclude from the export operation.</param>
+            /// <returns>A dictionary that contains the exported property names and values. Only properties with non-null and non-default values are included.</returns>
+            public Dictionary<string, object> ExportProperties(BindingFlags flags, params string[] exclude)
+            {
+                // Read all properties from the current instance type using the supplied binding flags
+                // and skip any property explicitly listed in the exclude collection.
+                var properties = instance
+                    .GetType()
+                    .GetProperties(flags)
+                    .Where(i => !exclude.Contains(i.Name, StringComparer.OrdinalIgnoreCase));
+
+                // Build the lookup table of default values used to filter out uninitialized properties.
+                var defaultValues = GetDefaultValues();
+
+                // Create the result dictionary that will hold the exported property values.
+                var propertiesResult = new Dictionary<string, object>();
+
+                // Iterate over each property and apply filtering logic to
+                // determine whether it should be included in the export result.
+                foreach (var property in properties)
+                {
+                    // Read the current property value from the wrapped instance.
+                    var value = property.GetValue(instance);
+
+                    // Skip properties with null values.
+                    if (value == null)
+                    {
+                        continue;
+                    }
+
+                    // Resolve the effective property type by unwrapping nullable types.
+                    var propertyType = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;
+
+                    // Skip enum properties whose numeric value is zero, which usually represents
+                    // the default or uninitialized enum member.
+                    if (propertyType.IsEnum)
+                    {
+                        if (Convert.ToInt64(value) == 0)
+                        {
+                            continue;
+                        }
+                    }
+                    // Skip value types that match their predefined default values.
+                    else if (defaultValues.TryGetValue(propertyType, out var defaultValue))
+                    {
+                        if (Equals(value, defaultValue))
+                        {
+                            continue;
+                        }
+                    }
+
+                    // Add the property to the export result when it passed all filtering checks.
+                    propertiesResult[property.Name] = value;
+                }
+
+                // Return the exported property dictionary.
+                return propertiesResult;
+
+                // Creates a lookup table of common CLR types and their default values.
+                static Dictionary<Type, object> GetDefaultValues() => new()
+                {
+                    [typeof(bool)] = false,
+                    [typeof(byte)] = (byte)0,
+                    [typeof(sbyte)] = (sbyte)0,
+                    [typeof(short)] = (short)0,
+                    [typeof(ushort)] = (ushort)0,
+                    [typeof(int)] = 0,
+                    [typeof(uint)] = 0u,
+                    [typeof(long)] = 0L,
+                    [typeof(ulong)] = 0UL,
+                    [typeof(float)] = 0f,
+                    [typeof(double)] = 0d,
+                    [typeof(decimal)] = 0m,
+                    [typeof(TimeSpan)] = default(TimeSpan),
+                    [typeof(DateTime)] = default(DateTime),
+                    [typeof(DateTimeOffset)] = default(DateTimeOffset),
+                    [typeof(Guid)] = Guid.Empty
+                };
             }
         }
 

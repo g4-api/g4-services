@@ -33,7 +33,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         public IActionResult Disconnect()
         {
             // Broadcast the StopBot signal to all connected clients
-            _domain.BotsHubContext.Clients.All.SendAsync("StopBot");
+            _domain.Hubs.BotsHubContext.Clients.All.SendAsync("StopBot");
 
             // Return 204 No Content to indicate the broadcast was sent
             return NoContent();
@@ -52,7 +52,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
             // Iterate over each connection ID and send the StopBot signal
             foreach (var connection in connections)
             {
-                _domain.BotsHubContext.Clients.Client(connection).SendAsync("StopBot");
+                _domain.Hubs.BotsHubContext.Clients.Client(connection).SendAsync("StopBot");
             }
 
             // Return 204 No Content once all commands have been sent
@@ -70,7 +70,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
             [SwaggerParameter(description: "The SignalR connection ID of the bot monitor instance to stop.")][FromRoute, Required] string connection)
         {
             // Send the StopBot signal to the client with this connection ID
-            _domain.BotsHubContext.Clients.Client(connection).SendAsync("StopBot");
+            _domain.Hubs.BotsHubContext.Clients.Client(connection).SendAsync("StopBot");
 
             // Return 204 No Content to indicate the command was sent
             return NoContent();
@@ -86,7 +86,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         public IActionResult GetStatus()
         {
             // Retrieve and return status for every connected bot
-            return Ok(_domain.Bots.GetStatus());
+            return Ok(_domain.G4.Bots.GetStatus());
         }
 
         [HttpGet]
@@ -101,7 +101,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
             [SwaggerParameter(description: "The unique identifier of the bot to retrieve.", Required = true)][FromRoute, Required] string id)
         {
             // Attempt to retrieve the specified bot
-            var connectedBot = _domain.Bots.GetStatus(id);
+            var connectedBot = _domain.G4.Bots.GetStatus(id);
 
             if (connectedBot == null)
             {
@@ -126,7 +126,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
                 [SwaggerParameter(description: "Array of bot identifiers to retrieve status for.", Required = true)][FromBody, Required] string[] ids)
         {
             // Get the status for each bot in the provided list of IDs
-            var results = _domain.Bots.GetStatus(ids);
+            var results = _domain.G4.Bots.GetStatus(ids);
 
             // Return the results as an array of ConnectedBotModel instances
             return Ok(results);
@@ -144,7 +144,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
             [SwaggerParameter(description: "The registration request containing optional Id, Name, Type, and Machine values.")][FromBody] ConnectedBotModel botModel)
         {
             // Register the bot in the domain and generate a unique ID if not provided
-            var connectedBot = _domain.Bots.Register(botModel);
+            var connectedBot = _domain.G4.Bots.Register(botModel);
 
             // Return the fully populated model back to the caller
             return Ok(connectedBot);
@@ -164,7 +164,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
             [SwaggerParameter(description: "Unique identifier of the bot to unregister.")][FromRoute, Required] string id)
         {
             // Attempt to unregister the bot; returns status code and the bot model (if found)
-            var (statusCode, bot) = await _domain.Bots.Unregister(id);
+            var (statusCode, bot) = await _domain.G4.Bots.Unregister(id);
 
             // 404: Bot not found in domain
             // If the bot does not exist, return 404 Not Found with error details
@@ -214,7 +214,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
             [SwaggerParameter(description: "An array of bot IDs to attempt unregistration for.")][FromBody, Required] string[] ids)
         {
             // Invoke the domain service to unregister each bot and capture the result codes
-            var unregisterResults = await _domain.Bots.Unregister(ids);
+            var unregisterResults = await _domain.G4.Bots.Unregister(ids);
 
             // Return 200 OK with the list of bots and their final statuses
             return Unregister(unregisterResults);
@@ -230,7 +230,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         public async Task<IActionResult> Unregister()
         {
             // Invoke the domain service to unregister all eligible bots and get back (statusCode, bot) tuples
-            var unregisterResults = await _domain.Bots.Unregister();
+            var unregisterResults = await _domain.G4.Bots.Unregister();
 
             // Delegate to the existing batch Unregister overload to produce the HTTP 200 response
             return Unregister(unregisterResults);
@@ -279,7 +279,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
             [SwaggerParameter(description: "Updated bot metadata payload.")][FromBody] ConnectedBotModel botModel)
         {
             // Delegate the update operation to the domain service, capturing status and bot instance
-            var (statusCode, bot) = _domain.Bots.Update(id, botModel);
+            var (statusCode, bot) = _domain.G4.Bots.Update(id, botModel);
 
             // If the bot does not exist, return 404 Not Found with an error payload
             if (statusCode == StatusCodes.Status404NotFound)
@@ -303,7 +303,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         public async Task<IActionResult> TestConnection()
         {
             // Call the domain service to perform connectivity checks on all bots
-            var bots = await _domain.Bots.TestConnection();
+            var bots = await _domain.G4.Bots.TestConnection();
 
             // Select and return only the ConnectedBotModel from each result
             return Ok(bots.Select(result => result.ConnectedBot));
@@ -320,7 +320,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
             [SwaggerParameter(description: "An array of unique bot identifiers to test connectivity for.")][FromBody, Required] string[] ids)
         {
             // Invoke the domain service to perform connectivity checks for the specified bot IDs
-            var bots = await _domain.Bots.TestConnection(ids);
+            var bots = await _domain.G4.Bots.TestConnection(ids);
 
             // Extract and return only the ConnectedBotModel from each result tuple
             return Ok(bots.Select(result => result.ConnectedBot));
@@ -338,7 +338,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
             [SwaggerParameter(description: "The unique bot ID to test connectivity for.")][FromRoute, Required] string id)
         {
             // Call into the domain service to perform the connectivity check
-            var (statusCode, bot) = await _domain.Bots.TestConnection(id);
+            var (statusCode, bot) = await _domain.G4.Bots.TestConnection(id);
 
             // If the bot does not exist, return 404 with an error payload
             if (statusCode == StatusCodes.Status404NotFound)

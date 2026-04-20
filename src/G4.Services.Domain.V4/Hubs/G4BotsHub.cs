@@ -16,7 +16,7 @@ namespace G4.Services.Domain.V4.Hubs
     public class G4BotsHub(IDomain domain) : Hub
     {
         private readonly IDomain _domain = domain;
-        private readonly ILogger _logger = domain.Logger;
+        private readonly ILogger _logger = domain.Asp.Logger;
 
         /// <inheritdoc />
         public override async Task OnConnectedAsync()
@@ -32,7 +32,7 @@ namespace G4.Services.Domain.V4.Hubs
         public override async Task OnDisconnectedAsync(Exception exception)
         {
             // Get all bot IDs associated with the current connection
-            var ids = _domain.Bots.ConnectedBots.Keys
+            var ids = _domain.G4.Bots.ConnectedBots.Keys
                 .Where(i => i.Contains(Context.ConnectionId, StringComparison.OrdinalIgnoreCase))
                 .ToList();
 
@@ -40,7 +40,7 @@ namespace G4.Services.Domain.V4.Hubs
             foreach (var id in ids)
             {
                 // Remove the bot from the connected bots dictionary
-                _domain.Bots.ConnectedBots.TryRemove(id, out _);
+                _domain.G4.Bots.ConnectedBots.TryRemove(id, out _);
             }
 
             // Log the disconnection event
@@ -98,7 +98,7 @@ namespace G4.Services.Domain.V4.Hubs
             );
 
             // Add the bot to the connected bots dictionary
-            _domain.Bots.ConnectedBots[connectedBot.Id] = connectedBot;
+            _domain.G4.Bots.ConnectedBots[connectedBot.Id] = connectedBot;
 
             // Send a success response back to the caller
             await Clients.Caller.SendAsync("ReceiveRegisterBot", new
@@ -119,7 +119,7 @@ namespace G4.Services.Domain.V4.Hubs
                 : $"{updateRequest.Id}-{Context.ConnectionId}";
 
             // Attempt to retrieve the bot associated with the current connection
-            var isConnected = _domain.Bots.ConnectedBots.TryGetValue(id, out var connectedBot);
+            var isConnected = _domain.G4.Bots.ConnectedBots.TryGetValue(id, out var connectedBot);
 
             if (!isConnected)
             {

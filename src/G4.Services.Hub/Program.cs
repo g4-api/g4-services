@@ -1,4 +1,3 @@
-using G4.Converters;
 using G4.Extensions;
 using G4.Services.Domain.V4;
 using G4.Services.Domain.V4.Extensions;
@@ -19,9 +18,6 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.IO;
 using System.Linq;
-using System.Text.Encodings.Web;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 
 // Write the ASCII logo for the Hub Controller with the specified version.
 ControllerUtilities.WriteHubAsciiLogo(version: "0000.00.00.0000");
@@ -56,42 +52,8 @@ builder.Services.AddDirectoryBrowser();
 
 // Add controller services with custom input formatters and JSON serialization options.
 builder.Services
-    .AddControllers(i =>
-        // Add a custom input formatter to handle plain text inputs.
-        i.InputFormatters.Add(new PlainTextInputFormatter()))
-    .AddJsonOptions(i =>
-    {
-        // Configure JSON serializer to format JSON with indentation for readability.
-        i.JsonSerializerOptions.WriteIndented = false;
-
-        // Ignore properties with null values during serialization to reduce payload size.
-        i.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
-
-        // Use camelCase naming for JSON properties to follow JavaScript conventions.
-        i.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
-
-        // Configure the JSON serializer to allow unsafe relaxed JSON escaping, which can be useful for
-        // certain scenarios where you want to allow characters that are normally escaped.
-        i.JsonSerializerOptions.Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping;
-
-        // Enable case-insensitive property name matching during deserialization.
-        i.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
-
-        // Add a custom type converter for handling specific types during serialization/deserialization.
-        i.JsonSerializerOptions.Converters.Add(new TypeConverter());
-
-        // Add a custom exception converter to handle exception serialization.
-        i.JsonSerializerOptions.Converters.Add(new ExceptionConverter());
-
-        // Add a custom DateTime converter to handle ISO 8601 date/time format.
-        i.JsonSerializerOptions.Converters.Add(new DateTimeIso8601Converter());
-
-        // Add a custom method base converter to handle method base serialization.
-        i.JsonSerializerOptions.Converters.Add(new MethodBaseConverter());
-
-        // Add a custom dictionary converter to handle serialization of dictionaries with string keys and object values.
-        i.JsonSerializerOptions.Converters.Add(new DictionaryStringObjectJsonConverter());
-    });
+    .AddControllers(i => i.InputFormatters.Add(new PlainTextInputFormatter()))
+    .AddJsonOptions(i => i.New(AppSettings.JsonOptions));
 
 // Add and configure Swagger for API documentation and testing.
 builder.Services.AddSwaggerGen(i =>
@@ -147,47 +109,8 @@ builder.Services.AddCors(options =>
 
 // Add and configure SignalR for real-time web functionalities.
 builder.Services
-    .AddSignalR((i) =>
-    {
-        // Enable detailed error messages for debugging purposes.
-        i.EnableDetailedErrors = true;
-
-        // Set the maximum size of incoming messages to the largest possible value.
-        i.MaximumReceiveMessageSize = long.MaxValue;
-
-        // How often the server sends a keep-alive ping. Default is 15 seconds.
-        i.KeepAliveInterval = TimeSpan.FromSeconds(15);
-
-        // If the server hasn't heard from a client in this much time, it might consider the client disconnected.
-        // Usually the clientTimeout is set higher than KeepAliveInterval.
-        i.ClientTimeoutInterval = TimeSpan.FromSeconds(60);
-    })
-    .AddJsonProtocol((i) =>
-    {
-        i.PayloadSerializerOptions = new JsonSerializerOptions
-        {
-            // Configure JSON serializer to format JSON with indentation for readability.
-            WriteIndented = false,
-
-            // Ignore properties with null values during serialization to reduce payload size.
-            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-
-            // Use camelCase naming for JSON properties to follow JavaScript conventions.
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-
-            // Enable case-insensitive property name matching during deserialization.
-            PropertyNameCaseInsensitive = true,
-
-            // Add a custom type converter for handling specific types during serialization/deserialization.
-            Converters =
-            {
-                new TypeConverter(),
-                new ExceptionConverter(),
-                new DateTimeIso8601Converter(),
-                new MethodBaseConverter()
-            }
-        };
-    });
+    .AddSignalR(i => i.New(AppSettings.HubOptions))
+    .AddJsonProtocol(i => i.PayloadSerializerOptions = AppSettings.JsonOptions);
 
 // Add IHttpClientFactory to the service collection for making HTTP requests.
 builder.Services.AddHttpClient();

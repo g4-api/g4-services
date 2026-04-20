@@ -1,5 +1,6 @@
 ﻿using G4.Converters;
 using G4.Models;
+using G4.Settings.Models;
 
 using Microsoft.Extensions.Configuration;
 
@@ -30,6 +31,11 @@ namespace G4.Settings
         public static readonly IConfigurationRoot Configuration = NewConfiguraion();
 
         /// <summary>
+        /// Provides the default hub options settings used for configuring SignalR hubs.
+        /// </summary>
+        public static readonly HubOptionsSettings HubOptions = new();
+
+        /// <summary>
         /// Gets the JSON serialization options.
         /// </summary>
         public static readonly JsonSerializerOptions JsonOptions = NewJsonOptions();
@@ -38,11 +44,6 @@ namespace G4.Settings
         /// The URI of the login manager.
         /// </summary>
         public static readonly Uri LoginManagerUri = GetLoginManagerUri();
-
-        /// <summary>
-        /// Gets the OpenAI JSON serialization options.
-        /// </summary>
-        public static readonly JsonSerializerOptions OpenAiJsonOptions = NewOpenAiJsonOptions();
 
         /// <summary>
         /// Holds the OpenAI configuration settings loaded at application startup.
@@ -120,7 +121,7 @@ namespace G4.Settings
             // Initialize JSON serialization options.
             var jsonOptions = new JsonSerializerOptions()
             {
-                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault,
                 Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
                 PropertyNameCaseInsensitive = true,
                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -139,33 +140,8 @@ namespace G4.Settings
             // Add a custom DateTime converter for ISO 8601 format (yyyy-MM-ddTHH:mm:ss.ffffffK)
             jsonOptions.Converters.Add(new DateTimeIso8601Converter());
 
-            // Return the JSON options with custom settings and converters added
-            return jsonOptions;
-        }
-
-        // Creates a new instance of JsonSerializerOptions with custom settings and converters.
-        private static JsonSerializerOptions NewOpenAiJsonOptions()
-        {
-            // Initialize JSON serialization options.
-            var jsonOptions = new JsonSerializerOptions()
-            {
-                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-                PropertyNameCaseInsensitive = true,
-                PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
-                WriteIndented = false
-            };
-
-            // Add a custom exception converter
-            jsonOptions.Converters.Add(new ExceptionConverter());
-
-            // Add a custom method base converter
-            jsonOptions.Converters.Add(new MethodBaseConverter());
-
-            // Add a custom type converter
-            jsonOptions.Converters.Add(new TypeConverter());
-
-            // Add a custom DateTime converter for ISO 8601 format (yyyy-MM-ddTHH:mm:ss.ffffffK)
-            jsonOptions.Converters.Add(new DateTimeIso8601Converter());
+            // Add a custom converter to handle Dictionary<string, object> serialization and deserialization
+            jsonOptions.Converters.Add(new DictionaryStringObjectJsonConverter());
 
             // Return the JSON options with custom settings and converters added
             return jsonOptions;

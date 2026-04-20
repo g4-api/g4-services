@@ -74,12 +74,12 @@ namespace G4.Services.Domain.V4.Hubs
             };
 
             // Subscribe to stopped event
-            _domain.G4.Automation.AutomationStopped += handler;
+            _domain.G4.Client.Automation.AutomationStopped += handler;
 
             try
             {
                 // Run automation execution on background thread
-                var automationTask = Task.Run(() => _domain.G4.Automation.Invoke(automation));
+                var automationTask = Task.Run(() => _domain.G4.Client.Automation.Invoke(automation));
 
                 // Wait for either:
                 //   1. Automation completion
@@ -124,7 +124,7 @@ namespace G4.Services.Domain.V4.Hubs
             finally
             {
                 // Always unsubscribe to prevent memory leaks
-                _domain.G4.Automation.AutomationStopped -= handler;
+                _domain.G4.Client.Automation.AutomationStopped -= handler;
             }
         }
     }

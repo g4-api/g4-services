@@ -23,7 +23,7 @@
         public int PromptTokens { get; set; }
 
         /// <summary>
-        /// Sum of <see cref="PromptTokens"/> and <see cref="CompletionTokens"/>.
+        /// Sum of <see cref="PromptTokens" /> and <see cref="CompletionTokens" />.
         /// </summary>
         /// <remarks>
         /// Useful for billing and usage analytics, as OpenAI charges per total tokens.

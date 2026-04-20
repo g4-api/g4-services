@@ -1,6 +1,7 @@
 ﻿using G4.Extensions;
 using G4.Models;
 using G4.Services.Domain.V4;
+using G4.Settings;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -33,7 +34,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         [SwaggerOperation(
             Summary = "Finds MCP tools by intent",
             Description = "Searches for MCP tools matching the provided intent string. Allows specifying the maximum number of results and relevance threshold.",
-            Tags = new[] { "Cache" })]
+            Tags = ["MCP"])]
         [SwaggerResponse(StatusCodes.Status200OK,
             Description = "Successfully retrieved matching tools.",
             ContentTypes = new[] { "application/json" })]
@@ -45,13 +46,71 @@ namespace G4.Services.Hub.Api.V4.Controllers
             [FromBody] FindToolsRequestModel request)
         {
             // Retrieve matching tools using the domain method
-            var tools = _domain.Tools.FindTools(
+            var tools = _domain.G4.Tools.FindTools(
                 intent: request.Intent,
                 maxResults: request.MaxResults,
                 threshold: request.Threshold);
 
             // Return 200 OK with the dictionary of tools
             return Ok(tools);
+        }
+
+        [HttpPost]
+        [Route("cache/find/examples")]
+        [SwaggerOperation(
+            Summary = "Search cached tool examples by intent",
+            Description = "Finds cached tool examples that best match the provided intent. You can narrow the search by tool name and namespace, and limit how many scored matches are returned.",
+            Tags = ["MCP"])]
+        [SwaggerResponse(
+            StatusCodes.Status200OK,
+            Description = "Matching cached examples were found and returned successfully.",
+            ContentTypes = new[] { "application/json" })]
+        [SwaggerResponse(
+            StatusCodes.Status400BadRequest,
+            Description = "The request body is invalid or missing required search values.")]
+        public IActionResult FindExamples(
+            [SwaggerParameter(
+                Description = "The search request that contains the intent text, optional tool filters, and the maximum number of results to return.",
+                Required = true)]
+            [FromBody] FindExamplesRequestModel request)
+        {
+            // Search cached examples using the provided intent and optional tool filters.
+            var examples = _domain.G4.Tools.FindExamples(
+                toolName: request.ToolName,
+                @namespace: request.Namespace,
+                intent: request.Intent,
+                maxResults: request.MaxResults);
+
+            // Exclude the plugin name because it is already implied by the matched example.
+            var exclude = new[] { nameof(G4RuleModelBase.PluginName) };
+
+            // Use the CLI factory to convert the rule argument text into a parameter dictionary.
+            var cliFactory = _domain.G4.CliFactory;
+
+            // Shape the response so each match includes rule properties, parsed parameters, the rule itself, and its score.
+            var response = examples.Select(i => new
+            {
+                toolProperties = i.Example.Rule.ExportProperties(exclude),
+                toolParameters = cliFactory.ConvertToDictionary(
+                    cli: i.Example?.Rule?.Argument ?? string.Empty,
+                    normalize: false),
+                i.Example.Rule,
+                i.Score
+            });
+
+            // Return the response as JSON using camelCase for dictionary keys.
+            return new ContentResult
+            {
+                Content = JsonSerializer.Serialize(response, options: GetOptions()),
+                StatusCode = StatusCodes.Status200OK,
+                ContentType = MediaTypeNames.Application.Json
+            };
+
+            // Reuse the shared JSON settings and force camelCase dictionary keys in the response payload.
+            static JsonSerializerOptions GetOptions() => new(AppSettings.JsonOptions)
+            {
+                DictionaryKeyPolicy = JsonNamingPolicy.CamelCase
+            };
         }
 
         [HttpGet]
@@ -65,7 +124,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         public IActionResult GetCache()
         {
             // Retrieve the plugin cache from the domain's integration layer.
-            var cache = _domain.G4.Integration.GetCache();
+            var cache = _domain.G4.Client.Integration.GetCache();
 
             // Return the cache as a JSON response.
             return Ok(cache);
@@ -83,7 +142,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
             [SwaggerParameter(description: "The external repositories from which to retrieve the plugin cache.", Required = true)][FromBody] G4ExternalRepositoryModel[] repositories)
         {
             // Retrieve the plugin cache from the specified repositories via the integration layer.
-            var cache = _domain.G4.Integration.GetCache(repositories);
+            var cache = _domain.G4.Client.Integration.GetCache(repositories);
 
             // Return the cache as a JSON response.
             return Ok(cache);
@@ -100,7 +159,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         public IActionResult GetCredentials()
         {
             // Fetch all cached credentials from the domain layer (served from cache, not the underlying store).
-            var credentials = _domain.G4.Integration.GetCredentials();
+            var credentials = _domain.G4.Client.Integration.GetCredentials();
 
             // Return the credentials as a JSON response.
             return Ok(credentials);
@@ -119,7 +178,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
             [FromRoute][SwaggerParameter(description: "Credential id or credential name.", Required = true)] string idOrName)
         {
             // Lookup the credential in the cache using either its id or its name.
-            var credential = _domain.G4.Integration.GetCredentials(idOrName);
+            var credential = _domain.G4.Client.Integration.GetCredentials(idOrName);
 
             // If no credential exists in the cache for the provided key, return a structured 404 error payload.
             if (credential == null)
@@ -151,7 +210,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
             };
 
             // Retrieve all plugin collections from the cache
-            var plugins = _domain.Cache.PluginsCache.Values;
+            var plugins = _domain.Resources.Cache.PluginsCache.Values;
 
             // Flatten plugin dictionaries into a list of JSON objects
             var jsonFiles = plugins.SelectMany(i => i.Values).Select(i => new
@@ -202,7 +261,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         public IActionResult SyncCache()
         {
             // Synchronize the internal plugin cache using internal resources and connected libraries.
-            _domain.G4.Integration.SyncCache(_domain.Cache);
+            _domain.G4.Client.Integration.SyncCache(_domain.Resources.Cache);
 
             // Return a 204 No Content response, indicating successful synchronization with no response body.
             return NoContent();
@@ -224,10 +283,10 @@ namespace G4.Services.Hub.Api.V4.Controllers
             [FromBody] CacheSyncModel syncModel)
         {
             // Synchronize the plugin cache using the provided external repositories.
-            _domain.G4.Integration.SyncCache(_domain.Cache, syncModel.Repositories);
+            _domain.G4.Client.Integration.SyncCache(_domain.Resources.Cache, syncModel.Repositories);
 
             // Synchronize the plugin cache using the provided MCP server definitions.
-            _domain.G4.Integration.SyncCache(_domain.Cache, syncModel.Servers);
+            _domain.G4.Client.Integration.SyncCache(_domain.Resources.Cache, syncModel.Servers);
 
             // Return 204 No Content to indicate the synchronization completed successfully.
             return NoContent();
@@ -245,7 +304,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
             [SwaggerParameter(description: "The name of the plugin identifying the Markdown documentation to retrieve.", Required = true)] string key)
         {
             // Attempt to retrieve the Markdown documentation using the provided plugin name.
-            var document = _domain.G4.Integration.GetDocument(key);
+            var document = _domain.G4.Client.Integration.GetDocument(key);
 
             if (!string.IsNullOrEmpty(document))
             {
@@ -274,7 +333,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
             [SwaggerParameter(description: "The name of the plugin identifying the Markdown documentation to retrieve.", Required = true)] string key)
         {
             // Attempt to retrieve the Markdown documentation using the provided plugin type and name.
-            var document = _domain.G4.Integration.GetDocument(pluginType, key);
+            var document = _domain.G4.Client.Integration.GetDocument(pluginType, key);
 
             if (!string.IsNullOrEmpty(document))
             {
@@ -305,7 +364,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
             [SwaggerParameter(description: "The external repository information where the plugin is located.", Required = true)][FromBody] G4ExternalRepositoryModel repository)
         {
             // Attempt to retrieve the Markdown documentation using the provided plugin name and repository.
-            var document = _domain.G4.Integration.GetDocument(key, repository);
+            var document = _domain.G4.Client.Integration.GetDocument(key, repository);
 
             if (!string.IsNullOrEmpty(document))
             {
@@ -337,7 +396,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
             [SwaggerParameter(description: "The external repository information where the plugin is located.", Required = true)][FromBody] G4ExternalRepositoryModel repository)
         {
             // Attempt to retrieve the Markdown documentation using the provided plugin type, name, and repository.
-            var document = _domain.G4.Integration.GetDocument(pluginType, key, repository);
+            var document = _domain.G4.Client.Integration.GetDocument(pluginType, key, repository);
 
             // If the document is found, return the content as Markdown.
             if (!string.IsNullOrEmpty(document))
@@ -359,13 +418,14 @@ namespace G4.Services.Hub.Api.V4.Controllers
         [SwaggerOperation(
             summary: "Retrieves all registered drivers.",
             description: "Fetches all drivers available through the integration layer and returns them in JSON format.",
-            Tags = ["Integration", "Drivers"])]
+            Tags = ["Drivers"])]
         [SwaggerResponse(StatusCodes.Status200OK, description: "Successfully retrieved the registered drivers.", type: typeof(object[]), contentTypes: MediaTypeNames.Application.Json)]
         public IActionResult GetDrivers()
         {
             // Retrieve all registered drivers from the integration layer.
             var manifests = _domain
                 .G4
+                .Client
                 .Integration
                 .GetDrivers()
                 .ToArray();
@@ -390,7 +450,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
             [SwaggerParameter(description: "Comma-separated list of fields to include in the response.", Required = false)][FromQuery] string expandFields)
         {
             // Attempt to retrieve the plugin manifest using the provided key.
-            var manifest = _domain.G4.Integration.GetManifest<IG4PluginManifest>(key);
+            var manifest = _domain.G4.Client.Integration.GetManifest<IG4PluginManifest>(key);
 
             // If the manifest is found, return it in JSON format.
             // If 'expandFields' is provided, return only the specified fields from the manifest.
@@ -421,7 +481,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
             [SwaggerParameter(description: "Comma-separated list of fields to include in the response.", Required = false)][FromQuery] string expandFields)
         {
             // Attempt to retrieve the manifest using the provided plugin type and key.
-            var manifest = _domain.G4.Integration.GetManifest<IG4PluginManifest>(pluginType, key);
+            var manifest = _domain.G4.Client.Integration.GetManifest<IG4PluginManifest>(pluginType, key);
 
             // If the manifest is found, return it in JSON format.
             // If 'expandFields' is provided, return only the specified fields.
@@ -453,7 +513,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
             [SwaggerParameter(description: "The external repository information where the plugin is located.", Required = true)][FromBody] G4ExternalRepositoryModel repository)
         {
             // Attempt to retrieve the manifest using the provided plugin name and repository.
-            var manifest = _domain.G4.Integration.GetManifest<IG4PluginManifest>(key, repository);
+            var manifest = _domain.G4.Client.Integration.GetManifest<IG4PluginManifest>(key, repository);
 
             // If the manifest is found, return it as a JSON result.
             // If 'expandFields' is provided, extract only the specified fields from the manifest.
@@ -487,7 +547,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
             [SwaggerParameter(description: "The external repository information where the plugin is located.", Required = true)][FromBody] G4ExternalRepositoryModel repository)
         {
             // Attempt to retrieve the manifest using the provided plugin type, name, and repository.
-            var manifest = _domain.G4.Integration.GetManifest<IG4PluginManifest>(pluginType, key, repository);
+            var manifest = _domain.G4.Client.Integration.GetManifest<IG4PluginManifest>(pluginType, key, repository);
 
             // If the manifest is found, return it as a JSON result.
             if (manifest != default)
@@ -518,6 +578,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
             // Retrieve all manifests and optionally extract only the specified fields using 'expandFields' if provided.
             var manifests = _domain
                 .G4
+                .Client
                 .Integration
                 .GetManifests<IG4PluginManifest>()
                 .Select(i => i.ExtractFields(expandFields))
@@ -545,6 +606,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
             // Retrieve all manifests from the provided repositories and optionally filter fields using 'expandFields'.
             var manifests = _domain
                 .G4
+                .Client
                 .Integration
                 .GetManifests<IG4PluginManifest>(repositories)
                 .Select(i => i.ExtractFields(expandFields))
@@ -568,7 +630,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         public IActionResult GetStaticFilesList()
         {
             // Resolve the absolute path to wwwroot.
-            var wwwrootPath = Path.Combine(_domain.Environment.ContentRootPath, "wwwroot");
+            var wwwrootPath = Path.Combine(_domain.Asp.Environment.ContentRootPath, "wwwroot");
 
             // If wwwroot does not exist, return an empty list.
             if (!Directory.Exists(wwwrootPath))
@@ -596,7 +658,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         public IActionResult GetSvgs()
         {
             // Return a dictionary where the key is the formatted SVG name and the value is its content.
-            return Ok(_domain.SvgCache.Svgs);
+            return Ok(_domain.Resources.SvgCache.Svgs);
         }
     }
 }

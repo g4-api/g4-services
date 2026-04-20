@@ -21,7 +21,7 @@ export async function getInstructions(policy) {
 
 /**
  * Find a tool by name or intent.
- * @param {object} input  { tool_name?, intent?, id? }
+ * @param {object} input  { toolName?, intent?, id? }
  * @returns {Promise<ToolOutputSchema>}
  */
 export async function findTool(input) {
@@ -39,7 +39,7 @@ export async function getTools(filter = {}) {
 
 /**
  * Get the DOM of a current driver session.
- * @param {object} input  { driver_session, token, id? }
+ * @param {object} input  { driverSession, token, id? }
  * @returns {Promise<ToolOutputSchema>}
  */
 export async function getApplicationDom(input) {
@@ -48,7 +48,7 @@ export async function getApplicationDom(input) {
 
 /**
  * Resolve a locator expression in a driver session.
- * @param {object} input  { driver_session, intent, token, openai_* optional }
+ * @param {object} input  { driverSession, intent, token, openai_* optional }
  * @returns {Promise<ToolOutputSchema>}
  */
 export async function resolveLocator(input) {
@@ -66,7 +66,7 @@ export async function startSession(input) {
 
 /**
  * Execute a rule in an active driver session.
- * @param {object} input  { driver_session, rule, token }
+ * @param {object} input  { driverSession, rule, token }
  * @returns {Promise<ToolOutputSchema>}
  */
 export async function startRule(input) {

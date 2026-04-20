@@ -1,5 +1,5 @@
 {
-    "name": "start_g4_session",
+    "name": "g4.StartSession",
     "title": "Start G4 Session",
     "description": "Starts a new G4 session using specified driver binaries, browser (platform) name, and headless option.",
     "inputSchema": {

@@ -33,7 +33,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         public IActionResult GetCredentials()
         {
             // Fetch all saved credentials from the domain layer.
-            var credentials = _domain.G4.Credentials.GetCredentials();
+            var credentials = _domain.G4.Client.Credentials.GetCredentials();
 
             // Return the credentials as a JSON response.
             return Ok(credentials);
@@ -52,7 +52,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
             [FromRoute][SwaggerParameter(description: "Credential id or credential name.", Required = true)] string idOrName)
         {
             // Lookup the credential using either its id or its name.
-            var credential = _domain.G4.Credentials.GetCredentials(idOrName);
+            var credential = _domain.G4.Client.Credentials.GetCredentials(idOrName);
 
             // If no credential exists for the provided key, return a structured 404 error payload.
             if (credential == null)
@@ -81,7 +81,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
             oauth.Provider = provider;
 
             // Create the credentials record and calculate whether consent is required for this provider/settings.
-            var oauthResponse = _domain.G4.Credentials.NewCredentials(oauth);
+            var oauthResponse = _domain.G4.Client.Credentials.NewCredentials(oauth);
 
             // Shape the response payload to include only the fields the client needs for the next step.
             var content = new
@@ -96,7 +96,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
             // Return JSON explicitly using the domain serializer options for consistent formatting.
             return new ContentResult
             {
-                Content = JsonSerializer.Serialize(content, _domain.JsonOptions),
+                Content = JsonSerializer.Serialize(content, _domain.Asp.JsonOptions),
                 ContentType = MediaTypeNames.Application.Json,
                 StatusCode = StatusCodes.Status200OK
             };
@@ -115,7 +115,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
             [FromRoute][SwaggerParameter(description: "Credential id or credential name.", Required = true)] string idOrName)
         {
             // Attempt to remove the credential using either its id or its name.
-            var removedCount = _domain.G4.Credentials.RemoveCredentials(idOrName);
+            var removedCount = _domain.G4.Client.Credentials.RemoveCredentials(idOrName);
 
             // If no credential exists for the provided key, return a structured 404 error payload.
             if (removedCount == 0)
@@ -140,7 +140,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
             [FromQuery][SwaggerParameter(description: "Opaque state value returned by the provider (used to correlate the flow).", Required = false)] string state)
         {
             // Persist the credentials by exchanging the authorization code for tokens (refresh/access) in the domain layer.
-            var oauth = _domain.G4.Credentials.SaveCredentials(new()
+            var oauth = _domain.G4.Client.Credentials.SaveCredentials(new()
             {
                 Code = code,
                 State = state

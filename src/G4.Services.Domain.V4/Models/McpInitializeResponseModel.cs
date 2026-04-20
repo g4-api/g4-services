@@ -7,6 +7,7 @@
     /// </summary>
     public class McpInitializeResponseModel
     {
+        #region *** Properties   ***
         /// <summary>
         /// Gets or sets the request identifier associated with this response.
         /// Returned exactly as provided in the initialization request.
@@ -23,7 +24,9 @@
         /// Gets or sets the result object containing server metadata and capabilities.
         /// </summary>
         public ResultModel Result { get; set; }
+        #endregion
 
+        #region *** Nested Types ***
         /// <summary>
         /// Encapsulates the contents of the JSON-RPC "result" field from the initialization response.
         /// Includes protocol version, server capabilities, and server identification.
@@ -85,5 +88,6 @@
             /// </summary>
             public string Version { get; set; }
         }
+        #endregion
     }
 }

@@ -1,6 +1,5 @@
 ﻿using G4.Models;
 using G4.Services.Domain.V4;
-using G4.Services.Domain.V4.Repositories;
 using G4.Settings;
 
 using Microsoft.AspNetCore.Http;
@@ -23,7 +22,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         "These endpoints facilitate the integration and interaction of the G4 engine with external agents, enabling dynamic capabilities " +
         "and workflow execution through the Management Control Protocol (MCP).")]
     [ApiExplorerSettings(GroupName = "G4 Hub")]
-    public class ToolsController(IDomain domain) : ControllerBase
+    public class McpController(IDomain domain) : ControllerBase
     {
         // Dependency injection for domain services
         private readonly IDomain _domain = domain;
@@ -86,12 +85,12 @@ namespace G4.Services.Hub.Api.V4.Controllers
         [HttpPost]
         #region *** OpenApi Documentation ***
         [SwaggerOperation(
-            Summary = "Handle Copilot agent requests",
+            Summary = "Handle MCP agent requests",
             Description = "Processes JSON-RPC methods for initializing, listing tools, invoking tools, and handling notifications.",
             Tags = ["MCP"]
         )]
         [SwaggerResponse(StatusCodes.Status200OK,
-            description: "Initialization result with context (CopilotInitializeResponseModel), list of available tools (CopilotListResponseModel), or result of tool invocation (object)",
+            description: "Initialization result with context, list of available tools, or result of tool invocation",
             type: typeof(object),
             contentTypes: MediaTypeNames.Application.Json
         )]
@@ -105,28 +104,28 @@ namespace G4.Services.Hub.Api.V4.Controllers
         public IActionResult Post(
             [FromBody, Required]
             [SwaggerParameter(description:
-                "The Copilot request payload following the JSON-RPC structure. " +
+                "The MCP request payload following the JSON-RPC structure. " +
                 "It contains the method to invoke (e.g., 'initialize', 'tools/list', 'tools/call'), " +
                 "the request identifier, and any required parameters for the method execution."
-            )] McpRequestModel copilotRequest)
+            )] McpRequestModel mcpRequest)
         {
             // Dispatch based on the JSON-RPC method
-            return copilotRequest.Method switch
+            return mcpRequest.Method switch
             {
                 "initialize" => NewContentResult(
                     StatusCodes.Status200OK,
-                    value: _domain.Mcp.Initialize(copilotRequest.Id),
-                    options: IMcpRepository.G4JsonOptions),
+                    value: _domain.G4.Mcp.Initialize(mcpRequest.Id),
+                    options: AppSettings.JsonOptions),
                 "notifications/initialized" => Accepted(),
                 "tools/list" => NewContentResult(
                     StatusCodes.Status200OK,
-                    value: _domain.Mcp.GetTools(copilotRequest.Id, intent: default, "system-tool")),
+                    value: _domain.G4.Mcp.FindTools(mcpRequest.Id, intent: default, "system-tool")),
                 "tools/call" => NewContentResult(
                     StatusCodes.Status200OK,
-                    value: _domain.Mcp.InvokeTool(copilotRequest.Parameters, copilotRequest.Id)),
+                    value: _domain.G4.Mcp.CallTool(mcpRequest.Parameters, mcpRequest.Id)),
                 _ => NewContentResult(
                     StatusCodes.Status400BadRequest,
-                    value: new { error = $"Unknown method '{copilotRequest.Method}'" })
+                    value: new { error = $"Unknown method '{mcpRequest.Method}'" })
             };
         }
 
@@ -147,7 +146,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         public IActionResult SyncTools()
         {
             // Update the list of tools available to the Copilot agent
-            _domain.Mcp.SyncTools();
+            _domain.G4.Tools.SyncTools();
 
             // Return an empty 204 No Content response
             return NoContent();

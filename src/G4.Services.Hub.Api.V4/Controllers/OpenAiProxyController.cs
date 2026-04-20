@@ -16,7 +16,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
     [SwaggerTag(description: "Provides endpoints for interacting with the OpenAI-compatible backend, including model listing, " +
         "chat completions, health status, and embeddings. All responses are standardized for G4 internal use.")]
     [ApiExplorerSettings(GroupName = "G4 Hub")]
-    public class OpenAiController(IDomain domain) : ControllerBase
+    public class OpenAiProxyController(IDomain domain) : ControllerBase
     {
         private readonly IDomain _domain = domain;
 
@@ -31,7 +31,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         public async Task<IActionResult> GetModels()
         {
             // Retrieve the models from the OpenAI-compatible service via the domain layer.
-            var modelsResult = await _domain.OpenAi.GetModelsAsync();
+            var modelsResult = await _domain.G4.OpenAi.GetModelsAsync();
 
             // Return a 400+ status with error details if the backend call failed.
             // Return the list of models with a 200 OK response.
@@ -71,14 +71,14 @@ namespace G4.Services.Hub.Api.V4.Controllers
             if (completions.Stream)
             {
                 // If streaming is enabled, write to the HTTP response stream directly.
-                await _domain.OpenAi.SendCompletionsStreamAsync(HttpContext.Response, completions);
+                await _domain.G4.OpenAi.SendCompletionsStreamAsync(HttpContext.Response, completions);
 
                 // Indicate that no content will be returned from the controller (streaming handled directly).
                 return new EmptyResult();
             }
 
             // If not streaming, get the full response as a single JSON payload.
-            var content = await _domain.OpenAi.SendCompletionsAsync(completions);
+            var content = await _domain.G4.OpenAi.SendCompletionsAsync(completions);
 
             // Return the full completion response with 200 OK.
             return new ContentResult

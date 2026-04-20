@@ -90,20 +90,20 @@ namespace G4.Services.Domain.V4.Models
 
             new()
             {
+                Name = "mcp",
+                Url = "mcp/docs.json",
+                Description = "API documentation for the G4 platform's MCP management features.",
+                Summary = "Comprehensive API documentation for the G4 platform's MCP management capabilities.",
+                Tags = ["MCP"]
+            },
+
+            new()
+            {
                 Name = "openai",
                 Url = "openai/docs.json",
                 Description = "API documentation for the G4 platform's OpenAI-compatible proxy features.",
                 Summary = "Comprehensive API documentation for the G4 platform's OpenAI-compatible proxy capabilities.",
                 Tags = ["OpenAi"]
-            },
-
-            new()
-            {
-                Name = "openai-tools",
-                Url = "openai-tools/docs.json",
-                Description = "API documentation for the G4 platform's OpenAI tools management features.",
-                Summary = "Comprehensive API documentation for the G4 platform's OpenAI tools management capabilities.",
-                Tags = ["AiTools"]
             },
 
             new()

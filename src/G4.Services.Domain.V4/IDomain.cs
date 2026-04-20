@@ -1,4 +1,5 @@
-﻿using G4.Abstraction.Logging;
+﻿using G4.Abstraction.Cli;
+using G4.Abstraction.Logging;
 using G4.Api;
 using G4.Cache;
 using G4.Extensions;
@@ -31,74 +32,107 @@ namespace G4.Services.Domain.V4
     {
         #region *** Properties   ***
         /// <summary>
-        /// Gets or sets the repository for managing bot entities.
+        /// Gets or sets the adapter for ASP.NET Core hosting environment and related services.
         /// </summary>
-        IBotsRepository Bots { get; set; }
+        IAspAdapter Asp { get; set; }
 
         /// <summary>
-        /// Gets or sets the SignalR hub context for communicating with bot-specific clients.
+        /// Gets or sets the adapter used for G4 operations.
         /// </summary>
-        IHubContext<G4BotsHub> BotsHubContext { get; set; }
+        IG4Adapter G4 { get; set; }
 
         /// <summary>
-        /// Gets or sets the cache manager responsible for storing and retrieving
-        /// domain-level cache entries to improve performance.
+        /// Gets or sets the adapter used to manage SignalR hubs within the application.
         /// </summary>
-        CacheManager Cache { get; set; }
+        IHubsAdapter Hubs { get; set; }
 
         /// <summary>
-        /// Gets or sets the repository for MCP integration and data operations.
+        /// Gets or sets the adapter responsible for managing application resources,
+        /// such as SVGs and other static content.
         /// </summary>
-        IMcpRepository Mcp { get; set; }
+        IResourcesAdapter Resources { get; set; }
 
-        /// <summary>
-        /// Gets or sets the hosting environment information (e.g., Development, Production).
-        /// </summary>
-        IWebHostEnvironment Environment { get; set; }
 
-        /// <summary>
-        /// Gets or sets the G4 API client used to perform operations against external services,
-        /// such as job dispatching and status retrieval.
-        /// </summary>
-        G4Client G4 { get; set; }
 
-        /// <summary>
-        /// Gets or sets the SignalR hub context for broadcasting general G4 notifications.
-        /// </summary>
-        IHubContext<G4Hub> G4HubContext { get; set; }
+        ///// <summary>
+        ///// Gets or sets the repository for managing bot entities.
+        ///// </summary>
+        //IBotsRepository Bots { get; set; }
 
-        /// <summary>
-        /// Gets or sets the JSON serializer options controlling converters,
-        /// naming policies, and formatting rules for domain serialization.
-        /// </summary>
-        JsonSerializerOptions JsonOptions { get; set; }
+        ///// <summary>
+        ///// Gets or sets the SignalR hub context for communicating with bot-specific clients.
+        ///// </summary>
+        //IHubContext<G4BotsHub> BotsHubContext { get; set; }
 
-        /// <summary>
-        /// Gets or sets the logger used to record domain events,
-        /// diagnostics, and error information.
-        /// </summary>
-        ILogger Logger { get; set; }
+        ///// <summary>
+        ///// Gets or sets the cache manager responsible for storing and retrieving
+        ///// domain-level cache entries to improve performance.
+        ///// </summary>
+        //CacheManager Cache { get; set; }
 
-        /// <summary>
-        /// Gets or sets the SignalR hub context for sending automation notifications
-        /// and updates to subscribed clients.
-        /// </summary>
-        IHubContext<G4AutomationNotificationsHub> NotificationsHubContext { get; set; }
+        ///// <summary>
+        ///// Gets or sets the factory used to parse values to and from the G4 CLI format.
+        ///// </summary>
+        ///// <remarks>
+        ///// This property is initialized with a default <see cref="CliFactory"/> instance
+        ///// and is used to handle conversions between runtime values and their
+        ///// command-line representation in the G4 CLI format.
+        ///// </remarks>
+        //CliFactory CliFactory { get; set; }
 
-        /// <summary>
-        /// Gets or sets the OpenAI client used to interact with OpenAI services.
-        /// </summary>
-        IOpenAiClient OpenAi { get; set; }
+        ///// <summary>
+        ///// Gets or sets the hosting environment information (e.g., Development, Production).
+        ///// </summary>
+        //IWebHostEnvironment Environment { get; set; }
 
-        /// <summary>
-        /// Gets or sets the cache model used for storing and retrieving SVG resources.
-        /// </summary>
-        SvgCacheModel SvgCache { get; set; }
+        ///// <summary>
+        ///// Gets or sets the G4 API client used to perform operations against external services,
+        ///// such as job dispatching and status retrieval.
+        ///// </summary>
+        //G4Client G4 { get; set; }
 
-        /// <summary>
-        /// Gets or sets the repository for managing tool entities and operations.
-        /// </summary>
-        IToolsRepository Tools { get; set; }
+        ///// <summary>
+        ///// Gets or sets the SignalR hub context for broadcasting general G4 notifications.
+        ///// </summary>
+        //IHubContext<G4Hub> G4HubContext { get; set; }
+
+        ///// <summary>
+        ///// Gets or sets the JSON serializer options controlling converters,
+        ///// naming policies, and formatting rules for domain serialization.
+        ///// </summary>
+        //JsonSerializerOptions JsonOptions { get; set; }
+
+        ///// <summary>
+        ///// Gets or sets the logger used to record domain events,
+        ///// diagnostics, and error information.
+        ///// </summary>
+        //ILogger Logger { get; set; }
+
+        ///// <summary>
+        ///// Gets or sets the repository for MCP integration and data operations.
+        ///// </summary>
+        //IMcpRepository Mcp { get; set; }
+
+        ///// <summary>
+        ///// Gets or sets the SignalR hub context for sending automation notifications
+        ///// and updates to subscribed clients.
+        ///// </summary>
+        //IHubContext<G4AutomationNotificationsHub> NotificationsHubContext { get; set; }
+
+        ///// <summary>
+        ///// Gets or sets the OpenAI client used to interact with OpenAI services.
+        ///// </summary>
+        //IOpenAiClient OpenAi { get; set; }
+
+        ///// <summary>
+        ///// Gets or sets the cache model used for storing and retrieving SVG resources.
+        ///// </summary>
+        //SvgCacheModel SvgCache { get; set; }
+
+        ///// <summary>
+        ///// Gets or sets the repository for managing tool entities and operations.
+        ///// </summary>
+        //IToolsRepository Tools { get; set; }
         #endregion
 
         #region *** Methods      ***
@@ -421,18 +455,10 @@ namespace G4.Services.Domain.V4
             /// </summary>
             public string Id { get; set; }
 
-            // The Id property is used for client integrations. 
-            // It typically corresponds to the primary key of the underlying entity 
-            // (e.g., a GUID or numeric ID).
-
             /// <summary>
             /// Gets or sets the name of the underlying class of the entity being used.
             /// </summary>
             public string ObjectType { get; set; }
-
-            // The ObjectType property stores the type name (class name) of the entity 
-            // involved in this event. This allows clients or downstream services to 
-            // understand which entity type is referenced.
 
             /// <summary>
             /// Gets or sets the expressive entity type, as defined in the plugin manifest
@@ -440,19 +466,10 @@ namespace G4.Services.Domain.V4
             /// </summary>
             public string Type { get; set; }
 
-            // The Type property serves as a high-level classification or "label" 
-            // for the entity/event, often derived from a plugin manifest, 
-            // configuration, or code constants.
-
             /// <summary>
             /// Gets or sets the complete state of the entity at the time of the event.
             /// </summary>
             public object Value { get; set; }
-
-            // The Value property captures the full snapshot of the entity's state 
-            // when this event occurred. This is especially useful for auditing, 
-            // logging, or downstream processes needing to know the exact entity data 
-            // at the event's moment in time.
         }
         #endregion
     }

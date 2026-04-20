@@ -42,13 +42,13 @@ namespace G4.Services.Domain.V4.Repositories
             {
                 ["arguments"] = new Dictionary<string, object>
                 {
-                    ["tool_name"] = toolName
+                    ["toolName"] = toolName
                 }
             };
 
             // Create a JsonElement directly (no Serialize→Deserialize string round-trip).
             // Uses your configured JsonOptions (snake_case, ignore nulls, etc.).
-            var arguments = JsonSerializer.SerializeToElement(envelope, IMcpRepository.JsonOptions);
+            var arguments = JsonSerializer.SerializeToElement(envelope, AppSettings.JsonOptions);
 
             // Delegate to the generic finder with the shared registry and protocol version.
             return FindTool(
@@ -65,7 +65,7 @@ namespace G4.Services.Domain.V4.Repositories
                 object id)
             {
                 // Extract the tool name from the arguments.
-                var toolName = arguments.TryGetProperty("tool_name", out var toolNameOut)
+                var toolName = arguments.TryGetProperty("toolName", out var toolNameOut)
                     ? toolNameOut.GetString()
                     : default;
 
@@ -94,7 +94,10 @@ namespace G4.Services.Domain.V4.Repositories
                 // If the tool is found, populate the result with the tool's details.
                 else
                 {
-                    response.Result = tool;
+                    response.Result = new
+                    {
+                        Tool = tool.ClientTool
+                    };
                 }
 
                 // Return the response, either with the tool data or an error.
@@ -103,7 +106,7 @@ namespace G4.Services.Domain.V4.Repositories
         }
 
         /// <inheritdoc />
-        public ToolOutputSchema GetTools(object id, string intent, params string[] types)
+        public ToolOutputSchema FindTools(object id, string intent, params string[] types)
         {
             // Build the JSON-RPC style envelope expected by GetTools
             var envelope = new Dictionary<string, object>
@@ -117,10 +120,10 @@ namespace G4.Services.Domain.V4.Repositories
 
             // Create a JsonElement directly (no Serialize→Deserialize string round-trip).
             // Uses your configured JsonOptions (snake_case, ignore nulls, etc.).
-            var parameters = JsonSerializer.SerializeToElement(envelope, IMcpRepository.JsonOptions);
+            var parameters = JsonSerializer.SerializeToElement(envelope, AppSettings.JsonOptions);
 
             // Delegate to the tools repository with the JSON parameters.
-            var toolsCollection = tools.GetTools(parameters);
+            var toolsCollection = tools.FindTools(parameters);
 
             // Return a new CopilotToolsResponseModel with the list of tools from the registry.
             return new()
@@ -131,7 +134,7 @@ namespace G4.Services.Domain.V4.Repositories
                 Result = new ToolOutputSchema.ToolsResultSchema()
                 {
                     // Provide the list of tools contained in the registry as the result.
-                    Tools = toolsCollection.Values.Select(i=>i.ClientTool)
+                    Tools = toolsCollection.Values.Select(i => i.ClientTool)
                 }
             };
         }
@@ -168,11 +171,11 @@ namespace G4.Services.Domain.V4.Repositories
         };
 
         /// <inheritdoc />
-        public ToolOutputSchema InvokeTool(JsonElement parameters, object id)
+        public ToolOutputSchema CallTool(JsonElement parameters, object id)
         {
             // Match the tool by name and execute the corresponding handler.
             // Some tools are built-in system tools, others are dynamically loaded plugins.
-            var result = tools.InvokeTool(parameters);
+            var result = tools.CallTool(parameters);
 
             // Construct and return the JSON-RPC response to the client.
             return new()
@@ -201,10 +204,6 @@ namespace G4.Services.Domain.V4.Repositories
                 }
             };
         }
-
-        // TODO: Migrate to tools repository.
-        /// <inheritdoc />
-        public void SyncTools() => tools.SyncTools();
         #endregion
     }
 }

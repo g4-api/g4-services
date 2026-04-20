@@ -1,0 +1,161 @@
+{
+	"description": "Retrieves a locator for a specific element on the page based on the provided parameters.",
+	"inputSchema": {
+		"type": "object",
+		"properties": {
+			"constraints": {
+				"description": "Optional rules influencing how the locator is selected, such as visibility, enablement, and allowed/disallowed strategies.",
+				"properties": {
+					"mustBeVisible": {
+						"type": "boolean",
+						"description": "If true, the element must be visible on the page to qualify as a valid locator.",
+						"default": true
+					},
+					"mustBeEnabled": {
+						"type": "boolean",
+						"description": "If true, the element must not be disabled to qualify as a valid locator.",
+						"default": true
+					},
+					"prefer": {
+						"description": "Preferred locator strategies, in priority order. The first matching strategy will be used.",
+						"items": {
+							"enum": [
+								"data-testid",
+								"aria",
+								"id",
+								"label",
+								"role",
+								"text",
+								"css",
+								"xpath"
+							],
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"forbid": {
+						"description": "Locator strategies to avoid. Helps prevent use of brittle or unstable locators.",
+						"items": {
+							"enum": [
+								"nth-child",
+								"brittle-css"
+							],
+							"type": "string"
+						},
+						"type": "array"
+					}
+				},
+				"type": "object"
+			},
+			"driverSession": {
+				"description": "Unique identifier for the active browser session in which the locator search is performed.",
+				"type": "string"
+			},
+			"intent": {
+				"description": "The user and agent intent describing the element to locate on the page, used to guide locator strategy selection.",
+				"properties": {
+					"agentIntent": {
+						"description": "The normalized intent produced by the agent for tool discovery, routing, or execution.",
+						"type": "string"
+					},
+					"userIntent": {
+						"description": "The original intent as expressed by the user.",
+						"type": "string"
+					}
+				},
+				"required": [
+					"agentIntent",
+					"userIntent"
+				],
+				"type": "object"
+			},
+			"openaiApiKey": {
+				"type": "string",
+				"description": "OpenAI authentication token for verifying and authorizing the locator retrieval request."
+			},
+			"openaiModel": {
+				"type": "string",
+				"description": "Specifies the OpenAI model identifier (e.g., 'gpt-4o', 'gpt-4.1-mini')."
+			},
+			"openaiUri": {
+				"type": "string",
+				"description": "OpenAI API endpoint URI for the request."
+			},
+			"token": {
+				"type": "string",
+				"description": "G4 authentication token for verifying and authorizing the locator retrieval request."
+			}
+		},
+		"required": [
+			"driverSession",
+			"intent",
+			"token",
+			"openaiApiKey",
+			"openaiModel",
+			"openaiUri"
+		]
+	},
+	"name": "g4.ResolveLocator",
+	"outputSchema": {
+		"type": "object",
+		"properties": {
+			"driverSession": {
+				"type": "string",
+				"description": "The browser session identifier associated with this locator result."
+			},
+			"value": {
+				"type": "object",
+				"description": "Locator details, including primary and fallback strategies, along with human-readable context.",
+				"properties": {
+					"primaryLocator": {
+						"type": "object",
+						"description": "Main locator used to find the element, optimized for reliability.",
+						"properties": {
+							"value": {
+								"type": "string",
+								"description": "Locator string (e.g., CSS selector or XPath) used in element identification."
+							},
+							"using": {
+								"type": "string",
+								"description": "Locator strategy type, such as 'css', 'xpath', or 'id'.",
+								"enum": [
+									"CssSelector",
+									"Xpath",
+									"Id"
+								]
+							}
+						}
+					},
+					"fallbackLocator": {
+						"type": "object",
+						"description": "Alternative locator to use if the primary locator fails. Useful for elements with multiple stable selectors.",
+						"properties": {
+							"value": {
+								"type": "string",
+								"description": "Fallback locator string (e.g., CSS selector or XPath)."
+							},
+							"using": {
+								"type": "string",
+								"description": "Strategy type used by the fallback locator.",
+								"enum": [
+									"CssSelector",
+									"Xpath",
+									"Id"
+								]
+							}
+						}
+					},
+					"description": {
+						"type": "string",
+						"description": "Optional human-readable description of the element being located, for debugging and clarity."
+					}
+				}
+			}
+		},
+		"required": [
+			"driverSession",
+			"value"
+		]
+	},
+	"title": "Resolve Element Locator"
+}

@@ -35,7 +35,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         public IActionResult Invoke([FromBody] G4AutomationModel automation)
         {
             // Invoke the automation session using the provided automation model.
-            var response = _domain.G4.Automation.Invoke(automation);
+            var response = _domain.G4.Client.Automation.Invoke(automation);
 
             // Return a 200 OK response with the detailed automation session results.
             return Ok(response);
@@ -59,10 +59,10 @@ namespace G4.Services.Hub.Api.V4.Controllers
             var json = base64Automation.ConvertFromBase64();
 
             // Deserialize the JSON string into a G4AutomationModel using the domain's JSON options.
-            var automation = JsonSerializer.Deserialize<G4AutomationModel>(json, _domain.JsonOptions);
+            var automation = JsonSerializer.Deserialize<G4AutomationModel>(json, _domain.Asp.JsonOptions);
 
             // Invoke the automation session using the deserialized automation model.
-            var response = _domain.G4.Automation.Invoke(automation);
+            var response = _domain.G4.Client.Automation.Invoke(automation);
 
             // Return a 200 OK response with the detailed automation session results.
             return Ok(response);
@@ -125,7 +125,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
             string automationId)
         {
             // Stop the automation session with the specified ID.
-            var response = _domain.G4.Automation.StopAutomation(automationId);
+            var response = _domain.G4.Client.Automation.StopAutomation(automationId);
 
             // Return a 200 OK response with the stop confirmation.
             return Ok(response);

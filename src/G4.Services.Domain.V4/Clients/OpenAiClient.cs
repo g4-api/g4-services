@@ -16,14 +16,25 @@ using System.Threading.Tasks;
 
 namespace G4.Services.Domain.V4.Clients
 {
+    /// <summary>
+    /// Provides a lightweight OpenAI client wrapper for retrieving models and sending
+    /// chat completion requests through the configured HTTP client factory.
+    /// This client uses the application OpenAI settings to build authenticated HTTP
+    /// requests for standard and streaming chat completions, and also exposes model
+    /// discovery support.
+    /// </summary>
+    /// <param name="httpClientFactory">The HTTP client factory used to create strongly-typed HTTP clients.</param>
     internal class OpenAiClient(IHttpClientFactory httpClientFactory) : IOpenAiClient
     {
+        #region *** Fields  ***
         // Strongly-typed HTTP client created via the factory, configured for OpenAI requests
         private readonly HttpClient _httpClient = httpClientFactory.CreateClient(name: "openai");
 
         // Settings model containing OpenAI API configuration, injected via constructor
         private readonly OpenAiSettingsModel _settings = AppSettings.OpenAi;
+        #endregion
 
+        #region *** Methods ***
         /// <inheritdoc />
         public Task<IOpenAiClient.OpenAiModelsResponse> GetModelsAsync()
         {
@@ -179,5 +190,6 @@ namespace G4.Services.Domain.V4.Clients
             // Return the fully built HTTP request ready to be sent
             return httpRequestMessage;
         }
+        #endregion
     }
 }
