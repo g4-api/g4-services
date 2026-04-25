@@ -68,7 +68,18 @@
      * @returns {string} - The converted space-separated string.
      */
     static convertPascalToSpaceCase(str) {
-        return str.replace(/([A-Z])/g, ' $1').trim();
+        if (!str) {
+            return "";
+        }
+
+        return String(str)
+            // Split acronym-to-word boundaries: JSONFile -> JSON File
+            .replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2")
+
+            // Split lower/digit-to-upper boundaries: sendHTTP -> send HTTP
+            .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+
+            .trim();
     }
 
     /**
@@ -278,7 +289,28 @@
      * @returns {string} The PascalCase version of the string.
      */
     static convertToPascalCase(str) {
-        return str ? str[0].toUpperCase() + str.slice(1) : "";
+        if (!str) {
+            return "";
+        }
+
+        return String(str)
+            // Split camel/Pascal boundaries: sendHTTP -> send HTTP
+            .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+
+            // Split acronym-to-word boundaries: readJSONFile -> read JSON File
+            .replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2")
+
+            // Normalize separators
+            .split(/[\s_-]+/)
+
+            // Convert each part to Pascal word
+            .filter(Boolean)
+            .map(part => {
+                const lower = part.toLowerCase();
+
+                return lower.charAt(0).toUpperCase() + lower.slice(1);
+            })
+            .join("");
     }
 
     /**
