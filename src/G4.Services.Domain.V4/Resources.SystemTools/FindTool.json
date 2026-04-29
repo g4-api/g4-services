@@ -20,6 +20,10 @@
 				],
 				"type": "object"
 			},
+			"namespace": {
+				"description": "A namespace used to scope the tool search to a specific plugin group or category. Use `G4.System` if namespace is unknown.",
+				"type": "string"
+			},
 			"toolName": {
 				"description": "The unique identifier of the tool to find.",
 				"type": "string"
@@ -27,6 +31,7 @@
 		},
 		"required": [
 			"intent",
+			"namespace",
 			"toolName"
 		],
 		"type": "object"

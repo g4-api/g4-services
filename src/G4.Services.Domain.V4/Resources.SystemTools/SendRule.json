@@ -35,11 +35,11 @@
 						"type": "string",
 						"description": "The unique identifier of the tool (plugin) that defines the rule to be executed."
 					},
-					"parameters": {
+					"toolParameters": {
 						"type": "object",
 						"description": "The parameters to be passed to the rule during execution."
 					},
-					"properties": {
+					"toolProperties": {
 						"type": "object",
 						"description": "Additional properties and configuration for the rule."
 					}

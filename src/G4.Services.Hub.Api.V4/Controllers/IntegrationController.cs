@@ -72,45 +72,13 @@ namespace G4.Services.Hub.Api.V4.Controllers
             [SwaggerParameter(
                 Description = "The search request that contains the intent text, optional tool filters, and the maximum number of results to return.",
                 Required = true)]
-            [FromBody] FindExamplesRequestModel request)
+            [FromBody] ExamplesQueryModel query)
         {
             // Search cached examples using the provided intent and optional tool filters.
-            var examples = _domain.G4.Tools.FindExamples(
-                toolName: request.ToolName,
-                @namespace: request.Namespace,
-                intent: request.Intent,
-                maxResults: request.MaxResults);
-
-            // Exclude the plugin name because it is already implied by the matched example.
-            var exclude = new[] { nameof(G4RuleModelBase.PluginName) };
-
-            // Use the CLI factory to convert the rule argument text into a parameter dictionary.
-            var cliFactory = _domain.G4.CliFactory;
-
-            // Shape the response so each match includes rule properties, parsed parameters, the rule itself, and its score.
-            var response = examples.Select(i => new
-            {
-                toolProperties = i.Example.Rule.ExportProperties(exclude),
-                toolParameters = cliFactory.ConvertToDictionary(
-                    cli: i.Example?.Rule?.Argument ?? string.Empty,
-                    normalize: false),
-                i.Example.Rule,
-                i.Score
-            });
+            var examples = _domain.G4.Tools.FindExamples(query);
 
             // Return the response as JSON using camelCase for dictionary keys.
-            return new ContentResult
-            {
-                Content = JsonSerializer.Serialize(response, options: GetOptions()),
-                StatusCode = StatusCodes.Status200OK,
-                ContentType = MediaTypeNames.Application.Json
-            };
-
-            // Reuse the shared JSON settings and force camelCase dictionary keys in the response payload.
-            static JsonSerializerOptions GetOptions() => new(AppSettings.JsonOptions)
-            {
-                DictionaryKeyPolicy = JsonNamingPolicy.CamelCase
-            };
+            return Ok(examples);
         }
 
         [HttpGet]

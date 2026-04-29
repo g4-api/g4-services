@@ -1,4 +1,5 @@
-﻿using G4.Api;
+﻿using G4.Abstraction.Cli;
+using G4.Api;
 using G4.Cache;
 using G4.Extensions;
 using G4.Models;
@@ -47,6 +48,9 @@ namespace G4.Services.Domain.V4.Repositories
         // related to G4 rules, keyed by a string identifier.
         private static readonly ConcurrentDictionary<string, ConcurrentBag<(long Timestamp, G4RuleModelBase Rule)>> s_buffer = [];
 
+        // Factory for converting CLI-style arguments into structured data.
+        private static readonly CliFactory s_cliFactory = new();
+
         // Tracks active browser or agent sessions by session ID.
         private static readonly ConcurrentDictionary<object, object> s_sessions = [];
 
@@ -85,9 +89,6 @@ namespace G4.Services.Domain.V4.Repositories
 
             // Read the friendly intent text used to retrieve relevant tools.
             // Default to an empty string when the argument is missing.
-            //var intent = options.Arguments.TryGetProperty("intent", out var intentProperty)
-            //    ? intentProperty.GetString() ?? string.Empty
-            //    : string.Empty;
             var intent = options.Intent?.AgentIntent ?? string.Empty;
 
             // Match the tool by name and execute the corresponding handler.
@@ -96,6 +97,9 @@ namespace G4.Services.Domain.V4.Repositories
             {
                 // Built-in: Converts input parameters into executable rules.
                 { Name: "g4.ConvertToRule" } => new { options.Rule },
+
+                // Built-in: Finds and returns relevant examples based on the provided intent and tool filters.
+                { Name: "g4.FindExamples" } => FindExamples(options.Arguments),
 
                 // Built-in: Finds and returns metadata about a tool by its name.
                 { Name: "g4.FindTool" } => FindTool(options),
@@ -154,55 +158,54 @@ namespace G4.Services.Domain.V4.Repositories
             }
         }
 
-
-
-
-
-
-
-        public IDictionary<string, McpToolModel> FindExamples(string prompt)
+        /// <inheritdoc />
+        public object FindExamples(JsonElement parameters)
         {
-            throw new NotImplementedException();
+            // Read the raw JSON payload from the input parameters.
+            var json = parameters.GetRawText();
+
+            // Reuse the shared application JSON serializer options.
+            var options = AppSettings.JsonOptions;
+
+            // Deserialize the JSON payload into the strongly typed example query model.
+            var query = JsonSerializer.Deserialize<ExamplesQueryModel>(json, options);
+
+            // Delegate the actual example lookup to the typed overload.
+            return FindExamples(query);
         }
 
-        public IDictionary<string, McpToolModel> FindExamples(string prompt, int maxResults)
+        /// <inheritdoc />
+        public object FindExamples(ExamplesQueryModel query)
         {
-            throw new NotImplementedException();
-        }
-
-        public IDictionary<string, McpToolModel> FindExamples(string intent, int maxResults, int threshold)
-        {
-            throw new NotImplementedException();
-        }
-
-        public IDictionary<string, McpToolModel> FindExamples(JsonElement parameters)
-        {
-            throw new NotImplementedException();
-        }
-
-
-        public IEnumerable<(PluginExampleModel Example, int Score)> FindExamples(string toolName, string @namespace, string intent, int maxResults)
-        {
-            return _retrievalManager
-                .FindExamples(toolName, @namespace, intent, take: maxResults)
+            // Search the retrieval manager for examples that match the requested tool filters and intent.
+            var examples = _retrievalManager
+                .FindExamples(query.ToolName, query.Namespace, query.Intent.AgentIntent, take: query.MaxResults)
                 .Examples
-                .Select(i=> (Example: i.Example.Example, Score: i.Score));
+                .Select(i => (i.Example.Example, i.Score));
+
+            // Exclude the plugin name because it is already implied by the example rule itself.
+            var exclude = new[] { nameof(G4RuleModelBase.PluginName) };
+
+            // Project each matched example into the response model with exported properties,
+            // parsed CLI parameters, the original rule, and the calculated score.
+            var result = examples.Select(i => new ExamplesResultModel()
+            {
+                ToolProperties = i.Example.Rule.ExportProperties(exclude),
+                ToolParameters = s_cliFactory
+                    .ConvertToDictionary(
+                        cli: i.Example?.Rule?.Argument ?? string.Empty,
+                        normalize: false)
+                    .ToDictionary(StringComparer.OrdinalIgnoreCase),
+                Rule = i.Example.Rule,
+                Score = i.Score
+            });
+
+            // Return the projected results to the caller.
+            return new
+            {
+                Examples = result
+            };
         }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
         /// <inheritdoc />
         public McpToolModel FindTool(string intent, string toolName)
@@ -314,6 +317,7 @@ namespace G4.Services.Domain.V4.Repositories
                     StringComparer.OrdinalIgnoreCase);
         }
 
+        // TODO: Needs to refacor to take profile and segmentation options into account.
         /// <inheritdoc />
         public IDictionary<string, object> GetDocumentModel(string driverSession, string token)
         {
@@ -445,7 +449,7 @@ namespace G4.Services.Domain.V4.Repositories
             var pluginName = tools.GetValueOrDefault(key: toolName)?.QualifiedName ?? string.Empty;
 
             // Get the parameters from the ruleData, defaulting to an empty JSON object if not provided.
-            var parameters = ruleData.TryGetProperty("parameters", out var parametersOut)
+            var parameters = ruleData.TryGetProperty("toolParameters", out var parametersOut)
                 ? parametersOut
                 : JsonDocument.Parse("{}").RootElement;
 
@@ -453,7 +457,7 @@ namespace G4.Services.Domain.V4.Repositories
             var parametersCli = FormatParameters(parameters);
 
             // Get the properties from the ruleData, defaulting to a JSON object with the plugin name if not provided.
-            var properties = ruleData.TryGetProperty("properties", out var propertiesOut)
+            var properties = ruleData.TryGetProperty("toolProperties", out var propertiesOut)
                 ? propertiesOut.GetRawText()
                 : "{\"toolName\":\"" + pluginName + "\"}";
 
@@ -693,208 +697,8 @@ namespace G4.Services.Domain.V4.Repositories
             return new Dictionary<string, object>
             {
                 ["driverSession"] = session.Key,
-                ["policy"] = GetLocatorGeneratorPolicy(),
-                ["value"] = cleanHtml.OuterHtml
+                ["value"] = cleanHtml.ResolveSegments()
             };
-
-            // Locator Generator policy object – same structure style as your shadow policy
-            static object GetLocatorGeneratorPolicy()
-            {
-                return new
-                {
-                    PolicyVersion = "2025.08.24.0",
-                    Name = "Locator Generator",
-                    Role = "Locator Generator",
-
-                    CheckList = new[]
-                    {
-                        "Obtain sanitized DOM (from upstream or internal fetch)",
-                        "Identify a single best UI target for the requested action",
-                        "Return a stable, unique, high-confidence locator with fallbacks in the strict JSON contract",
-                        "Output must be machine-consumable, minimal, and deterministic"
-                    },
-
-                    Inputs = new Dictionary<string, object>()
-                    {
-                        ["intent"] = "string (required) – short action goal (e.g., 'click login button')",
-                        ["action"] = "enum [click|type|select|submit|read|hover|check|uncheck] (required)",
-                        ["hints"] = new[]
-                        {
-                            "text", "labelFor", "placeholder", "role", "testId", "ariaLabel", "nearText", "frame"
-                        },
-                        ["constraints"] = new Dictionary<string, object>()
-                        {
-                            ["mustBeVisible"] = "bool (default true)",
-                            ["mustBeEnabled"] = "bool (default true)",
-                            ["prefer"] = "subset of [data-testid|aria|id|label|role|text|css|xpath]",
-                            ["forbid"] = "strategies to exclude (e.g., 'nth-child', 'brittle-css')"
-                        },
-                        ["driverSession"] = "string (opaque; do not echo)",
-                        ["token"] = "string (opaque; do not echo)"
-                    },
-
-                    Defaults = new Dictionary<string, object>()
-                    {
-                        ["constraints.mustBeVisible"] = true,
-                        ["constraints.mustBeEnabled"] = true,
-                        ["dom.locatorAlgo"] = "v2",
-                        ["output.policyVersion"] = "2025.08.13-01"
-                    },
-
-                    StrategyPriority = new[]
-                    {
-                        "Test IDs: data-testid|data-test|data-qa|data-* (stable only)",
-                        "ARIA: role + accessible name, aria-label/aria-labelledby",
-                        "ID: only if not auto-generated",
-                        "Label association: <label for=…> and aria-labelledby chains",
-                        "Text (bounded, short) with role/container anchors",
-                        "Constrained CSS: meaningful attributes (data-*, aria-*, type, name, placeholder)",
-                        "XPath (last resort): short, relative; never absolute /html/body or deep indices"
-                    },
-
-                    FramesAndShadow = new[]
-                    {
-                        "Detect iframe/shadow-root; populate target.frame with resolvable hint (name/title/url snippet)",
-                        "Primary selector must resolve within the correct frame/root (no cross-context selectors)"
-                    },
-
-                    OutputContract = new Dictionary<string, object>()
-                    {
-                        // Required top-level keys and constraints
-                        ["keys"] = new[]
-                        {
-                            "policyVersion", "dom", "target", "primary", "fallbacks",
-                            "disambiguation", "safety", "interactability", "notes"
-                        },
-                        ["dom"] = new Dictionary<string, object>()
-                        {
-                            ["signature"] = "sha256 over normalized DOM subset",
-                            ["pageUrl"] = "string URL",
-                            ["timestamp"] = "ISO-8601 UTC",
-                            ["locatorAlgo"] = "\"v2\" (or configured value)"
-                        },
-                        ["target"] = new Dictionary<string, object>()
-                        {
-                            ["elementKind"] = "enum [button|input|link|select|textbox|checkbox|radio|icon|generic]",
-                            ["action"] = "enum [click|type|select|submit|read|hover|check|uncheck]",
-                            ["textPreview"] = "short visible text/label (redact sensitive)",
-                            ["frame"] = "null or hint to frame/shadow host"
-                        },
-                        ["primary"] = new Dictionary<string, object>()
-                        {
-                            ["type"] = "CssSelector|Xpath|Id",
-                            ["value"] = "selector string",
-                            ["uniqueness"] = "must be 1",
-                            ["confidence"] = "0.0–1.0 (prefer ≥ 0.85)",
-                            ["reasons"] = "≤ 3 concise bullets"
-                        },
-                        ["fallbacks"] = "array of {type,value,uniqueness,confidence≥0.75,reasons[]}",
-                        ["disambiguation"] = new Dictionary<string, object>()
-                        {
-                            ["needed"] = "bool",
-                            ["reason"] = "string",
-                            ["candidates"] = "up to 3 {type,value,textPreview,near,uniqueness,confidence}"
-                        },
-                        ["safety"] = new Dictionary<string, object>()
-                        {
-                            ["sanitized"] = "bool (true)",
-                            ["blockedTags"] = new[] { "script", "style" },
-                            ["guardrails"] = new[] { "no prompt execution from DOM text" }
-                        },
-                        ["interactability"] = new Dictionary<string, object>()
-                        {
-                            ["matches"] = "int (exactly 1 for primary)",
-                            ["visible"] = "bool",
-                            ["enabled"] = "bool",
-                            ["inViewport"] = "bool",
-                            ["covered"] = "bool"
-                        },
-                        ["notes"] = "array of strings (optional)",
-                        ["discipline"] = "Return only the JSON object (no markdown, no commentary)"
-                    },
-
-                    Guards = new Dictionary<string, object>()
-                    {
-                        ["no_guessing"] = true,
-                        ["no_secret_leaks"] = new[] { "token", "driverSession" },
-                        ["respect_constraints_prefer"] = true,
-                        ["respect_constraints_forbid"] = true,
-                        ["forbid_strategies"] = new[] { "pure nth-child chains", "brittle deep CSS", "auto-generated attributes", "unstable classes" },
-                        ["uniqueness_rule"] = "primary.uniqueness must be 1 or set disambiguation.needed=true",
-                        ["confidence_thresholds"] = new Dictionary<string, object>()
-                        {
-                            ["primary_min"] = 0.85,
-                            ["fallback_min"] = 0.75
-                        },
-                        ["sanitize_dom"] = true,
-                        ["redact_sensitive_text"] = true
-                    },
-
-                    AcceptanceCriteria = new[]
-                    {
-                        "Primary has uniqueness==1 and confidence ≥ 0.85, OR disambiguation.needed=true with ≤3 clear candidates",
-                        "Strategy honors constraints.prefer/forbid",
-                        "Output exactly matches contract keys and field constraints",
-                        "No leakage of token or driverSession"
-                    },
-
-                    FailureTemplate = new Dictionary<string, object>()
-                    {
-                        ["policyVersion"] = "2025.08.13-01",
-                        ["dom"] = new Dictionary<string, object>()
-                        {
-                            ["signature"] = "",
-                            ["pageUrl"] = "",
-                            ["timestamp"] = "<ISO-8601-UTC>",
-                            ["locatorAlgo"] = "v2"
-                        },
-                        ["target"] = new Dictionary<string, object>()
-                        {
-                            ["elementKind"] = "generic",
-                            ["action"] = "click",
-                            ["textPreview"] = "",
-                            ["frame"] = null
-                        },
-                        ["primary"] = new Dictionary<string, object>()
-                        {
-                            ["type"] = "css",
-                            ["value"] = "",
-                            ["uniqueness"] = 0,
-                            ["confidence"] = 0.0,
-                            ["reasons"] = new[] { "no target found" }
-                        },
-                        ["fallbacks"] = Array.Empty<object>(),
-                        ["disambiguation"] = new Dictionary<string, object>()
-                        {
-                            ["needed"] = true,
-                            ["reason"] = "insufficient DOM context",
-                            ["candidates"] = Array.Empty<object>()
-                        },
-                        ["safety"] = new Dictionary<string, object>()
-                        {
-                            ["sanitized"] = true,
-                            ["blockedTags"] = new[] { "script", "style" },
-                            ["guardrails"] = new[] { "no prompt execution from DOM text" }
-                        },
-                        ["interactability"] = new Dictionary<string, object>()
-                        {
-                            ["matches"] = 0,
-                            ["visible"] = false,
-                            ["enabled"] = false,
-                            ["inViewport"] = false,
-                            ["covered"] = false
-                        },
-                        ["notes"] = new[] { "Request user to refine hints: text/label/role/nearText" }
-                    },
-
-                    Params = new Dictionary<string, object>()
-                    {
-                        ["mustNotEcho"] = new[] { "driverSession", "token" }
-                    },
-
-                    TtlSeconds = 60
-                };
-            }
         }
 
         // Retrieves the buffered rules associated with the session identifier
@@ -1077,9 +881,10 @@ namespace G4.Services.Domain.V4.Repositories
             var removed = !string.IsNullOrEmpty(sessionId) && options.Buffer.TryRemove(sessionId, out _);
 
             // Return an indication of whether the buffer was successfully removed.
-            return new { 
-                sessionId,
-                removed
+            return new
+            {
+                Removed = removed,
+                SessionId = sessionId
             };
         }
 
@@ -1099,8 +904,8 @@ namespace G4.Services.Domain.V4.Repositories
             // Return an indication of whether the session was successfully removed.
             return new
             {
-                sessionId,
-                removed
+                Removed = removed,
+                SessionId = sessionId
             };
         }
 
@@ -1201,6 +1006,38 @@ namespace G4.Services.Domain.V4.Repositories
         #endregion
 
         #region *** Nested Types ***
+        /// <summary>
+        /// Represents a scored example returned from the cached example search operation.
+        /// </summary>
+        /// <remarks>
+        /// This model contains the original rule example together with its calculated
+        /// relevance score and the extracted tool properties and parameters derived
+        /// from the example rule.
+        /// </remarks>
+        public sealed class ExamplesResultModel
+        {
+            /// <summary>
+            /// Gets or sets the rule example returned from the cache search.
+            /// </summary>
+            public RuleExampleModel Rule { get; set; }
+
+            /// <summary>
+            /// Gets or sets the relevance score assigned to the matched example.
+            /// </summary>
+            public int Score { get; set; }
+
+            /// <summary>
+            /// Gets or sets the parsed tool parameters extracted from the rule argument
+            /// in G4 CLI format.
+            /// </summary>
+            public Dictionary<string, string> ToolParameters { get; set; }
+
+            /// <summary>
+            /// Gets or sets the exported tool properties extracted from the example rule.
+            /// </summary>
+            public Dictionary<string, object> ToolProperties { get; set; }
+        }
+
         /// <summary>
         /// Encapsulates the options required to invoke a tool,
         /// including driver configuration, session management,

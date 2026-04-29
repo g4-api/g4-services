@@ -1,4 +1,6 @@
 ﻿using G4.Models;
+using G4.Plugins;
+using G4.Services.Domain.V4;
 using G4.Settings;
 
 using HtmlAgilityPack;
@@ -52,53 +54,76 @@ namespace G4.Extensions
         extension(HtmlNode node)
         {
             /// <summary>
-            /// Recursively cleans an HTML node by removing unwanted elements and leaving only the specified tags.
-            /// The tags to be kept are defined in the `includedTags` set, and all other elements will be removed.
+            /// Creates a cleaned copy of the current HTML node using the default DOM
+            /// sanitization profile.
             /// </summary>
-            /// <returns>The cleaned HTML node with unwanted elements removed.</returns>
+            /// <returns>A new <see cref="HtmlNode"/> instance that contains the sanitized HTML output.</returns>
             public HtmlNode Clean()
             {
-                // Define a set of allowed tags that should not be removed.
-                var includedTags = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-                {
-                    "head", "title", "base", "noscript", "script", "style", "link", "meta", "frame",
-                    "frameset", "object", "embed", "param", "source", "track", "picture", "canvas", "map", "area"
-                };
+                // Sanitize the current node HTML using the default normalization behavior.
+                var html = DomSanitizer.FormatDom(html: node.OuterHtml);
 
-                // Iterate through all child nodes of the current node.
-                foreach (var child in node.ChildNodes.ToList())
-                {
-                    // Skip text nodes, as we don't want to remove them.
-                    if (child.NodeType == HtmlNodeType.Text)
-                    {
-                        continue;
-                    }
+                // Create and return a new HTML node from the sanitized markup.
+                return HtmlNode.CreateNode(html);
+            }
 
-                    // Determine whether the current child node is an element.
-                    var isElement = child.NodeType == HtmlNodeType.Element;
+            /// <summary>
+            /// Creates a cleaned copy of the current HTML node using the specified
+            /// normalization profile.
+            /// </summary>
+            /// <param name="profile">The normalization profile that controls how the DOM is sanitized.</param>
+            /// <returns>A new <see cref="HtmlNode"/> instance that contains the sanitized HTML output.</returns>
+            public HtmlNode Clean(string profile)
+            {
+                // Sanitize the current node HTML using the requested normalization profile.
+                var html = DomSanitizer.FormatDom(
+                    html: node.OuterHtml,
+                    profile
+                );
 
-                    // Check if the current element is in the included tags list.
-                    var isIncludedTag = isElement && includedTags.Contains(child.Name);
+                // Create and return a new HTML node from the sanitized markup.
+                return HtmlNode.CreateNode(html);
+            }
 
-                    if (isElement && isIncludedTag)
-                    {
-                        // If it's an element that should be included, remove it completely (e.g., script, style).
-                        node.RemoveChild(child);
-                    }
-                    else if (isElement)
-                    {
-                        // If it's an element that should be cleaned, recursively clean its child nodes.
-                        Clean(child);
-                    }
-                    else
-                    {
-                        // For non-element nodes, simply remove them.
-                        child.Remove();
-                    }
-                }
+            /// <summary>
+            /// Creates a cleaned copy of the current HTML node using the specified
+            /// normalization profile and cleanup cycle count.
+            /// </summary>
+            /// <param name="profile">The normalization profile that controls how the DOM is sanitized.</param>
+            /// <param name="cleanupCycles">The number of additional cleanup passes to run during sanitization.</param>
+            /// <returns>A new <see cref="HtmlNode"/> instance that contains the sanitized HTML output.</returns>
+            public HtmlNode Clean(string profile, int cleanupCycles)
+            {
+                // Sanitize the current node HTML using the requested profile and cleanup depth.
+                var html = DomSanitizer.FormatDom(
+                    html: node.OuterHtml,
+                    profile,
+                    cleanupCycles
+                );
 
-                // Return the cleaned node after removing unwanted children.
-                return node;
+                // Create and return a new HTML node from the sanitized markup.
+                return HtmlNode.CreateNode(html);
+            }
+
+            /// <summary>
+            /// Resolves DOM segments for the current node using default segmentation options.
+            /// </summary>
+            /// <returns>A list of generated <see cref="DomPartitioner.Segment" /> instances.</returns>
+            public IEnumerable<DomPartitioner.Segment> ResolveSegments()
+            {
+                // Delegate to the DOM partitioner with its default option set.
+                return DomPartitioner.NewSegments(node);
+            }
+
+            /// <summary>
+            /// Resolves DOM segments for the current node using explicit segmentation options.
+            /// </summary>
+            /// <param name="options">The segmentation options that control chunking, preview formatting, and exported metadata.</param>
+            /// <returns>A list of generated <see cref="DomPartitioner.Segment" /> instances.</returns>
+            public IEnumerable<DomPartitioner.Segment> ResolveSegments(DomPartitioner.SegmentOptions options)
+            {
+                // Delegate to the DOM partitioner with caller-provided options.
+                return DomPartitioner.NewSegments(node, options);
             }
         }
 
@@ -135,12 +160,13 @@ namespace G4.Extensions
 
                 // Build the schema map for the Properties section.
                 // Property names are normalized to camelCase for the final input schema.
-                var properties = pluginProperties.ToDictionary(i => i.Value.Name.ConvertToCamelCase(), i => i.Value.Schema);
+                var properties = pluginProperties
+                    .ToDictionary(i => i.Value.Name.ConvertToCamelCase(), i => i.Value.Schema, StringComparer.OrdinalIgnoreCase);
 
                 // Collect the required property names from the converted property schema entries.
                 var requiredProperties = pluginProperties
                     .Where(i => i.Value.Required)
-                    .Select(i => i.Value.Name)
+                    .Select(i => i.Key)
                     .ToArray();
 
                 // Build the schema map for the Parameters section.
@@ -149,7 +175,7 @@ namespace G4.Extensions
                 // Collect the required parameter names from the converted parameter schema entries.
                 var requiredParameters = pluginParameters
                     .Where(i => i.Value.Required)
-                    .Select(i => i.Value.Name)
+                    .Select(i => i.Key)
                     .ToArray();
 
                 // Build the input schema payload expected by the MCP client tool model.
@@ -159,7 +185,7 @@ namespace G4.Extensions
                 var inputSchema = new
                 {
                     Type = "object",
-                    Properties = new
+                    ToolProperties = new
                     {
                         Type = "object",
                         Description = "Standard input fields defined by the G4 Engine API. " +
@@ -168,7 +194,7 @@ namespace G4.Extensions
                         Required = requiredProperties
 
                     },
-                    Parameters = new
+                    ToolParameters = new
                     {
                         Type = "object",
                         Description = "Custom, tool-specific parameters that extend or refine the tool's functionality. " +

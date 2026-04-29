@@ -1,0 +1,89 @@
+{
+	"description": "Searches the cached example library for rule examples that match the supplied tool name and intent, returning each example with its relevance score, exported rule properties, and parsed CLI parameters.",
+	"inputSchema": {
+		"properties": {
+			"intent": {
+				"description": "The user and agent intent used to search and rank matching examples.",
+				"properties": {
+					"agentIntent": {
+						"description": "The normalized intent produced by the agent for tool discovery, routing, or execution.",
+						"type": "string"
+					},
+					"userIntent": {
+						"description": "The original intent as expressed by the user.",
+						"type": "string"
+					}
+				},
+				"required": [
+					"agentIntent",
+					"userIntent"
+				],
+				"type": "object"
+			},
+			"maxResults": {
+				"description": "The maximum number of examples to return in the search results.",
+				"type": "integer"
+			},
+			"namespace": {
+				"description": "A namespace used to scope the example search to a specific plugin group or category.",
+				"type": "string"
+			},
+			"threshold": {
+				"description": "The minimum relevance score required for an example to be included in the results.",
+				"type": "integer"
+			},
+			"toolName": {
+				"description": "The unique identifier of the tool for which examples are being searched.",
+				"type": "string"
+			}
+		},
+		"required": [
+			"intent",
+			"maxResults",
+			"namespace",
+			"toolName"
+		],
+		"type": "object"
+	},
+	"name": "g4.FindExamples",
+	"outputSchema": {
+		"properties": {
+			"examples": {
+				"description": "An array of scored example results, each containing the matched rule, its relevance score, exported tool properties, and parsed CLI parameters.",
+				"items": {
+					"properties": {
+						"rule": {
+							"description": "The matched rule example. The PluginName field is excluded because it is already implied by the tool name.",
+							"type": "object"
+						},
+						"score": {
+							"description": "The relevance score assigned to the matched example.",
+							"type": "integer"
+						},
+						"toolParameters": {
+							"description": "The parsed CLI parameters extracted from the rule argument, keyed by parameter name.",
+							"type": "object"
+						},
+						"toolProperties": {
+							"description": "The exported rule properties derived from the matched example, keyed by property name.",
+							"type": "object"
+						}
+					},
+					"required": [
+						"rule",
+						"score",
+						"toolParameters",
+						"toolProperties"
+					],
+					"type": "object"
+				},
+				"type": "array"
+			}
+		},
+		"required": [
+			"examples"
+		],
+		"type": "object"
+	},
+	"title": "Find G4 Examples"
+}
