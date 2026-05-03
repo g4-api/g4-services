@@ -166,7 +166,7 @@ namespace G4.Extensions
                 // Collect the required property names from the converted property schema entries.
                 var requiredProperties = pluginProperties
                     .Where(i => i.Value.Required)
-                    .Select(i => i.Key)
+                    .Select(i => i.Key.ConvertToCamelCase())
                     .ToArray();
 
                 // Build the schema map for the Parameters section.
@@ -240,22 +240,6 @@ namespace G4.Extensions
                     }
                 };
 
-                // Parses and normalizes the 'Type' string into valid JSON schema types
-                static string[] ConvertType(string input)
-                {
-                    // List of approved JSON schema types for validation and normalization
-                    var approvedTypes = new[] { "null", "boolean", "object", "array", "number", "integer", "string" };
-
-                    // Create a set of approved types for input validation and normalization
-                    return [.. input
-                        .Split('|')
-                        .Select(i => (approvedTypes.Contains(i, StringComparer.OrdinalIgnoreCase) ? i.Trim().ToLower() : "string"))
-                        .Distinct()
-                        .Select(i => (i == "switch" || i == "bool") ? "boolean" : i)
-                        .Distinct()
-                    ];
-                }
-
                 // Converts a plugin parameter definition into an input schema element
                 // that can be used in the generated tool schema.
                 static (string Name, bool Required, JsonElement Schema) ConvertToInputSchema(PluginParameterModel parameterModel)
@@ -284,6 +268,28 @@ namespace G4.Extensions
 
                     // Parse the JSON payload into a JsonElement and return it.
                     return (parameterModel.Name, parameterModel.Mandatory, JsonElement.Parse(json));
+                }
+
+                // Parses and normalizes the 'Type' string into valid JSON schema types
+                static string[] ConvertType(string input)
+                {
+                    // List of approved JSON schema types for validation and normalization
+                    var approvedTypes = new[] { "null", "boolean", "object", "array", "number", "integer", "string" };
+
+                    // Create a set of approved types for input validation and normalization
+                    var types = input
+                        .Split('|')
+                        .Select(i => (approvedTypes.Contains(i, StringComparer.OrdinalIgnoreCase) ? i.Trim().ToLower() : "string"))
+                        .Distinct()
+                        .Select(i => (i == "switch" || i == "bool") ? "boolean" : i)
+                        .Distinct();
+
+                    // If the input type string is empty, contains unapproved types,
+                    // or results in multiple types after normalization, default to "string"
+                    // to ensure the generated schema remains valid and predictable for MCP client tools.
+                    return !types.Any() || types.Count() > 1
+                        ? ["string"]
+                        : [.. types];
                 }
             }
         }

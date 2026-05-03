@@ -107,8 +107,8 @@ namespace G4.Services.Domain.V4.Repositories
                 // Built-in: Lists all available tools.
                 { Name: "g4.FindTools" } => _retrievalManager.FindTools(intent),
 
-                // Built-in: Retrieves the current application's DOM (Document Object Model).
-                { Name: "g4.GetApplicationDom" } => GetApplicationDom(options),
+                // Built-in: Partitions the current application's DOM into semantic segments.
+                { Name: "g4.GetDomSegments" } => GetDomSegments(options),
 
                 // Built-in: Retrieves the current set of rules stored in the buffer for a given key.
                 { Name: "g4.GetBuffer" } => GetBuffer(options),
@@ -333,9 +333,9 @@ namespace G4.Services.Domain.V4.Repositories
                 Tools = s_tools                // Registered tools available in the current context
             };
 
-            // Delegate the actual DOM retrieval to the helper method,
+            // Delegate DOM segmentation to the helper method,
             // which uses the constructed options.
-            return GetApplicationDom(options);
+            return GetDomSegments(options);
         }
 
         /// <inheritdoc />
@@ -655,9 +655,9 @@ namespace G4.Services.Domain.V4.Repositories
             }
         }
 
-        // Retrieves and cleans the DOM of a web page through the automation process by invoking a JavaScript script
-        // to extract the HTML content and then processing it to remove unwanted elements.
-        private static Dictionary<string, object> GetApplicationDom(InvokeOptions options)
+        // Retrieves the page DOM, sanitizes it, and partitions it into semantic segments
+        // by invoking a JavaScript script to extract the HTML content and running the segmentation pipeline.
+        private static Dictionary<string, object> GetDomSegments(InvokeOptions options)
         {
             // JavaScript to get the entire HTML content of the document.
             var script = "return document.body.outerHTML;";
@@ -787,13 +787,13 @@ namespace G4.Services.Domain.V4.Repositories
             };
         }
 
-        // TODO: Decouple from GetApplicationDom and make it a standalone tool.
+        // TODO: Decouple from GetDomSegments and make it a standalone tool.
         // Retrieves a locator for a specific element on the page by sending the DOM and intent
         // to the OpenAI completion API.
         private static JsonElement ResolveLocator(InvokeOptions options)
         {
             // Fetch the current page DOM for the active driver session.
-            var documentObject = GetApplicationDom(options);
+            var documentObject = GetDomSegments(options);
 
             // Build the model input: carry over "intent" and inject the DOM so the model has page context.
             var intentObject = new Dictionary<string, object>
