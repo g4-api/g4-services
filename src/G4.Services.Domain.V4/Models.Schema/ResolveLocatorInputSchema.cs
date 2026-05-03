@@ -1,4 +1,6 @@
-﻿using Swashbuckle.AspNetCore.Annotations;
+﻿using G4.Services.Domain.V4.Models;
+
+using Swashbuckle.AspNetCore.Annotations;
 
 using System.Text.Json.Serialization;
 
@@ -16,7 +18,7 @@ namespace G4.Models.Schema
         /// Gets or sets the identifier of the active driver/browser session.
         /// This tells the G4 engine which session’s DOM should be targeted.
         /// </summary>
-        [JsonPropertyName("driver_session")]
+        [JsonPropertyName("driverSession")]
         [SwaggerSchema(description: "The driver session identifier specifying which active session’s " +
             "DOM should be targeted.")]
         public string DriverSession { get; set; }
@@ -36,7 +38,7 @@ namespace G4.Models.Schema
         /// </summary>
         [SwaggerSchema(description: "The intent describing the target element or action. " +
             "Used for vector-based lookup if an exact locator is not available.")]
-        public string Intent { get; set; }
+        public IntentModel Intent { get; set; }
 
         /// <summary>
         /// The OpenAI API key used for authentication. Optional.

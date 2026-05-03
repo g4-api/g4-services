@@ -1,0 +1,53 @@
+{
+	"description": "Retrieves the metadata and schema for a tool. Uses the tool name if available, otherwise falls back to intent matching to find the best match.",
+	"inputSchema": {
+		"properties": {
+			"intent": {
+				"description": "The user and agent intent used to identify and retrieve the most relevant tool when no exact tool name is available.",
+				"properties": {
+					"agentIntent": {
+						"description": "The normalized intent produced by the agent for tool discovery, routing, or execution.",
+						"type": "string"
+					},
+					"userIntent": {
+						"description": "The original intent as expressed by the user.",
+						"type": "string"
+					}
+				},
+				"required": [
+					"agentIntent",
+					"userIntent"
+				],
+				"type": "object"
+			},
+			"namespace": {
+				"description": "A namespace used to scope the tool search to a specific plugin group or category. Use `G4.System` if namespace is unknown.",
+				"type": "string"
+			},
+			"toolName": {
+				"description": "The unique identifier of the tool to find.",
+				"type": "string"
+			}
+		},
+		"required": [
+			"intent",
+			"namespace",
+			"toolName"
+		],
+		"type": "object"
+	},
+	"name": "g4.FindTool",
+	"outputSchema": {
+		"properties": {
+			"tool": {
+				"description": "The tool's metadata including name, description, input and output schemas.",
+				"type": "object"
+			}
+		},
+		"required": [
+			"tool"
+		],
+		"type": "object"
+	},
+	"title": "Find G4 Tool"
+}

@@ -30,42 +30,99 @@
 .sqd-header {
 	height: var(--header-height);
 	display: flex;
-	gap: var(--base-space);
+	align-items: center;
+	gap: 1rem;
+	padding: 0 1rem;
 	width: 100%;
 }
 
-	.sqd-header > * {
-		flex: 1;
-	}
+.sqd-header__brand {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+	flex-shrink: 0;
+}
 
-		.sqd-header > *:first-child {
-			flex: 0 0 40%;
-		}
+.sqd-header__avatar {
+	width: 36px;
+	height: 36px;
+	object-fit: contain;
+	flex-shrink: 0;
+}
 
-	.sqd-header .column {
-		padding: 10px;
-		box-sizing: border-box;
-	}
+.sqd-header__stats {
+	flex: 1;
+	display: flex;
+	gap: 0.5rem;
+	align-self: stretch;
+	padding: 0.4rem 0;
+	min-width: 0;
+}
 
-	.sqd-header .sqd-card {
-		align-items: center;
-		box-sizing: border-box;
-		display: flex;
-		justify-content: center;
-		margin-top: var(--base-space);
-		margin-bottom: var(--base-space);
-		position: relative;
-	}
+.sqd-header .sqd-card {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 0.2rem;
+	padding: 0.35rem 0.75rem;
+	min-width: 0;
+}
 
-		.sqd-header .sqd-card .sqd-card--label {
-			position: absolute;
-			top: 10px;
-			left: 10px;
-		}
+#designer--header .sqd-card .sqd-card--label {
+	font-size: 0.65rem;
+	font-weight: 500;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	text-align: center;
+}
 
-		.sqd-header .sqd-card .sqd-card--content {
-			margin: 0;
-		}
+#designer--header .sqd-card .sqd-card--content {
+	font-size: 1.5rem;
+	font-weight: 700;
+	text-align: center;
+}
+
+.sqd-conn {
+	display: flex;
+	align-items: center;
+	flex-shrink: 0;
+	padding: 0 0.5rem;
+}
+
+.sqd-conn__led {
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	flex-shrink: 0;
+	transition: background 0.3s, box-shadow 0.3s;
+}
+
+.sqd-conn--connected .sqd-conn__led {
+	background: #00E676;
+	animation: led-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes led-pulse {
+	0%, 100% { box-shadow: 0 0 0 0 rgba(0, 230, 118, 0.55); }
+	50%       { box-shadow: 0 0 0 4px rgba(0, 230, 118, 0); }
+}
+
+.sqd-conn--connecting .sqd-conn__led {
+	background: #00B4FF;
+	animation: led-blink 1s ease-in-out infinite;
+}
+
+.sqd-conn--disconnected .sqd-conn__led {
+	background: #FF3D3D;
+	box-shadow: 0 0 6px rgba(255, 61, 61, 0.7);
+}
+
+@keyframes led-blink {
+	0%, 100% { box-shadow: 0 0 0 0 rgba(0, 180, 255, 0.55); }
+	50%       { box-shadow: 0 0 0 4px rgba(0, 180, 255, 0); }
+}
 
 .sqd-content {
 	flex: 1;

@@ -1,0 +1,1181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>G4™ Bots</title>
+	<link rel="icon" href="../images/favicon.ico" />
+	<link rel="stylesheet" href="../css/fonts.css" />
+	<link rel="stylesheet" href="../css/site.css" />
+	<link rel="stylesheet" href="../css/bots.css" />
+</head>
+<body>
+
+	<div class="bots-page">
+
+		<!--  Sticky top bar (header + controls)  -->
+		<div class="bots-topbar" id="botsTopbar">
+
+			<!--  Header  -->
+			<header class="bots-header">
+				<a class="bots-header__back" href="../index.html" aria-label="Back to home">
+					<svg viewBox="0 0 640 640" fill="#B8CCD8" aria-hidden="true">
+						<path d="M201.4 297.4C188.9 309.9 188.9 330.2 201.4 342.7L361.4 502.7C373.9 515.2 394.2 515.2 406.7 502.7C419.2 490.2 419.2 469.9 406.7 457.4L269.3 320L406.6 182.6C419.1 170.1 419.1 149.8 406.6 137.3C394.1 124.8 373.8 124.8 361.3 137.3L201.3 297.3z"/>
+					</svg>
+				</a>
+
+				<img class="bots-header__avatar" src="../images/g4-avatar.png" alt="G4 Logo" />
+
+				<div class="bots-header__brand">
+					<h1 class="bots-header__title">Bots</h1>
+					<p class="bots-header__subtitle">Governed execution agents — deploy, monitor, and scale</p>
+				</div>
+
+				<!-- SignalR / polling connection indicator -->
+				<div class="bots-conn bots-conn--connecting" id="connIndicator" aria-live="polite">
+					<span class="bots-conn__dot"></span>
+					<span class="bots-conn__label" id="connLabel">Connecting…</span>
+				</div>
+			</header>
+
+			<div class="bots-divider"></div>
+
+			<!--  Control panel  -->
+			<div class="bots-controls">
+
+				<!-- Summary chips (clickable for filtering) -->
+				<div class="bots-summary" role="status" aria-label="Bot summary">
+					<button class="summary-chip" id="chipTotal" data-status="" title="Show all bots">
+						<span class="chip-num" id="cntTotal">—</span>
+						<span class="chip-label">Total</span>
+					</button>
+					<button class="summary-chip summary-chip--ready" id="chipReady" data-status="ready" title="Filter by Ready status">
+						<span class="chip-num" id="cntReady">—</span>
+						<span class="chip-label">Ready</span>
+					</button>
+					<button class="summary-chip summary-chip--busy" id="chipBusy" data-status="busy" title="Filter by Working status">
+						<span class="chip-num" id="cntBusy">—</span>
+						<span class="chip-label">WORKING</span>
+					</button>
+					<button class="summary-chip summary-chip--offline" id="chipOffline" data-status="offline" title="Filter by Offline status">
+						<span class="chip-num" id="cntOffline">—</span>
+						<span class="chip-label">Offline</span>
+					</button>
+				</div>
+
+				<!-- Action buttons -->
+				<div class="bots-actions">
+
+					<!-- Search / filter -->
+					<div class="bots-search">
+						<svg class="bots-search__icon" viewBox="0 0 640 640" fill="#B8CCD8" aria-hidden="true">
+							<path d="M173.3 66.5C181.4 62.4 191.2 63.3 198.4 68.8L518.4 308.7C526.7 314.9 530 325.7 526.8 335.5C523.6 345.3 514.4 351.9 504 351.9L351.7 351.9L440.6 529.6C448.5 545.4 442.1 564.6 426.3 572.5C410.5 580.4 391.3 574 383.4 558.2L294.5 380.5L203.2 502.3C197 510.6 186.2 513.9 176.4 510.7C166.6 507.5 160 498.3 160 488L160 88C160 78.9 165.1 70.6 173.3 66.5z"/>
+						</svg>
+						<input type="search"
+							   class="bots-search__input"
+							   id="filterInput"
+							   placeholder="Filter bots…"
+							   aria-label="Filter bots by name, type, machine or status"
+							   autocomplete="off" />
+					</div>
+
+					<!-- Refresh -->
+					<button class="bots-btn bots-btn--icon" id="btnRefresh"
+							title="Refresh bots" aria-label="Refresh bots list">
+						<svg viewBox="0 0 640 640" fill="#B8CCD8" aria-hidden="true">
+							<path d="M545.7 304.1C528.1 302.9 512.8 316.1 511.5 333.8C508.2 380.8 487.9 423.2 456.7 454.8L425 423C418.1 416.1 407.8 414.1 398.8 417.8C389.8 421.5 384 430.3 384 440L384 552C384 565.3 394.7 576 408 576L520 576C529.7 576 538.5 570.2 542.2 561.2C545.9 552.2 543.9 541.9 537 535L502 500C543.7 457.8 570.9 401.2 575.4 338.2C576.6 320.6 563.4 305.3 545.7 304zM103 105L138 140C96.3 182.2 69.1 238.8 64.6 301.8C63.4 319.4 76.6 334.7 94.3 336C112 337.3 127.2 324 128.5 306.3C131.8 259.3 152.1 216.9 183.3 185.3L215 217C221.9 223.9 232.2 225.9 241.2 222.2C250.2 218.5 256 209.7 256 200L256 88C256 74.7 245.3 64 232 64L120 64C110.3 64 101.5 69.8 97.8 78.8C94.1 87.8 96.2 98.1 103 105zM304 94.3C302.8 111.9 316 127.2 333.7 128.5C380.7 131.8 423.1 152.1 454.7 183.3L423 215C416.1 221.9 414.1 232.2 417.8 241.2C421.5 250.2 430.3 256 440 256L552 256C565.3 256 576 245.3 576 232L576 120C576 110.3 570.2 101.5 561.2 97.8C552.2 94.1 541.9 96.2 535 103L500 138C457.8 96.3 401.2 69.1 338.2 64.6C320.6 63.4 305.3 76.6 304 94.3zM105 537L140 502C182.2 543.7 238.8 570.9 301.8 575.4C319.4 576.6 334.7 563.4 336 545.7C337.3 528 324 512.8 306.3 511.5C259.3 508.2 216.9 487.9 185.3 456.7L217 425C223.9 418.1 225.9 407.8 222.2 398.8C218.5 389.8 209.7 384 200 384L88 384C74.7 384 64 394.7 64 408L64 520C64 529.7 69.8 538.5 78.8 542.2C87.8 545.9 98.1 543.8 105 537z"/>
+						</svg>
+					</button>
+
+					<div class="btn-rule" aria-hidden="true"></div>
+
+					<!-- Collapse / expand -->
+					<button class="bots-btn" id="btnCollapseAll" title="Collapse all cards">
+						Collapse All
+					</button>
+					<button class="bots-btn" id="btnExpandAll" title="Expand all cards">
+						Expand All
+					</button>
+
+					<div class="btn-rule" aria-hidden="true"></div>
+
+					<!-- Destructive global actions -->
+					<button class="bots-btn bots-btn--danger" id="btnClearOffline"
+							title="Remove bots with no active connection from the registry. Use this to clean up ghost bots whose server state was already lost.">
+						Clear Offline
+					</button>
+					<button class="bots-btn bots-btn--danger" id="btnShutdownAll"
+							title="Send a shutdown command to every connected bot and remove them from the registry">
+						Shutdown All
+					</button>
+				</div>
+			</div>
+
+		</div>
+        <!-- /.bots-topbar -->
+		<!--  Bot grid / states  -->
+		<main class="bots-main" id="botsMain">
+
+			<!-- Loading -->
+			<div class="bots-state" id="stateLoading">
+				<div class="bots-spinner" role="status" aria-label="Loading"></div>
+				<p class="bots-state__title">Loading bots…</p>
+				<p class="bots-state__desc">Fetching connected bots from the server.</p>
+			</div>
+
+			<!-- Empty -->
+			<div class="bots-state hidden" id="stateEmpty">
+				<svg class="bots-state__icon" viewBox="0 0 640 640" fill="#B8CCD8" aria-hidden="true">
+					<path d="M352 64C352 46.3 337.7 32 320 32C302.3 32 288 46.3 288 64L288 128L192 128C139 128 96 171 96 224L96 448C96 501 139 544 192 544L448 544C501 544 544 501 544 448L544 224C544 171 501 128 448 128L352 128L352 64zM160 432C160 418.7 170.7 408 184 408L216 408C229.3 408 240 418.7 240 432C240 445.3 229.3 456 216 456L184 456C170.7 456 160 445.3 160 432zM280 432C280 418.7 290.7 408 304 408L336 408C349.3 408 360 418.7 360 432C360 445.3 349.3 456 336 456L304 456C290.7 456 280 445.3 280 432zM400 432C400 418.7 410.7 408 424 408L456 408C469.3 408 480 418.7 480 432C480 445.3 469.3 456 456 456L424 456C410.7 456 400 445.3 400 432zM224 240C250.5 240 272 261.5 272 288C272 314.5 250.5 336 224 336C197.5 336 176 314.5 176 288C176 261.5 197.5 240 224 240zM368 288C368 261.5 389.5 240 416 240C442.5 240 464 261.5 464 288C464 314.5 442.5 336 416 336C389.5 336 368 314.5 368 288zM64 288C64 270.3 49.7 256 32 256C14.3 256 0 270.3 0 288L0 384C0 401.7 14.3 416 32 416C49.7 416 64 401.7 64 384L64 288zM608 256C590.3 256 576 270.3 576 288L576 384C576 401.7 590.3 416 608 416C625.7 416 640 401.7 640 384L640 288C640 270.3 625.7 256 608 256z"/>
+				</svg>
+				<p class="bots-state__title">No bots connected</p>
+				<p class="bots-state__desc">
+					No bots are currently registered. Bots appear here when they connect to the hub
+					and call <code>RegisterBot</code>.
+				</p>
+			</div>
+
+			<!-- Error -->
+			<div class="bots-state hidden" id="stateError">
+				<svg class="bots-state__icon" viewBox="0 0 640 640" fill="#B8CCD8" aria-hidden="true">
+					<path d="M320 576C461.4 576 576 461.4 576 320C576 178.6 461.4 64 320 64C178.6 64 64 178.6 64 320C64 461.4 178.6 576 320 576zM231 231C240.4 221.6 255.6 221.6 264.9 231L319.9 286L374.9 231C384.3 221.6 399.5 221.6 408.8 231C418.1 240.4 418.2 255.6 408.8 264.9L353.8 319.9L408.8 374.9C418.2 384.3 418.2 399.5 408.8 408.8C399.4 418.1 384.2 418.2 374.9 408.8L319.9 353.8L264.9 408.8C255.5 418.2 240.3 418.2 231 408.8C221.7 399.4 221.6 384.2 231 374.9L286 319.9L231 264.9C221.6 255.5 221.6 240.3 231 231z"/>
+				</svg>
+				<p class="bots-state__title">Failed to load bots</p>
+				<p class="bots-state__desc" id="stateErrorMsg">
+					Could not reach the server. Check that the G4™ service is running and try refreshing.
+				</p>
+				<button class="bots-btn" id="btnRetry" style="margin-top:0.5rem">
+					Retry
+				</button>
+			</div>
+
+			<!-- Cards container -->
+			<div class="bots-cards hidden" id="cardsContainer" aria-label="Bot cards"></div>
+
+		</main>
+
+		<!--  Footer  -->
+		<footer class="bots-footer" id="botsFooter">
+			<div>
+				G4&trade; Engine &nbsp;&middot;&nbsp;
+				<a href="https://github.com/g4-api/g4-services" target="_blank" rel="noopener">
+					github.com/g4-api/g4-services
+				</a>
+			</div>
+		</footer>
+
+	</div>
+    <!-- .bots-page -->
+	<!--  Confirm dialog  -->
+	<div class="dialog-overlay hidden" id="dialogOverlay"
+		 role="dialog" aria-modal="true" aria-labelledby="dialogTitle">
+		<div class="dialog">
+			<p class="dialog__title" id="dialogTitle"></p>
+			<div class="dialog__body" id="dialogBody"></div>
+			<div class="dialog__actions">
+				<button class="bots-btn" id="dialogCancel">Cancel</button>
+				<button class="bots-btn" id="dialogConfirm">Confirm</button>
+			</div>
+		</div>
+	</div>
+
+	<!-- SignalR client (local — no CDN) -->
+	<script src="../js/signalr.min.js"></script>
+
+	<script>
+/* ================================================================
+   G4™ Bots Management — Client
+   Pure vanilla JS. No frameworks. No local state persistence.
+   Server (HTTP API + SignalR hub) is the source of truth.
+   ================================================================ */
+(function () {
+    'use strict';
+
+    //  Config 
+    const HUB_URL  = '/hub/v4/g4/bots';
+    const POLL_MS  = 12_000;   // polling interval when hub can't push updates
+
+    //  In-memory transient state (render cycle only) 
+    const state = {
+        bots:          new Map(),   // id → ConnectedBotModel
+        logs:          new Map(),   // id → LogEntry[]
+        collapsed:     new Set(),   // ids of collapsed cards
+        collapsedGroups: new Set(), // collapsed type groups
+        filter:        '',
+        statusFilter:  null,        // null | 'ready' | 'busy' | 'offline'
+    };
+
+    let pollTimer      = null;
+    let hubConnection  = null;
+
+    //  DOM refs 
+    const el = id => document.getElementById(id);
+
+    const dom = {
+        connIndicator:  el('connIndicator'),
+        connLabel:      el('connLabel'),
+        cntTotal:       el('cntTotal'),
+        cntReady:       el('cntReady'),
+        cntBusy:        el('cntBusy'),
+        cntOffline:     el('cntOffline'),
+        filterInput:    el('filterInput'),
+        btnRefresh:     el('btnRefresh'),
+        btnCollapseAll: el('btnCollapseAll'),
+        btnExpandAll:   el('btnExpandAll'),
+        btnShutdownAll: el('btnShutdownAll'),
+        btnClearOffline: el('btnClearOffline'),
+        btnRetry:       el('btnRetry'),
+        stateLoading:   el('stateLoading'),
+        stateEmpty:     el('stateEmpty'),
+        stateError:     el('stateError'),
+        stateErrorMsg:  el('stateErrorMsg'),
+        cardsContainer: el('cardsContainer'),
+        // Status filter chips
+        chipTotal:      el('chipTotal'),
+        chipReady:      el('chipReady'),
+        chipBusy:       el('chipBusy'),
+        chipOffline:    el('chipOffline'),
+        // Confirm dialog
+        dialogOverlay:  el('dialogOverlay'),
+        dialogTitle:    el('dialogTitle'),
+        dialogBody:     el('dialogBody'),
+        dialogCancel:   el('dialogCancel'),
+        dialogConfirm:  el('dialogConfirm'),
+    };
+
+    //  Utilities 
+    function escHtml(str) {
+        return String(str == null ? '' : str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
+    function timeAgo(iso) {
+        if (!iso) return '—';
+        const sec = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+        if (sec <  5)  return 'just now';
+        if (sec < 60)  return `${sec}s ago`;
+        const m = Math.floor(sec / 60);
+        if (m  < 60)   return `${m}m ago`;
+        const h = Math.floor(m  / 60);
+        if (h  < 24)   return `${h}h ago`;
+        return new Date(iso).toLocaleDateString();
+    }
+
+    function fmtTs(iso) {
+        if (!iso) return '';
+        const d = new Date(iso);
+        return d.toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+
+    function fmtDateTime(iso) {
+        if (!iso) return '—';
+        return new Date(iso).toLocaleString();
+    }
+
+    function fmtUpTime(start, end) {
+        if (!start || !end) return '—';
+        const ms = new Date(end).getTime() - new Date(start).getTime();
+        if (ms < 0) return '—';
+        const s = Math.floor(ms / 1000);
+        const m = Math.floor(s / 60);
+        const h = Math.floor(m / 60);
+        const d = Math.floor(h / 24);
+        if (d > 0) return `${d}d ${h % 24}h ${m % 60}m`;
+        if (h > 0) return `${h}h ${m % 60}m`;
+        if (m > 0) return `${m}m ${s % 60}s`;
+        return `${s}s`;
+    }
+
+    /** Map status string → CSS modifier class */
+    function statusKey(status) {
+        if (!status) return 'unknown';
+        switch (status.toLowerCase()) {
+            case 'ready':                          return 'ready';
+            case 'busy': case 'running':
+            case 'active': case 'working':         return 'busy';
+            case 'idle': case 'waiting':
+            case 'paused':                         return 'idle';
+            case 'stopped': case 'disconnected':
+            case 'offline': case 'removed':
+            case 'error': case 'failed':           return 'offline';
+            default:                               return 'unknown';
+        }
+    }
+
+    function isActive(status)  { return statusKey(status) === 'busy'; }
+    function isOffline(status) { return statusKey(status) === 'offline'; }
+
+    function _updateChipActiveStates() {
+        dom.chipTotal.classList.toggle('summary-chip--active', state.statusFilter === null);
+        dom.chipReady.classList.toggle('summary-chip--active', state.statusFilter === 'ready');
+        dom.chipBusy.classList.toggle('summary-chip--active', state.statusFilter === 'busy');
+        dom.chipOffline.classList.toggle('summary-chip--active', state.statusFilter === 'offline');
+    }
+
+    //  Confirm dialog 
+    /**
+     * Shows a themed confirmation dialog.
+     * Returns a Promise<boolean> — true if confirmed, false if cancelled.
+     *
+     * @param {{ title: string, body: string, confirmLabel?: string, danger?: boolean }} opts
+     */
+    function showConfirm({ title, body, confirmLabel = 'Confirm', danger = false }) {
+        return new Promise(resolve => {
+            dom.dialogTitle.textContent   = title;
+            dom.dialogBody.innerHTML      = body;
+            dom.dialogConfirm.textContent = confirmLabel;
+            dom.dialogConfirm.className   =
+                `bots-btn${danger ? ' bots-btn--danger' : ' bots-btn--primary'}`;
+            dom.dialogOverlay.classList.remove('hidden');
+
+            // Focus the confirm button so Enter activates it
+            requestAnimationFrame(() => dom.dialogConfirm.focus());
+
+            const cleanup = () => {
+                dom.dialogOverlay.classList.add('hidden');
+                dom.dialogConfirm.removeEventListener('click', onConfirm);
+                dom.dialogCancel.removeEventListener('click', onCancel);
+                dom.dialogOverlay.removeEventListener('click', onOverlay);
+                document.removeEventListener('keydown', onKey);
+            };
+            const onConfirm = () => { cleanup(); resolve(true);  };
+            const onCancel  = () => { cleanup(); resolve(false); };
+            const onOverlay = e  => { if (e.target === dom.dialogOverlay) onCancel(); };
+            const onKey     = e  => { if (e.key === 'Escape') onCancel(); };
+
+            dom.dialogConfirm.addEventListener('click', onConfirm);
+            dom.dialogCancel.addEventListener('click', onCancel);
+            dom.dialogOverlay.addEventListener('click', onOverlay);
+            document.addEventListener('keydown', onKey);
+        });
+    }
+
+    //  Per-bot activity log 
+    /**
+     * Appends an entry to a bot's in-memory log and updates the DOM
+     * if the card is currently expanded.
+     *
+     * PLACEHOLDER — Log streaming integration point:
+     * 
+     * When the server exposes a real-time log event (e.g., via a
+     * new SignalR hub method "ReceiveBotLog"), wire it like this:
+     *
+     *   hubConnection.on('ReceiveBotLog', (botId, message, level) => {
+     *       appendBotLog(botId, message, level ?? 'system');
+     *   });
+     *
+     * The log area renders the entry immediately if the card is open.
+     * 
+     *
+     * @param {string} botId
+     * @param {string} message
+     * @param {'system'|'success'|'warn'|'error'} type
+     */
+    function appendBotLog(botId, message, type) {
+        type = type || 'system';
+        if (!state.logs.has(botId)) state.logs.set(botId, []);
+        const entries = state.logs.get(botId);
+        const entry = { ts: new Date(), message, type };
+        entries.push(entry);
+        if (entries.length > 100) entries.shift();  // rolling window
+
+        // Push to DOM if card is open
+        const content = document.querySelector(
+            `[data-bot-id="${CSS.escape(botId)}"] .bot-log__content`
+        );
+        if (content) {
+            _appendLogEntryDom(content, entry);
+            content.scrollTop = content.scrollHeight;
+        }
+    }
+
+    function _appendLogEntryDom(container, entry) {
+        const ph = container.querySelector('.log-placeholder');
+        if (ph) ph.remove();
+        const div = document.createElement('div');
+        div.className = `log-entry log-entry--${entry.type}`;
+        div.innerHTML =
+            `<span class="log-entry__ts">${escHtml(fmtTs(entry.ts))}</span>` +
+            `<span class="log-entry__msg">${escHtml(entry.message)}</span>`;
+        container.appendChild(div);
+    }
+
+    function renderLogContent(botId) {
+        const entries = state.logs.get(botId) || [];
+        if (!entries.length) {
+            return '<div class="log-placeholder">No activity recorded yet — updates appear here.</div>';
+        }
+        return entries.map(e =>
+            `<div class="log-entry log-entry--${e.type}">` +
+            `<span class="log-entry__ts">${escHtml(fmtTs(e.ts))}</span>` +
+            `<span class="log-entry__msg">${escHtml(e.message)}</span>` +
+            `</div>`
+        ).join('');
+    }
+
+    //  API helpers 
+    async function apiFetch(method, path, body) {
+        const opts = { method, headers: { 'Content-Type': 'application/json' } };
+        if (body !== undefined) opts.body = JSON.stringify(body);
+        const res = await fetch(path, opts);
+        if (!res.ok) {
+            const txt = await res.text().catch(() => '');
+            throw new Error(`${method} ${path} → HTTP ${res.status}${txt ? ': ' + txt : ''}`);
+        }
+        if (res.status === 204) return null;
+        const ct = res.headers.get('content-type') || '';
+        return ct.includes('application/json') ? res.json() : null;
+    }
+
+    const api = {
+        getBots:                   ()      => apiFetch('GET',    '/api/v4/g4/bots/status'),
+        getBotById:                (id)    => apiFetch('GET',    `/api/v4/g4/bots/status/${encodeURIComponent(id)}`),
+        testBots:                  (ids)   => apiFetch('POST',   '/api/v4/g4/bots/test', ids),
+        disconnectBot:             (conn)  => apiFetch('DELETE', `/api/v4/g4/bots/disconnect/${encodeURIComponent(conn)}`),
+        disconnectAll:             ()      => apiFetch('DELETE', '/api/v4/g4/bots/disconnect/all'),
+        unregisterBot:             (id)    => apiFetch('DELETE', `/api/v4/g4/bots/register/${encodeURIComponent(id)}`),
+        unregisterAllDisconnected: ()      => apiFetch('DELETE', '/api/v4/g4/bots/register/all'),
+    };
+
+    //  SignalR hub 
+    function connectHub() {
+        if (typeof signalR === 'undefined') {
+            console.warn('[Bots] SignalR library not loaded — operating in poll-only mode.');
+            setConnStatus('error', 'Poll mode');
+            return;
+        }
+
+        hubConnection = new signalR.HubConnectionBuilder()
+            .withUrl(HUB_URL)
+            .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
+            .configureLogging(signalR.LogLevel.Warning)
+            .build();
+
+        //  Hub events 
+        // NOTE: The G4BotsHub sends most events only to the calling
+        // bot client (Clients.Caller). The management page connecting
+        // here is treated as a plain viewer. We still wire the handlers
+        // so that if future server changes broadcast to all connections
+        // (e.g., a management group), updates arrive immediately.
+
+        hubConnection.on('ReceiveBotUpdated', bot => {
+            if (!bot || !bot.id) return;
+            console.log('[Hub] ReceiveBotUpdated', bot.id, bot.status);
+            const prev = state.bots.get(bot.id);
+            if (prev && prev.status !== bot.status) {
+                appendBotLog(bot.id, `Status: ${prev.status || '—'} → ${bot.status}`, 'system');
+            }
+            state.bots.set(bot.id, bot);
+            _updateCardDom(bot);
+            _updateSummary();
+        });
+
+        hubConnection.on('ReceiveRegisterBot', result => {
+            console.log('[Hub] ReceiveRegisterBot', result);
+            // Trigger a fresh fetch so the new bot appears
+            refresh();
+        });
+
+        hubConnection.on('ReceiveHeartbeat', msg => {
+            console.log('[Hub] Heartbeat:', msg);
+        });
+
+        /*
+         * PLACEHOLDER — "ReceiveBotLog" event (not yet implemented server-side)
+         * 
+         * Uncomment and adapt once the server emits log entries via the hub:
+         *
+         * hubConnection.on('ReceiveBotLog', (botId, message, level) => {
+         *     appendBotLog(botId, message, level || 'system');
+         * });
+         */
+
+        //  Lifecycle 
+        hubConnection.onreconnecting(() => setConnStatus('connecting', 'Reconnecting…'));
+        hubConnection.onreconnected(() => {
+            setConnStatus('connected', 'Connected');
+            refresh();
+        });
+        hubConnection.onclose(() => setConnStatus('error', 'Disconnected'));
+
+        hubConnection.start()
+            .then(() => {
+                setConnStatus('connected', 'Connected');
+                console.log('[Hub] Connected as viewer. Connection ID:', hubConnection.connectionId);
+            })
+            .catch(err => {
+                console.error('[Hub] Connection failed:', err);
+                setConnStatus('error', 'Hub unavailable');
+            });
+    }
+
+    function setConnStatus(type, label) {
+        const el = dom.connIndicator;
+        el.className = `bots-conn bots-conn--${type}`;
+        dom.connLabel.textContent = label;
+    }
+
+    //  Data refresh 
+    async function refresh() {
+        dom.btnRefresh.classList.add('bots-btn--spinning');
+        try {
+            const bots = (await api.getBots()) || [];
+            const incoming = new Map(bots.map(b => [b.id, b]));
+
+            // Detect changes for log entries
+            incoming.forEach((bot, id) => {
+                const prev = state.bots.get(id);
+                if (!prev) {
+                    appendBotLog(id, `Bot appeared — status: ${bot.status || 'unknown'}`, 'success');
+                } else if (prev.status !== bot.status) {
+                    appendBotLog(id, `Status: ${prev.status || '—'} → ${bot.status}`, 'system');
+                }
+            });
+
+            // Prune bots that vanished
+            for (const id of state.bots.keys()) {
+                if (!incoming.has(id)) {
+                    appendBotLog(id, 'Bot removed from registry', 'warn');
+                    state.bots.delete(id);
+                    state.logs.delete(id);
+                    state.collapsed.delete(id);
+                }
+            }
+
+            // Prune collapsed groups for types that no longer exist
+            const currentTypes = new Set(bots.map(b => b.type || 'Unknown'));
+            for (const type of state.collapsedGroups) {
+                if (!currentTypes.has(type)) {
+                    state.collapsedGroups.delete(type);
+                }
+            }
+
+            bots.forEach(b => state.bots.set(b.id, b));
+            _renderGrid();
+        } catch (err) {
+            console.error('[Bots] Fetch error:', err);
+            if (state.bots.size === 0) {
+                dom.stateErrorMsg.textContent =
+                    err.message || 'Could not reach the server. Check that G4™ is running.';
+                _showState('error');
+            }
+        } finally {
+            dom.btnRefresh.classList.remove('bots-btn--spinning');
+        }
+    }
+
+    function startPolling() {
+        if (pollTimer) clearInterval(pollTimer);
+        pollTimer = setInterval(refresh, POLL_MS);
+    }
+
+    //  Rendering 
+    function _showState(name) {
+        dom.stateLoading.classList.add('hidden');
+        dom.stateEmpty.classList.add('hidden');
+        dom.stateError.classList.add('hidden');
+        dom.cardsContainer.classList.add('hidden');
+        if (name === 'loading') dom.stateLoading.classList.remove('hidden');
+        else if (name === 'empty') dom.stateEmpty.classList.remove('hidden');
+        else if (name === 'error') dom.stateError.classList.remove('hidden');
+        else dom.cardsContainer.classList.remove('hidden');   // 'cards'
+    }
+
+    function _filteredBots() {
+        const q = state.filter.toLowerCase().trim();
+        const all = [...state.bots.values()];
+        let filtered = all;
+
+        if (state.statusFilter) {
+            filtered = filtered.filter(b => statusKey(b.status) === state.statusFilter);
+        }
+
+        if (q) {
+            filtered = filtered.filter(b =>
+                (b.name     || '').toLowerCase().includes(q) ||
+                (b.type     || '').toLowerCase().includes(q) ||
+                (b.machine  || '').toLowerCase().includes(q) ||
+                (b.status   || '').toLowerCase().includes(q) ||
+                (b.id       || '').toLowerCase().includes(q)
+            );
+        }
+        return filtered;
+    }
+
+    function _groupBotsByType(bots) {
+        const groups = new Map();
+        bots.forEach(bot => {
+            const type = bot.type || 'Unknown';
+            if (!groups.has(type)) groups.set(type, []);
+            groups.get(type).push(bot);
+        });
+        return [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+    }
+
+    function _renderGrid() {
+        const bots = _filteredBots();
+
+        if (!bots.length) {
+            _showState(state.bots.size === 0 ? 'empty' : 'empty');
+            _updateSummary();
+            return;
+        }
+
+        _showState('cards');
+
+        const groups = _groupBotsByType(bots);
+        const existingBotIds = new Set(
+            [...dom.cardsContainer.querySelectorAll('.bot-card')].map(c => c.dataset.botId)
+        );
+        const currentBotIds = new Set(bots.map(b => b.id));
+
+        // Prune stale bots
+        for (const id of existingBotIds) {
+            if (!currentBotIds.has(id)) {
+                dom.cardsContainer.querySelector(`[data-bot-id="${CSS.escape(id)}"]`)?.remove();
+            }
+        }
+
+        // Prune stale group headers
+        const existingGroups = [...dom.cardsContainer.querySelectorAll('.bot-group')].map(g => g.dataset.type);
+        const currentGroups = groups.map(([type]) => type);
+        for (const type of existingGroups) {
+            if (!currentGroups.includes(type)) {
+                dom.cardsContainer.querySelector(`.bot-group[data-type="${CSS.escape(type)}"]`)?.remove();
+            }
+        }
+
+        // Render groups and bots
+        groups.forEach(([type, groupBots]) => {
+            let groupEl = dom.cardsContainer.querySelector(`.bot-group[data-type="${CSS.escape(type)}"]`);
+            const isCollapsed = state.collapsedGroups.has(type);
+
+            if (!groupEl) {
+                groupEl = _buildGroupHeader(type, groupBots.length, isCollapsed);
+                dom.cardsContainer.appendChild(groupEl);
+            } else {
+                _updateGroupHeader(groupEl, type, groupBots.length, isCollapsed);
+            }
+
+            // Ensure group header has toggle click handler
+            if (!groupEl.dataset.wired) {
+                groupEl.querySelector('.bot-group__header')?.addEventListener('click', () => {
+                    const willCollapse = !groupEl.classList.contains('bot-group--collapsed');
+                    state.collapsedGroups[willCollapse ? 'add' : 'delete'](type);
+                    groupEl.classList.toggle('bot-group--collapsed', willCollapse);
+                });
+                groupEl.dataset.wired = 'true';
+            }
+
+            // Render bots in group
+            groupBots.forEach((bot, i) => {
+                let card = groupEl.querySelector(`[data-bot-id="${CSS.escape(bot.id)}"]`);
+                if (card) {
+                    _updateCardDom(bot);
+                } else {
+                    card = _buildCard(bot, i);
+                    groupEl.querySelector('.bot-group__cards')?.appendChild(card);
+                    if (card.classList.contains('bot-card--expanded')) {
+                        const content = card.querySelector('.bot-log__content');
+                        if (content) content.scrollTop = content.scrollHeight;
+                    }
+                }
+            });
+
+            // Remove bots no longer in this group
+            const groupCardIds = new Set(groupBots.map(b => b.id));
+            groupEl.querySelectorAll('.bot-card').forEach(card => {
+                if (!groupCardIds.has(card.dataset.botId)) card.remove();
+            });
+        });
+
+        _updateSummary();
+    }
+
+    function _buildGroupHeader(type, count, isCollapsed) {
+        const group = document.createElement('div');
+        group.className = `bot-group${isCollapsed ? ' bot-group--collapsed' : ''}`;
+        group.dataset.type = type;
+        group.innerHTML = `
+            <div class="bot-group__header" role="button" tabindex="0" aria-expanded="${!isCollapsed}">
+                <span class="bot-group__toggle" aria-hidden="true">
+                    <svg viewBox="0 0 640 640" fill="#B8CCD8">
+                        <path d="M199.7 299.8C189.4 312.4 190.2 330.9 201.9 342.6L329.9 470.6C339.1 479.8 352.8 482.5 364.8 477.5C376.8 472.5 384.6 460.9 384.6 447.9L384.6 191.9C384.6 179 376.8 167.3 364.8 162.3C352.8 157.3 339.1 160.1 329.9 169.2L201.9 297.2L199.7 299.6z"/>
+                    </svg>
+                </span>
+                <span class="bot-group__type">${escHtml(type)}</span>
+                <span class="bot-group__count">${count}</span>
+            </div>
+            <div class="bot-group__cards"></div>
+        `;
+        group.querySelector('.bot-group__header').addEventListener('click', () => {
+            const willCollapse = !group.classList.contains('bot-group--collapsed');
+            state.collapsedGroups[willCollapse ? 'add' : 'delete'](type);
+            group.classList.toggle('bot-group--collapsed', willCollapse);
+        });
+        group.querySelector('.bot-group__header').addEventListener('keydown', e => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                group.querySelector('.bot-group__header').click();
+            }
+        });
+        group.dataset.wired = 'true';
+        return group;
+    }
+
+    function _updateGroupHeader(groupEl, type, count, isCollapsed) {
+        const countEl = groupEl.querySelector('.bot-group__count');
+        if (countEl) countEl.textContent = count;
+        groupEl.classList.toggle('bot-group--collapsed', isCollapsed);
+        groupEl.querySelector('.bot-group__header')?.setAttribute('aria-expanded', String(!isCollapsed));
+    }
+
+    function _updateSummary() {
+        const all     = [...state.bots.values()];
+        const ready   = all.filter(b => statusKey(b.status) === 'ready').length;
+        const busy    = all.filter(b => statusKey(b.status) === 'busy').length;
+        const offline = all.filter(b => statusKey(b.status) === 'offline').length;
+        dom.cntTotal.textContent   = all.length;
+        dom.cntReady.textContent   = ready;
+        dom.cntBusy.textContent    = busy;
+        dom.cntOffline.textContent = offline;
+    }
+
+    //  Card build 
+    function _buildCard(bot, index) {
+        const card = document.createElement('div');
+        card.className = 'bot-card';
+        card.dataset.botId = bot.id;
+        card.style.animationDelay = `${Math.min(index * 0.04, 0.35)}s`;
+
+        if (isActive(bot.status))  card.classList.add('bot-card--active');
+        if (isOffline(bot.status)) card.classList.add('bot-card--error');
+
+        const expanded = !state.collapsed.has(bot.id);
+        if (expanded) card.classList.add('bot-card--expanded');
+
+        card.innerHTML = _cardHtml(bot);
+        _wireCardEvents(card, bot);
+        return card;
+    }
+
+    function _cardHtml(bot) {
+        const sk        = statusKey(bot.status);
+        const statusLbl = bot.status || 'Unknown';
+        const hasConn   = !!bot.connectionId;
+
+        return `
+<div class="bot-card__header"
+     role="button" tabindex="0"
+     aria-expanded="${!state.collapsed.has(bot.id)}"
+     aria-label="Toggle details for ${escHtml(bot.name || bot.id)}">
+    <span class="bot-card__indicator bot-card__indicator--${sk}" aria-hidden="true"></span>
+    <span class="bot-card__name" title="${escHtml(bot.id)}">${escHtml(bot.name || bot.id)}</span>
+    <span class="status-badge status-badge--${sk}">${escHtml(statusLbl)}</span>
+    <span class="bot-card__meta">
+        ${escHtml(bot.machine || '—')}<span class="meta-sep">·</span>${escHtml(bot.type || '—')}
+    </span>
+    <span class="bot-card__time"
+          title="${escHtml(bot.lastModifiedOn || bot.createdOn || '')}">
+        ${escHtml(timeAgo(bot.lastModifiedOn || bot.createdOn))}
+    </span>
+    <div class="bot-card__actions" role="group" aria-label="Bot actions">
+        <button class="bot-card__btn bot-card__btn--icon js-refresh-card"
+                data-id="${escHtml(bot.id)}"
+                title="Refresh this bot" aria-label="Refresh ${escHtml(bot.name || bot.id)}">
+            <svg viewBox="0 0 640 640" fill="#B8CCD8" aria-hidden="true">
+                <path d="M500.7 138.7L512 149.4L512 96C512 78.3 526.3 64 544 64C561.7 64 576 78.3 576 96L576 224C576 241.7 561.7 256 544 256L416 256C398.3 256 384 241.7 384 224C384 206.3 398.3 192 416 192L463.9 192L456.3 184.8C456.1 184.6 455.9 184.4 455.7 184.2C380.7 109.2 259.2 109.2 184.2 184.2C109.2 259.2 109.2 380.7 184.2 455.7C259.2 530.7 380.7 530.7 455.7 455.7C463.9 447.5 471.2 438.8 477.6 429.6C487.7 415.1 507.7 411.6 522.2 421.7C536.7 431.8 540.2 451.8 530.1 466.3C521.6 478.5 511.9 490.1 501 501C401 601 238.9 601 139 501C39.1 401 39 239 139 139C238.9 39.1 400.7 39 500.7 138.7z"/>
+            </svg>
+        </button>
+        <button class="bot-card__btn js-test"
+                data-id="${escHtml(bot.id)}"
+                aria-label="Test connectivity for ${escHtml(bot.name || bot.id)}">Test</button>
+        <button class="bot-card__btn bot-card__btn--danger js-shutdown"
+                data-id="${escHtml(bot.id)}"
+                data-conn="${escHtml(bot.connectionId || '')}"
+                data-name="${escHtml(bot.name || bot.id)}"
+                title="Sends a shutdown command to the bot and removes it from the server registry. This is the only way to remotely stop a bot."
+                aria-label="Shutdown ${escHtml(bot.name || bot.id)}">Shutdown</button>
+    </div>
+    <span class="bot-card__toggle" aria-hidden="true">
+        <svg viewBox="0 0 640 640" fill="#B8CCD8" aria-hidden="true">
+            <path d="M300.3 199.2C312.9 188.9 331.4 189.7 343.1 201.4L471.1 329.4C480.3 338.6 483 352.3 478 364.3C473 376.3 461.4 384 448.5 384L192.5 384C179.6 384 167.9 376.2 162.9 364.2C157.9 352.2 160.7 338.5 169.9 329.4L297.9 201.4L300.3 199.2z"/>
+        </svg>
+    </span>
+</div>
+
+<div class="bot-card__body-wrap">
+    <div class="bot-card__body">
+        <div class="bot-card__body-inner">
+            <div class="bot-details">
+                ${_detailItem('ID',          bot.id)}
+                ${_detailItem('Type',        bot.type)}
+                ${_detailItem('Machine',     bot.machine)}
+                ${_detailItem('OS',          bot.osVersion)}
+                ${_detailItem('Connection',  bot.connectionId || (hasConn ? '—' : 'Not connected'))}
+                ${_detailItem('Callback',    bot.callbackUri  || '—')}
+                ${_detailItem('Created',     fmtDateTime(bot.createdOn))}
+                ${_detailItem('Last update', fmtDateTime(bot.lastModifiedOn))}
+                ${_detailItem('Up Time',     fmtUpTime(bot.createdOn, bot.lastModifiedOn))}
+            </div>
+            <div class="bot-log">
+                <div class="bot-log__header">
+                    <span class="bot-log__title">Activity Log</span>
+                    <button class="bot-log__clear js-clear-log"
+                            data-id="${escHtml(bot.id)}"
+                            aria-label="Clear activity log">Clear</button>
+                </div>
+                <div class="bot-log__content">
+                    ${renderLogContent(bot.id)}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>`;
+    }
+
+    function _detailItem(label, value) {
+        const v = value == null || value === '' ? '—' : value;
+        return `<div class="bot-detail">
+    <span class="bot-detail__label">${escHtml(label)}</span>
+    <span class="bot-detail__value" title="${escHtml(v)}">${escHtml(v)}</span>
+</div>`;
+    }
+
+    //  Card DOM update (without full rebuild) 
+    function _updateCardDom(bot) {
+        const card = dom.cardsContainer.querySelector(`[data-bot-id="${CSS.escape(bot.id)}"]`);
+        if (!card) return;
+
+        const sk = statusKey(bot.status);
+
+        card.classList.toggle('bot-card--active', isActive(bot.status));
+        card.classList.toggle('bot-card--error',  isOffline(bot.status));
+
+        const indicator = card.querySelector('.bot-card__indicator');
+        if (indicator) indicator.className = `bot-card__indicator bot-card__indicator--${sk}`;
+
+        const badge = card.querySelector('.status-badge');
+        if (badge) {
+            badge.className   = `status-badge status-badge--${sk}`;
+            badge.textContent = bot.status || 'Unknown';
+        }
+
+        const meta = card.querySelector('.bot-card__meta');
+        if (meta) {
+            meta.innerHTML =
+                `${escHtml(bot.machine || '—')}<span class="meta-sep">·</span>${escHtml(bot.type || '—')}`;
+        }
+
+        const timeEl = card.querySelector('.bot-card__time');
+        if (timeEl) {
+            timeEl.textContent = timeAgo(bot.lastModifiedOn || bot.createdOn);
+            timeEl.title       = bot.lastModifiedOn || bot.createdOn || '';
+        }
+
+        const hasConn     = !!bot.connectionId;
+        const shutdownBtn = card.querySelector('.js-shutdown');
+        if (shutdownBtn) {
+            shutdownBtn.dataset.conn = bot.connectionId || '';
+            shutdownBtn.dataset.id   = bot.id;
+        }
+
+        const details = card.querySelector('.bot-details');
+        if (details) {
+            details.innerHTML = [
+                _detailItem('ID',          bot.id),
+                _detailItem('Type',        bot.type),
+                _detailItem('Machine',     bot.machine),
+                _detailItem('OS',          bot.osVersion),
+                _detailItem('Connection',  bot.connectionId || (hasConn ? '—' : 'Not connected')),
+                _detailItem('Callback',    bot.callbackUri  || '—'),
+                _detailItem('Created',     fmtDateTime(bot.createdOn)),
+                _detailItem('Last update', fmtDateTime(bot.lastModifiedOn)),
+                _detailItem('Up Time',     fmtUpTime(bot.createdOn, bot.lastModifiedOn)),
+            ].join('');
+        }
+
+        state.bots.set(bot.id, bot);
+    }
+
+    //  Card event wiring 
+    function _wireCardEvents(card, bot) {
+        const header = card.querySelector('.bot-card__header');
+
+        // Toggle collapse on header click — ignore clicks inside actions
+        const onToggle = e => {
+            if (e.target.closest('.bot-card__actions')) return;
+            _toggleCard(card, bot.id);
+        };
+        header.addEventListener('click', onToggle);
+        header.addEventListener('keydown', e => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onToggle(e);
+            }
+        });
+
+        // Per-card refresh
+        card.querySelector('.js-refresh-card')?.addEventListener('click', async e => {
+            e.stopPropagation();
+            const btn = e.currentTarget;
+            btn.classList.add('bot-card__btn--spinning');
+            try {
+                const updated = await api.getBotById(btn.dataset.id);
+                if (updated) {
+                    const prev = state.bots.get(updated.id);
+                    if (prev && prev.status !== updated.status) {
+                        appendBotLog(updated.id, `Status: ${prev.status || '—'} → ${updated.status}`, 'system');
+                    }
+                    state.bots.set(updated.id, updated);
+                    _updateCardDom(updated);
+                    _updateSummary();
+                }
+            } catch {
+                // Single-bot endpoint may not exist; fall back to full refresh
+                await refresh();
+            } finally {
+                btn.classList.remove('bot-card__btn--spinning');
+            }
+        });
+
+        // Test connectivity
+        card.querySelector('.js-test')?.addEventListener('click', async e => {
+            e.stopPropagation();
+            const btn = e.currentTarget;
+            btn.classList.add('bot-card__btn--loading');
+            btn.textContent = 'Testing…';
+            try {
+                await api.testBots([btn.dataset.id]);
+                appendBotLog(bot.id, 'Connectivity test passed', 'success');
+                btn.textContent = 'OK ✓';
+            } catch (err) {
+                appendBotLog(bot.id, `Test failed: ${err.message}`, 'error');
+                btn.textContent = 'Failed';
+            } finally {
+                btn.classList.remove('bot-card__btn--loading');
+                setTimeout(() => { btn.textContent = 'Test'; }, 2200);
+            }
+        });
+
+        // Shutdown bot — sends stop command then removes from registry
+        card.querySelector('.js-shutdown')?.addEventListener('click', async e => {
+            e.stopPropagation();
+            const btn    = e.currentTarget;
+            const name   = btn.dataset.name || bot.id;
+            const connId = btn.dataset.conn;
+
+            const confirmed = await showConfirm({
+                title: `Shutdown "${name}"?`,
+                body: `<p>This will:</p>
+<ol>
+  <li>${connId ? 'Send a <strong>shutdown command</strong> to the bot process.' : '<strong>Skip stop command</strong> — bot has no active connection.'}</li>
+  <li><strong>Remove it from the server registry.</strong></li>
+</ol>
+<div class="dialog__warn">
+  ⚠ If the bot process is unreachable or ignores the command, it will continue running as a <strong>ghost process</strong> and must be shut down manually on its host machine.
+</div>`,
+                confirmLabel: 'Shutdown',
+                danger: true,
+            });
+            if (!confirmed) return;
+
+            btn.classList.add('bot-card__btn--loading');
+            btn.textContent = 'Shutting down…';
+            try {
+                // Step 1 — send stop command (best effort)
+                if (connId) {
+                    try {
+                        await api.disconnectBot(connId);
+                        appendBotLog(bot.id, 'Stop command sent to bot', 'warn');
+                    } catch (stopErr) {
+                        appendBotLog(bot.id, `Stop command failed (continuing): ${stopErr.message}`, 'warn');
+                    }
+                }
+                // Step 2 — remove from registry
+                await api.unregisterBot(btn.dataset.id);
+                appendBotLog(bot.id, 'Bot removed from server registry', 'warn');
+                setTimeout(refresh, 600);
+            } catch (err) {
+                appendBotLog(bot.id, `Shutdown failed: ${err.message}`, 'error');
+                btn.classList.remove('bot-card__btn--loading');
+                btn.textContent = 'Shutdown';
+            }
+        });
+
+        // Clear activity log
+        card.querySelector('.js-clear-log')?.addEventListener('click', e => {
+            e.stopPropagation();
+            const id = e.currentTarget.dataset.id;
+            state.logs.set(id, []);
+            const content = card.querySelector('.bot-log__content');
+            if (content) content.innerHTML =
+                '<div class="log-placeholder">No activity recorded yet — updates appear here.</div>';
+        });
+    }
+
+    function _toggleCard(card, id) {
+        const willCollapse = card.classList.contains('bot-card--expanded');
+        card.classList.toggle('bot-card--expanded', !willCollapse);
+        if (willCollapse) {
+            state.collapsed.add(id);
+        } else {
+            state.collapsed.delete(id);
+            setTimeout(() => {
+                const content = card.querySelector('.bot-log__content');
+                if (content) content.scrollTop = content.scrollHeight;
+            }, 340);
+        }
+        card.querySelector('.bot-card__header')
+            ?.setAttribute('aria-expanded', String(!willCollapse));
+    }
+
+    //  Global actions 
+    function collapseAll() {
+        dom.cardsContainer.querySelectorAll('.bot-group').forEach(g => {
+            g.classList.add('bot-group--collapsed');
+            state.collapsedGroups.add(g.dataset.type);
+        });
+        dom.cardsContainer.querySelectorAll('.bot-card--expanded').forEach(c => {
+            c.classList.remove('bot-card--expanded');
+            state.collapsed.add(c.dataset.botId);
+            c.querySelector('.bot-card__header')?.setAttribute('aria-expanded', 'false');
+        });
+    }
+
+    function expandAll() {
+        dom.cardsContainer.querySelectorAll('.bot-group').forEach(g => {
+            g.classList.remove('bot-group--collapsed');
+            state.collapsedGroups.delete(g.dataset.type);
+        });
+        dom.cardsContainer.querySelectorAll('.bot-card').forEach(c => {
+            c.classList.add('bot-card--expanded');
+            state.collapsed.delete(c.dataset.botId);
+            c.querySelector('.bot-card__header')?.setAttribute('aria-expanded', 'true');
+        });
+        setTimeout(() => {
+            dom.cardsContainer.querySelectorAll('.bot-log__content').forEach(el => {
+                el.scrollTop = el.scrollHeight;
+            });
+        }, 340);
+    }
+
+    //  Periodic time-ago refresh 
+    function refreshTimestamps() {
+        dom.cardsContainer.querySelectorAll('.bot-card__time').forEach(el => {
+            const botId = el.closest('.bot-card')?.dataset?.botId;
+            const bot   = botId && state.bots.get(botId);
+            if (bot) el.textContent = timeAgo(bot.lastModifiedOn || bot.createdOn);
+        });
+    }
+
+    //  Init 
+    async function init() {
+        // Wire global controls
+        dom.btnRefresh.addEventListener('click', () => refresh());
+
+        dom.btnCollapseAll.addEventListener('click', collapseAll);
+        dom.btnExpandAll.addEventListener('click', expandAll);
+
+        dom.btnShutdownAll.addEventListener('click', async () => {
+            const confirmed = await showConfirm({
+                title: 'Shutdown All Bots?',
+                body: `<p>This will:</p>
+<ol>
+  <li><strong>Send a shutdown command</strong> to every connected bot.</li>
+  <li><strong>Remove all offline bots</strong> from the server registry.</li>
+</ol>
+<div class="dialog__warn">
+  ⚠ Bots that ignore the command or are unreachable will keep running as <strong>ghost processes</strong> and must be stopped manually on their host machines.
+</div>`,
+                confirmLabel: 'Shutdown All',
+                danger: true,
+            });
+            if (!confirmed) return;
+            dom.btnShutdownAll.disabled = true;
+            try {
+                await api.disconnectAll();
+                await api.unregisterAllDisconnected();
+                setTimeout(refresh, 1000);
+            } catch (err) {
+                console.error('[Bots] Shutdown all failed:', err);
+            } finally {
+                dom.btnShutdownAll.disabled = false;
+            }
+        });
+
+        dom.btnClearOffline.addEventListener('click', async () => {
+            const confirmed = await showConfirm({
+                title: 'Clear Offline Bots?',
+                body: `<p>Removes all bots with <strong>no active connection</strong> from the server registry.</p>
+<div class="dialog__warn">
+  ⚠ Use this to clean up <strong>ghost bot entries</strong> — bots whose server state exists but whose process has already stopped or lost its connection. The bot processes themselves are not affected.
+</div>`,
+                confirmLabel: 'Clear Offline',
+                danger: true,
+            });
+            if (!confirmed) return;
+            dom.btnClearOffline.disabled = true;
+            try {
+                await api.unregisterAllDisconnected();
+                setTimeout(refresh, 500);
+            } catch (err) {
+                console.error('[Bots] Clear offline failed:', err);
+            } finally {
+                dom.btnClearOffline.disabled = false;
+            }
+        });
+
+        dom.btnRetry.addEventListener('click', () => {
+            _showState('loading');
+            refresh();
+        });
+
+        dom.filterInput.addEventListener('input', e => {
+            state.filter = e.target.value;
+            _renderGrid();
+        });
+
+        // Status filter chips
+        [dom.chipTotal, dom.chipReady, dom.chipBusy, dom.chipOffline].forEach(chip => {
+            chip.addEventListener('click', () => {
+                const filterStatus = chip.dataset.status || null;
+                state.statusFilter = state.statusFilter === filterStatus ? null : filterStatus;
+                _updateChipActiveStates();
+                _renderGrid();
+            });
+        });
+
+        // Initial load
+        _showState('loading');
+        _updateChipActiveStates();
+        await refresh();
+        startPolling();
+        connectHub();
+
+        // Refresh "X ago" labels every 30 s
+        setInterval(refreshTimestamps, 30_000);
+
+        // Add shadow to sticky topbar / border to sticky footer once user scrolls
+        const topbar = document.getElementById('botsTopbar');
+        const footer = document.getElementById('botsFooter');
+        if (topbar || footer) {
+            window.addEventListener('scroll', () => {
+                const scrolled      = window.scrollY > 4;
+                const nearBottom    = window.innerHeight + window.scrollY < document.body.scrollHeight - 4;
+                topbar?.classList.toggle('bots-topbar--scrolled', scrolled);
+                footer?.classList.toggle('bots-footer--scrolled', nearBottom);
+            }, { passive: true });
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', init);
+
+})();
+	</script>
+
+</body>
+</html>

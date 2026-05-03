@@ -16,7 +16,8 @@ namespace G4.Services.Hub.Api.V4.Controllers
 {
     [ApiController]
     [Route("/api/v4/g4/[controller]")]
-    [SwaggerTag(description: "Provides endpoints to manage environments and their associated parameters, including creating, retrieving, updating, and deleting parameters within specific environments.")]
+    [SwaggerTag(description: "Provides endpoints to manage environments and their associated parameters, " +
+        "including creating, retrieving, updating, and deleting parameters within specific environments.")]
     [ApiExplorerSettings(GroupName = "G4 Hub")]
     public class EnvironmentsController(IDomain domain) : ControllerBase
     {
@@ -33,7 +34,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         public IActionResult ClearEnvironments()
         {
             // Attempt to clear all environments
-            _domain.G4.Environments.ClearEnvironments();
+            _domain.G4.Client.Environments.ClearEnvironments();
 
             // Return a 204 No Content response to indicate success
             return NoContent();
@@ -48,7 +49,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         public IActionResult GetEnvironments()
         {
             // Retrieve environments and their global parameters from the domain service
-            var environments = _domain.G4.Environments.GetEnvironments();
+            var environments = _domain.G4.Client.Environments.GetEnvironments();
 
             // Return a 200 OK response with the environments and their global parameters in JSON format
             return Ok(environments);
@@ -68,7 +69,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         {
             // Retrieve the environment object based on the provided
             // name (note: case-sensitivity depends on how 'GetEnvironment' handles it)
-            var environment = _domain.G4.Environments.GetEnvironment(name, decode);
+            var environment = _domain.G4.Client.Environments.GetEnvironment(name, decode);
 
             // If the environment is not found, return a 404 Not Found response along with an error message
             if (environment == null)
@@ -96,7 +97,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
             [FromQuery][SwaggerParameter(description: "Specifies whether the parameter value should be Base64-decoded before being returned.", Required = false)] bool decode = false)
         {
             // Retrieve the parameter value from the specified environment and optionally decode it
-            var value = _domain.G4.Environments.GetParameter(environment, name, decode);
+            var value = _domain.G4.Client.Environments.GetParameter(environment, name, decode);
 
             // If the value is null or empty, return a 404 Not Found response with an error message
             // Otherwise, return a 200 OK response with the parameter value
@@ -118,7 +119,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
             [FromRoute][SwaggerParameter(description: "The name of the environment to be removed.", Required = true)] string name)
         {
             // Attempt to remove the specified environment
-            var statusCode = _domain.G4.Environments.RemoveEnvironment(name);
+            var statusCode = _domain.G4.Client.Environments.RemoveEnvironment(name);
 
             if (statusCode == StatusCodes.Status404NotFound)
             {
@@ -144,7 +145,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
             [FromRoute][SwaggerParameter(description: "The name of the parameter to delete.", Required = true)] string name)
         {
             // Attempt to delete the parameter from the specified environment
-            var statusCode = _domain.G4.Environments.RemoveParameter(environment, name);
+            var statusCode = _domain.G4.Client.Environments.RemoveParameter(environment, name);
 
             // If the deletion was successful, return a 204 No Content response
             if (statusCode == StatusCodes.Status204NoContent)
@@ -180,7 +181,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
             parameters ??= [];
 
             // Attempt to update the environment if it exists, or create it if it does not
-            var statusCode = _domain.G4.Environments.SetEnvironment(name, parameters, encode);
+            var statusCode = _domain.G4.Client.Environments.SetEnvironment(name, parameters, encode);
 
             if (statusCode == 204)
             {
@@ -271,7 +272,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
             }
 
             // Attempt to set the parameter in the domain environment
-            var (statusCode, parameterValue) = _domain.G4.Environments.SetParameter(parameter);
+            var (statusCode, parameterValue) = _domain.G4.Client.Environments.SetParameter(parameter);
 
             // Determine the appropriate success message based on the status code
             var environmentName = string.IsNullOrEmpty(parameter.EnvironmentName) ? "SystemParameters" : parameter.EnvironmentName;
@@ -298,7 +299,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
             return new ContentResult
             {
                 StatusCode = statusCode,
-                Content = JsonSerializer.Serialize(value, options: _domain.JsonOptions),
+                Content = JsonSerializer.Serialize(value, options: _domain.Asp.JsonOptions),
                 ContentType = MediaTypeNames.Application.Json,
             };
         }

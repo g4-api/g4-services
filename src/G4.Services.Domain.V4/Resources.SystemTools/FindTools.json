@@ -1,0 +1,50 @@
+{
+	"description": "Retrieves the full list of available tools that the AI agent can invoke.",
+	"inputSchema": {
+		"type": "object",
+		"properties": {
+			"intent": {
+				"description": "The user and agent intent used to discover and rank the most relevant tools for the current task.",
+				"properties": {
+					"agentIntent": {
+						"description": "The normalized intent produced by the agent for tool discovery, routing, or execution.",
+						"type": "string"
+					},
+					"userIntent": {
+						"description": "The original intent as expressed by the user.",
+						"type": "string"
+					}
+				},
+				"required": [
+					"agentIntent",
+					"userIntent"
+				],
+				"type": "object"
+			},
+			"take": {
+				"type": "integer",
+				"description": "The maximum number of tools to return."
+			}
+		},
+		"required": [
+			"intent"
+		]
+	},
+	"name": "g4.FindTools",
+	"outputSchema": {
+		"properties": {
+			"tools": {
+				"description": "An array of tool objects, each containing name, description, input and output schemas.",
+				"type": [
+					"array",
+					"object"
+				]
+			}
+		},
+		"required": [
+			"tools"
+		],
+		"type": "object"
+	},
+	"title": "Find G4 Tools"
+}

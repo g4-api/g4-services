@@ -1,0 +1,291 @@
+/* =============================================================================
+   G4 Studio — Workflow Layout
+   Styles for the outer workflow page shell that wraps the canvas page.
+   The canvas itself is NOT styled here — only the surrounding shell.
+   ============================================================================= */
+
+/* ---- Workflow layout root ---- */
+
+.workflow-layout {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+    position: relative;
+}
+
+/* ---- Workflow top bar ---- */
+
+.workflow-topbar {
+    display: flex;
+    align-items: center;
+    height: var(--topbar-height);
+    min-height: var(--topbar-height);
+    background: var(--topbar-bg);
+    border-bottom: var(--border-width) solid var(--topbar-border);
+    padding: 0 var(--space-8);
+    gap: var(--space-6);
+    z-index: var(--z-sticky);
+    flex-shrink: 0;
+}
+
+.workflow-topbar-left {
+    display: flex;
+    align-items: center;
+    gap: var(--space-6);
+    flex: 1;
+    min-width: 0;
+}
+
+.workflow-name-input {
+    font-size: var(--text-sm);
+    font-weight: var(--font-medium);
+    background: transparent;
+    border: var(--border-width) solid transparent;
+    border-radius: var(--radius-sm);
+    padding: var(--space-2) var(--space-4);
+    height: 26px;
+    min-width: 160px;
+    max-width: 280px;
+    color: var(--text-primary);
+    width: auto;
+}
+
+.workflow-name-input:hover {
+    border-color: var(--border-color-strong);
+}
+
+.workflow-name-input:focus {
+    border-color: var(--border-color-focus);
+    background: var(--bg-input);
+    box-shadow: 0 0 0 2px var(--accent-subtle);
+}
+
+.workflow-status-badge {
+    flex-shrink: 0;
+}
+
+.workflow-topbar-center {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+}
+
+.workflow-topbar-right {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    flex-shrink: 0;
+}
+
+/* ---- Workflow body ---- */
+
+.workflow-body {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+/* ---- Canvas host ---- */
+
+.canvas-host {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+    background: var(--bg-app);
+}
+
+.canvas-host iframe,
+.canvas-host .canvas-embed {
+    width: 100%;
+    height: 100%;
+    border: none;
+    display: block;
+}
+
+/* ---- Canvas placeholder (shown when canvas page is missing) ---- */
+
+.canvas-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    gap: var(--space-8);
+    color: var(--text-muted);
+    text-align: center;
+    padding: var(--space-24);
+}
+
+.canvas-placeholder-icon {
+    font-size: 48px;
+    opacity: 0.3;
+}
+
+.canvas-placeholder-title {
+    font-size: var(--text-lg);
+    font-weight: var(--font-semibold);
+    color: var(--text-secondary);
+}
+
+.canvas-placeholder-text {
+    font-size: var(--text-sm);
+    max-width: 360px;
+    line-height: var(--leading-relaxed);
+}
+
+/* ---- Log / chat sidebar ---- */
+
+.workflow-log-sidebar {
+    width: var(--chat-sidebar-width);
+    min-width: var(--chat-sidebar-width);
+    display: flex;
+    flex-direction: column;
+    border-left: var(--border-width) solid var(--border-color);
+    background: var(--bg-surface);
+    transition: width var(--transition-slow), min-width var(--transition-slow), opacity var(--transition-slow);
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.workflow-log-sidebar.collapsed {
+    width: 0;
+    min-width: 0;
+    opacity: 0;
+    border-left-width: 0;
+}
+
+.log-sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 var(--space-8);
+    height: 36px;
+    border-bottom: var(--border-width) solid var(--border-color);
+    flex-shrink: 0;
+    gap: var(--space-6);
+}
+
+.log-sidebar-title {
+    font-size: var(--text-xs);
+    font-weight: var(--font-semibold);
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.log-sidebar-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.log-entries {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.log-entry {
+    display: flex;
+    gap: var(--space-4);
+    font-size: var(--text-xs);
+    font-family: var(--font-mono);
+    line-height: var(--leading-normal);
+    padding: var(--space-2) var(--space-4);
+    border-radius: var(--radius-sm);
+}
+
+.log-entry.log-info    { color: var(--text-secondary); }
+.log-entry.log-success { color: var(--color-success); }
+.log-entry.log-warning { color: var(--color-warning); }
+.log-entry.log-error   { color: var(--color-danger); }
+
+.log-entry-time {
+    color: var(--text-muted);
+    flex-shrink: 0;
+    min-width: 56px;
+}
+
+.log-entry-text {
+    flex: 1;
+    word-break: break-all;
+}
+
+/* ---- Chat input area ---- */
+
+.log-input-area {
+    border-top: var(--border-width) solid var(--border-color);
+    padding: var(--space-6);
+    display: flex;
+    gap: var(--space-4);
+    flex-shrink: 0;
+}
+
+.log-input-area textarea {
+    height: 60px;
+    resize: none;
+    font-size: var(--text-sm);
+    line-height: var(--leading-normal);
+    border-radius: var(--radius-md);
+}
+
+/* ---- Workflow bottom status bar ---- */
+
+.workflow-statusbar {
+    display: flex;
+    align-items: center;
+    height: var(--bottombar-height);
+    min-height: var(--bottombar-height);
+    background: var(--bg-surface);
+    border-top: var(--border-width) solid var(--border-color);
+    padding: 0 var(--space-8);
+    gap: var(--space-8);
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
+.statusbar-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.statusbar-sep {
+    width: 1px;
+    height: 14px;
+    background: var(--border-color);
+}
+
+.statusbar-right {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+}
+
+/* ---- Template selector panel (inside workflow) ---- */
+
+.template-panel {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 320px;
+    height: 100%;
+    background: var(--bg-surface);
+    border-right: var(--border-width) solid var(--border-color);
+    z-index: var(--z-raised);
+    display: flex;
+    flex-direction: column;
+    transform: translateX(-100%);
+    transition: transform var(--transition-slow);
+    box-shadow: var(--shadow-lg);
+}
+
+.template-panel.open {
+    transform: translateX(0);
+}

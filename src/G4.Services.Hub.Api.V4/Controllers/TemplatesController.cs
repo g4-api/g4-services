@@ -16,6 +16,10 @@ namespace G4.Services.Hub.Api.V4.Controllers
 {
     [ApiController]
     [Route("api/v4/g4/[controller]")]
+    [SwaggerTag(description: "Endpoints for managing templates within the G4 platform. " +
+        "This controller allows for adding, retrieving, and removing templates based on their manifests. " +
+        "Templates are flow-based capabilities, defined by G4PluginAttribute, and serve as the manifest definitions that configure " +
+        "various workflows and automation tasks within the G4 engine.")]
     [ApiExplorerSettings(GroupName = "G4 Hub")]
     public class TemplatesController(IDomain domain) : ControllerBase
     {
@@ -43,7 +47,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
                     : "Template";
 
                 // Attempt to add the new template using the provided manifest
-                _domain.G4.Templates.AddTemplate(manifest);
+                _domain.G4.Client.Templates.AddTemplate(manifest);
 
                 // If the template was successfully added or overwritten, return 204 No Content
                 return NoContent();
@@ -62,13 +66,13 @@ namespace G4.Services.Hub.Api.V4.Controllers
         [SwaggerOperation(
             summary: "Clear all templates",
             description: "Removes all templates from the cache. Returns a 204 No Content response upon successful removal.",
-            Tags = ["Environments"])]
+            Tags = ["Templates"])]
         [Produces(MediaTypeNames.Application.Json)]
         [SwaggerResponse(StatusCodes.Status204NoContent, description: "All templates were successfully cleared from the cache.", type: typeof(void))]
         public IActionResult ClearTemplates()
         {
             // Clear all templates from the cache
-            _domain.G4.Templates.ClearTemplates();
+            _domain.G4.Client.Templates.ClearTemplates();
 
             // Return a 204 No Content response to indicate success
             return NoContent();
@@ -85,7 +89,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
             [FromRoute][SwaggerParameter(description: "The key of the template to retrieve the manifest for.", Required = true)] string key)
         {
             // Retrieve the manifest of the specified template by key
-            var (statusCode, manifest) = _domain.G4.Templates.GetTemplate(key);
+            var (statusCode, manifest) = _domain.G4.Client.Templates.GetTemplate(key);
 
             // If the template is found, return a 200 OK response with the manifest in JSON format
             if (statusCode == StatusCodes.Status200OK)
@@ -110,7 +114,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         [SwaggerResponse(StatusCodes.Status200OK, description: "Manifests retrieved successfully.", type: typeof(G4PluginAttribute[]), contentTypes: MediaTypeNames.Application.Json)]
         public IActionResult GetTemplates()
         {
-            var manifests = _domain.G4.Templates.GetTemplates().ToArray();
+            var manifests = _domain.G4.Client.Templates.GetTemplates().ToArray();
 
             // Append a custom header with the count of manifests
             Response.Headers.Append("X-Manifest-Count", $"{manifests.Length}");
@@ -124,7 +128,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         [SwaggerOperation(
             summary: "Remove a template by key",
             description: "Removes the specified template identified by its key from the cache. If the template is successfully removed, a 204 No Content response is returned. If the template is not found, a 404 Not Found response is returned with an error message.",
-            Tags = ["Environments"])]
+            Tags = ["Templates"])]
         [Produces(MediaTypeNames.Application.Json)]
         [SwaggerResponse(StatusCodes.Status204NoContent, description: "The template was successfully removed from the cache.", type: typeof(void))]
         [SwaggerResponse(StatusCodes.Status404NotFound, description: "Template not found with the specified key.", type: typeof(GenericErrorModel))]
@@ -132,7 +136,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
             [FromRoute][SwaggerParameter(description: "The key of the template to be removed.", Required = true)] string key)
         {
             // Remove the template from the cache
-            var statusCode = _domain.G4.Templates.RemoveTemplate(key);
+            var statusCode = _domain.G4.Client.Templates.RemoveTemplate(key);
 
             // If the template was successfully removed, return 204 No Content
             if (statusCode == StatusCodes.Status204NoContent)

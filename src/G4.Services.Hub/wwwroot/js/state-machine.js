@@ -313,7 +313,8 @@ class StateMachineSteps {
 		}
 
 		// Normalize key to ensure it is in the correct format for display and processing.
-		let displayName = Utilities.convertSnakeToPascalCase(manifest.key);
+		const manifestKey = manifest?.context?.integration?.sequentialWorkflow?.label || manifest.key;
+		let displayName = Utilities.convertSnakeToPascalCase(manifestKey);
 		displayName = Utilities.convertKebabToPascalCase(displayName);
 		displayName = Utilities.convertToPascalCase(displayName);
 		displayName = Utilities.convertPascalToSpaceCase(displayName);

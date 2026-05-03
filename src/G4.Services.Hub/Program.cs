@@ -1,9 +1,10 @@
-using G4.Converters;
+using G4.Extensions;
 using G4.Services.Domain.V4;
 using G4.Services.Domain.V4.Extensions;
 using G4.Services.Domain.V4.Formatters;
 using G4.Services.Domain.V4.Hubs;
 using G4.Services.Domain.V4.Middlewares;
+using G4.Services.Domain.V4.Models;
 using G4.Settings;
 
 using Microsoft.AspNetCore.Builder;
@@ -13,15 +14,10 @@ using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.OpenApi;
-
-using Swashbuckle.AspNetCore.Annotations;
 
 using System;
 using System.IO;
 using System.Linq;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 
 // Write the ASCII logo for the Hub Controller with the specified version.
 ControllerUtilities.WriteHubAsciiLogo(version: "0000.00.00.0000");
@@ -56,85 +52,28 @@ builder.Services.AddDirectoryBrowser();
 
 // Add controller services with custom input formatters and JSON serialization options.
 builder.Services
-    .AddControllers(i =>
-        // Add a custom input formatter to handle plain text inputs.
-        i.InputFormatters.Add(new PlainTextInputFormatter()))
-    .AddJsonOptions(i =>
-    {
-        // Configure JSON serializer to format JSON with indentation for readability.
-        i.JsonSerializerOptions.WriteIndented = false;
-
-        // Ignore properties with null values during serialization to reduce payload size.
-        i.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
-
-        // Use camelCase naming for JSON properties to follow JavaScript conventions.
-        i.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
-
-        // Enable case-insensitive property name matching during deserialization.
-        i.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
-
-        // Add a custom type converter for handling specific types during serialization/deserialization.
-        i.JsonSerializerOptions.Converters.Add(new TypeConverter());
-
-        // Add a custom exception converter to handle exception serialization.
-        i.JsonSerializerOptions.Converters.Add(new ExceptionConverter());
-
-        // Add a custom DateTime converter to handle ISO 8601 date/time format.
-        i.JsonSerializerOptions.Converters.Add(new DateTimeIso8601Converter());
-
-        // Add a custom method base converter to handle method base serialization.
-        i.JsonSerializerOptions.Converters.Add(new MethodBaseConverter());
-
-        // Add a custom dictionary converter to handle serialization of dictionaries with string keys and object values.
-        i.JsonSerializerOptions.Converters.Add(new DictionaryStringObjectJsonConverter());
-    });
+    .AddControllers(i => i.InputFormatters.Add(new PlainTextInputFormatter()))
+    .AddJsonOptions(i => i.New(AppSettings.JsonOptions));
 
 // Add and configure Swagger for API documentation and testing.
 builder.Services.AddSwaggerGen(i =>
 {
-    // Define a Swagger document named "v4" with title and version information.
-    i.SwaggerDoc(
-        name: $"g4",
-        info: new OpenApiInfo
-        {
-            Title = "G4™ Hub Endpoints",
-            Version = $"v{AppSettings.ApiVersion}",
-            Description = "G4™ Hub Controllers provide endpoints for G4™ Orchestrator, Automation, Bots, and Tools. " +
-                "This API is designed to be used by G4™ clients and services to interact with the G4™ ecosystem."
-        });
-
-    // Define a Swagger document named "tools" for G4™ Tools endpoints.
-    i.SwaggerDoc(
-        name: "tools",
-        info: new OpenApiInfo
-        {
-            Title = "G4™ Tools Endpoints",
-            Version = $"v{AppSettings.ApiVersion}",
-            Description = "Proxy for MCP tools, exposing each tool as a function-callable endpoint."
-        });
+    // Add the Swagger document for the G4 Hub API,
+    // using the documents defined in OpenApiManager.
+    i.AddDocuments([.. OpenApiDocuments.Documents.Values]);
 
     // Filter to include only controllers that have the "Tool" tag in their Swagger documentation.
-    i.DocInclusionPredicate((docName, apiDesc) =>
-    {
-        // for your “v4” doc, include everything
-        if (docName != "tools")
-        {
-            return true;
-        }
-
-        // look for a SwaggerOperationAttribute in the metadata
-        return apiDesc
-            .ActionDescriptor
-            .EndpointMetadata
-            .OfType<SwaggerOperationAttribute>()
-            .Any(attr => attr.Tags?.Contains("AiTools") == true);
-    });
+    i.DocInclusionPredicate((name, description) => description.FilterG4Documents(name));
 
     // Order API actions in the Swagger UI by HTTP method for better organization.
     i.OrderActionsBy(a => a.HttpMethod);
 
     // Enable annotations to allow for additional metadata in Swagger documentation.
     i.EnableAnnotations();
+
+    // Add a custom document filter to remove any controllers that do not have any
+    // actions defined, keeping the Swagger documentation clean and relevant.
+    i.DocumentFilter<RemoveEmptyControllersDocumentMiddleware>();
 });
 
 // Configure cookie policy options to manage user consent and cookie behavior.
@@ -170,47 +109,8 @@ builder.Services.AddCors(options =>
 
 // Add and configure SignalR for real-time web functionalities.
 builder.Services
-    .AddSignalR((i) =>
-    {
-        // Enable detailed error messages for debugging purposes.
-        i.EnableDetailedErrors = true;
-
-        // Set the maximum size of incoming messages to the largest possible value.
-        i.MaximumReceiveMessageSize = long.MaxValue;
-
-        // How often the server sends a keep-alive ping. Default is 15 seconds.
-        i.KeepAliveInterval = TimeSpan.FromSeconds(15);
-
-        // If the server hasn't heard from a client in this much time, it might consider the client disconnected.
-        // Usually the clientTimeout is set higher than KeepAliveInterval.
-        i.ClientTimeoutInterval = TimeSpan.FromSeconds(60);
-    })
-    .AddJsonProtocol((i) =>
-    {
-        i.PayloadSerializerOptions = new JsonSerializerOptions
-        {
-            // Configure JSON serializer to format JSON with indentation for readability.
-            WriteIndented = false,
-
-            // Ignore properties with null values during serialization to reduce payload size.
-            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-
-            // Use camelCase naming for JSON properties to follow JavaScript conventions.
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-
-            // Enable case-insensitive property name matching during deserialization.
-            PropertyNameCaseInsensitive = true,
-
-            // Add a custom type converter for handling specific types during serialization/deserialization.
-            Converters =
-            {
-                new TypeConverter(),
-                new ExceptionConverter(),
-                new DateTimeIso8601Converter(),
-                new MethodBaseConverter()
-            }
-        };
-    });
+    .AddSignalR(i => i.New(AppSettings.HubOptions))
+    .AddJsonProtocol(i => i.PayloadSerializerOptions = AppSettings.JsonOptions);
 
 // Add IHttpClientFactory to the service collection for making HTTP requests.
 builder.Services.AddHttpClient();
@@ -237,6 +137,17 @@ app.UseWhen(
     }
 );
 
+// Middleware to set the Content-Type header for Swagger JSON
+// responses to ensure UTF-8 encoding
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path.StartsWithSegments("/swagger"))
+    {
+        context.Response.ContentType = "application/json; charset=utf-8";
+    }
+    await next();
+});
+
 // Configure the application to use the response caching middleware
 app.UseResponseCaching();
 
@@ -261,11 +172,9 @@ app.UseSwaggerUI(i =>
     // Serve the UI at /tools/docs
     i.RoutePrefix = "swagger";
 
-    // Add the Swagger document for the G4 Hub API
-    i.SwaggerEndpoint("g4/docs.json", "G4 Hub");
-
-    // Add the Swagger document for the G4 OpenAi Tools API
-    i.SwaggerEndpoint("tools/docs.json", "OpenAi Tools");
+    // Add the Swagger document for the G4 Hub API,
+    // using the documents defined in OpenApiManager.
+    i.AddEndpoints([.. OpenApiDocuments.Documents.Values]);
 
     // Show how long each request takes
     i.DisplayRequestDuration();
@@ -273,8 +182,11 @@ app.UseSwaggerUI(i =>
     // Enable the built-in filter box
     i.EnableFilter();
 
-    // Turn on “Try it out” by default
+    // Turn on ï¿½Try it outï¿½ by default
     i.EnableTryItOutByDefault();
+
+    // Set header content to specify UTF-8 character encoding for the Swagger UI page
+    i.HeadContent = "<meta charset='UTF-8'>";
 });
 
 app.MapDefaultControllerRoute();

@@ -1,0 +1,20 @@
+/* ============================================================
+   G4™ Services — Self-hosted Fonts
+   Inter (body/UI) · Space Grotesk (titles)
+   ============================================================ */
+
+@font-face {
+    font-family: 'Inter';
+    src: url('../fonts/Inter-variable.ttf') format('truetype');
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Space Grotesk';
+    src: url('../fonts/space-grotesk-variable.ttf') format('truetype');
+    font-weight: 300 700;
+    font-style: normal;
+    font-display: swap;
+}

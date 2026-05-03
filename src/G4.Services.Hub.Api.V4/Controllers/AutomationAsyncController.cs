@@ -12,7 +12,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
 {
     [ApiController]
     [Route("/api/v4/g4/automation/async")]
-    [SwaggerTag(description: "")]
+    [SwaggerTag(description: "Provides endpoints to manage asynchronous automation tasks within the G4 platform.")]
     [ApiExplorerSettings(GroupName = "G4 Hub")]
     public class AutomationAsyncController(IDomain domain) : ControllerBase
     {
@@ -32,7 +32,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         public IActionResult GetCompleted()
         {
             // Retrieve the completed automation responses from the AutomationAsync client.
-            var response = _domain.G4.AutomationAsync.Completed;
+            var response = _domain.G4.Client.AutomationAsync.Completed;
 
             // Return a 200 OK response with the completed automation responses.
             return Ok(response);
@@ -51,7 +51,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         public IActionResult Start([FromBody] G4AutomationModel automation)
         {
             // Enqueue the automation model into the pending queue for asynchronous processing by an available worker.
-            _domain.G4.AutomationAsync.AddPendingAutomation(automation);
+            _domain.G4.Client.AutomationAsync.AddPendingAutomation(automation);
 
             // Return an HTTP 202 Accepted response indicating that the automation task has been accepted.
             return Accepted();

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="G4 Studio — Workflow Automation Platform" />
+    <title>G4 Studio</title>
+
+    <!-- Design tokens must load first -->
+    <link rel="stylesheet" href="/css/tokens.css" />
+    <link rel="stylesheet" href="/css/themes.css" />
+    <link rel="stylesheet" href="/css/base.css" />
+    <link rel="stylesheet" href="/css/layout.css" />
+    <link rel="stylesheet" href="/css/components.css" />
+    <link rel="stylesheet" href="/css/workflow.css" />
+</head>
+<body>
+    <!-- Application mount point -->
+    <div id="app"></div>
+
+    <!-- Toast notifications container (outside app, always on top) -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Modal layer -->
+    <div id="modal-layer"></div>
+
+    <!-- Boot the application -->
+    <script type="module" src="/app/app.js"></script>
+</body>
+</html>

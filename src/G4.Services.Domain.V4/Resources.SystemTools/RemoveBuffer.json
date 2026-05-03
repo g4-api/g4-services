@@ -1,0 +1,34 @@
+{
+	"description": "Removes the rule execution buffer associated with a G4 session, releasing its resources.",
+	"inputSchema": {
+		"properties": {
+			"sessionId": {
+				"description": "The unique identifier of the G4 session whose buffer should be removed.",
+				"type": "string"
+			}
+		},
+		"required": [
+			"sessionId"
+		],
+		"type": "object"
+	},
+	"name": "g4.RemoveBuffer",
+	"outputSchema": {
+		"properties": {
+			"removed": {
+				"description": "Indicates whether the buffer was successfully removed. False if the session identifier was missing or no buffer existed for the session.",
+				"type": "boolean"
+			},
+			"sessionId": {
+				"description": "The session identifier that was targeted for buffer removal.",
+				"type": "string"
+			}
+		},
+		"required": [
+			"sessionId",
+			"removed"
+		],
+		"type": "object"
+	},
+	"title": "Remove G4 Rules Buffer"
+}

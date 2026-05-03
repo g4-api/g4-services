@@ -1,0 +1,34 @@
+{
+	"description": "Removes an active G4 session from the sessions registry, releasing its resources.",
+	"inputSchema": {
+		"properties": {
+			"sessionId": {
+				"description": "The unique identifier of the G4 session to remove.",
+				"type": "string"
+			}
+		},
+		"required": [
+			"sessionId"
+		],
+		"type": "object"
+	},
+	"name": "g4.RemoveSession",
+	"outputSchema": {
+		"properties": {
+			"removed": {
+				"description": "Indicates whether the session was successfully removed. False if the session identifier was missing or no session existed for the identifier.",
+				"type": "boolean"
+			},
+			"sessionId": {
+				"description": "The session identifier that was targeted for removal.",
+				"type": "string"
+			}
+		},
+		"required": [
+			"sessionId",
+			"removed"
+		],
+		"type": "object"
+	},
+	"title": "Remove G4 Session"
+}

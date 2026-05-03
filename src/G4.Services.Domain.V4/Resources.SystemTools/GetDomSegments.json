@@ -1,0 +1,148 @@
+{
+	"description": "Partitions the current browser session's DOM into a collection of deterministic semantic segments. The DOM is first sanitized using a built-in normalization profile or an external OpenAI-compatible model, then split into classified regions such as Navigation, Form, Dialog, Header, and Generic. Each segment carries a stable identifier, semantic kind, cleaned preview HTML, normalized text, keywords, locator identifiers, ARIA roles, action-element metrics, and structural statistics. Neither the profile nor the openai properties are required; when omitted, the DOM is sanitized using the default interaction profile.",
+	"inputSchema": {
+		"type": "object",
+		"properties": {
+			"driverSession": {
+				"description": "The unique session ID associated with the current browser session. This ID is used to retrieve the appropriate browser driver for interacting with the session and performing automation tasks.",
+				"type": "string"
+			},
+			"openai": {
+				"description": "When provided, delegates DOM sanitization to an external OpenAI-compatible model instead of the built-in sanitizer. The active profile value is forwarded to the model as part of the instruction context so the model can apply equivalent pruning intent. All sub-properties are optional within this object.",
+				"type": "object",
+				"properties": {
+					"apiKey": {
+						"description": "The API key used to authenticate requests to the OpenAI-compatible endpoint.",
+						"type": "string"
+					},
+					"endpoint": {
+						"description": "The base URL of the OpenAI-compatible API endpoint to which sanitization requests are sent.",
+						"type": "string"
+					},
+					"headers": {
+						"description": "Additional HTTP headers to include in every request sent to the endpoint. Expressed as a flat object of string key-value pairs. Useful for passing custom authorization, routing, or tracing headers required by the target API.",
+						"type": "object",
+						"additionalProperties": {
+							"type": "string"
+						}
+					},
+					"model": {
+						"description": "The model identifier to use when sending the sanitization request to the endpoint, for example gpt-4o or a compatible deployment name.",
+						"type": "string"
+					}
+				}
+			},
+			"profile": {
+				"default": "interaction",
+				"description": "Controls how the retrieved DOM markup is sanitized before it is returned. Accepted values are interaction, scraping, and none. interaction aggressively prunes hidden nodes, empty shells, noisy framework attributes, and collapses anonymous wrapper layers; optimized for XPath-based locator generation and is the default when this property is omitted. scraping applies lighter pruning, preserves hidden nodes, and retains more structural depth; suitable for content extraction workflows. none disables all sanitization and returns the raw DOM markup exactly as the browser produced it.",
+				"enum": [
+					"interaction",
+					"scraping",
+					"none"
+				],
+				"type": "string"
+			},
+			"segmentationOptions": {
+				"description": "Controls how the sanitized DOM is partitioned into semantic segments before it is returned. All sub-properties are optional; when omitted the defaults documented on each property are applied.",
+				"type": "object",
+				"properties": {
+					"includeRawEncodedDom": {
+						"default": true,
+						"description": "When true, each segment includes a base64-encoded UTF-8 copy of its original HTML. When false, the encoded DOM field is emitted as an empty string. Defaults to true.",
+						"type": "boolean"
+					},
+					"maxAttributeValueLength": {
+						"default": 160,
+						"description": "Maximum number of characters allowed for a single attribute value in segment preview output. Values longer than this limit are truncated with a trailing ellipsis. Defaults to 160.",
+						"type": "integer"
+					},
+					"maxEncodedLength": {
+						"default": 0,
+						"description": "Maximum number of characters allowed in the base64-encoded DOM field of each segment. A value of 0 means unlimited. Arbitrary truncation may make the tail of the base64 payload non-decodable. Defaults to 0.",
+						"type": "integer"
+					},
+					"maxIdentifiers": {
+						"default": 40,
+						"description": "Maximum number of locator-relevant identifier values retained per segment. Identifiers are collected from attributes such as id, name, aria-label, placeholder, and data-testid. Defaults to 40.",
+						"type": "integer"
+					},
+					"maxKeywords": {
+						"default": 40,
+						"description": "Maximum number of deduplicated lowercase keyword tokens retained per segment. Tokens are extracted from the segment's normalized visible text. Defaults to 40.",
+						"type": "integer"
+					},
+					"maxPreviewDepth": {
+						"default": 4,
+						"description": "Maximum element nesting depth preserved in segment preview HTML. Descendants below this depth are replaced with a truncation marker. Defaults to 4.",
+						"type": "integer"
+					},
+					"maxPreviewLength": {
+						"default": 800,
+						"description": "Maximum character length of the cleaned preview HTML string for each segment. Trailing child nodes are removed until the serialized output fits within this limit. Defaults to 800.",
+						"type": "integer"
+					},
+					"maxRoles": {
+						"default": 20,
+						"description": "Maximum number of distinct ARIA role values retained per segment. Only well-known roles such as button, navigation, dialog, and search are collected. Defaults to 20.",
+						"type": "integer"
+					},
+					"maxSegmentNodeCount": {
+						"default": 250,
+						"description": "Maximum node count allowed for a segment before recursive splitting is attempted. Oversized generic containers are never emitted as a single segment. Defaults to 250.",
+						"type": "integer"
+					},
+					"minContainerChildElements": {
+						"default": 5,
+						"description": "Minimum number of direct child elements required for a generic container such as div, ul, or ol to qualify as a segment root. Does not apply to account-related or identity-related regions. Defaults to 5.",
+						"type": "integer"
+					},
+					"minMeaningfulTextLength": {
+						"default": 2,
+						"description": "Minimum visible text length, measured after trimming, for text to be treated as meaningful during generic-container qualification checks. Defaults to 2.",
+						"type": "integer"
+					},
+					"splitOversizedSemanticSegments": {
+						"default": true,
+						"description": "When true, semantic segment roots that exceed maxSegmentNodeCount are recursively split into smaller segments before being emitted. Defaults to true.",
+						"type": "boolean"
+					},
+					"stripLargePayloads": {
+						"default": true,
+						"description": "When true, segment preview output is cleaned by stripping SVG internals, removing noisy attributes, replacing base64 data URIs with placeholders, and truncating long attribute values. The encoded DOM field is not affected. Defaults to true.",
+						"type": "boolean"
+					}
+				}
+			},
+			"token": {
+				"description": "The G4 Authentication token used to authenticate the session initiation process. This is required to authorize the session creation.",
+				"type": "string"
+			}
+		},
+		"required": [
+			"driverSession",
+			"token"
+		]
+	},
+	"name": "g4.GetDomSegments",
+	"outputSchema": {
+		"properties": {
+			"driverSession": {
+				"description": "The session key for the browser session from which the DOM was retrieved.",
+				"type": "string"
+			},
+			"value": {
+				"description": "A collection of DOM segments produced by partitioning the sanitized page markup. Each item in the array represents one classified region of the page and carries: a stable content-derived id; a semantic kind such as Navigation, Form, Dialog, Header, or Generic; a cleaned preview HTML string bounded in length and depth; normalized visible text with collapsed whitespace; deduplicated lowercase keyword tokens extracted from that text; locator-relevant identifier values collected from attributes such as id, aria-label, and data-testid; well-known ARIA role values found in the subtree; action-element counts grouped by type (buttons, links, inputs, selects, text areas, forms) in a metrics object; lightweight structural statistics (node count, element count, max depth, text length) in a stats object; the root HTML tag name; and an optional base64-encoded UTF-8 copy of the original unmodified segment HTML.",
+				"type": "array",
+				"items": {
+					"type": "object"
+				}
+			}
+		},
+		"required": [
+			"driverSession",
+			"value"
+		],
+		"type": "object"
+	},
+	"title": "Get DOM Segments"
+}

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Canvas — G4 Studio</title>
+    <style>
+        /* Isolated canvas placeholder page.
+           Replace this entire file with the real canvas page when available.
+           This placeholder exists so the outer workflow shell can load
+           without being blocked by a missing canvas implementation. */
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        html, body {
+            height: 100%;
+            font-family: "Segoe UI", system-ui, sans-serif;
+            background: #0D0D0D;
+            color: rgba(255,255,255,0.7);
+        }
+
+        .root {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            gap: 16px;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .icon {
+            font-size: 48px;
+            opacity: 0.2;
+        }
+
+        .title {
+            font-size: 18px;
+            font-weight: 600;
+            color: rgba(255,255,255,0.5);
+        }
+
+        .subtitle {
+            font-size: 13px;
+            color: rgba(255,255,255,0.3);
+            max-width: 380px;
+            line-height: 1.6;
+        }
+
+        .hint {
+            margin-top: 8px;
+            font-size: 11px;
+            color: rgba(0,120,255,0.6);
+            font-family: "Consolas", monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="root">
+        <div class="icon">&#9783;</div>
+        <div class="title">Canvas Page Placeholder</div>
+        <div class="subtitle">
+            The workflow canvas page has not been loaded yet.
+            Replace this file with the real canvas implementation
+            when it is available.
+        </div>
+        <div class="hint">canvas-placeholder.html</div>
+    </div>
+</body>
+</html>

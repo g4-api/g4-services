@@ -1,8 +1,9 @@
-﻿using G4.Api;
+﻿using G4.Abstraction.Cli;
+using G4.Api;
 using G4.Cache;
+using G4.Models;
 using G4.Services.Domain.V4.Clients;
 using G4.Services.Domain.V4.Hubs;
-using G4.Services.Domain.V4.Models;
 using G4.Services.Domain.V4.Repositories;
 
 using Microsoft.AspNetCore.Hosting;
@@ -24,43 +25,16 @@ namespace G4.Services.Domain.V4
     {
         #region *** Properties   ***
         /// <inheritdoc />
-        public IBotsRepository Bots { get; set; } = g4Adapter.Bots;
+        public IAspAdapter Asp { get; set; } = aspAdapter;
 
         /// <inheritdoc />
-        public IHubContext<G4BotsHub> BotsHubContext { get; set; } = hubsAdapter.BotsHubContext;
+        public IG4Adapter G4 { get; set; } = g4Adapter;
 
         /// <inheritdoc />
-        public CacheManager Cache { get; set; } = resourcesAdapter.Cache;
+        public IHubsAdapter Hubs { get; set; } = hubsAdapter;
 
         /// <inheritdoc />
-        public ICopilotRepository Copilot { get; set; } = g4Adapter.Copilot;
-
-        /// <inheritdoc />
-        public IWebHostEnvironment Environment { get; set; } = aspAdapter.Environment;
-
-        /// <inheritdoc />
-        public G4Client G4 { get; set; } = g4Adapter.G4;
-
-        /// <inheritdoc />
-        public IHubContext<G4Hub> G4HubContext { get; set; } = hubsAdapter.G4HubContext;
-
-        /// <inheritdoc />
-        public JsonSerializerOptions JsonOptions { get; set; } = aspAdapter.JsonOptions;
-
-        /// <inheritdoc />
-        public ILogger Logger { get; set; } = aspAdapter.Logger;
-
-        /// <inheritdoc />
-        public IHubContext<G4AutomationNotificationsHub> NotificationsHubContext { get; set; } = hubsAdapter.NotificationsHubContext;
-
-        /// <inheritdoc />
-        public IOpenAiClient OpenAi { get; set; } = g4Adapter.OpenAi;
-
-        /// <inheritdoc />
-        public SvgCacheModel SvgCache { get; set; } = resourcesAdapter.SvgCache;
-
-        /// <inheritdoc />
-        public IToolsRepository Tools { get; set; } = g4Adapter.Tools;
+        public IResourcesAdapter Resources { get; set; } = resourcesAdapter;
         #endregion
     }
 
@@ -72,25 +46,15 @@ namespace G4.Services.Domain.V4
     internal class AspAdapter(
         JsonSerializerOptions jsonOptions,
         ILogger logger,
-        IWebHostEnvironment environment)
+        IWebHostEnvironment environment) : IAspAdapter
     {
-        /// <summary>
-        /// The environment settings for the current ASP.NET Core web host.
-        /// Provides information about the hosting environment, such as whether the application
-        /// is running in development, staging, or production.
-        /// </summary>
+        /// <inheritdoc />
         public IWebHostEnvironment Environment { get; set; } = environment;
 
-        /// <summary>
-        /// The JSON serializer settings that are used for serializing and deserializing objects.
-        /// This is useful for customizing JSON handling (e.g., formatting, converters).
-        /// </summary>
+        /// <inheritdoc />
         public JsonSerializerOptions JsonOptions { get; set; } = jsonOptions;
 
-        /// <summary>
-        /// The logger instance used for logging events in the application.
-        /// This is used for capturing and outputting logs for debugging and monitoring.
-        /// </summary>
+        /// <inheritdoc />
         public ILogger Logger { get; set; } = logger;
     }
 
@@ -102,39 +66,28 @@ namespace G4.Services.Domain.V4
     /// </summary>
     internal class G4Adapter(
         IBotsRepository bots,
-        ICopilotRepository copilot,
+        IMcpRepository mcp,
         G4Client g4,
         IOpenAiClient openAi,
-        IToolsRepository tools)
+        IToolsRepository tools) : IG4Adapter
     {
-        /// <summary>
-        /// Repository for managing bot-related data and operations.
-        /// Provides access to bot creation, retrieval, updates, and deletions.
-        /// </summary>
+        /// <inheritdoc />
         public IBotsRepository Bots { get; set; } = bots;
 
-        /// <summary>
-        /// Repository for managing copilot-related data and interactions.
-        /// Allows handling copilot-related functionalities like training, interaction, and state management.
-        /// </summary>
-        public ICopilotRepository Copilot { get; set; } = copilot;
+        /// <inheritdoc />
+        public CliFactory CliFactory { get; set; } = new CliFactory();
 
-        /// <summary>
-        /// The G4 client instance used for interacting with the G4 platform.
-        /// Facilitates communication with G4-related services, endpoints, and resources.
-        /// </summary>
-        public G4Client G4 { get; set; } = g4;
 
-        /// <summary>
-        /// Client for interacting with OpenAI services.
-        /// Provides methods for leveraging OpenAI's language models and other AI capabilities.
-        /// </summary>
+        /// <inheritdoc />
+        public G4Client Client { get; set; } = g4;
+
+        /// <inheritdoc />
+        public IMcpRepository Mcp { get; set; } = mcp;
+
+        /// <inheritdoc />
         public IOpenAiClient OpenAi { get; set; } = openAi;
 
-        /// <summary>
-        /// Repository for managing tool-related operations within the G4 platform.
-        /// Handles access to tools, configurations, and associated data for automation and other tasks.
-        /// </summary>
+        /// <inheritdoc />
         public IToolsRepository Tools { get; set; } = tools;
     }
 
@@ -146,24 +99,15 @@ namespace G4.Services.Domain.V4
     internal class HubsAdapter(
         IHubContext<G4Hub> g4HubContext,
         IHubContext<G4AutomationNotificationsHub> notificationsHubContext,
-        IHubContext<G4BotsHub> botsHubContext)
+        IHubContext<G4BotsHub> botsHubContext) : IHubsAdapter
     {
-        /// <summary>
-        /// The SignalR hub context for G4Hub, which handles general real-time communication
-        /// within the G4 platform.
-        /// </summary>
+        /// <inheritdoc />
         public IHubContext<G4Hub> G4HubContext { get; set; } = g4HubContext;
 
-        /// <summary>
-        /// The SignalR hub context for G4AutomationNotificationsHub, responsible for sending 
-        /// notifications related to automation tasks within the G4 platform.
-        /// </summary>
+        /// <inheritdoc />
         public IHubContext<G4AutomationNotificationsHub> NotificationsHubContext { get; set; } = notificationsHubContext;
 
-        /// <summary>
-        /// The SignalR hub context for G4BotsHub, used for real-time communication with bots
-        /// within the G4 ecosystem.
-        /// </summary>
+        /// <inheritdoc />
         public IHubContext<G4BotsHub> BotsHubContext { get; set; } = botsHubContext;
     }
 
@@ -174,18 +118,12 @@ namespace G4.Services.Domain.V4
     /// </summary>
     internal class ResourcesAdapter(
         CacheManager cache,
-        SvgCacheModel svgCache)
+        SvgCacheModel svgCache) : IResourcesAdapter
     {
-        /// <summary>
-        /// The CacheManager instance that handles caching operations within the application.
-        /// This is used to store and retrieve data that needs to be cached for quick access.
-        /// </summary>
+        /// <inheritdoc />
         public CacheManager Cache { get; set; } = cache;
 
-        /// <summary>
-        /// The SvgCacheModel instance that holds cached SVG data, where each SVG file's
-        /// content is stored with the file name (without extension) as the key.
-        /// </summary>
+        /// <inheritdoc />
         public SvgCacheModel SvgCache { get; set; } = svgCache;
     }
 }

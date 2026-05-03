@@ -70,8 +70,13 @@ html, body {
 
 .sqd-theme-light #designer--header {
 	background: var(--designer-header-background);
-	border-bottom: var(--designer-header-border);
+	border-bottom: 1px solid transparent;
+	border-image: linear-gradient(90deg, transparent, var(--electric-blue-dim), transparent) 1;
 }
+
+	.sqd-theme-light .sqd-header__avatar {
+		filter: drop-shadow(0 0 8px rgba(0, 180, 255, 0.38));
+	}
 
 	.sqd-theme-light #designer--header .sqd-title {
 		color: var(--designer-header-title-color);

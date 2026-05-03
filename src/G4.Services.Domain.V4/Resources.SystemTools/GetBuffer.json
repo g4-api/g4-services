@@ -1,0 +1,46 @@
+{
+	"description": "Retrieves the buffered rule execution entries for an active G4 session.",
+	"inputSchema": {
+		"properties": {
+			"sessionId": {
+				"description": "The unique identifier of the active G4 session whose buffered rules should be retrieved.",
+				"type": "string"
+			}
+		},
+		"required": [
+			"sessionId"
+		],
+		"type": "object"
+	},
+	"name": "g4.GetBuffer",
+	"outputSchema": {
+		"properties": {
+			"buffer": {
+				"description": "An ordered list of rule execution entries recorded for the session.",
+				"items": {
+					"properties": {
+						"rule": {
+							"description": "The G4 rule model that was buffered, including its type, parameters, and configuration.",
+							"type": "object"
+						},
+						"timestamp": {
+							"description": "Unix timestamp (milliseconds) indicating when the rule entry was recorded.",
+							"type": "integer"
+						}
+					},
+					"required": [
+						"timestamp",
+						"rule"
+					],
+					"type": "object"
+				},
+				"type": "array"
+			}
+		},
+		"required": [
+			"buffer"
+		],
+		"type": "object"
+	},
+	"title": "Get G4 Rules Buffer"
+}

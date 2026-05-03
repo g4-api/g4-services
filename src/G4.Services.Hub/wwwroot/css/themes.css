@@ -1,0 +1,132 @@
+/* =============================================================================
+   G4 Studio — Themes
+   Two themes: dark (default) and light. Both use electric blue accent.
+   Theme is applied via data-theme attribute on <html>.
+   ============================================================================= */
+
+/* ---------------------------------------------------------------------------
+   Dark Theme (default)
+   Base palette: deep navy-black + electric cyan-blue — matches bots/canvas
+   Source palette: --bg #050508, --surface #11111C, --border #0077B6,
+                   --blue #00B4FF, --text #B8CCD8, --text-muted #4A6070
+   --------------------------------------------------------------------------- */
+[data-theme="dark"],
+:root {
+    /* Backgrounds */
+    --bg-app:        #050508;
+    --bg-base:       #050508;
+    --bg-surface:    #11111C;
+    --bg-elevated:   #14142A;
+    --bg-overlay:    #1A1A2E;
+    --bg-hover:      rgba(0, 180, 255, 0.06);
+    --bg-active:     rgba(0, 180, 255, 0.10);
+    --bg-selected:   rgba(0, 180, 255, 0.15);
+    --bg-input:      #0A0A14;
+    --bg-code:       #0D0D1A;
+
+    /* Borders */
+    --border-color:        rgba(0, 119, 182, 0.40);
+    --border-color-strong: #0077B6;
+    --border-color-focus:  var(--accent);
+
+    /* Text */
+    --text-primary:   #B8CCD8;
+    --text-secondary: #7A9BAD;
+    --text-muted:     #4A6070;
+    --text-disabled:  rgba(74, 96, 112, 0.50);
+    --text-on-accent: #FFFFFF;
+    --text-inverse:   #050508;
+
+    /* Sidebar */
+    --sidebar-bg:           #050508;
+    --sidebar-border:       #0077B6;
+    --sidebar-item-hover:   rgba(0, 180, 255, 0.06);
+    --sidebar-item-active:  rgba(0, 180, 255, 0.12);
+    --sidebar-item-text:    #B8CCD8;
+    --sidebar-item-text-active: #FFFFFF;
+
+    /* Topbar */
+    --topbar-bg:     #050508;
+    --topbar-border: #0077B6;
+
+    /* Scrollbar */
+    --scrollbar-track: transparent;
+    --scrollbar-thumb: rgba(0, 119, 182, 0.40);
+    --scrollbar-thumb-hover: rgba(0, 180, 255, 0.60);
+
+    /* Table */
+    --table-header-bg:   #0A0A14;
+    --table-row-hover:   rgba(0, 180, 255, 0.04);
+    --table-row-stripe:  rgba(0, 180, 255, 0.02);
+
+    /* Status badge backgrounds */
+    --badge-bg-default: rgba(0, 180, 255, 0.08);
+
+    /* Shadows — deeper with faint blue glow */
+    --shadow-sm:  0 1px 2px rgba(0,0,0,0.50);
+    --shadow-md:  0 2px 8px rgba(0,0,0,0.60), 0 0 0 1px rgba(0,119,182,0.15);
+    --shadow-lg:  0 4px 20px rgba(0,0,0,0.70), 0 0 20px rgba(0,180,255,0.07);
+    --shadow-xl:  0 8px 40px rgba(0,0,0,0.80), 0 0 40px rgba(0,180,255,0.10);
+}
+
+/* ---------------------------------------------------------------------------
+   Light Theme
+   Base palette: white / very-light-gray / neutral surfaces + electric blue
+   --------------------------------------------------------------------------- */
+[data-theme="light"] {
+    /* Backgrounds */
+    --bg-app:        #F0F2F5;
+    --bg-base:       #F5F6F8;
+    --bg-surface:    #FFFFFF;
+    --bg-elevated:   #FFFFFF;
+    --bg-overlay:    #F8F9FB;
+    --bg-hover:      rgba(0, 0, 0, 0.035);
+    --bg-active:     rgba(0, 180, 255, 0.07);
+    --bg-selected:   rgba(0, 180, 255, 0.10);
+    --bg-input:      #FFFFFF;
+    --bg-code:       #F3F4F6;
+
+    /* Borders */
+    --border-color:        rgba(0, 0, 0, 0.09);
+    --border-color-strong: rgba(0, 0, 0, 0.16);
+    --border-color-focus:  var(--accent);
+
+    /* Text */
+    --text-primary:   rgba(0, 0, 0, 0.88);
+    --text-secondary: rgba(0, 0, 0, 0.52);
+    --text-muted:     rgba(0, 0, 0, 0.32);
+    --text-disabled:  rgba(0, 0, 0, 0.22);
+    --text-on-accent: #FFFFFF;
+    --text-inverse:   #FFFFFF;
+
+    /* Sidebar */
+    --sidebar-bg:           #FFFFFF;
+    --sidebar-border:       rgba(0, 0, 0, 0.08);
+    --sidebar-item-hover:   rgba(0, 0, 0, 0.04);
+    --sidebar-item-active:  rgba(0, 180, 255, 0.08);
+    --sidebar-item-text:    rgba(0, 0, 0, 0.60);
+    --sidebar-item-text-active: rgba(0, 0, 0, 0.88);
+
+    /* Topbar */
+    --topbar-bg:     #FFFFFF;
+    --topbar-border: rgba(0, 0, 0, 0.09);
+
+    /* Scrollbar */
+    --scrollbar-track: transparent;
+    --scrollbar-thumb: rgba(0, 0, 0, 0.14);
+    --scrollbar-thumb-hover: rgba(0, 0, 0, 0.24);
+
+    /* Table */
+    --table-header-bg:   #F7F8FA;
+    --table-row-hover:   rgba(0, 0, 0, 0.025);
+    --table-row-stripe:  rgba(0, 0, 0, 0.012);
+
+    /* Status badge backgrounds */
+    --badge-bg-default: rgba(0, 0, 0, 0.07);
+
+    /* Shadow override for light */
+    --shadow-sm:  0 1px 2px rgba(0,0,0,0.07);
+    --shadow-md:  0 2px 8px rgba(0,0,0,0.09);
+    --shadow-lg:  0 4px 20px rgba(0,0,0,0.11);
+    --shadow-xl:  0 8px 40px rgba(0,0,0,0.14);
+}
