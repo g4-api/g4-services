@@ -1206,7 +1206,7 @@ function stepEditorProvider(step, editorContext) {
 		const parameterType = parameter.type?.toUpperCase();
 		const label = parameter?.displayName || parameter.name;
 		const isListField = _cacheKeys.includes(parameterType);
-		const isOptionsField = parameter.optionsList && parameter.optionsList.length > 0;
+		const isOptionsField = parameter.values && parameter.values.length > 0;
 		const isArray = parameterType === 'ARRAY';
 		const isSwitch = ['SWITCH', 'BOOLEAN', 'BOOL'].includes(parameterType);
 		const isKeyValue = ['KEY/VALUE', 'KEYVALUE', 'DICTIONARY', 'OBJECT'].includes(parameterType);
@@ -1293,7 +1293,7 @@ function stepEditorProvider(step, editorContext) {
 		 * Updates the parameter value and notifies the editor context upon changes.
 		 */
 		if (isListField || isOptionsField) {
-			const itemSource = isListField ? parameter.type : parameter.optionsList;
+			const itemSource = isListField ? parameter.type : parameter.values;
 			CustomFields.newDataListField(
 				{
 					container: container,
