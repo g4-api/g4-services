@@ -261,7 +261,7 @@ class StateMachineSteps {
 				required: g4ParameterObject.mandatory || false,         // Set required flag
 				type: g4ParameterObject.type || 'String',               // Set type or default to 'String'
 				value: g4ParameterObject.default || '',                 // Set default value or empty string
-				optionsList: g4ParameterObject.values || []             // Set options or default to an empty array
+				values: g4ParameterObject.values || []             // Set options or default to an empty array
 			};
 
 			// TODO: Consider to remove this condition
