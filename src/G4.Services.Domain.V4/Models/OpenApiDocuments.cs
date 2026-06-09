@@ -94,7 +94,7 @@ namespace G4.Services.Domain.V4.Models
                 Url = "mcp/docs.json",
                 Description = "API documentation for the G4 platform's MCP management features.",
                 Summary = "Comprehensive API documentation for the G4 platform's MCP management capabilities.",
-                Tags = ["MCP"]
+                Tags = ["Mcp"]
             },
 
             new()

@@ -32,7 +32,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         [SwaggerOperation(
             Summary = "Establish SSE stream",
             Description = "Opens a text/event-stream channel for real-time updates and heartbeats (n8n-compatible).",
-            Tags = ["MCP"]
+            Tags = ["Mcp"]
         )]
         [SwaggerResponse(StatusCodes.Status200OK, description: "SSE stream established.", contentTypes: "text/event-stream")]
         #endregion
@@ -87,7 +87,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         [SwaggerOperation(
             Summary = "Handle MCP agent requests",
             Description = "Processes JSON-RPC methods for initializing, listing tools, invoking tools, and handling notifications.",
-            Tags = ["MCP"]
+            Tags = ["Mcp"]
         )]
         [SwaggerResponse(StatusCodes.Status200OK,
             description: "Initialization result with context, list of available tools, or result of tool invocation",
@@ -134,7 +134,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         [SwaggerOperation(
             Summary = "Sync the list of tools available to the Copilot agent",
             Description = "Refreshes the cached tool definitions so that the Copilot agent has the most up-to-date list of tools.",
-            Tags = ["MCP"]
+            Tags = ["Mcp"]
         )]
         [SwaggerResponse(StatusCodes.Status204NoContent, description: "The tools list was successfully synced. No content is returned.")]
         [SwaggerResponse(StatusCodes.Status500InternalServerError,

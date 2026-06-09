@@ -5,8 +5,6 @@ using G4.Services.Domain.V4.Models.Schema;
 using System.Collections.Generic;
 using System.Text.Json;
 
-using static G4.Services.Domain.V4.Repositories.ToolsRepository;
-
 namespace G4.Services.Domain.V4.Repositories
 {
     /// <summary>
