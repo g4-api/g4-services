@@ -77,7 +77,6 @@ namespace G4.Services.Domain.V4
         /// <inheritdoc />
         public CliFactory CliFactory { get; set; } = new CliFactory();
 
-
         /// <inheritdoc />
         public G4Client Client { get; set; } = g4;
 

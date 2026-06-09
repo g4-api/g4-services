@@ -166,14 +166,13 @@ async function initializeDesigner() {
 		Utilities.switchImages(tasksSelector, tasksClass, _svgsCache);
 	});
 
-    // Listen for the "StartAutomation" message from the server
+	// Listen for the "StartAutomation" message from the server
 	_connection.on("StartAutomation", (_) => {
-        console.log("Automation started");
 	});
 
-    // Listen for the "StopAutomation" message from the server
+	// Listen for the "StopAutomation" message from the server
 	_connection.on("StopAutomation", (_) => {
-        console.log("Automation stopped");
+		console.log("Automation stopped");
 	});
 
 	// Listen for the "ReceiveAutomationEvent" message from the server
@@ -194,7 +193,7 @@ async function initializeDesigner() {
 
 		// Increment the total actions counter.
 		if (_auditableTypes.includes(messageType)) {
-            _averageCounter.addOne();
+			_averageCounter.addOne();
 			_counter.addOne();
 		}
 	});
@@ -210,21 +209,33 @@ async function initializeDesigner() {
 	});
 
 	// Listen for the "ReceiveAutomationInvokedEvent" message from the server
-	_connection.on("ReceiveAutomationInvokedEvent", (_) => {
+	_connection.on("ReceiveAutomationInvokedEvent", (message) => {
 		// Indicate that the automation is no longer running
 		_stateMachine.isRunning = false;
 
 		// Release the designer from read-only mode
 		_designer.setIsReadonly(false);
 
-		// Reset the designer or UI state after all steps have been processed
-		_stateMachine.handler.resetDesigner();
-
-        // Add another action to the average counter
+		// Add another action to the average counter
 		_averageCounter.addOne();
 
-        // Stop the timer after the automation has completed
+		// Stop the timer after the automation has completed
 		_timer.stop();
+
+		// Convert the message object to a JSON string for logging or further processing.
+		const automationResults = JSON.stringify(message?.value?.response || {});
+
+        // Convert the automation results to a base64 string.
+		// If the results are an empty object, use an empty string instead.
+		const base64 = automationResults === '{}'
+			? ""
+			: Utilities.convertToBase64(automationResults);
+
+		// Create a console message with a specific prefix and the base64-encoded automation results.
+		const consoleMessage = '__G4_DOCUMENT_RESULT_BASE64__:' + base64;
+
+		// Log the console message, which can be captured by external tools or scripts to retrieve the automation results.
+		console.log(consoleMessage)
 	});
 }
 

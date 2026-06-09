@@ -1,5 +1,4 @@
-﻿using G4.Abstraction.Cli;
-using G4.Abstraction.Logging;
+﻿using G4.Abstraction.Logging;
 using G4.Api;
 using G4.Cache;
 using G4.Extensions;
@@ -11,7 +10,6 @@ using G4.Services.Domain.V4.Hubs;
 using G4.Services.Domain.V4.Repositories;
 
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
@@ -20,7 +18,6 @@ using Microsoft.Extensions.Options;
 
 using System;
 using System.IO;
-using System.Text.Json;
 
 namespace G4.Services.Domain.V4
 {
@@ -51,88 +48,6 @@ namespace G4.Services.Domain.V4
         /// such as SVGs and other static content.
         /// </summary>
         IResourcesAdapter Resources { get; set; }
-
-
-
-        ///// <summary>
-        ///// Gets or sets the repository for managing bot entities.
-        ///// </summary>
-        //IBotsRepository Bots { get; set; }
-
-        ///// <summary>
-        ///// Gets or sets the SignalR hub context for communicating with bot-specific clients.
-        ///// </summary>
-        //IHubContext<G4BotsHub> BotsHubContext { get; set; }
-
-        ///// <summary>
-        ///// Gets or sets the cache manager responsible for storing and retrieving
-        ///// domain-level cache entries to improve performance.
-        ///// </summary>
-        //CacheManager Cache { get; set; }
-
-        ///// <summary>
-        ///// Gets or sets the factory used to parse values to and from the G4 CLI format.
-        ///// </summary>
-        ///// <remarks>
-        ///// This property is initialized with a default <see cref="CliFactory"/> instance
-        ///// and is used to handle conversions between runtime values and their
-        ///// command-line representation in the G4 CLI format.
-        ///// </remarks>
-        //CliFactory CliFactory { get; set; }
-
-        ///// <summary>
-        ///// Gets or sets the hosting environment information (e.g., Development, Production).
-        ///// </summary>
-        //IWebHostEnvironment Environment { get; set; }
-
-        ///// <summary>
-        ///// Gets or sets the G4 API client used to perform operations against external services,
-        ///// such as job dispatching and status retrieval.
-        ///// </summary>
-        //G4Client G4 { get; set; }
-
-        ///// <summary>
-        ///// Gets or sets the SignalR hub context for broadcasting general G4 notifications.
-        ///// </summary>
-        //IHubContext<G4Hub> G4HubContext { get; set; }
-
-        ///// <summary>
-        ///// Gets or sets the JSON serializer options controlling converters,
-        ///// naming policies, and formatting rules for domain serialization.
-        ///// </summary>
-        //JsonSerializerOptions JsonOptions { get; set; }
-
-        ///// <summary>
-        ///// Gets or sets the logger used to record domain events,
-        ///// diagnostics, and error information.
-        ///// </summary>
-        //ILogger Logger { get; set; }
-
-        ///// <summary>
-        ///// Gets or sets the repository for MCP integration and data operations.
-        ///// </summary>
-        //IMcpRepository Mcp { get; set; }
-
-        ///// <summary>
-        ///// Gets or sets the SignalR hub context for sending automation notifications
-        ///// and updates to subscribed clients.
-        ///// </summary>
-        //IHubContext<G4AutomationNotificationsHub> NotificationsHubContext { get; set; }
-
-        ///// <summary>
-        ///// Gets or sets the OpenAI client used to interact with OpenAI services.
-        ///// </summary>
-        //IOpenAiClient OpenAi { get; set; }
-
-        ///// <summary>
-        ///// Gets or sets the cache model used for storing and retrieving SVG resources.
-        ///// </summary>
-        //SvgCacheModel SvgCache { get; set; }
-
-        ///// <summary>
-        ///// Gets or sets the repository for managing tool entities and operations.
-        ///// </summary>
-        //IToolsRepository Tools { get; set; }
         #endregion
 
         #region *** Methods      ***

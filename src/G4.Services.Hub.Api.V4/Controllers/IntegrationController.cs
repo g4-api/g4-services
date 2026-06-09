@@ -1,7 +1,6 @@
 ﻿using G4.Extensions;
 using G4.Models;
 using G4.Services.Domain.V4;
-using G4.Settings;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -34,7 +33,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         [SwaggerOperation(
             Summary = "Finds MCP tools by intent",
             Description = "Searches for MCP tools matching the provided intent string. Allows specifying the maximum number of results and relevance threshold.",
-            Tags = ["MCP"])]
+            Tags = ["Mcp"])]
         [SwaggerResponse(StatusCodes.Status200OK,
             Description = "Successfully retrieved matching tools.",
             ContentTypes = new[] { "application/json" })]
@@ -60,7 +59,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         [SwaggerOperation(
             Summary = "Search cached tool examples by intent",
             Description = "Finds cached tool examples that best match the provided intent. You can narrow the search by tool name and namespace, and limit how many scored matches are returned.",
-            Tags = ["MCP"])]
+            Tags = ["Mcp"])]
         [SwaggerResponse(
             StatusCodes.Status200OK,
             Description = "Matching cached examples were found and returned successfully.",
