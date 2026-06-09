@@ -20,9 +20,9 @@
 		<PackageReference Include="G4.Plugins" Version="2026.4.29.65" />
 		<PackageReference Include="G4.Plugins.Common" Version="2026.4.30.128" />
 		<PackageReference Include="G4.Plugins.Ui" Version="2026.4.30.128" />
-		<PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.7" />
-		<PackageReference Include="Swashbuckle.AspNetCore.Annotations" Version="10.1.7" />
-		<PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="10.1.7" />
+		<PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.8" />
+		<PackageReference Include="Swashbuckle.AspNetCore.Annotations" Version="10.2.1" />
+		<PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="10.2.1" />
 	</ItemGroup>
 
 	<ItemGroup>
