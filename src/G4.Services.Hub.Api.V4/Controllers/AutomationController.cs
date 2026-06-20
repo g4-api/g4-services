@@ -1,6 +1,7 @@
 ﻿using G4.Extensions;
 using G4.Models;
 using G4.Services.Domain.V4;
+using G4.Services.Domain.V4.Models;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -21,6 +22,36 @@ namespace G4.Services.Hub.Api.V4.Controllers
     {
         // The domain service for the G4™ engine.
         private readonly IDomain _domain = domain;
+
+        [HttpPost]
+        [Route("file/invoke")]
+        [SwaggerOperation(
+            summary: "Invokes an automation session from a file.",
+            description: "Reads a G4 automation model from the provided file path, deserializes the file content into a `G4AutomationModel`, and invokes the automation session. The result includes detailed information about the automation run, returned in JSON format.",
+            Tags = ["Automation"])]
+        [SwaggerResponse(StatusCodes.Status200OK,
+            description: "Successfully invoked the automation session from the provided file. Returns a dictionary containing detailed information about the automation run.",
+            type: typeof(IDictionary<string, G4AutomationResponseModel>),
+            contentTypes: MediaTypeNames.Application.Json)]
+        public IActionResult Invoke(
+            [FromBody]
+            [SwaggerRequestBody(
+                description: "The file invocation model containing the path to the automation JSON file.",
+                Required = true)]
+            FileInvokeModel invokeModel)
+        {
+            // Read the content of the file specified in the invokeModel.Path.
+            var content = System.IO.File.ReadAllText(invokeModel.Path);
+
+            // Deserialize the file content into a G4AutomationModel using the domain's JSON options.
+            var automation = JsonSerializer.Deserialize<G4AutomationModel>(content, _domain.Asp.JsonOptions);
+
+            // Invoke the automation session using the provided automation model.
+            var response = _domain.G4.Client.Automation.Invoke(automation);
+
+            // Return a 200 OK response with the detailed automation session results.
+            return Ok(response);
+        }
 
         [HttpPost]
         [Route("invoke")]

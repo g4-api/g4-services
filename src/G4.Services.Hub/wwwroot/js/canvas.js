@@ -730,7 +730,7 @@ function newStartDefinition(sequence) {
 					returnStructuredResponse: false,
 					searchTimeout: 15000,
 				},
-				environmentSettings: {
+				environmentsSettings: {
 					defaultEnvironment: "SystemParameters",
 					returnEnvironment: false
 				},
@@ -925,23 +925,23 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 	);
 
 	// Add an environment settings field for configuring the G4 environment settings.
-	CustomG4Fields.newEnvironmentSettingsField(
+	CustomG4Fields.newEnvironmentsSettingsField(
 		{
 			container: container,
-			label: "G4™ Environment Settings",
+			label: "G4™ Environments Settings",
 			title: "Provide G4™ environment settings to configure the automation.",
-			initialValue: definition.properties.settings?.environmentSettings
+			initialValue: definition.properties.settings?.environmentsSettings
 		},
 		(value) => {
 			// Ensure the "settings" property exists in the definition.
 			definition.properties.settings = definition.properties.settings || {};
 
-			// Ensure the "environmentSettings" property exists in the definition.
-			definition.properties.settings.environmentSettings = definition.properties.settings.environmentSettings || {};
+			// Ensure the "environmentsSettings" property exists in the definition.
+			definition.properties.settings.environmentsSettings = definition.properties.settings.environmentsSettings || {};
 
 			// Update the "authentication" property with the new values from the input.
 			for (const key of Object.keys(value)) {
-				definition.properties.settings.environmentSettings[key] = value[key];
+				definition.properties.settings.environmentsSettings[key] = value[key];
 			}
 
 			// Notify the editor of the updated properties.

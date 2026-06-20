@@ -1343,24 +1343,24 @@ class CustomG4Fields {
     }
 
     /**
-     * Creates and configures a new Environment Settings field that allows users to:
+     * Creates and configures a new Environments Settings field that allows users to:
      * 1. Specify a default environment for automation requests.
      * 2. Toggle whether the environment should be returned in the response.
      * 3. Define key-value pairs for environment variables.
      *
-     * @param {Object}       options               - Configuration options for the Environment Settings field.
-     * @param {HTMLElement} [options.container]    - The DOM element to which the Environment Settings field will be appended.
-     * @param {string}       options.label         - The label identifier for the Environment Settings field.
+     * @param {Object}       options               - Configuration options for the Environments Settings field.
+     * @param {HTMLElement} [options.container]    - The DOM element to which the Environments Settings field will be appended.
+     * @param {string}       options.label         - The label identifier for the Environments Settings field.
      * @param {string}      [options.title]        - The title attribute for the field container, often used for tooltips.
      * @param {Object}      [options.initialValue] - The initial settings values for environment configuration.
      * @param {string}      [options.initialValue.defaultEnvironment='SystemParameters'] - Specifies the default environment.
      * @param {boolean}     [options.initialValue.returnEnvironment=false]               - Indicates whether the environment should be returned in the response.
      * @param {Object}      [options.initialValue.environmentVariables={}]               - A collection of static environment variables.
-     * @param {Function}     setCallback - A callback function invoked whenever the Environment Settings field data changes.
+     * @param {Function}     setCallback - A callback function invoked whenever the Environments Settings field data changes.
      *
-     * @returns {HTMLElement} The container element that includes the newly created Environment Settings field.
+     * @returns {HTMLElement} The container element that includes the newly created Environments Settings field.
      */
-    static newEnvironmentSettingsField(options, setCallback) {
+    static newEnvironmentsSettingsField(options, setCallback) {
         // Generate a unique identifier for the environment settings fields.
         const inputId = Utilities.newUid();
 
@@ -1388,11 +1388,11 @@ class CustomG4Fields {
             },
             (value) => {
                 // Build an object containing the updated default environment value
-                const environmentSettings = {
+                const environmentsSettings = {
                     defaultEnvironment: value
                 };
                 // Invoke the main callback function with updated settings
-                setCallback(environmentSettings);
+                setCallback(environmentsSettings);
             }
         );
 
@@ -1406,11 +1406,11 @@ class CustomG4Fields {
             },
             (value) => {
                 // Convert the string value ('true'/'false') to a boolean
-                const environmentSettings = {
+                const environmentsSettings = {
                     returnEnvironment: Utilities.convertStringToBool(value)
                 };
                 // Invoke the main callback function with updated settings
-                setCallback(environmentSettings);
+                setCallback(environmentsSettings);
             }
         );
 
@@ -1424,11 +1424,11 @@ class CustomG4Fields {
             },
             (value) => {
                 // Build an object containing the updated environment variables
-                const environmentSettings = {
+                const environmentsSettings = {
                     environmentVariables: value
                 };
                 // Invoke the main callback function with updated settings
-                setCallback(environmentSettings);
+                setCallback(environmentsSettings);
             }
         );
 
@@ -2028,11 +2028,11 @@ class CustomG4Fields {
             },
             (value) => {
                 // Build an object containing the updated output folder value
-                const environmentSettings = {
+                const environmentsSettings = {
                     outputFolder: value
                 };
                 // Invoke the main callback function with updated settings
-                setCallback(environmentSettings);
+                setCallback(environmentsSettings);
             }
         );
 
