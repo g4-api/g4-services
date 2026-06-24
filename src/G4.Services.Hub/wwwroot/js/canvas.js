@@ -714,7 +714,7 @@ function newStartDefinition(sequence) {
 				username: '',
 			},
 			driverParameters: {
-				driver: "MicrosoftEdgeDriver",
+				driver: "ChromeDriver",
 				driverBinaries: ".",
 				capabilities: {
 					alwaysMatch: {}
