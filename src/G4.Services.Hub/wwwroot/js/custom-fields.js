@@ -2038,6 +2038,25 @@ class CustomG4Fields {
         );
 
         /**
+         * Create a new switch field for "AutoScreenshots".
+         * - Indicates whether screenshots should be automatically captured during the automation process.
+         */
+        CustomFields.newSwitchField(
+            {
+                container: controller,
+                initialValue: options.initialValue?.autoScreenshots || false,
+                label: 'Auto Screenshots',
+                title: 'Indicates whether screenshots should be automatically captured during the automation process.'
+            },
+            (value) => {
+                const screenshotsSettings = {
+                    autoScreenshots: Utilities.convertStringToBool(value)
+                };
+                setCallback(screenshotsSettings);
+            }
+        );
+
+        /**
          * Create a new switch field for "ConvertToBase64".
          * - Indicates whether screenshots should be converted to Base64 strings.
          * - If true, base64 data is included in the response.

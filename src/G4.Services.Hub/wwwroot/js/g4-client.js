@@ -1116,6 +1116,7 @@ class G4Client {
 		// Include a reference object with metadata about the automation.
 		// ID is aligned with the definition ID for traceability.
 		const reference = {
+			name: definition?.properties?.title,
 			id: definition.id
 		}
 

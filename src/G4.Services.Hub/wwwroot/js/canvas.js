@@ -717,7 +717,14 @@ function newStartDefinition(sequence) {
 				driver: "ChromeDriver",
 				driverBinaries: ".",
 				capabilities: {
-					alwaysMatch: {}
+					"alwaysMatch": {
+						"browserName": "chrome",
+						"goog:chromeOptions": {
+							"args": [
+								"--disable-gpu"
+							]
+						}
+					}
 				},
 				firstMatch: [
 					{}
@@ -735,9 +742,10 @@ function newStartDefinition(sequence) {
 					returnEnvironment: false
 				},
 				screenshotsSettings: {
+					autoScreenshots: false,
 					outputFolder: ".",
 					convertToBase64: false,
-					exceptionsOnly: false,
+					onExceptionOnly: false,
 					returnScreenshots: false
 				}
 			},
@@ -782,6 +790,22 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 		(value) => {
 			// Update the "speed" property with the new value from the input.
 			definition.properties['speed'] = parseInt(value, 10); // Ensure the value is an integer.
+			editorContext.notifyPropertiesChanged();
+		}
+	);
+
+	// Add a string input field for configuring the "Invocation Interval".
+	CustomFields.newStringField(
+		{
+			container: container,
+			initialValue: definition.properties['title'],
+			isReadonly: isReadonly,
+			label: 'Title',
+			title: 'Title of the workflow'
+		},
+		(value) => {
+			// Update the "title" property with the new value from the input.
+			definition.properties['title'] = value;
 			editorContext.notifyPropertiesChanged();
 		}
 	);
