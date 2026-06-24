@@ -1030,14 +1030,11 @@ class G4Client {
 		 * Retrieves driver parameters if both driver and driverBinaries are provided.
 		 */
 		const getDriverParameters = (driverParameters) => {
-			// Check if driverBinaries exists and contains at least one element.
-			const isBinaries = driverParameters?.driverBinaries && driverParameters?.driverBinaries.length > 0;
-
 			// Check if driver exists and is a non-empty string.
 			const isDriver = driverParameters?.driver && driverParameters?.driver.length > 0;
 
 			// Return the original object if both conditions are met; otherwise, return an empty object.
-			return isBinaries && isDriver ? driverParameters : undefined;
+			return isDriver ? driverParameters : undefined;
 		};
 
 		// Extract the authentication parameters from the definition properties.

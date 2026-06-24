@@ -1266,6 +1266,7 @@ class CustomG4Fields {
         // Create a new Data List Field for selecting the Web Driver.
         CustomFields.newDataListField(
             {
+                allowFreeText: true,
                 container: controller,
                 initialValue: options.initialValue?.driver || '',
                 itemSource: 'Driver',
@@ -2541,6 +2542,10 @@ class CustomFields {
         // Track the index of the currently active option in the listbox for keyboard navigation.
         let activeIndex = -1;
 
+        // When true, the field commits the typed value (free text) on Enter and on blur,
+        // in addition to committing on option selection. Defaults to false (selection-only).
+        const allowFreeText = options.allowFreeText === true;
+
         /**
          * Handles live filtering of listbox options based on user input.
          *
@@ -2683,16 +2688,30 @@ class CustomFields {
          * - Ensures active option stays visible via scroll management
          */
         input.addEventListener("keydown", (e) => {
-            // Exit early if there are no filtered options
-            if (!filtered.length) {
-                return;
-            }
-
             // Key intent flags (kept explicit for readability)
             const isDown = e.key === "ArrowDown";
             const isEscape = e.key === "Escape";
             const isEnter = e.key === "Enter";
             const isUp = e.key === "ArrowUp";
+
+            // Exit early if there are no filtered options.
+            // Exception: when free text is allowed, Enter still commits the typed value.
+            if (!filtered.length) {
+                if (isEnter && allowFreeText) {
+                    e.preventDefault();
+
+                    // Close listbox and reset ARIA state.
+                    list.style.display = "none";
+                    input.setAttribute("aria-expanded", "false");
+                    input.setAttribute("aria-activedescendant", "");
+                    activeIndex = -1;
+
+                    // Commit the literal typed text.
+                    input.title = input.value || "Please select an option";
+                    updateState(input.value, setCallback);
+                }
+                return;
+            }
 
             /**
              * If the listbox is currently closed:
@@ -2762,8 +2781,11 @@ class CustomFields {
              * Enter → commit the active selection
              */
             if (isEnter) {
-                // Guard against invalid index
-                if (activeIndex < 0 || !filtered[activeIndex]) {
+                // Determine whether an option is currently highlighted in the listbox.
+                const hasActiveOption = activeIndex >= 0 && !!filtered[activeIndex];
+
+                // If no option is highlighted and free text is not allowed, do nothing.
+                if (!hasActiveOption && !allowFreeText) {
                     return;
                 }
 
@@ -2774,8 +2796,14 @@ class CustomFields {
                 // Close listbox
                 list.style.display = "none";
 
-                // Apply selected value to input
-                input.value = filtered[activeIndex].value;
+                if (hasActiveOption) {
+                    // Apply the highlighted option's value to the input.
+                    input.value = filtered[activeIndex].value;
+                    input.title = filtered[activeIndex].manifest.summary || "No summary available";
+                } else {
+                    // Free text: keep whatever the user typed.
+                    input.title = input.value || "Please select an option";
+                }
 
                 // Reset ARIA state
                 input.setAttribute("aria-expanded", "false");
@@ -2783,6 +2811,9 @@ class CustomFields {
 
                 // Clear active index
                 activeIndex = -1;
+
+                // Commit the resolved value (highlighted option or typed text).
+                updateState(input.value, setCallback);
             }
 
             /**
@@ -2800,6 +2831,16 @@ class CustomFields {
                 activeIndex = -1;
             }
         });
+
+        // When free text is allowed, commit whatever is currently in the input on focus-out.
+        // Option selection uses mousedown + preventDefault, so a click commits before blur;
+        // a subsequent blur simply re-commits the same value, which is harmless.
+        if (allowFreeText) {
+            input.addEventListener("blur", () => {
+                input.title = input.value || "Please select an option";
+                updateState(input.value, setCallback);
+            });
+        }
 
         // Close if opened and clicking outside
         document.addEventListener("mousedown", (e) => {
