@@ -601,7 +601,7 @@ const setDefinition = (definition) => {
 				driverParameters: driverParameters,
 				settings: definition.settings,
 				speed: 300,
-				title: definition.reference.name
+				title: definition?.reference?.name
 			},
 			sequence
 		};
