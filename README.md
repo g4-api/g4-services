@@ -36,7 +36,7 @@ The **G4 Hub API** provides a comprehensive interface for managing templates, en
 The unlimited version of the G4™ Hub API is available for personal or an open source non-profit use, provided it is not deployed in enterprise, governmental, or military environments. To enable full functionality, use the license token provided below. When invoking automation workflows, include this token in the `token` field under the `authentication` property.
 
 ```none
-34zUvOBoFae7vq/DnfkDbtCmXcb7mFTn6d0SyI9GgsJTzO1fMxm3Hrzy5EJzgUOz2nnLRNTd1RU3GbVETOnK5HXy1qqGuC3hGJyzh9HhCHYEAXbwu1UQ6ZdP3DaySgnG3mhMhH1Vtd2hPhqhfCNoQP1vaJH53/Woixi+eZ7aNiVYdiDtW0rGByWhCJ6ZtKlXZZ3Yq/d46uDMYD9R6ENypmCqSjUXL54fdcKuXxs3dXOvaAEqFyolSrdTgC6zI65kVvaCOPFdsZHC7UK50stSg/8j0wTPG71wDMN6IPatPsgqx/PdYw72Qets8ZidSgO8oimm/Z+1/1j3XXVxFhovpu6MRx0DKZywT9MeRGPLOUQ=
+fq5vf/ZmrjGiwmRHyzxL12iyg5eZZi6d+LK+Akpn4jU5Ukzj2FVl1tijU7smwL4y+IU+pCSB8gss+H1Mc+J11sI8NPpt13ECxNPegVby0jMW6T+DNDtcKffYT22AcqU0fFUXzzehO291g/7mLgGcPrM1Zjd+SyYCOC1am26KXP7uM+AR2XoL40Sn7tMOjlJ51K5vlTpnN4vAhZl+eJFmYqQYeEY0eBcJCc9w4/n0YgJFgLAG1HOp6+3dBgHf7QBYmbXRjqE5DMa9SivCtuNhxvaa4GeUoGRWBLzwb2WqNToqbmBs2ncekr4kgfD0w+g8ML7TKCSZJjMqyv3O0cSADut5GwmS3ZkZr/OLRR4ln+4=
 ```
 
 ---
