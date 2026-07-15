@@ -61,6 +61,9 @@
     /* Line Grid */
     --line-grid-path-stroke: rgba(var(--secondary-color-rgb), 0.3);
     --line-grid-path-stroke-witdh: 1;
+    /* Loading Indicator */
+    --primary-color: var(--vscode-editor-background);
+    --electric-blue: var(--vscode-progressBar-background);
     /* Modal */
     --modal-button-background: var(--vscode-button-background);
     --modal-button-border: 1px solid var(--vscode-button-border);

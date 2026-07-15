@@ -21,7 +21,7 @@
 		bottom: 10px;
 		width: 9px;
 		height: 15px;
-		background: rgba(var(--electric-blue-rgb, var(--primary-color-rgb)), 0.25);
+		background: color-mix(in srgb, var(--electric-blue, var(--primary-color)) 25%, transparent);
 		-webkit-animation: spinner 2s infinite ease-in;
 		animation: spinner 2s infinite ease-in;
 	}
@@ -52,7 +52,7 @@
 
 @keyframes spinner {
 	0% {
-		background: rgba(var(--electric-blue-rgb, var(--primary-color-rgb)), 0.25);
+		background: color-mix(in srgb, var(--electric-blue, var(--primary-color)) 25%, transparent);
 	}
 
 	25% {
@@ -60,17 +60,17 @@
 	}
 
 	50% {
-		background: rgba(var(--electric-blue-rgb, var(--primary-color-rgb)), 0.25);
+		background: color-mix(in srgb, var(--electric-blue, var(--primary-color)) 25%, transparent);
 	}
 
 	100% {
-		background: rgba(var(--electric-blue-rgb, var(--primary-color-rgb)), 0.25);
+		background: color-mix(in srgb, var(--electric-blue, var(--primary-color)) 25%, transparent);
 	}
 }
 
 @-webkit-keyframes spinner {
 	0% {
-		background: rgba(var(--electric-blue-rgb, var(--primary-color-rgb)), 0.25);
+		background: color-mix(in srgb, var(--electric-blue, var(--primary-color)) 25%, transparent);
 	}
 
 	25% {
@@ -78,10 +78,10 @@
 	}
 
 	50% {
-		background: rgba(var(--electric-blue-rgb, var(--primary-color-rgb)), 0.25);
+		background: color-mix(in srgb, var(--electric-blue, var(--primary-color)) 25%, transparent);
 	}
 
 	100% {
-		background: rgba(var(--electric-blue-rgb, var(--primary-color-rgb)), 0.25);
+		background: color-mix(in srgb, var(--electric-blue, var(--primary-color)) 25%, transparent);
 	}
 }
