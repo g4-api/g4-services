@@ -28,13 +28,6 @@
     }
 
     /**
-     * Gets the regular expression pattern for extracting nested CLI expressions within the template.
-     */
-    get nestedCliExpressionPattern() {
-        return /{{[$].*?(?<={{[$]).*?}}/gis;
-    }
-
-    /**
      * Confirms the validity of a Command-Line Interface (CLI) against the current CLI template pattern.
      * 
      * @param {string} cli - The CLI to confirm.
@@ -69,13 +62,16 @@
         // If a match is found, trim any leading/trailing whitespace; otherwise, use an empty string.
         let cleanCli = cliMatch ? cliMatch[0].trim() : '';
 
-        // Extract nested expressions from the clean CLI string using the nestedCliExpressionPattern.
-        // The nested expressions are replaced with placeholders to simplify further processing.
-        const nestedExpressionMap = CliFactory._exportNestedExpressions(cleanCli, this.nestedCliExpressionPattern);
+        // Extract the fully balanced nested expressions from the clean CLI string. Each nested
+        // expression is swapped for a placeholder so the argument splitter below cannot break apart
+        // a value that legitimately contains "--" inside a nested expression.
+        const nestedExpressionMap = CliFactory._exportNestedExpressions(cleanCli);
 
-        // Iterate over each nested expression and replace its occurrence in the cleanCli with its placeholder.
+        // Swap every occurrence of each nested expression for its placeholder. split/join replaces
+        // all occurrences literally, so a value that repeats the same nested expression is protected
+        // consistently rather than only on its first occurrence.
         for (const [originalExpression, placeholder] of Object.entries(nestedExpressionMap)) {
-            cleanCli = cleanCli.replace(originalExpression, placeholder);
+            cleanCli = cleanCli.split(originalExpression).join(placeholder);
         }
 
         // Use the argumentPattern to find all CLI arguments in the cleaned CLI string.
@@ -94,10 +90,12 @@
         // Serialize the arguments dictionary to a JSON string to facilitate placeholder replacement.
         let argumentsJson = JSON.stringify(argumentsDict);
 
-        // Iterate over the nestedExpressionMap to replace placeholders with the original nested expressions.
+        // Restore every placeholder back to its original nested expression. split/join is used
+        // instead of String.replace for two reasons: it restores all occurrences of a repeated
+        // expression, and it inserts the expression literally so "$" sequences inside the expression
+        // are never interpreted as replacement patterns (for example "$&" or "$1").
         for (const [originalExpression, placeholder] of Object.entries(nestedExpressionMap)) {
-            // Replace the placeholder in the JSON string with the JSON-stringified original expression.
-            argumentsJson = argumentsJson.replace(placeholder, originalExpression);
+            argumentsJson = argumentsJson.split(placeholder).join(originalExpression);
         }
 
         // Deserialize the JSON string back into a JavaScript object.
@@ -159,23 +157,100 @@
         return results;
     }
 
-    // Exports nested expressions by matching them against a pattern and encoding them in Base64.
-    static _exportNestedExpressions(cli, expressionPattern) {
-        // Use `matchAll` to find all matches of the expressionPattern within the cli string.
-        // Convert the iterator returned by `matchAll` into an array of matched strings.
-        const nestedExpressions = Array.from(cli.matchAll(expressionPattern), match => match[0]);
+    // Exports every top-level nested expression as a map from the original expression to a
+    // Base64-encoded placeholder that is safe from the argument splitter.
+    static _exportNestedExpressions(cli) {
+        // Use the depth-aware scanner so a fully nested expression is captured as one complete unit
+        // rather than being truncated at the first inner "}}".
+        const nestedExpressions = CliFactory._getNestedExpressions(cli);
 
-        // Initialize an empty object to store the mapping of expressions to their Base64-encoded values.
+        // Map each original expression to its Base64 placeholder. Identical expressions collapse to a
+        // single entry because the object key is the expression text itself.
         const expressionMap = {};
 
-        // Iterate over each matched expression in the nestedExpressions array.
-        nestedExpressions.forEach(expression => {
-            // Convert the current expression to Base64 and store it in the expressionMap.
-            // The key is the original expression, and the value is its Base64-encoded version.
+        for (const expression of nestedExpressions) {
             expressionMap[expression] = Utilities.convertToBase64(expression);
-        });
+        }
 
-        // Return the final mapping of expressions to their Base64-encoded values.
         return expressionMap;
+    }
+
+    /**
+     * Extracts every top-level, fully balanced `{{$...}}` expression from a CLI fragment.
+     *
+     * @remarks
+     * A regular expression cannot match balanced, nested delimiters, so this scanner walks the
+     * string and tracks brace depth to capture each outermost `{{$...}}` span in full. Expressions
+     * nested inside a captured span are intentionally not returned on their own: they are protected
+     * as part of their parent span and restored together with it. Scanning resumes after each
+     * captured span so only sibling top-level expressions are collected. An unterminated expression
+     * (an opening `{{$` with no balancing `}}`) is captured to the end of the string so malformed
+     * input cannot spin the loop.
+     *
+     * @param {string} cli - The CLI fragment to scan for nested expressions.
+     *
+     * @returns {string[]} The complete top-level `{{$...}}` expressions, in the order found.
+     */
+    static _getNestedExpressions(cli) {
+        // Collect each complete top-level expression as it is discovered.
+        const expressions = [];
+
+        // Track the scan position across the whole string so every sibling expression is found.
+        let searchIndex = 0;
+
+        while (searchIndex < cli.length) {
+            // Locate the next macro opener; when none remains the scan is complete.
+            const startIndex = cli.indexOf('{{$', searchIndex);
+
+            if (startIndex === -1) {
+                break;
+            }
+
+            // Walk forward from the opener counting brace depth until it returns to zero, which marks
+            // the matching close of this outermost expression.
+            let depth = 0;
+            let scanIndex = startIndex;
+            let endIndex = -1;
+
+            while (scanIndex < cli.length) {
+                const isOpeningBrace = cli.startsWith('{{', scanIndex);
+                const isClosingBrace = cli.startsWith('}}', scanIndex);
+
+                if (isOpeningBrace) {
+                    depth++;
+                    scanIndex += 2;
+                    continue;
+                }
+
+                if (isClosingBrace) {
+                    depth--;
+                    scanIndex += 2;
+
+                    // Depth back to zero means this closing pair balances the original opener.
+                    if (depth === 0) {
+                        endIndex = scanIndex;
+                        break;
+                    }
+
+                    continue;
+                }
+
+                // Any other character is ordinary content inside the expression.
+                scanIndex++;
+            }
+
+            // An unterminated expression has no balancing close; capture the remainder and stop so a
+            // malformed argument cannot spin the outer loop.
+            if (endIndex === -1) {
+                expressions.push(cli.slice(startIndex));
+                break;
+            }
+
+            // Capture the fully balanced span, then resume scanning after it for sibling expressions.
+            expressions.push(cli.slice(startIndex, endIndex));
+            searchIndex = endIndex;
+        }
+
+        return expressions;
     }
 }
