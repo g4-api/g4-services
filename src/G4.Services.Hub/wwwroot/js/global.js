@@ -469,10 +469,16 @@ const setDefinition = (definition) => {
 		// Create a new step using the state machine factory and the retrieved manifest.
 		const step = StateMachineSteps.newG4Step(manifest, rule.pluginName);
 
-		// Assign the name of the rule's capabilities to the step if available.
+		// Compose the step label: keep the plugin's current name behaviour (its manifest name, or an
+		// explicit displayName override), then append the recorder-attached element name when present
+		// so recorded actions read as "<plugin> — <element>" without losing the plugin's own naming.
+		const baseName = rule?.capabilities?.displayName || step.name;
+		const elementName = rule?.capabilities?.elementName;
+		const composedName = elementName ? `${baseName} — ${elementName}` : baseName;
+
 		step.name = step?.pluginName?.toUpperCase() === 'MISSINGPLUGIN'
-			? `Missing Plugin (${rule?.capabilities?.displayName || step.name})`
-			: rule?.capabilities?.displayName || step.name;
+			? `Missing Plugin (${composedName})`
+			: composedName;
 
 		// Ensure that the rule has 'rules' and 'branches' properties.
 		rule.rules = rule.rules || [];
