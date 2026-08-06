@@ -17,10 +17,11 @@
 			element.setAttribute('transform', `translate(${x}, ${y})`);
 		}
 		static attrs(element, attributes) {
-			Object.keys(attributes).forEach(name => {
+			const names = Object.keys(attributes);
+			for (const name of names) {
 				const value = attributes[name];
 				element.setAttribute(name, typeof value === 'string' ? value : value.toString());
-			});
+			}
 		}
 		static element(name, attributes) {
 			const element = document.createElement(name);
@@ -134,9 +135,9 @@
 	class SimpleEvent {
 		constructor() {
 			this.listeners = [];
-			this.forward = (value) => {
-				if (this.listeners.length > 0) {
-					this.listeners.forEach(listener => listener(value));
+			this.emit = (value) => {
+				for (const listener of this.listeners) {
+					listener(value);
 				}
 			};
 		}
@@ -155,7 +156,7 @@
 		count() {
 			return this.listeners.length;
 		}
-		first() {
+		once() {
 			return new Promise(resolve => {
 				const handler = (value) => {
 					this.unsubscribe(handler);
@@ -170,14 +171,14 @@
 		const value = [undefined, undefined, undefined, undefined];
 		const result = new SimpleEvent();
 		let scheduled = false;
-		function forward() {
+		function emit() {
 			if (scheduled) {
 				return;
 			}
 			scheduled = true;
 			setTimeout(() => {
 				try {
-					result.forward(value);
+					result.emit(value);
 				}
 				finally {
 					scheduled = false;
@@ -188,7 +189,7 @@
 		function subscribe(event, index) {
 			event.subscribe(v => {
 				value[index] = v;
-				forward();
+				emit();
 			});
 		}
 		subscribe(a, 0);
@@ -205,7 +206,7 @@
 	class ControlBarApi {
 		static create(state, historyController, stateModifier) {
 			const api = new ControlBarApi(state, historyController, stateModifier);
-			race(0, state.onIsReadonlyChanged, state.onSelectedStepIdChanged, state.onIsDragDisabledChanged, api.isUndoRedoSupported() ? state.onDefinitionChanged : undefined).subscribe(api.onStateChanged.forward);
+			race(0, state.onIsReadonlyChanged, state.onSelectedStepIdChanged, state.onIsDragDisabledChanged, api.isUndoRedoSupported() ? state.onDefinitionChanged : undefined).subscribe(api.onStateChanged.emit);
 			return api;
 		}
 		constructor(state, historyController, stateModifier) {
@@ -275,6 +276,40 @@
 		DefinitionChangeType[DefinitionChangeType["rootPropertyChanged"] = 7] = "rootPropertyChanged";
 		DefinitionChangeType[DefinitionChangeType["rootReplaced"] = 8] = "rootReplaced";
 	})(exports.DefinitionChangeType || (exports.DefinitionChangeType = {}));
+
+	class CustomActionApi {
+		constructor(customActionHandler, state, stateModifier) {
+			this.customActionHandler = customActionHandler;
+			this.state = state;
+			this.stateModifier = stateModifier;
+		}
+		trigger(action, step, sequence) {
+			if (!this.customActionHandler) {
+				console.warn(`Custom action handler is not defined (action type: ${action.type})`);
+				return;
+			}
+			const context = this.createCustomActionHandlerContext();
+			this.customActionHandler(action, step, sequence, context);
+		}
+		createCustomActionHandlerContext() {
+			return {
+				notifyStepNameChanged: (stepId) => this.notifyStepChanged(exports.DefinitionChangeType.stepNameChanged, stepId, false),
+				notifyStepPropertiesChanged: (stepId) => this.notifyStepChanged(exports.DefinitionChangeType.stepPropertyChanged, stepId, false),
+				notifyStepInserted: (stepId) => this.notifyStepChanged(exports.DefinitionChangeType.stepInserted, stepId, true),
+				notifyStepMoved: (stepId) => this.notifyStepChanged(exports.DefinitionChangeType.stepMoved, stepId, true),
+				notifyStepDeleted: (stepId) => this.notifyStepChanged(exports.DefinitionChangeType.stepDeleted, stepId, true)
+			};
+		}
+		notifyStepChanged(changeType, stepId, updateDependencies) {
+			if (!stepId) {
+				throw new Error('Step id is empty');
+			}
+			this.state.notifyDefinitionChanged(changeType, stepId);
+			if (updateDependencies) {
+				this.stateModifier.updateDependencies();
+			}
+		}
+	}
 
 	class EditorRenderer {
 		static create(state, selectedStepIdProvider, definitionWalker, handler) {
@@ -1011,16 +1046,17 @@
 			const workspace = new WorkspaceApi(context.state, context.definitionWalker, context.workspaceController);
 			const viewportController = context.services.viewportController.create(workspace);
 			const toolboxDataProvider = new ToolboxDataProvider(context.i18n, context.componentContext.iconProvider, context.configuration.toolbox);
-			return new DesignerApi(context.configuration.shadowRoot, ControlBarApi.create(context.state, context.historyController, context.stateModifier), new ToolboxApi(context.state, context, context.behaviorController, toolboxDataProvider, context.uidGenerator), new EditorApi(context.state, context.definitionWalker, context.stateModifier), workspace, new ViewportApi(context.state, context.workspaceController, viewportController), new PathBarApi(context.state, context.definitionWalker), context.definitionWalker, context.i18n);
+			return new DesignerApi(context.configuration.shadowRoot, workspace, ControlBarApi.create(context.state, context.historyController, context.stateModifier), new ToolboxApi(context.state, context, context.behaviorController, toolboxDataProvider, context.uidGenerator), new EditorApi(context.state, context.definitionWalker, context.stateModifier), new ViewportApi(context.state, context.workspaceController, viewportController), new PathBarApi(context.state, context.definitionWalker), new CustomActionApi(context.configuration.customActionHandler, context.state, context.stateModifier), context.definitionWalker, context.i18n);
 		}
-		constructor(shadowRoot, controlBar, toolbox, editor, workspace, viewport, pathBar, definitionWalker, i18n) {
+		constructor(shadowRoot, workspace, controlBar, toolbox, editor, viewport, pathBar, customAction, definitionWalker, i18n) {
 			this.shadowRoot = shadowRoot;
+			this.workspace = workspace;
 			this.controlBar = controlBar;
 			this.toolbox = toolbox;
 			this.editor = editor;
-			this.workspace = workspace;
 			this.viewport = viewport;
 			this.pathBar = pathBar;
+			this.customAction = customAction;
 			this.definitionWalker = definitionWalker;
 			this.i18n = i18n;
 		}
@@ -1035,6 +1071,201 @@
 			this.stepId = stepId;
 			this.time = time;
 			this.type = TYPE;
+		}
+	}
+
+	class ControlBarButtonView {
+		static create(parent, d, title, cls) {
+			const button = Dom.element('div', {
+				class: 'sqd-control-bar-button',
+				title
+			});
+			if (cls) {
+				button.classList.add(cls);
+			}
+			const icon = Icons.createSvg('sqd-control-bar-button-icon', d);
+			button.appendChild(icon);
+			parent.appendChild(button);
+			return new ControlBarButtonView(button);
+		}
+		constructor(button) {
+			this.button = button;
+		}
+		bindClick(handler) {
+			this.button.addEventListener('click', e => {
+				e.preventDefault();
+				handler();
+			}, false);
+		}
+		setIsDisabled(isDisabled) {
+			Dom.toggleClass(this.button, isDisabled, 'sqd-disabled');
+		}
+		setIsHidden(isHidden) {
+			Dom.toggleClass(this.button, isHidden, 'sqd-hidden');
+		}
+	}
+
+	class ControlBarView {
+		static create(parent, isUndoRedoSupported, isDisableDragDisabled, i18n, addonFactory) {
+			const root = Dom.element('div', {
+				class: 'sqd-control-bar'
+			});
+			const resetButton = ControlBarButtonView.create(root, Icons.center, i18n('controlBar.resetView', 'Reset view'));
+			const zoomInButton = ControlBarButtonView.create(root, Icons.zoomIn, i18n('controlBar.zoomIn', 'Zoom in'));
+			const zoomOutButton = ControlBarButtonView.create(root, Icons.zoomOut, i18n('controlBar.zoomOut', 'Zoom out'));
+			let undoButton = null;
+			let redoButton = null;
+			if (isUndoRedoSupported) {
+				undoButton = ControlBarButtonView.create(root, Icons.undo, i18n('controlBar.undo', 'Undo'));
+				redoButton = ControlBarButtonView.create(root, Icons.redo, i18n('controlBar.redo', 'Redo'));
+			}
+			let disableDragButton = null;
+			if (!isDisableDragDisabled) {
+				disableDragButton = ControlBarButtonView.create(root, Icons.move, i18n('controlBar.turnOnOffDragAndDrop', 'Turn on/off drag and drop'));
+				disableDragButton.setIsDisabled(true);
+			}
+			const deleteButton = ControlBarButtonView.create(root, Icons.delete, i18n('controlBar.deleteSelectedStep', 'Delete selected step'), 'sqd-delete');
+			deleteButton.setIsHidden(true);
+			const addon = addonFactory ? addonFactory(root) : null;
+			parent.appendChild(root);
+			return new ControlBarView(resetButton, zoomInButton, zoomOutButton, undoButton, redoButton, disableDragButton, deleteButton, addon);
+		}
+		constructor(resetButton, zoomInButton, zoomOutButton, undoButton, redoButton, disableDragButton, deleteButton, addon) {
+			this.resetButton = resetButton;
+			this.zoomInButton = zoomInButton;
+			this.zoomOutButton = zoomOutButton;
+			this.undoButton = undoButton;
+			this.redoButton = redoButton;
+			this.disableDragButton = disableDragButton;
+			this.deleteButton = deleteButton;
+			this.addon = addon;
+		}
+		bindResetButtonClick(handler) {
+			this.resetButton.bindClick(handler);
+		}
+		bindZoomInButtonClick(handler) {
+			this.zoomInButton.bindClick(handler);
+		}
+		bindZoomOutButtonClick(handler) {
+			this.zoomOutButton.bindClick(handler);
+		}
+		tryBindUndoButtonClick(handler) {
+			var _a;
+			(_a = this.undoButton) === null || _a === void 0 ? void 0 : _a.bindClick(handler);
+		}
+		tryBindRedoButtonClick(handler) {
+			var _a;
+			(_a = this.redoButton) === null || _a === void 0 ? void 0 : _a.bindClick(handler);
+		}
+		tryBindDisableDragButtonClick(handler) {
+			var _a;
+			(_a = this.disableDragButton) === null || _a === void 0 ? void 0 : _a.bindClick(handler);
+		}
+		bindDeleteButtonClick(handler) {
+			this.deleteButton.bindClick(handler);
+		}
+		setIsDeleteButtonHidden(isHidden) {
+			this.deleteButton.setIsHidden(isHidden);
+		}
+		trySetDisableDragButtonDisabled(isDisabled) {
+			var _a;
+			(_a = this.disableDragButton) === null || _a === void 0 ? void 0 : _a.setIsDisabled(isDisabled);
+		}
+		trySetUndoButtonDisabled(isDisabled) {
+			var _a;
+			(_a = this.undoButton) === null || _a === void 0 ? void 0 : _a.setIsDisabled(isDisabled);
+		}
+		trySetRedoButtonDisabled(isDisabled) {
+			var _a;
+			(_a = this.redoButton) === null || _a === void 0 ? void 0 : _a.setIsDisabled(isDisabled);
+		}
+		tryRefreshAddon() {
+			var _a;
+			(_a = this.addon) === null || _a === void 0 ? void 0 : _a.refresh();
+		}
+	}
+
+	class ControlBar {
+		static create(parent, api, isDisableDragDisabled, addonFactory) {
+			const isUndoRedoSupported = api.controlBar.isUndoRedoSupported();
+			const view = ControlBarView.create(parent, isUndoRedoSupported, isDisableDragDisabled, api.i18n, addonFactory);
+			const bar = new ControlBar(view, api.controlBar, api.viewport, isUndoRedoSupported, isDisableDragDisabled);
+			view.bindResetButtonClick(bar.onResetButtonClicked);
+			view.bindZoomInButtonClick(bar.onZoomInButtonClicked);
+			view.bindZoomOutButtonClick(bar.onZoomOutButtonClicked);
+			view.bindDeleteButtonClick(bar.onDeleteButtonClicked);
+			api.controlBar.onStateChanged.subscribe(bar.refresh);
+			if (isUndoRedoSupported) {
+				view.tryBindUndoButtonClick(bar.onUndoButtonClicked);
+				view.tryBindRedoButtonClick(bar.onRedoButtonClicked);
+			}
+			if (!isDisableDragDisabled) {
+				view.tryBindDisableDragButtonClick(bar.onDisableDragButtonClicked);
+			}
+			bar.refresh();
+			return bar;
+		}
+		constructor(view, controlBarApi, viewportApi, isUndoRedoSupported, isDisableDragDisabled) {
+			this.view = view;
+			this.controlBarApi = controlBarApi;
+			this.viewportApi = viewportApi;
+			this.isUndoRedoSupported = isUndoRedoSupported;
+			this.isDisableDragDisabled = isDisableDragDisabled;
+			this.onResetButtonClicked = () => {
+				this.viewportApi.resetViewport();
+			};
+			this.onZoomInButtonClicked = () => {
+				this.viewportApi.zoom(true);
+			};
+			this.onZoomOutButtonClicked = () => {
+				this.viewportApi.zoom(false);
+			};
+			this.onDisableDragButtonClicked = () => {
+				this.controlBarApi.toggleIsDragDisabled();
+			};
+			this.onUndoButtonClicked = () => {
+				this.controlBarApi.tryUndo();
+			};
+			this.onRedoButtonClicked = () => {
+				this.controlBarApi.tryRedo();
+			};
+			this.onDeleteButtonClicked = () => {
+				this.controlBarApi.tryDelete();
+			};
+			this.refresh = () => {
+				this.refreshDeleteButtonVisibility();
+				this.tryRefreshIsDragDisabled();
+				this.tryRefreshUndoRedoAvailability();
+				this.tryUpdateAddon();
+			};
+		}
+		updateLayout() {
+			//
+		}
+		tryUpdateAddon() {
+			this.view.tryRefreshAddon();
+		}
+		destroy() {
+			//
+		}
+		//
+		tryRefreshIsDragDisabled() {
+			if (!this.isDisableDragDisabled) {
+				const isDragDisabled = this.controlBarApi.isDragDisabled();
+				this.view.trySetDisableDragButtonDisabled(!isDragDisabled);
+			}
+		}
+		tryRefreshUndoRedoAvailability() {
+			if (this.isUndoRedoSupported) {
+				const canUndo = this.controlBarApi.canUndo();
+				const canRedo = this.controlBarApi.canRedo();
+				this.view.trySetUndoButtonDisabled(!canUndo);
+				this.view.trySetRedoButtonDisabled(!canRedo);
+			}
+		}
+		refreshDeleteButtonVisibility() {
+			const canDelete = this.controlBarApi.canDelete();
+			this.view.setIsDeleteButtonHidden(!canDelete);
 		}
 	}
 
@@ -1341,7 +1572,7 @@
 	}
 
 	class LabelView {
-		static create(parent, y, cfg, text, theme) {
+		static create(parent, y, cfg, text, theme, textWidthMeasurer) {
 			const g = Dom.svg('g', {
 				class: `sqd-label sqd-label-${theme}`
 			});
@@ -1352,7 +1583,8 @@
 			});
 			nameText.textContent = text;
 			g.appendChild(nameText);
-			const width = Math.max(nameText.getBBox().width + cfg.paddingX * 2, cfg.minWidth);
+			const nameWidth = textWidthMeasurer(nameText);
+			const width = Math.max(nameWidth + cfg.paddingX * 2, cfg.minWidth);
 			const nameRect = Dom.svg('rect', {
 				class: 'sqd-label-rect',
 				width: width,
@@ -1408,7 +1640,9 @@
 			const { sequence } = sequenceContext;
 			const g = Dom.svg('g');
 			parent.appendChild(g);
-			const components = [];
+			const components = new Array(sequence.length);
+			let restWidth = 0;
+			let joinX = 0;
 			for (let index = 0; index < sequence.length; index++) {
 				const stepContext = {
 					parentSequence: sequenceContext.sequence,
@@ -1419,13 +1653,13 @@
 					isOutputConnected: index === sequence.length - 1 ? sequenceContext.isOutputConnected : true,
 					isPreview: sequenceContext.isPreview
 				};
-				components[index] = componentContext.stepComponentFactory.create(g, stepContext, componentContext);
+				const component = componentContext.stepComponentFactory.create(g, stepContext, componentContext);
+				components[index] = component;
+				restWidth = Math.max(restWidth, component.view.width - component.view.joinX);
+				joinX = Math.max(joinX, component.view.joinX);
 			}
-			let joinX;
 			let totalWidth;
-			if (components.length > 0) {
-				const restWidth = Math.max(...components.map(c => c.view.width - c.view.joinX));
-				joinX = Math.max(...components.map(c => c.view.joinX));
+			if (sequence.length > 0) {
 				totalWidth = joinX + restWidth;
 			}
 			else {
@@ -1520,7 +1754,7 @@
 	exports.ClickCommandType = void 0;
 	(function (ClickCommandType) {
 		ClickCommandType[ClickCommandType["selectStep"] = 1] = "selectStep";
-		ClickCommandType[ClickCommandType["rerenderStep"] = 2] = "rerenderStep";
+		ClickCommandType[ClickCommandType["changePreferences"] = 2] = "changePreferences";
 		ClickCommandType[ClickCommandType["openFolder"] = 3] = "openFolder";
 		ClickCommandType[ClickCommandType["triggerCustomAction"] = 4] = "triggerCustomAction";
 	})(exports.ClickCommandType || (exports.ClickCommandType = {}));
@@ -1657,7 +1891,7 @@
 		return viewContext.createRegionComponentView(parentElement, COMPONENT_CLASS_NAME$3, (g, regionViewBuilder) => {
 			const step = stepContext.step;
 			const name = viewContext.getStepName();
-			const labelView = LabelView.create(g, cfg.paddingTop, cfg.label, name, 'primary');
+			const labelView = LabelView.create(g, cfg.paddingTop, cfg.label, name, 'primary', viewContext.textWidthMeasurer);
 			const sequenceComponent = viewContext.createSequenceComponent(g, step.sequence);
 			const halfOfWidestElement = labelView.width / 2;
 			const offsetLeft = Math.max(halfOfWidestElement - sequenceComponent.view.joinX, 0) + cfg.paddingX;
@@ -1686,11 +1920,14 @@
 					return regionView.getClientPosition();
 				},
 				resolveClick(click) {
-					if (cfg.isRegionClickable) {
-						const result = regionView.resolveClick(click);
-						if (result !== null) {
-							return result;
+					const result = regionView.resolveClick(click);
+					if (result === true) {
+						if (cfg.isRegionClickable) {
+							return true;
 						}
+					}
+					else if (result !== null) {
+						return result;
 					}
 					return labelView.g.contains(click.element) || (inputView && inputView.g.contains(click.element)) ? true : null;
 				},
@@ -1871,11 +2108,14 @@
 				return regionView.getClientPosition();
 			},
 			resolveClick(click) {
-				if (cfg.isRegionClickable) {
-					const result = regionView.resolveClick(click);
-					if (result !== null) {
-						return result;
+				const result = regionView.resolveClick(click);
+				if (result === true) {
+					if (cfg.isRegionClickable) {
+						return true;
 					}
+				}
+				else if (result !== null) {
+					return result;
 				}
 				return labelViews.some(v => v.g.contains(click.element) || (inputView && inputView.g.contains(click.element))) ? true : null;
 			},
@@ -1892,12 +2132,12 @@
 			}
 		};
 	}
-	const createSwitchStepComponentViewFactory = (cfg, branchNameResolver) => (parent, stepContext, viewContext) => {
+	const createSwitchStepComponentViewFactory = (cfg, branchNameResolver, branchNameLabelResolver) => (parent, stepContext, viewContext) => {
 		return viewContext.createRegionComponentView(parent, COMPONENT_CLASS_NAME$1, (g, regionViewBuilder) => {
 			const step = stepContext.step;
 			const paddingTop = cfg.paddingTop1 + cfg.paddingTop2;
 			const name = viewContext.getStepName();
-			const nameLabelView = LabelView.create(g, paddingTop, cfg.nameLabel, name, 'primary');
+			const nameLabelView = LabelView.create(g, paddingTop, cfg.nameLabel, name, 'primary', viewContext.textWidthMeasurer);
 			const branchNames = branchNameResolver ? branchNameResolver(step) : Object.keys(step.branches);
 			if (branchNames.length === 0) {
 				const width = Math.max(nameLabelView.width, cfg.minBranchWidth) + cfg.paddingX * 2;
@@ -1915,9 +2155,10 @@
 			let totalBranchesWidth = 0;
 			let maxBranchesHeight = 0;
 			branchNames.forEach((branchName, i) => {
+				const label = branchNameLabelResolver ? branchNameLabelResolver(branchName, step) : branchName;
+				const translatedLabel = viewContext.i18n(`stepComponent.${step.type}.branchName`, label);
 				const labelY = paddingTop + cfg.nameLabel.height + cfg.connectionHeight;
-				const translatedBranchName = viewContext.i18n(`stepComponent.${step.type}.branchName`, branchName);
-				const labelView = LabelView.create(g, labelY, cfg.branchNameLabel, translatedBranchName, 'secondary');
+				const labelView = LabelView.create(g, labelY, cfg.branchNameLabel, translatedLabel, 'secondary', viewContext.textWidthMeasurer);
 				const component = viewContext.createSequenceComponent(g, step.branches[branchName]);
 				const halfOfWidestBranchElement = Math.max(labelView.width, cfg.minBranchWidth) / 2;
 				const branchOffsetLeft = Math.max(halfOfWidestBranchElement - component.view.joinX, 0) + cfg.paddingX;
@@ -1993,8 +2234,9 @@
 		});
 		text.textContent = viewContext.getStepName();
 		g.appendChild(text);
-		const textWidth = Math.max(text.getBBox().width, cfg.minTextWidth);
-		const boxWidth = cfg.iconSize + cfg.paddingLeft + cfg.paddingRight + cfg.textMarginLeft + textWidth;
+		const textWidth = viewContext.textWidthMeasurer(text);
+		const width = Math.max(textWidth, cfg.minTextWidth);
+		const boxWidth = cfg.iconSize + cfg.paddingLeft + cfg.paddingRight + cfg.textMarginLeft + width;
 		const rect = Dom.svg('rect', {
 			x: 0.5,
 			y: 0.5,
@@ -2004,7 +2246,6 @@
 			rx: cfg.radius,
 			ry: cfg.radius
 		});
-		g.insertBefore(rect, text);
 		const iconUrl = viewContext.getStepIconUrl();
 		const icon = iconUrl
 			? Dom.svg('image', {
@@ -2021,6 +2262,7 @@
 			width: cfg.iconSize,
 			height: cfg.iconSize
 		});
+		g.insertBefore(rect, text);
 		g.appendChild(icon);
 		const isInputViewHidden = !stepContext.isInputConnected; // TODO: handle inside the folder
 		const isOutputViewHidden = isInterrupted;
@@ -2595,10 +2837,10 @@
 			return new SwitchStepExtension(configuration);
 		}
 		constructor(configuration) {
-			var _a, _b, _c, _d, _e;
+			var _a, _b, _c, _d, _e, _f;
 			this.configuration = configuration;
 			this.componentType = (_b = (_a = this.configuration) === null || _a === void 0 ? void 0 : _a.componentType) !== null && _b !== void 0 ? _b : 'switch';
-			this.createComponentView = createSwitchStepComponentViewFactory((_d = (_c = this.configuration) === null || _c === void 0 ? void 0 : _c.view) !== null && _d !== void 0 ? _d : defaultViewConfiguration$2, (_e = this.configuration) === null || _e === void 0 ? void 0 : _e.branchNamesResolver);
+			this.createComponentView = createSwitchStepComponentViewFactory((_d = (_c = this.configuration) === null || _c === void 0 ? void 0 : _c.view) !== null && _d !== void 0 ? _d : defaultViewConfiguration$2, (_e = this.configuration) === null || _e === void 0 ? void 0 : _e.branchNamesResolver, (_f = this.configuration) === null || _f === void 0 ? void 0 : _f.branchNameLabelResolver);
 		}
 	}
 
@@ -2707,6 +2949,7 @@
 			const preferenceKeyPrefix = stepContext.step.id + ':';
 			return {
 				i18n: componentContext.i18n,
+				textWidthMeasurer: componentContext.textWidthMeasurer,
 				getStepIconUrl: () => componentContext.iconProvider.getIconUrl(stepContext.step),
 				getStepName: () => componentContext.i18n(`step.${stepContext.step.type}.name`, stepContext.step.name),
 				createStepComponent: (parentElement, parentSequence, step, position) => {
@@ -2737,7 +2980,12 @@
 				createPlaceholderForGap: componentContext.services.placeholder.createForGap.bind(componentContext.services.placeholder),
 				createPlaceholderForArea: componentContext.services.placeholder.createForArea.bind(componentContext.services.placeholder),
 				getPreference: (key) => componentContext.preferenceStorage.getItem(preferenceKeyPrefix + key),
-				setPreference: (key, value) => componentContext.preferenceStorage.setItem(preferenceKeyPrefix + key, value)
+				createPreferenceChange: (key, value) => {
+					return {
+						key: preferenceKeyPrefix + key,
+						value
+					};
+				}
 			};
 		}
 	}
@@ -2756,13 +3004,13 @@
 	}
 
 	class ComponentContext {
-		static create(configuration, state, stepExtensionResolver, placeholderController, definitionWalker, preferenceStorage, i18n, services) {
+		static create(configuration, state, stepExtensionResolver, placeholderController, definitionWalker, preferenceStorage, i18n, textWidthMeasurer, services) {
 			const validator = new DefinitionValidator(configuration.validator, state);
 			const iconProvider = new IconProvider(configuration.steps);
 			const stepComponentFactory = new StepComponentFactory(stepExtensionResolver);
-			return new ComponentContext(configuration.shadowRoot, validator, iconProvider, placeholderController, stepComponentFactory, definitionWalker, services, preferenceStorage, i18n, state);
+			return new ComponentContext(configuration.shadowRoot, validator, iconProvider, placeholderController, stepComponentFactory, definitionWalker, services, preferenceStorage, i18n, textWidthMeasurer, state);
 		}
-		constructor(shadowRoot, validator, iconProvider, placeholderController, stepComponentFactory, definitionWalker, services, preferenceStorage, i18n, state) {
+		constructor(shadowRoot, validator, iconProvider, placeholderController, stepComponentFactory, definitionWalker, services, preferenceStorage, i18n, textWidthMeasurer, state) {
 			this.shadowRoot = shadowRoot;
 			this.validator = validator;
 			this.iconProvider = iconProvider;
@@ -2772,45 +3020,11 @@
 			this.services = services;
 			this.preferenceStorage = preferenceStorage;
 			this.i18n = i18n;
+			this.textWidthMeasurer = textWidthMeasurer;
 			this.state = state;
 		}
 		getViewportScale() {
 			return this.state.viewport.scale;
-		}
-	}
-
-	class CustomActionController {
-		constructor(configuration, state, stateModifier) {
-			this.configuration = configuration;
-			this.state = state;
-			this.stateModifier = stateModifier;
-		}
-		trigger(action, step, sequence) {
-			const handler = this.configuration.customActionHandler;
-			if (!handler) {
-				console.warn(`Custom action handler is not defined (action type: ${action.type})`);
-				return;
-			}
-			const context = this.createCustomActionHandlerContext();
-			handler(action, step, sequence, context);
-		}
-		createCustomActionHandlerContext() {
-			return {
-				notifyStepNameChanged: (stepId) => this.notifyStepChanged(exports.DefinitionChangeType.stepNameChanged, stepId, false),
-				notifyStepPropertiesChanged: (stepId) => this.notifyStepChanged(exports.DefinitionChangeType.stepPropertyChanged, stepId, false),
-				notifyStepInserted: (stepId) => this.notifyStepChanged(exports.DefinitionChangeType.stepInserted, stepId, true),
-				notifyStepMoved: (stepId) => this.notifyStepChanged(exports.DefinitionChangeType.stepMoved, stepId, true),
-				notifyStepDeleted: (stepId) => this.notifyStepChanged(exports.DefinitionChangeType.stepDeleted, stepId, true)
-			};
-		}
-		notifyStepChanged(changeType, stepId, updateDependencies) {
-			if (!stepId) {
-				throw new Error('Step id is empty');
-			}
-			this.state.notifyDefinitionChanged(changeType, stepId);
-			if (updateDependencies) {
-				this.stateModifier.updateDependencies();
-			}
 		}
 	}
 
@@ -3050,11 +3264,19 @@
 		}
 		duplicate(step) {
 			const newStep = ObjectCloner.deepClone(step);
-			newStep.id = this.uidGenerator();
+			const duplicatedIds = [];
+			const newId = this.uidGenerator();
+			duplicatedIds.push([step.id, newId]);
+			newStep.id = newId;
 			this.definitionWalker.forEachChildren(newStep, s => {
-				s.id = this.uidGenerator();
+				const newId = this.uidGenerator();
+				duplicatedIds.push([s.id, newId]);
+				s.id = newId;
 			});
-			return newStep;
+			return {
+				step: newStep,
+				duplicatedIds
+			};
 		}
 	}
 
@@ -3175,13 +3397,13 @@
 			this.updateDependencies();
 			return true;
 		}
-		tryInsert(step, targetSequence, targetIndex) {
+		tryInsert(step, targetSequence, targetIndex, details) {
 			const canInsertStep = this.configuration.canInsertStep ? this.configuration.canInsertStep(step, targetSequence, targetIndex) : true;
 			if (!canInsertStep) {
 				return false;
 			}
 			SequenceModifier.insertStep(step, targetSequence, targetIndex);
-			this.state.notifyDefinitionChanged(exports.DefinitionChangeType.stepInserted, step.id);
+			this.state.notifyDefinitionChanged(exports.DefinitionChangeType.stepInserted, step.id, details);
 			if (!this.configuration.isAutoSelectDisabled && this.isSelectable(step, targetSequence)) {
 				this.trySelectStepById(step.id);
 			}
@@ -3217,8 +3439,10 @@
 		tryDuplicate(step, parentSequence) {
 			const duplicator = new StepDuplicator(this.uidGenerator, this.definitionWalker);
 			const index = parentSequence.indexOf(step);
-			const newStep = duplicator.duplicate(step);
-			return this.tryInsert(newStep, parentSequence, index + 1);
+			const result = duplicator.duplicate(step);
+			return this.tryInsert(result.step, parentSequence, index + 1, {
+				duplicatedStepIds: result.duplicatedIds
+			});
 		}
 		replaceDefinition(definition) {
 			if (!definition) {
@@ -3233,11 +3457,12 @@
 	}
 
 	class DesignerState {
-		constructor(definition, isReadonly, isToolboxCollapsed, isEditorCollapsed) {
+		constructor(definition, isReadonly, isToolboxCollapsed, isEditorCollapsed, preferenceStorage) {
 			this.definition = definition;
 			this.isReadonly = isReadonly;
 			this.isToolboxCollapsed = isToolboxCollapsed;
 			this.isEditorCollapsed = isEditorCollapsed;
+			this.preferenceStorage = preferenceStorage;
 			this.onViewportChanged = new SimpleEvent();
 			this.onSelectedStepIdChanged = new SimpleEvent();
 			this.onStepUnselectionBlocked = new SimpleEvent();
@@ -3248,6 +3473,7 @@
 			this.onDefinitionChanged = new SimpleEvent();
 			this.onIsToolboxCollapsedChanged = new SimpleEvent();
 			this.onIsEditorCollapsedChanged = new SimpleEvent();
+			this.onPreferencesChanged = new SimpleEvent();
 			this.viewport = {
 				position: new Vector(0, 0),
 				scale: 1
@@ -3260,16 +3486,16 @@
 		setSelectedStepId(stepId) {
 			if (this.selectedStepId !== stepId) {
 				this.selectedStepId = stepId;
-				this.onSelectedStepIdChanged.forward(stepId);
+				this.onSelectedStepIdChanged.emit(stepId);
 			}
 		}
 		pushStepIdToFolderPath(stepId) {
 			this.folderPath.push(stepId);
-			this.onFolderPathChanged.forward(this.folderPath);
+			this.onFolderPathChanged.emit(this.folderPath);
 		}
 		setFolderPath(path) {
 			this.folderPath = path;
-			this.onFolderPathChanged.forward(path);
+			this.onFolderPathChanged.emit(path);
 		}
 		tryGetLastStepIdFromFolderPath() {
 			return this.folderPath.length > 0 ? this.folderPath[this.folderPath.length - 1] : null;
@@ -3278,45 +3504,62 @@
 			this.definition = definition;
 			this.notifyDefinitionChanged(exports.DefinitionChangeType.rootReplaced, null);
 		}
-		notifyDefinitionChanged(changeType, stepId) {
-			this.onDefinitionChanged.forward({ changeType, stepId });
+		notifyDefinitionChanged(changeType, stepId, details) {
+			const event = {
+				definition: this.definition,
+				changeType,
+				stepId
+			};
+			if (details) {
+				Object.assign(event, details);
+			}
+			this.onDefinitionChanged.emit(event);
 		}
 		notifyStepUnselectionBlocked(stepId) {
-			this.onStepUnselectionBlocked.forward(stepId);
+			this.onStepUnselectionBlocked.emit(stepId);
 		}
 		setViewport(viewport) {
 			this.viewport = viewport;
-			this.onViewportChanged.forward(viewport);
+			this.onViewportChanged.emit(viewport);
 		}
 		setIsReadonly(isReadonly) {
 			if (this.isReadonly !== isReadonly) {
 				this.isReadonly = isReadonly;
-				this.onIsReadonlyChanged.forward(isReadonly);
+				this.onIsReadonlyChanged.emit(isReadonly);
 			}
 		}
 		setIsDragging(isDragging) {
 			if (this.isDragging !== isDragging) {
 				this.isDragging = isDragging;
-				this.onIsDraggingChanged.forward(isDragging);
+				this.onIsDraggingChanged.emit(isDragging);
 			}
 		}
 		setIsDragDisabled(isDragDisabled) {
 			if (this.isDragDisabled !== isDragDisabled) {
 				this.isDragDisabled = isDragDisabled;
-				this.onIsDragDisabledChanged.forward(isDragDisabled);
+				this.onIsDragDisabledChanged.emit(isDragDisabled);
 			}
 		}
 		setIsToolboxCollapsed(isCollapsed) {
 			if (this.isToolboxCollapsed !== isCollapsed) {
 				this.isToolboxCollapsed = isCollapsed;
-				this.onIsToolboxCollapsedChanged.forward(isCollapsed);
+				this.onIsToolboxCollapsedChanged.emit(isCollapsed);
 			}
 		}
 		setIsEditorCollapsed(isCollapsed) {
 			if (this.isEditorCollapsed !== isCollapsed) {
 				this.isEditorCollapsed = isCollapsed;
-				this.onIsEditorCollapsedChanged.forward(isCollapsed);
+				this.onIsEditorCollapsedChanged.emit(isCollapsed);
 			}
+		}
+		setPreferences(changes, stepId) {
+			for (const change of changes) {
+				this.preferenceStorage.setItem(change.key, change.value);
+			}
+			this.onPreferencesChanged.emit({ changes, stepId });
+		}
+		getPreference(key) {
+			return this.preferenceStorage.getItem(key);
 		}
 	}
 
@@ -3463,34 +3706,38 @@
 		}
 	}
 
+	function measureTextWidth(text) {
+		return text.getBBox().width;
+	}
+
 	class DesignerContext {
 		static create(placeholder, startDefinition, configuration, services) {
-			var _a, _b, _c, _d, _e, _f;
+			var _a, _b, _c, _d, _e, _f, _g;
 			const definition = ObjectCloner.deepClone(startDefinition);
 			const layoutController = new LayoutController(placeholder);
 			const isReadonly = Boolean(configuration.isReadonly);
 			const isToolboxCollapsed = configuration.toolbox ? (_a = configuration.toolbox.isCollapsed) !== null && _a !== void 0 ? _a : layoutController.isMobile() : false;
 			const isEditorCollapsed = configuration.editors ? (_b = configuration.editors.isCollapsed) !== null && _b !== void 0 ? _b : layoutController.isMobile() : false;
+			const preferenceStorage = (_c = configuration.preferenceStorage) !== null && _c !== void 0 ? _c : new MemoryPreferenceStorage();
 			const theme = configuration.theme || 'light';
-			const state = new DesignerState(definition, isReadonly, isToolboxCollapsed, isEditorCollapsed);
+			const state = new DesignerState(definition, isReadonly, isToolboxCollapsed, isEditorCollapsed, preferenceStorage);
 			const workspaceController = new WorkspaceControllerWrapper();
 			const behaviorController = BehaviorController.create(configuration.shadowRoot);
 			const stepExtensionResolver = StepExtensionResolver.create(services);
 			const placeholderController = PlaceholderController.create(state, configuration.placeholder);
-			const definitionWalker = (_c = configuration.definitionWalker) !== null && _c !== void 0 ? _c : new DefinitionWalker();
-			const i18n = (_d = configuration.i18n) !== null && _d !== void 0 ? _d : ((_, defaultValue) => defaultValue);
-			const uidGenerator = (_e = configuration.uidGenerator) !== null && _e !== void 0 ? _e : Uid.next;
+			const definitionWalker = (_d = configuration.definitionWalker) !== null && _d !== void 0 ? _d : new DefinitionWalker();
+			const i18n = (_e = configuration.i18n) !== null && _e !== void 0 ? _e : ((_, defaultValue) => defaultValue);
+			const uidGenerator = (_f = configuration.uidGenerator) !== null && _f !== void 0 ? _f : Uid.next;
+			const textWidthMeasurer = (_g = configuration.textWidthMeasurer) !== null && _g !== void 0 ? _g : measureTextWidth;
 			const stateModifier = StateModifier.create(definitionWalker, uidGenerator, state, configuration.steps);
-			const customActionController = new CustomActionController(configuration, state, stateModifier);
 			let historyController = undefined;
 			if (configuration.undoStackSize) {
 				historyController = HistoryController.create(configuration.undoStack, state, stateModifier, configuration);
 			}
-			const preferenceStorage = (_f = configuration.preferenceStorage) !== null && _f !== void 0 ? _f : new MemoryPreferenceStorage();
-			const componentContext = ComponentContext.create(configuration, state, stepExtensionResolver, placeholderController, definitionWalker, preferenceStorage, i18n, services);
-			return new DesignerContext(theme, state, configuration, services, componentContext, definitionWalker, i18n, uidGenerator, stateModifier, layoutController, workspaceController, placeholderController, behaviorController, customActionController, historyController);
+			const componentContext = ComponentContext.create(configuration, state, stepExtensionResolver, placeholderController, definitionWalker, preferenceStorage, i18n, textWidthMeasurer, services);
+			return new DesignerContext(theme, state, configuration, services, componentContext, definitionWalker, i18n, uidGenerator, stateModifier, layoutController, workspaceController, placeholderController, behaviorController, historyController);
 		}
-		constructor(theme, state, configuration, services, componentContext, definitionWalker, i18n, uidGenerator, stateModifier, layoutController, workspaceController, placeholderController, behaviorController, customActionController, historyController) {
+		constructor(theme, state, configuration, services, componentContext, definitionWalker, i18n, uidGenerator, stateModifier, layoutController, workspaceController, placeholderController, behaviorController, historyController) {
 			this.theme = theme;
 			this.state = state;
 			this.configuration = configuration;
@@ -3504,7 +3751,6 @@
 			this.workspaceController = workspaceController;
 			this.placeholderController = placeholderController;
 			this.behaviorController = behaviorController;
-			this.customActionController = customActionController;
 			this.historyController = historyController;
 		}
 		setWorkspaceController(controller) {
@@ -3760,16 +4006,13 @@
 		}
 	}
 
-	class RerenderStepPressingBehaviorHandler {
+	class ChangePreferencesBehaviorHandler {
 		constructor(command, designerContext) {
 			this.command = command;
 			this.designerContext = designerContext;
 		}
 		handle() {
-			if (this.command.beforeCallback) {
-				this.command.beforeCallback();
-			}
-			this.designerContext.workspaceController.updateRootComponent();
+			this.designerContext.state.setPreferences(this.command.changes, this.command.step.id);
 		}
 	}
 
@@ -3785,18 +4028,19 @@
 	}
 
 	class TriggerCustomActionPressingBehaviorHandler {
-		constructor(command, customActionController) {
+		constructor(command, api) {
 			this.command = command;
-			this.customActionController = customActionController;
+			this.api = api;
 		}
 		handle() {
-			this.customActionController.trigger(this.command.action, this.command.step, this.command.sequence);
+			this.api.trigger(this.command.action, this.command.step, this.command.sequence);
 		}
 	}
 
 	class ClickBehaviorResolver {
-		constructor(context) {
+		constructor(context, api) {
 			this.context = context;
+			this.api = api;
 		}
 		resolve(commandOrNull, element, forceMove) {
 			if (!commandOrNull) {
@@ -3805,12 +4049,12 @@
 			switch (commandOrNull.type) {
 				case exports.ClickCommandType.selectStep:
 					return SelectStepBehavior.create(commandOrNull.component, forceMove, this.context);
-				case exports.ClickCommandType.rerenderStep:
-					return PressingBehavior.create(element, new RerenderStepPressingBehaviorHandler(commandOrNull, this.context));
+				case exports.ClickCommandType.changePreferences:
+					return PressingBehavior.create(element, new ChangePreferencesBehaviorHandler(commandOrNull, this.context));
 				case exports.ClickCommandType.openFolder:
 					return PressingBehavior.create(element, new OpenFolderPressingBehaviorHandler(commandOrNull, this.context));
 				case exports.ClickCommandType.triggerCustomAction:
-					return PressingBehavior.create(element, new TriggerCustomActionPressingBehaviorHandler(commandOrNull, this.context.customActionController));
+					return PressingBehavior.create(element, new TriggerCustomActionPressingBehaviorHandler(commandOrNull, this.api.customAction));
 				default:
 					throw new Error('Not supported behavior type');
 			}
@@ -3924,6 +4168,7 @@
 			this.itemsBuilder = itemsBuilder;
 		}
 		tryOpen(position, commandOrNull) {
+			var _a, _b;
 			if (this.configuration.contextMenu === false) {
 				// Context menu is disabled.
 				return;
@@ -3931,8 +4176,11 @@
 			if (this.current) {
 				this.current.tryDestroy();
 			}
-			const items = this.itemsBuilder.build(commandOrNull);
-			this.current = ContextMenu.create(this.configuration.shadowRoot, position, this.theme, items);
+			const isResetViewDisabled = this.configuration.contextMenu === true ? false : (_b = (_a = this.configuration.contextMenu) === null || _a === void 0 ? void 0 : _a.isResetViewDisabled) !== null && _b !== void 0 ? _b : false;
+			const items = this.itemsBuilder.build(commandOrNull, isResetViewDisabled);
+			if (items.length > 0) {
+				this.current = ContextMenu.create(this.configuration.shadowRoot, position, this.theme, items);
+			}
 		}
 		destroy() {
 			if (this.current) {
@@ -3950,7 +4198,7 @@
 			this.state = state;
 			this.customMenuItemsProvider = customMenuItemsProvider;
 		}
-		build(commandOrNull) {
+		build(commandOrNull, isResetViewDisabled) {
 			const items = [];
 			if (commandOrNull && commandOrNull.type === exports.ClickCommandType.selectStep) {
 				const ssc = commandOrNull;
@@ -4007,13 +4255,15 @@
 				const rootSequence = this.workspaceApi.getRootSequence();
 				this.tryAppendCustomItems(items, null, rootSequence.sequence);
 			}
-			items.push({
-				label: this.i18n('contextMenu.resetView', 'Reset view'),
-				order: 50,
-				callback: () => {
-					this.viewportApi.resetViewport();
-				}
-			});
+			if (!isResetViewDisabled) {
+				items.push({
+					label: this.i18n('contextMenu.resetView', 'Reset view'),
+					order: 50,
+					callback: () => {
+						this.viewportApi.resetViewport();
+					}
+				});
+			}
 			items.sort((a, b) => a.order - b.order);
 			return items;
 		}
@@ -4106,17 +4356,18 @@
 		static create(parent, designerContext, api) {
 			var _a;
 			const view = WorkspaceView.create(parent, designerContext.componentContext);
-			const clickBehaviorResolver = new ClickBehaviorResolver(designerContext);
-			const clickBehaviorWrapper = designerContext.services.clickBehaviorWrapperExtension.create(designerContext.customActionController);
+			const clickBehaviorResolver = new ClickBehaviorResolver(designerContext, api);
+			const clickBehaviorWrapper = designerContext.services.clickBehaviorWrapperExtension.create(api.customAction);
 			const wheelController = designerContext.services.wheelController.create(api.viewport, api.workspace);
 			const pinchToZoomController = PinchToZoomController.create(api.workspace, api.viewport, api.shadowRoot);
 			const contextMenuItemsBuilder = new ContextMenuItemsBuilder(api.viewport, api.workspace, api.i18n, designerContext.stateModifier, designerContext.state, ((_a = designerContext.services.contextMenu) === null || _a === void 0 ? void 0 : _a.createItemsProvider)
-				? designerContext.services.contextMenu.createItemsProvider(designerContext.customActionController)
+				? designerContext.services.contextMenu.createItemsProvider(api.customAction)
 				: undefined);
 			const contextMenuController = new ContextMenuController(designerContext.theme, designerContext.configuration, contextMenuItemsBuilder);
 			const workspace = new Workspace(view, designerContext.state, designerContext.behaviorController, wheelController, pinchToZoomController, contextMenuController, clickBehaviorResolver, clickBehaviorWrapper, api.viewport, api.workspace, designerContext.services);
 			designerContext.setWorkspaceController(workspace);
 			designerContext.state.onViewportChanged.subscribe(workspace.onViewportChanged);
+			designerContext.state.onPreferencesChanged.subscribe(workspace.onPreferencesChanged);
 			race(0, designerContext.state.onDefinitionChanged, designerContext.state.onSelectedStepIdChanged, designerContext.state.onFolderPathChanged).subscribe(r => {
 				workspace.onStateChanged(r[0], r[1], r[2]);
 			});
@@ -4139,11 +4390,25 @@
 			this.viewportApi = viewportApi;
 			this.workspaceApi = workspaceApi;
 			this.services = services;
-			this.onRendered = new SimpleEvent();
+			this.onRootComponentUpdated = new SimpleEvent();
 			this.isValid = false;
 			this.initTimeout = null;
 			this.selectedStepComponent = null;
 			this.validationErrorBadgeIndex = null;
+			this.updateRootComponent = () => {
+				this.selectedStepComponent = null;
+				const rootSequence = this.workspaceApi.getRootSequence();
+				const parentPlaceIndicator = rootSequence.parentStep
+					? {
+						sequence: rootSequence.parentStep.parentSequence,
+						index: rootSequence.parentStep.index
+					}
+					: null;
+				this.view.render(rootSequence.sequence, parentPlaceIndicator);
+				this.trySelectStepComponent(this.state.selectedStepId);
+				this.updateBadges();
+				this.onRootComponentUpdated.emit();
+			};
 			this.onClick = (position, target, buttonIndex, altKey) => {
 				const isPrimaryButton = buttonIndex === 0;
 				const isMiddleButton = buttonIndex === 1;
@@ -4170,6 +4435,9 @@
 			this.onViewportChanged = (viewport) => {
 				this.view.setPositionAndScale(viewport.position, viewport.scale);
 			};
+			this.onPreferencesChanged = () => {
+				this.updateRootComponent();
+			};
 		}
 		scheduleInit() {
 			this.initTimeout = setTimeout(() => {
@@ -4177,20 +4445,6 @@
 				this.updateRootComponent();
 				this.viewportApi.resetViewport();
 			});
-		}
-		updateRootComponent() {
-			this.selectedStepComponent = null;
-			const rootSequence = this.workspaceApi.getRootSequence();
-			const parentPlaceIndicator = rootSequence.parentStep
-				? {
-					sequence: rootSequence.parentStep.parentSequence,
-					index: rootSequence.parentStep.index
-				}
-				: null;
-			this.view.render(rootSequence.sequence, parentPlaceIndicator);
-			this.trySelectStepComponent(this.state.selectedStepId);
-			this.updateBadges();
-			this.onRendered.forward();
 		}
 		updateBadges() {
 			const result = BadgesResultFactory.create(this.services);
@@ -4367,184 +4621,9 @@
 		}
 	}
 
-	class ControlBarView {
-		static create(parent, isUndoRedoSupported, i18n) {
-			const root = Dom.element('div', {
-				class: 'sqd-control-bar'
-			});
-			const resetButton = createButton(Icons.center, i18n('controlBar.resetView', 'Reset view'));
-			root.appendChild(resetButton);
-			const zoomInButton = createButton(Icons.zoomIn, i18n('controlBar.zoomIn', 'Zoom in'));
-			root.appendChild(zoomInButton);
-			const zoomOutButton = createButton(Icons.zoomOut, i18n('controlBar.zoomOut', 'Zoom out'));
-			root.appendChild(zoomOutButton);
-			let undoButton = null;
-			let redoButton = null;
-			if (isUndoRedoSupported) {
-				undoButton = createButton(Icons.undo, i18n('controlBar.undo', 'Undo'));
-				root.appendChild(undoButton);
-				redoButton = createButton(Icons.redo, i18n('controlBar.redo', 'Redo'));
-				root.appendChild(redoButton);
-			}
-			const disableDragButton = createButton(Icons.move, i18n('controlBar.turnOnOffDragAndDrop', 'Turn on/off drag and drop'));
-			disableDragButton.classList.add('sqd-disabled');
-			root.appendChild(disableDragButton);
-			const deleteButton = createButton(Icons.delete, i18n('controlBar.deleteSelectedStep', 'Delete selected step'));
-			deleteButton.classList.add('sqd-delete');
-			deleteButton.classList.add('sqd-hidden');
-			root.appendChild(deleteButton);
-			parent.appendChild(root);
-			return new ControlBarView(resetButton, zoomInButton, zoomOutButton, undoButton, redoButton, disableDragButton, deleteButton);
-		}
-		constructor(resetButton, zoomInButton, zoomOutButton, undoButton, redoButton, disableDragButton, deleteButton) {
-			this.resetButton = resetButton;
-			this.zoomInButton = zoomInButton;
-			this.zoomOutButton = zoomOutButton;
-			this.undoButton = undoButton;
-			this.redoButton = redoButton;
-			this.disableDragButton = disableDragButton;
-			this.deleteButton = deleteButton;
-		}
-		bindResetButtonClick(handler) {
-			bindClick(this.resetButton, handler);
-		}
-		bindZoomInButtonClick(handler) {
-			bindClick(this.zoomInButton, handler);
-		}
-		bindZoomOutButtonClick(handler) {
-			bindClick(this.zoomOutButton, handler);
-		}
-		bindUndoButtonClick(handler) {
-			if (!this.undoButton) {
-				throw new Error('Undo button is disabled');
-			}
-			bindClick(this.undoButton, handler);
-		}
-		bindRedoButtonClick(handler) {
-			if (!this.redoButton) {
-				throw new Error('Redo button is disabled');
-			}
-			bindClick(this.redoButton, handler);
-		}
-		bindDisableDragButtonClick(handler) {
-			bindClick(this.disableDragButton, handler);
-		}
-		bindDeleteButtonClick(handler) {
-			bindClick(this.deleteButton, handler);
-		}
-		setIsDeleteButtonHidden(isHidden) {
-			Dom.toggleClass(this.deleteButton, isHidden, 'sqd-hidden');
-		}
-		setDisableDragButtonDisabled(isDisabled) {
-			Dom.toggleClass(this.disableDragButton, isDisabled, 'sqd-disabled');
-		}
-		setUndoButtonDisabled(isDisabled) {
-			if (!this.undoButton) {
-				throw new Error('Undo button is disabled');
-			}
-			Dom.toggleClass(this.undoButton, isDisabled, 'sqd-disabled');
-		}
-		setRedoButtonDisabled(isDisabled) {
-			if (!this.redoButton) {
-				throw new Error('Redo button is disabled');
-			}
-			Dom.toggleClass(this.redoButton, isDisabled, 'sqd-disabled');
-		}
-	}
-	function bindClick(element, handler) {
-		element.addEventListener('click', e => {
-			e.preventDefault();
-			handler();
-		}, false);
-	}
-	function createButton(d, title) {
-		const button = Dom.element('div', {
-			class: 'sqd-control-bar-button',
-			title
-		});
-		const icon = Icons.createSvg('sqd-control-bar-button-icon', d);
-		button.appendChild(icon);
-		return button;
-	}
-
-	class ControlBar {
-		static create(parent, api) {
-			const isUndoRedoSupported = api.controlBar.isUndoRedoSupported();
-			const view = ControlBarView.create(parent, isUndoRedoSupported, api.i18n);
-			const bar = new ControlBar(view, api.controlBar, api.viewport, isUndoRedoSupported);
-			view.bindResetButtonClick(() => bar.onResetButtonClicked());
-			view.bindZoomInButtonClick(() => bar.onZoomInButtonClicked());
-			view.bindZoomOutButtonClick(() => bar.onZoomOutButtonClicked());
-			view.bindDisableDragButtonClick(() => bar.onMoveButtonClicked());
-			view.bindDeleteButtonClick(() => bar.onDeleteButtonClicked());
-			api.controlBar.onStateChanged.subscribe(() => bar.refreshButtons());
-			if (isUndoRedoSupported) {
-				view.bindUndoButtonClick(() => bar.onUndoButtonClicked());
-				view.bindRedoButtonClick(() => bar.onRedoButtonClicked());
-			}
-			bar.refreshButtons();
-			return bar;
-		}
-		constructor(view, controlBarApi, viewportApi, isUndoRedoSupported) {
-			this.view = view;
-			this.controlBarApi = controlBarApi;
-			this.viewportApi = viewportApi;
-			this.isUndoRedoSupported = isUndoRedoSupported;
-		}
-		updateLayout() {
-			//
-		}
-		destroy() {
-			//
-		}
-		onResetButtonClicked() {
-			this.viewportApi.resetViewport();
-		}
-		onZoomInButtonClicked() {
-			this.viewportApi.zoom(true);
-		}
-		onZoomOutButtonClicked() {
-			this.viewportApi.zoom(false);
-		}
-		onMoveButtonClicked() {
-			this.controlBarApi.toggleIsDragDisabled();
-		}
-		onUndoButtonClicked() {
-			this.controlBarApi.tryUndo();
-		}
-		onRedoButtonClicked() {
-			this.controlBarApi.tryRedo();
-		}
-		onDeleteButtonClicked() {
-			this.controlBarApi.tryDelete();
-		}
-		refreshButtons() {
-			this.refreshDeleteButtonVisibility();
-			this.refreshIsDragDisabled();
-			if (this.isUndoRedoSupported) {
-				this.refreshUndoRedoAvailability();
-			}
-		}
-		//
-		refreshIsDragDisabled() {
-			const isDragDisabled = this.controlBarApi.isDragDisabled();
-			this.view.setDisableDragButtonDisabled(!isDragDisabled);
-		}
-		refreshUndoRedoAvailability() {
-			const canUndo = this.controlBarApi.canUndo();
-			const canRedo = this.controlBarApi.canRedo();
-			this.view.setUndoButtonDisabled(!canUndo);
-			this.view.setRedoButtonDisabled(!canRedo);
-		}
-		refreshDeleteButtonVisibility() {
-			const canDelete = this.controlBarApi.canDelete();
-			this.view.setIsDeleteButtonHidden(!canDelete);
-		}
-	}
-
 	class ControlBarExtension {
-		constructor() {
-			this.create = ControlBar.create;
+		create(root, api) {
+			return ControlBar.create(root, api, false, null);
 		}
 	}
 
@@ -5199,8 +5278,8 @@
 		/**
 		 * Creates a designer.
 		 * @param placeholder Placeholder where the designer will be attached.
-		 * @param startDefinition Start definition of a flow.
-		 * @param configuration Designer's configuration.
+		 * @param startDefinition Initial definition of the workflow.
+		 * @param configuration The designer configuration.
 		 * @returns An instance of the designer.
 		 */
 		static create(placeholder, startDefinition, configuration) {
@@ -5220,26 +5299,28 @@
 			const designerContext = DesignerContext.create(placeholder, startDefinition, config, services);
 			const designerApi = DesignerApi.create(designerContext);
 			const view = DesignerView.create(placeholder, designerContext, designerApi);
-			const designer = new Designer(view, designerContext.state, designerContext.stateModifier, designerContext.definitionWalker, designerContext.historyController, designerApi);
-			view.workspace.onRendered.first().then(designer.onReady.forward);
+			const designer = new Designer(view, designerContext.state, designerContext.definitionWalker, designerContext.historyController, designerApi);
+			view.workspace.onRootComponentUpdated.subscribe(designer.onRootComponentUpdated.emit);
+			view.workspace.onRootComponentUpdated.once().then(designer.onReady.emit);
 			race(0, designerContext.state.onDefinitionChanged, designerContext.state.onSelectedStepIdChanged).subscribe(([definition, selectedStepId]) => {
 				if (definition !== undefined) {
-					designer.onDefinitionChanged.forward(designerContext.state.definition);
+					designer.onDefinitionChanged.emit(definition);
 				}
 				if (selectedStepId !== undefined) {
-					designer.onSelectedStepIdChanged.forward(designerContext.state.selectedStepId);
+					designer.onSelectedStepIdChanged.emit(designerContext.state.selectedStepId);
 				}
 			});
-			designerContext.state.onViewportChanged.subscribe(designer.onViewportChanged.forward);
-			designerContext.state.onIsToolboxCollapsedChanged.subscribe(designer.onIsToolboxCollapsedChanged.forward);
-			designerContext.state.onIsEditorCollapsedChanged.subscribe(designer.onIsEditorCollapsedChanged.forward);
-			designerContext.state.onStepUnselectionBlocked.subscribe(designer.onStepUnselectionBlocked.forward);
+			designerContext.state.onViewportChanged.subscribe(designer.onViewportChanged.emit);
+			designerContext.state.onIsToolboxCollapsedChanged.subscribe(designer.onIsToolboxCollapsedChanged.emit);
+			designerContext.state.onIsEditorCollapsedChanged.subscribe(designer.onIsEditorCollapsedChanged.emit);
+			designerContext.state.onStepUnselectionBlocked.subscribe(designer.onStepUnselectionBlocked.emit);
+			designerContext.state.onIsDraggingChanged.subscribe(designer.onIsDraggingChanged.emit);
+			designerContext.state.onPreferencesChanged.subscribe(designer.onPreferencesChanged.emit);
 			return designer;
 		}
-		constructor(view, state, stateModifier, walker, historyController, api) {
+		constructor(view, state, walker, historyController, api) {
 			this.view = view;
 			this.state = state;
-			this.stateModifier = stateModifier;
 			this.walker = walker;
 			this.historyController = historyController;
 			this.api = api;
@@ -5271,39 +5352,51 @@
 			 * @description Fires when the editor is collapsed or expanded.
 			 */
 			this.onIsEditorCollapsedChanged = new SimpleEvent();
+			/**
+			 * @description Fires when the root component and all its children are rerendered.
+			 */
+			this.onRootComponentUpdated = new SimpleEvent();
+			/**
+			 * @description Fires when the dragging state has changed. `true` if the step is being dragged, otherwise `false`.
+			 */
+			this.onIsDraggingChanged = new SimpleEvent();
+			/**
+			 * @description Fires when any of the designer preferences has changed.
+			 */
+			this.onPreferencesChanged = new SimpleEvent();
 		}
 		/**
-		 * @returns the current definition of the workflow.
+		 * @returns The current definition of the workflow.
 		 */
 		getDefinition() {
 			return this.state.definition;
 		}
 		/**
-		 * @returns the validation result of the current definition.
+		 * @returns The validation result of the current definition.
 		 */
 		isValid() {
 			return this.view.workspace.isValid;
 		}
 		/**
-		 * @returns the readonly flag.
+		 * @returns The read-only flag.
 		 */
 		isReadonly() {
 			return this.state.isReadonly;
 		}
 		/**
-		 * @description Changes the readonly flag.
+		 * @description Changes the read-only flag.
 		 */
 		setIsReadonly(isReadonly) {
 			this.state.setIsReadonly(isReadonly);
 		}
 		/**
-		 * @returns current selected step id or `null` if nothing is selected.
+		 * @returns The currently selected step id, or `null` if nothing is selected.
 		 */
 		getSelectedStepId() {
 			return this.state.selectedStepId;
 		}
 		/**
-		 * @description Selects a step by the id.
+		 * @description Selects a step by id.
 		 */
 		selectStepById(stepId) {
 			this.state.setSelectedStepId(stepId);
@@ -5315,7 +5408,7 @@
 			this.state.setSelectedStepId(null);
 		}
 		/**
-		 * @returns the current viewport.
+		 * @returns The current viewport.
 		 */
 		getViewport() {
 			return this.state.viewport;
@@ -5334,13 +5427,13 @@
 			this.api.viewport.resetViewport();
 		}
 		/**
-		 * @description Moves the viewport to the step with the animation.
+		 * @description Moves the viewport to the step with animation.
 		 */
 		moveViewportToStep(stepId) {
 			this.api.viewport.moveViewportToStep(stepId);
 		}
 		/**
-		 * @description Rerender the root component and all its children.
+		 * @description Rerenders the root component and all its children.
 		 */
 		updateRootComponent() {
 			this.api.workspace.updateRootComponent();
@@ -5359,31 +5452,37 @@
 			this.api.workspace.updateBadges();
 		}
 		/**
-		 * @returns a flag that indicates whether the toolbox is collapsed.
+		 * @returns A flag that indicates whether the toolbox is collapsed.
 		 */
 		isToolboxCollapsed() {
 			return this.state.isToolboxCollapsed;
 		}
 		/**
-		 * @description Sets a flag that indicates whether the toolbox is collapsed.
+		 * @description Sets the flag that indicates whether the toolbox is collapsed.
 		 */
 		setIsToolboxCollapsed(isCollapsed) {
 			this.state.setIsToolboxCollapsed(isCollapsed);
 		}
 		/**
-		 * @returns a flag that indicates whether the editor is collapsed.
+		 * @returns A flag that indicates whether the editor is collapsed.
 		 */
 		isEditorCollapsed() {
 			return this.state.isEditorCollapsed;
 		}
 		/**
-		 * @description Sets a flag that indicates whether the editor is collapsed.
+		 * @returns A flag that indicates whether a step is being dragged.
+		 */
+		isDragging() {
+			return this.state.isDragging;
+		}
+		/**
+		 * @description Sets the flag that indicates whether the editor is collapsed.
 		 */
 		setIsEditorCollapsed(isCollapsed) {
 			this.state.setIsEditorCollapsed(isCollapsed);
 		}
 		/**
-		 * @description Dump the undo stack.
+		 * @description Dumps the undo stack.
 		 */
 		dumpUndoStack() {
 			return this.getHistoryController().dump();
@@ -5396,20 +5495,20 @@
 			return __awaiter(this, void 0, void 0, function* () {
 				this.getHistoryController().replaceDefinition(definition);
 				yield Promise.all([
-					this.view.workspace.onRendered.first(),
-					this.onDefinitionChanged.first()
+					this.view.workspace.onRootComponentUpdated.once(),
+					this.onDefinitionChanged.once()
 				]);
 			});
 		}
 		/**
 		 * @param needle A step, a sequence or a step id.
-		 * @returns parent steps and branch names.
+		 * @returns Parent steps and branch names.
 		 */
 		getStepParents(needle) {
 			return this.walker.getParents(this.state.definition, needle);
 		}
 		/**
-		 * @returns the definition walker.
+		 * @returns The definition walker.
 		 */
 		getWalker() {
 			return this.walker;
@@ -5433,8 +5532,10 @@
 	exports.ClassicWheelControllerExtension = ClassicWheelControllerExtension;
 	exports.ComponentContext = ComponentContext;
 	exports.ComponentDom = ComponentDom;
+	exports.ControlBar = ControlBar;
 	exports.ControlBarApi = ControlBarApi;
-	exports.CustomActionController = CustomActionController;
+	exports.ControlBarButtonView = ControlBarButtonView;
+	exports.CustomActionApi = CustomActionApi;
 	exports.DefaultRegionComponentViewExtension = DefaultRegionComponentViewExtension;
 	exports.DefaultRegionView = DefaultRegionView;
 	exports.DefaultSequenceComponent = DefaultSequenceComponent;
@@ -5483,5 +5584,4 @@
 	exports.createTaskStepComponentViewFactory = createTaskStepComponentViewFactory;
 	exports.getAbsolutePosition = getAbsolutePosition;
 	exports.race = race;
-
 }));
