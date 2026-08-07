@@ -100,7 +100,7 @@ namespace G4.Services.Domain.V4.Repositories
                 { Name: "g4.ConvertToRule" } => new { options.Rule },
 
                 // Built-in: Finds and returns relevant examples based on the provided intent and tool filters.
-                { Name: "g4.FindExamples" } => FindExamples(options.Arguments),
+                { Name: "g4.FindExamples" } => FindExamples(options),
 
                 // Built-in: Finds and returns metadata about a tool by its name.
                 { Name: "g4.FindTool" } => FindTool(options),
@@ -132,34 +132,6 @@ namespace G4.Services.Domain.V4.Repositories
                 // Default: Assumes this is a plugin-based tool and converts parameters into an executable rule.
                 _ => SendRule(options)
             };
-
-            // Finds and returns a tool model from the available tool collection
-            // using the tool name provided in the InvokeOptions arguments.
-            static object FindTool(InvokeOptions options)
-            {
-                // Read the "tool_name" argument from the invocation payload.
-                // When it is missing, default to an empty string.
-                var toolName = options.Arguments.GetOrDefault("tool_name", () => string.Empty);
-
-                // Fall back to "toolName" when "tool_name" is not present.
-                toolName = string.IsNullOrEmpty(toolName)
-                    ? options.Arguments.GetOrDefault("toolName", () => string.Empty)
-                    : toolName;
-
-                // Try to resolve the tool directly from the available tools dictionary.
-                var isName = options.Tools.TryGetValue(key: toolName, out var tool);
-
-                // If the direct lookup failed, try matching by the tool's G4 name instead.
-                tool = isName
-                    ? tool
-                    : options.Tools.Values.FirstOrDefault(i => i.QualifiedName.Equals(toolName, StringComparison.OrdinalIgnoreCase));
-
-                // Return the matched tool when a tool name was provided.
-                // Return null when the caller did not supply any tool name.
-                return !string.IsNullOrEmpty(toolName)
-                    ? new { Tool = tool.ClientTool }
-                    : null;
-            }
         }
 
         /// <inheritdoc />
@@ -209,6 +181,15 @@ namespace G4.Services.Domain.V4.Repositories
             {
                 Examples = result
             };
+        }
+
+        // Unwraps the raw "arguments" payload from an MCP tool-call invocation and delegates
+        // to the public, strongly-typed FindExamples(JsonElement) overload. This gives the
+        // g4.FindExamples switch arm in CallTool the same "Xxx(options)" call shape as every
+        // other built-in tool handler, instead of reaching into options.Arguments directly.
+        private object FindExamples(InvokeOptions options)
+        {
+            return FindExamples(options.Arguments);
         }
 
         /// <inheritdoc />
@@ -321,6 +302,21 @@ namespace G4.Services.Domain.V4.Repositories
                     StringComparer.OrdinalIgnoreCase);
         }
 
+        /// <inheritdoc />
+        public List<(long Timestamp, G4RuleModelBase Rule)> GetBuffer(string sessionId)
+        {
+            // Wrap the session identifier as the raw "arguments" payload the underlying
+            // handler expects, matching the shape the MCP tool-call pipeline would supply.
+            var options = new InvokeOptions
+            {
+                Arguments = JsonSerializer.SerializeToElement(new { sessionId }, AppSettings.JsonOptions),
+                Buffer = s_buffer
+            };
+
+            // Delegate the actual buffer lookup to the shared handler.
+            return GetBuffer(options);
+        }
+
         // TODO: Needs to refacor to take profile and segmentation options into account.
         /// <inheritdoc />
         public IDictionary<string, object> GetDocumentModel(string driverSession, string token)
@@ -340,6 +336,51 @@ namespace G4.Services.Domain.V4.Repositories
             // Delegate DOM segmentation to the helper method,
             // which uses the constructed options.
             return GetDomSegments(options);
+        }
+
+        /// <inheritdoc />
+        public object RegisterCapability(G4PluginAttribute manifest)
+        {
+            // Wrap the manifest as the raw "arguments" payload the underlying handler
+            // expects, matching the shape the MCP tool-call pipeline would supply.
+            var options = new InvokeOptions
+            {
+                Arguments = JsonSerializer.SerializeToElement(new { manifest }, AppSettings.JsonOptions),
+                G4Client = client
+            };
+
+            // Delegate the actual registration to the shared handler.
+            return RegisterCapability(options);
+        }
+
+        /// <inheritdoc />
+        public object RemoveBuffer(string sessionId)
+        {
+            // Wrap the session identifier as the raw "arguments" payload the underlying
+            // handler expects, matching the shape the MCP tool-call pipeline would supply.
+            var options = new InvokeOptions
+            {
+                Arguments = JsonSerializer.SerializeToElement(new { sessionId }, AppSettings.JsonOptions),
+                Buffer = s_buffer
+            };
+
+            // Delegate the actual buffer removal to the shared handler.
+            return RemoveBuffer(options);
+        }
+
+        /// <inheritdoc />
+        public object RemoveSession(string sessionId)
+        {
+            // Wrap the session identifier as the raw "arguments" payload the underlying
+            // handler expects, matching the shape the MCP tool-call pipeline would supply.
+            var options = new InvokeOptions
+            {
+                Arguments = JsonSerializer.SerializeToElement(new { sessionId }, AppSettings.JsonOptions),
+                Sessions = s_sessions
+            };
+
+            // Delegate the actual session removal to the shared handler.
+            return RemoveSession(options);
         }
 
         /// <inheritdoc />
@@ -657,6 +698,34 @@ namespace G4.Services.Domain.V4.Repositories
                 // Return all successfully loaded system tools as an array.
                 return [.. systemTools];
             }
+        }
+
+        // Finds and returns a tool model from the available tool collection
+        // using the tool name provided in the InvokeOptions arguments.
+        private static object FindTool(InvokeOptions options)
+        {
+            // Read the "tool_name" argument from the invocation payload.
+            // When it is missing, default to an empty string.
+            var toolName = options.Arguments.GetOrDefault("tool_name", () => string.Empty);
+
+            // Fall back to "toolName" when "tool_name" is not present.
+            toolName = string.IsNullOrEmpty(toolName)
+                ? options.Arguments.GetOrDefault("toolName", () => string.Empty)
+                : toolName;
+
+            // Try to resolve the tool directly from the available tools dictionary.
+            var isName = options.Tools.TryGetValue(key: toolName, out var tool);
+
+            // If the direct lookup failed, try matching by the tool's G4 name instead.
+            tool = isName
+                ? tool
+                : options.Tools.Values.FirstOrDefault(i => i.QualifiedName.Equals(toolName, StringComparison.OrdinalIgnoreCase));
+
+            // Return the matched tool when a tool name was provided.
+            // Return null when the caller did not supply any tool name.
+            return !string.IsNullOrEmpty(toolName)
+                ? new { Tool = tool.ClientTool }
+                : null;
         }
 
         // Retrieves the page DOM, sanitizes it, and partitions it into semantic segments

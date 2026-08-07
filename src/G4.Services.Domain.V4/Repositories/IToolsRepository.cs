@@ -1,4 +1,5 @@
-﻿using G4.Models;
+﻿using G4.Attributes;
+using G4.Models;
 using G4.Models.Schema;
 using G4.Services.Domain.V4.Models.Schema;
 
@@ -79,7 +80,14 @@ namespace G4.Services.Domain.V4.Repositories
         IDictionary<string, McpToolModel> FindTools(JsonElement parameters);
 
         /// <summary>
-        /// Retrieves the document model (DOM) of the active session using the G4 engine.  
+        /// Retrieves the buffered rule execution entries recorded for the given session.
+        /// </summary>
+        /// <param name="sessionId">The unique identifier of the active G4 session whose buffered rules should be retrieved.</param>
+        /// <returns>An ordered list of buffered rule entries, each paired with the timestamp it was recorded at.</returns>
+        List<(long Timestamp, G4RuleModelBase Rule)> GetBuffer(string sessionId);
+
+        /// <summary>
+        /// Retrieves the document model (DOM) of the active session using the G4 engine.
         /// The document model is returned as a dictionary of key–value pairs representing
         /// the structure of the application’s DOM at the time of the request.
         /// </summary>
@@ -89,7 +97,30 @@ namespace G4.Services.Domain.V4.Repositories
         IDictionary<string, object> GetDocumentModel(string driverSession, string token);
 
         /// <summary>
-        /// Resolves a locator expression for the given request schema using the G4 engine.  
+        /// Registers a promoted G4 flow-template capability from a submitted plugin manifest,
+        /// persisting it through the G4 engine's Templates store.
+        /// </summary>
+        /// <param name="manifest">The full G4 plugin manifest describing the capability to register.</param>
+        /// <returns>An object describing the outcome of the registration (registered flag, key, source, and plugin type).</returns>
+        object RegisterCapability(G4PluginAttribute manifest);
+
+        /// <summary>
+        /// Removes the buffer associated with the given session identifier, clearing any
+        /// previously recorded rule execution entries.
+        /// </summary>
+        /// <param name="sessionId">The unique identifier of the G4 session whose buffer should be removed.</param>
+        /// <returns>An object indicating whether the buffer was successfully removed.</returns>
+        object RemoveBuffer(string sessionId);
+
+        /// <summary>
+        /// Removes an active session from the sessions registry, releasing its resources.
+        /// </summary>
+        /// <param name="sessionId">The unique identifier of the G4 session to remove.</param>
+        /// <returns>An object indicating whether the session was successfully removed.</returns>
+        object RemoveSession(string sessionId);
+
+        /// <summary>
+        /// Resolves a locator expression for the given request schema using the G4 engine.
         /// The resolved locator can be used to identify UI elements or DOM nodes in the active session.
         /// </summary>
         /// <param name="schema">The input schema containing the driver session identifier, intent describing the target element or action, and the authorization token required for the G4 engine to process the request.</param>
