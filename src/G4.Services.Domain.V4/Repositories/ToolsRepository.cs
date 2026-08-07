@@ -1,5 +1,6 @@
 ﻿using G4.Abstraction.Cli;
 using G4.Api;
+using G4.Attributes;
 using G4.Cache;
 using G4.Extensions;
 using G4.Models;
@@ -112,6 +113,9 @@ namespace G4.Services.Domain.V4.Repositories
 
                 // Built-in: Retrieves the current set of rules stored in the buffer for a given key.
                 { Name: "g4.GetBuffer" } => GetBuffer(options),
+
+                // Built-in: Registers a new flow-template capability from a submitted plugin manifest.
+                { Name: "g4.RegisterCapability" } => RegisterCapability(options),
 
                 // Built-in: Clears the rules stored in the buffer for a given key.
                 { Name: "g4.RemoveBuffer" } => RemoveBuffer(options),
@@ -280,22 +284,22 @@ namespace G4.Services.Domain.V4.Repositories
         public IDictionary<string, McpToolModel> FindTools(string prompt)
         {
             // Delegate to the main overload with default maxResult=3 and threshold=0
-            return FindTools(prompt, maxResult: 3, threshold: 0);
+            return FindTools(prompt, maxResults: 3, threshold: 0);
         }
 
         /// <inheritdoc />
-        public IDictionary<string, McpToolModel> FindTools(string prompt, int maxResult)
+        public IDictionary<string, McpToolModel> FindTools(string prompt, int maxResults)
         {
             // Delegate to the main overload with threshold=0
-            return FindTools(prompt, maxResult, threshold: 0);
+            return FindTools(prompt, maxResults, threshold: 0);
         }
 
         /// <inheritdoc />
-        public IDictionary<string, McpToolModel> FindTools(string intent, int maxResult, int threshold)
+        public IDictionary<string, McpToolModel> FindTools(string intent, int maxResults, int threshold)
         {
             // Validate and sanitize input parameters,
             // ensuring maxResult is positive and threshold is non-negative.
-            maxResult = maxResult <= 0 ? 3 : maxResult;
+            maxResults = maxResults <= 0 ? 3 : maxResults;
             threshold = threshold < 0 ? 0 : threshold;
 
             // Initialize the lexical retrieval manager with the current plugin cache
@@ -303,7 +307,7 @@ namespace G4.Services.Domain.V4.Repositories
 
             // Retrieve the most relevant tool names based on lexical matching
             var results = retrievalManager
-                .FindTools(prompt: intent, take: maxResult)
+                .FindTools(prompt: intent, take: maxResults)
                 .Tools
                 .Where(i => i.Score >= threshold);
 
@@ -867,6 +871,43 @@ namespace G4.Services.Domain.V4.Repositories
             return JsonSerializer.Deserialize<JsonElement>(content, AppSettings.JsonOptions);
         }
 
+        // Registers a new flow-template capability by converting the supplied manifest into a
+        // G4 plugin definition and persisting it through the underlying Templates client. This
+        // mirrors the REST TemplatesController.AddTemplate behavior, but is invoked through the
+        // MCP tool-call pipeline instead of an HTTP PUT request.
+        private static object RegisterCapability(InvokeOptions options)
+        {
+            // Read the "manifest" argument and deserialize it into a full G4 plugin manifest.
+            // When the argument is missing, keep the value as null so validation below can react.
+            // Reject the request early when no manifest was supplied, mirroring the tool's
+            // required "manifest" argument as declared in its input schema.
+            var manifest = options.Arguments.GetOrDefault("manifest", () => default(G4PluginAttribute)) 
+                ?? throw new ArgumentException("The manifest argument is required to register a new capability.");
+
+            // Default the manifest's Source to "Template", matching the behavior of the
+            // TemplatesController.AddTemplate endpoint that this tool mirrors.
+            manifest.Source = !string.IsNullOrEmpty(manifest.Source) && manifest.Source.Equals("Template", StringComparison.OrdinalIgnoreCase)
+                ? manifest.Source
+                : "Template";
+
+            // Register the manifest as a new (or overwritten) template. This also normalizes the
+            // manifest's PluginType to "Action" and refreshes the plugin cache, so the capability
+            // becomes callable as its own tool once the tool catalog is synced. Any validation
+            // failure (ConfirmTemplate()'s InvalidOperationException) propagates uncaught, exactly
+            // like GetBuffer's InvalidSessionIdException does today — ErrorHandlingMiddleware turns
+            // it into a 500 with the real validation message preserved in the response's "detail".
+            options.G4Client.Templates.AddTemplate(manifest);
+
+            // Return a confirmation payload describing the registered capability.
+            return new
+            {
+                Registered = true,
+                manifest.Key,
+                manifest.Source,
+                manifest.PluginType
+            };
+        }
+
         // Removes the buffer associated with the session identifier provided in the invocation arguments.
         // This is typically used to clean up resources when a session is closed or no longer needed.
         private static object RemoveBuffer(InvokeOptions options)
@@ -1104,7 +1145,7 @@ namespace G4.Services.Domain.V4.Repositories
             /// <summary>
             /// Gets the system prompts used for tool invocation, loaded from embedded resources.
             /// </summary>
-            public static ReadOnlyDictionary<string, string> SystemPrompts = new(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            public static readonly ReadOnlyDictionary<string, string> SystemPrompts = new(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
                 ["LocatorSystemPrompt.md"] = ReadSystemPrompt(instrcutionsManifest: "LocatorSystemPrompt.md")
             });
