@@ -220,6 +220,12 @@ select {
 	min-height: 2.6em;
 }
 
+.sqd-smart-editor .sqd-editor input,
+.sqd-smart-editor .sqd-editor select,
+.sqd-smart-editor .sqd-editor textarea {
+	font-size: inherit;
+}
+
 input[type="text"],
 input[type="number"],
 input[type="file"],
