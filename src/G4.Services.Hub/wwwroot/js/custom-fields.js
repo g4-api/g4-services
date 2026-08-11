@@ -44,19 +44,19 @@ const newFieldContainer = (id, labelDisplayName, hintText) => {
     const controllerContainer = document.createElement('div');
 
     // Set the data-g4-role attribute to 'field' for the field container
-    titleContainer.setAttribute('data-g4-role', 'field');
+    titleContainer.dataset.g4Role = 'field';
     titleContainer.id = `${id}-field`;
 
     // Set the data-g4-role attribute to 'label' for the label container
-    labelContainer.setAttribute('data-g4-role', 'label');
+    labelContainer.dataset.g4Role = 'label';
     labelContainer.id = `${id}-label`;
 
     // Set the data-g4-role and id attributes to for the hint container
-    hintContainer.setAttribute('data-g4-role', 'hint');
+    hintContainer.dataset.g4Role = 'hint';
     hintContainer.id = `${id}-hint`;
 
     // Set data-g4-role attribute to 'controller' for the controller container
-    controllerContainer.setAttribute('data-g4-role', 'controller');
+    controllerContainer.dataset.g4Role = 'controller';
     controllerContainer.id = `${id}-controller`;
 
     // Create a new `label` element
@@ -124,13 +124,13 @@ const newUnlabeledFieldContainer = (id, role) => {
     const controllerContainer = document.createElement('div');
 
     // Set the custom attribute 'data-g4-role' to 'field' for the main container.
-    fieldContainer.setAttribute('data-g4-role', 'field');
+    fieldContainer.dataset.g4Role = 'field';
 
     // Assign a unique ID to the main field container using the provided 'id'.
     fieldContainer.id = `${id}-field`;
 
     // Set the custom attribute 'data-g4-role' to 'controller' for the controller container.
-    controllerContainer.setAttribute('data-g4-role', role || 'controller');
+    controllerContainer.dataset.g4Role = role || 'controller';
 
     // Assign a unique ID to the controller container using the provided 'id'.
     controllerContainer.id = `${id}-${role || 'controller'}`;
@@ -244,7 +244,7 @@ const newObjectArrayFieldsContainer = (id, options, setCallback) => {
 
         // Add an event listener to handle the removal of the array item.
         buttonController.addEventListener('click', () => {
-            controllerContainer.removeChild(arrayContainer);
+            arrayContainer.remove();
             setCallback({
                 [indexKey]: null
             });
@@ -2185,13 +2185,13 @@ class CustomFields {
         const newInput = (options, setCallback) => {
             // Create a div element to serve as the row container for the input and remove button
             const row = document.createElement('div');
-            row.setAttribute('data-g4-role', 'input-row');
+            row.dataset.g4Role = 'input-row';
 
             // Create the text input field
             const input = document.createElement('input');
             input.type = 'text';
             input.value = options.value || '';
-            input.setAttribute('data-g4-role', 'valueitem');
+            input.dataset.g4Role = 'valueitem';
             input.setAttribute('title', options.value);
 
             // Create the remove button
@@ -2202,7 +2202,7 @@ class CustomFields {
             // Add a click event listener to the remove button
             removeButton.addEventListener('click', () => {
                 // Remove the row from the container
-                options.container.removeChild(row);
+                row.remove();
 
                 // Locate the controller section within the closest field container
                 const titleContainer = options.container
@@ -2372,7 +2372,7 @@ class CustomFields {
         inputElement.setAttribute("id", inputId);
 
         // Metadata used by the editor to map this field to workflow parameters.
-        inputElement.setAttribute("data-g4-attribute", options.input.label);
+        inputElement.dataset.g4Attribute = options.input.label;
         inputElement.setAttribute("spellcheck", "false");
         inputElement.setAttribute("title", options.input.title || "");
         inputElement.value = options.input.initialValue || "";
@@ -2458,9 +2458,9 @@ class CustomFields {
                     return obj;
                 }, {});
             }
-            // If itemSource is neither a string nor an array, throw an error
+            // Reject unsupported item sources with a TypeError so callers can distinguish contract violations.
             else {
-                throw new Error('Invalid itemSource type. Must be a string or an array.');
+                throw new TypeError('Invalid itemSource type. Must be a string or an array.');
             }
 
             /**
@@ -2577,6 +2577,143 @@ class CustomFields {
         // When true, the field commits the typed value (free text) on Enter and on blur,
         // in addition to committing on option selection. Defaults to false (selection-only).
         const allowFreeText = options.allowFreeText === true;
+
+        /**
+         * Closes the listbox and clears its active-option state without committing a value.
+         */
+        const closeDataList = () => {
+            // Reset the visual and accessible list state together so they cannot diverge.
+            list.style.display = "none";
+            input.setAttribute("aria-expanded", "false");
+            input.setAttribute("aria-activedescendant", "");
+            activeIndex = -1;
+        };
+
+        /**
+         * Applies one keyboard-navigation index to the listbox presentation.
+         *
+         * @param {number} nextActiveIndex - Index selected after applying the navigation boundary.
+         */
+        const setActiveOption = (nextActiveIndex) => {
+            // Publish the new active index before synchronizing the option elements and viewport.
+            activeIndex = nextActiveIndex;
+            input.setAttribute("aria-activedescendant", `opt-${activeIndex}`);
+
+            Array
+                .from(list.children)
+                .forEach((optionElement, optionIndex) =>
+                    optionElement.setAttribute("aria-selected", optionIndex === activeIndex)
+                );
+
+            document
+                .getElementById(`opt-${activeIndex}`)
+                ?.scrollIntoView({ block: "nearest" });
+        };
+
+        /**
+         * Commits literal input when Enter is permitted to represent free text.
+         *
+         * @param {KeyboardEvent} event - Keyboard event that may request a free-text commit.
+         */
+        const setFreeTextValue = (event) => {
+            const isEnterKey = event.key === "Enter";
+            const isFreeTextCommit = isEnterKey && allowFreeText;
+
+            // Ignore every empty-list key path except an explicitly permitted Enter commit.
+            if (!isFreeTextCommit) {
+                return;
+            }
+
+            // Prevent form submission, close the list, and publish the literal typed value.
+            event.preventDefault();
+            closeDataList();
+            input.title = input.value || "Please select an option";
+            updateState(input.value, setCallback);
+        };
+
+        /**
+         * Commits the highlighted option or the permitted literal input value.
+         *
+         * @param {KeyboardEvent} event - Enter event that requested the current value.
+         */
+        const setCurrentValue = (event) => {
+            const isActiveIndex = activeIndex >= 0;
+            const activeOption = isActiveIndex
+                ? filtered[activeIndex]
+                : undefined;
+            const hasActiveOption = isActiveIndex && Boolean(activeOption);
+            const isValueAllowed = hasActiveOption || allowFreeText;
+
+            // Leave Enter untouched when neither a highlighted option nor free text can be committed.
+            if (!isValueAllowed) {
+                return;
+            }
+
+            // Prevent form submission and close the list before publishing the resolved value.
+            event.preventDefault();
+            closeDataList();
+
+            if (hasActiveOption) {
+                input.value = activeOption.value;
+                input.title = activeOption.manifest.summary || "No summary available";
+            } else {
+                input.title = input.value || "Please select an option";
+            }
+
+            // Notify the field owner only after the input and accessibility state are synchronized.
+            updateState(input.value, setCallback);
+        };
+
+        /**
+         * Routes supported keyboard actions while preserving the listbox's open and filtered state.
+         *
+         * @param {KeyboardEvent} event - Keyboard event raised by the datalist input.
+         */
+        const onDataListKeyDown = (event) => {
+            const isListEmpty = filtered.length === 0;
+
+            // Give an empty list one free-text commit opportunity, then stop all navigation handling.
+            if (isListEmpty) {
+                setFreeTextValue(event);
+                return;
+            }
+
+            const isDownKey = event.key === "ArrowDown";
+            const isUpKey = event.key === "ArrowUp";
+            const isNavigationKey = isDownKey || isUpKey;
+            const isListClosed = list.style.display !== "block";
+            const isClosedNonNavigationKey = isListClosed && !isNavigationKey;
+
+            // Ignore non-navigation keys while closed so Enter and Escape retain their prior behavior.
+            if (isClosedNonNavigationKey) {
+                return;
+            }
+
+            // Reuse filtering to populate a closed list before applying its first navigation step.
+            if (isListClosed) {
+                input.dispatchEvent(new Event("input"));
+            }
+
+            // Route one mutually exclusive key action so the handler remains flat and auditable.
+            switch (event.key) {
+                case "ArrowDown":
+                    event.preventDefault();
+                    setActiveOption(Math.min(activeIndex + 1, filtered.length - 1));
+                    return;
+                case "ArrowUp":
+                    event.preventDefault();
+                    setActiveOption(Math.max(activeIndex - 1, 0));
+                    return;
+                case "Enter":
+                    setCurrentValue(event);
+                    return;
+                case "Escape":
+                    closeDataList();
+                    return;
+                default:
+                    return;
+            }
+        };
 
         /**
          * Handles live filtering of listbox options based on user input.
@@ -2719,150 +2856,7 @@ class CustomFields {
          * - Updates `aria-selected` on options
          * - Ensures active option stays visible via scroll management
          */
-        input.addEventListener("keydown", (e) => {
-            // Key intent flags (kept explicit for readability)
-            const isDown = e.key === "ArrowDown";
-            const isEscape = e.key === "Escape";
-            const isEnter = e.key === "Enter";
-            const isUp = e.key === "ArrowUp";
-
-            // Exit early if there are no filtered options.
-            // Exception: when free text is allowed, Enter still commits the typed value.
-            if (!filtered.length) {
-                if (isEnter && allowFreeText) {
-                    e.preventDefault();
-
-                    // Close listbox and reset ARIA state.
-                    list.style.display = "none";
-                    input.setAttribute("aria-expanded", "false");
-                    input.setAttribute("aria-activedescendant", "");
-                    activeIndex = -1;
-
-                    // Commit the literal typed text.
-                    input.title = input.value || "Please select an option";
-                    updateState(input.value, setCallback);
-                }
-                return;
-            }
-
-            /**
-             * If the listbox is currently closed:
-             * - ArrowUp / ArrowDown should open it and initialize state
-             * - All other keys are ignored
-             */
-            if (list.style.display !== "block") {
-                if (isDown || isUp) {
-                    // Reuse filtering logic to open and populate the list
-                    input.dispatchEvent(new Event("input"));
-                } else {
-                    return;
-                }
-            }
-
-            /**
-             * ArrowDown → move selection forward
-             */
-            if (isDown) {
-                e.preventDefault();
-
-                // Clamp index to last available option
-                activeIndex = Math.min(activeIndex + 1, filtered.length - 1);
-
-                // Update active descendant reference
-                input.setAttribute("aria-activedescendant", `opt-${activeIndex}`);
-
-                // Sync aria-selected state across all options
-                Array
-                    .from(list.children)
-                    .forEach((c, idx) =>
-                        c.setAttribute("aria-selected", idx === activeIndex)
-                    );
-
-                // Ensure active option remains visible
-                document
-                    .getElementById(`opt-${activeIndex}`)
-                    ?.scrollIntoView({ block: "nearest" });
-            }
-
-            /**
-             * ArrowUp → move selection backward
-             */
-            if (isUp) {
-                e.preventDefault();
-
-                // Clamp index to first option
-                activeIndex = Math.max(activeIndex - 1, 0);
-
-                // Update active descendant reference
-                input.setAttribute("aria-activedescendant", `opt-${activeIndex}`);
-
-                // Sync aria-selected state across all options
-                Array
-                    .from(list.children)
-                    .forEach((c, idx) =>
-                        c.setAttribute("aria-selected", idx === activeIndex)
-                    );
-
-                // Ensure active option remains visible
-                document
-                    .getElementById(`opt-${activeIndex}`)
-                    ?.scrollIntoView({ block: "nearest" });
-            }
-
-            /**
-             * Enter → commit the active selection
-             */
-            if (isEnter) {
-                // Determine whether an option is currently highlighted in the listbox.
-                const hasActiveOption = activeIndex >= 0 && !!filtered[activeIndex];
-
-                // If no option is highlighted and free text is not allowed, do nothing.
-                if (!hasActiveOption && !allowFreeText) {
-                    return;
-                }
-
-                // Prevent form submission or other default behaviors
-                // associated with Enter key press in an input field
-                e.preventDefault();
-
-                // Close listbox
-                list.style.display = "none";
-
-                if (hasActiveOption) {
-                    // Apply the highlighted option's value to the input.
-                    input.value = filtered[activeIndex].value;
-                    input.title = filtered[activeIndex].manifest.summary || "No summary available";
-                } else {
-                    // Free text: keep whatever the user typed.
-                    input.title = input.value || "Please select an option";
-                }
-
-                // Reset ARIA state
-                input.setAttribute("aria-expanded", "false");
-                input.setAttribute("aria-activedescendant", "");
-
-                // Clear active index
-                activeIndex = -1;
-
-                // Commit the resolved value (highlighted option or typed text).
-                updateState(input.value, setCallback);
-            }
-
-            /**
-             * Escape → close listbox without selection
-             */
-            if (isEscape) {
-                // Close listbox
-                list.style.display = "none";
-
-                // Reset ARIA state
-                input.setAttribute("aria-expanded", "false");
-                input.setAttribute("aria-activedescendant", "");
-
-                // Clear active index
-                activeIndex = -1;
-            }
-        });
+        input.addEventListener("keydown", onDataListKeyDown);
 
         // When free text is allowed, commit whatever is currently in the input on focus-out.
         // Option selection uses mousedown + preventDefault, so a click commits before blur;
@@ -2949,7 +2943,7 @@ class CustomFields {
 
         // Prepare the error container element
         const errorContainer = document.createElement('div');
-        errorContainer.setAttribute('data-g4-role', `error`);
+        errorContainer.dataset.g4Role = `error`;
 
         // Insert all error blocks inside the container
         errorContainer.insertAdjacentHTML('beforeend', html);
@@ -2957,7 +2951,7 @@ class CustomFields {
         // Insert the error container into the DOM after the first existing child
         const refElement = options.container.firstElementChild;
         if (refElement) {
-            refElement.insertAdjacentElement('afterend', errorContainer);
+            refElement.after(errorContainer);
         } else {
             // Fallback: append if no reference child exists
             options.container.appendChild(errorContainer);
@@ -3019,13 +3013,13 @@ class CustomFields {
             // Create a div element to serve as the row container for the key-value pair
             const row = document.createElement('div');
             const inputId = Utilities.newUid();
-            row.setAttribute('data-g4-role', 'keyvalue');
+            row.dataset.g4Role = 'keyvalue';
 
             // Create the key input field
             const newKeyInput = document.createElement('input');
             newKeyInput.type = 'text';
             newKeyInput.value = options.key || '';
-            newKeyInput.setAttribute('data-g4-role', 'key');
+            newKeyInput.dataset.g4Role = 'key';
             newKeyInput.setAttribute('title', `Key: ${options.key || ''}`);
             newKeyInput.setAttribute('placeholder', 'Enter key');
             newKeyInput.setAttribute('name', `${inputId}-key`)
@@ -3034,7 +3028,7 @@ class CustomFields {
             const newValueInput = document.createElement('input');
             newValueInput.type = 'text';
             newValueInput.value = options.value || '';
-            newValueInput.setAttribute('data-g4-role', 'value');
+            newValueInput.dataset.g4Role = 'value';
             newValueInput.setAttribute('title', `Value: ${options.value || ''}`);
             newValueInput.setAttribute('placeholder', 'Enter value');
             newKeyInput.setAttribute('name', `${inputId}-value`)
@@ -3049,7 +3043,7 @@ class CustomFields {
             // Define the click event handler for the remove button
             removeButton.addEventListener('click', () => {
                 // Remove the current row from the container
-                options.container.removeChild(row);
+                row.remove();
 
                 // Find the closest parent container with the role "field"
                 const fieldContainer = options.container.closest('[data-g4-role="field"]');
@@ -3279,9 +3273,9 @@ class CustomFields {
                     return obj;
                 }, {});
             }
-            // If itemsSource is neither string nor array, throw an error
+            // Reject unsupported item sources with a TypeError so callers can distinguish contract violations.
             else {
-                throw new Error('Invalid itemsSource type. Must be a string or an array.');
+                throw new TypeError('Invalid itemsSource type. Must be a string or an array.');
             }
 
             /**
@@ -3528,7 +3522,7 @@ class CustomFields {
          * Validate and sanitize the initial value.
          * If the initial value is not provided, is NaN, or is the string 'undefined', default it to an empty string.
          */
-        options.initialValue = (!options.initialValue || isNaN(options.initialValue) || options.initialValue === 'undefined')
+        options.initialValue = (!options.initialValue || Number.isNaN(Number(options.initialValue)) || options.initialValue === 'undefined')
             ? ''
             : options.initialValue;
 
@@ -3635,8 +3629,8 @@ class CustomFields {
 
             // Get the computed styles of the textarea to determine line height and minimum height.
             const computedStyle = window.getComputedStyle(textarea);
-            const lineHeight = parseFloat(computedStyle.lineHeight);
-            const minHeight = parseFloat(computedStyle.minHeight);
+            const lineHeight = Number.parseFloat(computedStyle.lineHeight);
+            const minHeight = Number.parseFloat(computedStyle.minHeight);
 
             // Define the maximum number of lines the textarea can expand to before enabling scroll.
             const maxLines = 8;
@@ -3693,7 +3687,6 @@ class CustomFields {
             } = base64ToggleOptions;
 
             // Group the representation switch with the help icon so both controls remain together in the field header.
-            const labelElement = fieldContainer.querySelector('.sqd-label--with-help-icon');
             const helpIconElement = fieldContainer.querySelector('.sqd-help-icon-container');
             const labelActionsElement = document.createElement('span');
             labelActionsElement.classList.add('sqd-label-actions');
@@ -3701,7 +3694,7 @@ class CustomFields {
             // Reproduce the settings-component checkbox slider while keeping native keyboard and form semantics.
             const base64ToggleElement = document.createElement('label');
             base64ToggleElement.classList.add('sqd-base64-toggle');
-            base64ToggleElement.setAttribute('data-g4-role', 'base64-toggle');
+            base64ToggleElement.dataset.g4Role = 'base64-toggle';
 
             const base64ToggleTextElement = document.createElement('span');
             base64ToggleTextElement.classList.add('sqd-base64-toggle__label');
@@ -3761,7 +3754,7 @@ class CustomFields {
                 base64ToggleInputElement,
                 base64ToggleSwitchElement
             );
-            labelElement.insertBefore(labelActionsElement, helpIconElement);
+            helpIconElement.before(labelActionsElement);
             labelActionsElement.append(base64ToggleElement, helpIconElement);
             updateBase64ToggleAccessibility();
 
@@ -3791,14 +3784,14 @@ class CustomFields {
             // Find and remove any existing modal with the same ID in the container
             const existingModal = fieldContainer?.querySelector(`#${escapedId}-modal`);
             if (existingModal) {
-                fieldContainer.removeChild(existingModal);
+                existingModal.remove();
             }
 
             // Create a container <div> to serve as the modal
             const modalElement = document.createElement('div');
             modalElement.setAttribute('id', `${inputId}-modal`);
             modalElement.setAttribute('class', 'sqd-modal');
-            modalElement.setAttribute('data-g4-role', 'input-modal');
+            modalElement.dataset.g4Role = 'input-modal';
 
             // Create a container for the textarea and close button
             const textareaContainerElement = document.createElement('div');
@@ -3829,12 +3822,12 @@ class CustomFields {
                 const textarea = fieldContainer.querySelector(`#${escapedId}`);
                 if (!textarea) {
                     app.inert = false;
-                    document.body.removeChild(modalElement);
+                    modalElement.remove();
                     return;
                 }
                 app.inert = false;
                 textarea.disabled = false;
-                fieldContainer.removeChild(modalElement);
+                modalElement.remove();
             });
 
             // Add the textarea and close button to the container
@@ -3872,7 +3865,7 @@ class CustomFields {
         textareaElement.setAttribute('id', inputId);
         textareaElement.setAttribute('rows', '1');                        // Start with a single row; height will adjust dynamically.
         textareaElement.setAttribute('wrap', 'off');                      // Disable text wrapping to allow horizontal scrolling if needed.
-        textareaElement.setAttribute('data-g4-attribute', options.label); // Custom data attribute for identification.
+        textareaElement.dataset.g4Attribute = options.label;              // Custom data attribute for identification.
         textareaElement.setAttribute('spellcheck', 'false');              // Disable spell checking.
         textareaElement.setAttribute('title', options.initialValue);      // Tooltip displaying the current value.
         textareaElement.value = options.initialValue;                     // Set the initial value of the textarea.
@@ -3961,14 +3954,14 @@ class CustomFields {
         const toggleSwitchElement = document.createElement('span');
 
         toggleElement.classList.add('sqd-base64-toggle');
-        toggleElement.setAttribute('data-g4-role', 'switch-toggle');
+        toggleElement.dataset.g4Role = 'switch-toggle';
 
         toggleInputElement.classList.add('sqd-base64-toggle__input');
         toggleInputElement.id = `${inputId}-switch`;
         toggleInputElement.name = `${inputId}-switch`;
         toggleInputElement.type = 'checkbox';
         toggleInputElement.checked = isInitiallyEnabled;
-        toggleInputElement.setAttribute('data-g4-attribute', options.label);
+        toggleInputElement.dataset.g4Attribute = options.label;
 
         toggleSwitchElement.classList.add('sqd-base64-toggle__switch');
         toggleSwitchElement.setAttribute('aria-hidden', 'true');
@@ -4151,7 +4144,7 @@ class CustomFields {
 
         // Create a new div element to contain the title and subtitle.
         const titleContainer = document.createElement('div');
-        titleContainer.setAttribute('data-g4-role', 'title');
+        titleContainer.dataset.g4Role = 'title';
 
         // Define the HTML structure for the title, subtitle, and hint icon.
         const html = `
