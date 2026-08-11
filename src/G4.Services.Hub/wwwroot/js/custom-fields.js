@@ -497,6 +497,7 @@ class CustomG4Fields {
             {
                 container: controller,
                 initialValue: options.initialValue?.username || '',
+                isBase64Enabled: false,
                 isReadonly: false,
                 label: 'Username',
                 title: 'A valid G4™ username required for authentication.'
@@ -516,6 +517,7 @@ class CustomG4Fields {
             {
                 container: controller,
                 initialValue: options.initialValue?.password || '',
+                isBase64Enabled: false,
                 isReadonly: false,
                 label: 'Password',
                 title: 'A valid G4™ password required for authentication.'
@@ -535,6 +537,7 @@ class CustomG4Fields {
             {
                 container: controller,
                 initialValue: options.initialValue?.token || '',
+                isBase64Enabled: false,
                 isReadonly: false,
                 label: 'Token',
                 title: 'A valid G4™ license token. This optional token replaces username/password authentication for streamlined access.'
@@ -848,6 +851,7 @@ class CustomG4Fields {
             {
                 container: controller,
                 initialValue: options.initialValue?.filter || '',
+                isBase64Enabled: false,
                 isReadonly: false,
                 label: 'Filter',
                 title: 'Specifies the row-filtering criteria to select data. For examples on how to filter rows, see ' +
@@ -872,6 +876,7 @@ class CustomG4Fields {
             {
                 container: controller,
                 initialValue: options.initialValue?.repository || '',
+                isBase64Enabled: false,
                 isReadonly: false,
                 label: 'Repository',
                 title: 'Specifies the data container (e.g., DataTable, DataView, or List) used as the data source.'
@@ -896,6 +901,7 @@ class CustomG4Fields {
             {
                 container: controller,
                 initialValue: options.initialValue?.source || '',
+                isBase64Enabled: false,
                 isReadonly: false,
                 label: 'Source',
                 title: 'Specifies the connection string, file path, or URL needed to locate the repository.'
@@ -1020,6 +1026,7 @@ class CustomG4Fields {
             {
                 container: controller,
                 initialValue: options.initialValue?.repository || '',
+                isBase64Enabled: false,
                 isReadonly: false,
                 label: 'Repository',
                 title: 'Specifies the data container (e.g., DataTable, DataView, or List) used as the data source.'
@@ -1044,6 +1051,7 @@ class CustomG4Fields {
             {
                 container: controller,
                 initialValue: options.initialValue?.source || '',
+                isBase64Enabled: false,
                 isReadonly: false,
                 label: 'Source',
                 title: 'Specifies the connection string, file path, or URL needed to locate the repository.'
@@ -1286,6 +1294,7 @@ class CustomG4Fields {
             {
                 container: controller,
                 initialValue: options.initialValue?.driverBinaries || '',
+                isBase64Enabled: false,
                 isReadonly: false,
                 label: 'Driver Binaries',
                 title: 'The driver binaries location on local machine or grid endpoint.'
@@ -1311,7 +1320,8 @@ class CustomG4Fields {
                 container: alwaysMatchField.querySelector('[data-g4-role="always-match-capabilities"]'),
                 label: 'Capabilities',
                 title: 'A collection of capabilities with additional custom information for the invocation.',
-                initialValue: alwaysMatch
+                initialValue: alwaysMatch,
+                isBase64Enabled: false
             },
             (value) => {
                 const alwaysMatch = Utilities.convertFromJson(value);
@@ -1383,6 +1393,7 @@ class CustomG4Fields {
             {
                 container: controller,
                 initialValue: options.initialValue?.defaultEnvironment || 'SystemParameters',
+                isBase64Enabled: false,
                 isReadonly: false,
                 label: 'Default Environment',
                 title: 'The default environment to use for automation requests.'
@@ -1559,6 +1570,7 @@ class CustomG4Fields {
             {
                 container: controller,
                 initialValue: options.initialValue?.type || '',
+                isBase64Enabled: false,
                 isReadonly: false,
                 label: 'Type',
                 title: 'Specifies the type of the queue manager.'
@@ -2023,6 +2035,7 @@ class CustomG4Fields {
             {
                 container: controller,
                 initialValue: options.initialValue?.outputFolder || '.',
+                isBase64Enabled: false,
                 isReadonly: false,
                 label: 'Output Folder',
                 title: 'Specifies the default folder path for saving screenshots.'
