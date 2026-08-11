@@ -3892,83 +3892,84 @@ class CustomFields {
     }
 
     /**
-     * Creates and appends a new switch (select) field to the specified container based on provided options.
+     * Creates and appends a checkbox-based toggle field that uses the established editor switch appearance.
      *
      * @param {Object}         options                      - Configuration options for the switch field.
      * @param {HTMLElement}    [options.container]          - The DOM element to which the switch field will be appended.
      * @param {string}         options.label                - The identifier for the switch field, used for data attributes and labeling.
      * @param {string}         [options.title]              - The title attribute for the field container, often used for tooltips.
-     * @param {boolean|string} [options.initialValue=false] - The initial value of the switch field. Can be `true`, `false`, or a falsy value.
+     * @param {boolean|string} [options.initialValue=false] - The initial state as a boolean or lowercase boolean string.
      * @param {Function}       setCallback                  - Callback function to handle changes to the switch field's value.
      *
      * @returns {HTMLElement} The container element that includes the newly created switch field.
      */
     static newSwitchField(options, setCallback) {
-        // Generate a unique identifier for the switch field to ensure uniqueness in the DOM
+        // Normalize the supported boolean representations so persisted string values select the correct state.
         const inputId = Utilities.newUid();
-
-        // Convert the label from PascalCase to a space-separated format for display purposes
         const labelDisplayName = options.label;
+        const isInitiallyEnabled = options.initialValue === true || options.initialValue === 'true';
 
-        /**
-         * Validate and sanitize the initial value.
-         * If the initial value is not provided, is NaN, or is undefined, default it to `false`.
-         */
-        options.initialValue = (!options.initialValue || options.initialValue === null || Number.isNaN(options.initialValue) || options.initialValue === undefined)
-            ? false
-            : options.initialValue;
-
-        /**
-         * Construct the HTML string for the select element with the necessary attributes.
-         * - `data-g4-attribute`: Custom data attribute for identifying the field.
-         * - `title`            : Tooltip text showing the current value.
-         * - `select`           : Creates a dropdown with options to activate or deactivate the switch.
-         */
-        const html = `
-        <select name="${inputId}-switch" data-g4-attribute="${options.label}" title="${options.initialValue}">
-            <option value="" disabled selected>-- Please select an option --</option>
-            <option value="true" title="Activate switch">True</option>
-            <option value="false" title="Deactivate switch">False</option>
-        </select>`;
-
-        // Create a container for the field using a helper function, passing the unique ID, display label, and title
+        // Reuse the established Base64 slider structure so boolean fields share its appearance without CSS changes.
         const fieldContainer = newFieldContainer(inputId, labelDisplayName, options.title);
-
-        // Select the specific sub-container within the field container where the select element will reside
         const controllerContainer = fieldContainer.querySelector('[data-g4-role="controller"]');
+        const toggleElement = document.createElement('label');
+        const toggleInputElement = document.createElement('input');
+        const toggleSwitchElement = document.createElement('span');
 
-        // Insert the select HTML into the controller container at the end of its current content
-        controllerContainer.insertAdjacentHTML('beforeend', html);
+        toggleElement.classList.add('sqd-base64-toggle');
+        toggleElement.setAttribute('data-g4-role', 'switch-toggle');
 
-        // Retrieve the newly inserted select element for further manipulation
-        const select = controllerContainer.querySelector('select');
-        select.value = options.initialValue;
+        toggleInputElement.classList.add('sqd-base64-toggle__input');
+        toggleInputElement.id = `${inputId}-switch`;
+        toggleInputElement.name = `${inputId}-switch`;
+        toggleInputElement.type = 'checkbox';
+        toggleInputElement.checked = isInitiallyEnabled;
+        toggleInputElement.setAttribute('data-g4-attribute', options.label);
 
-        /**
-         * If a callback function is provided, add an event listener to handle changes to the select field.
-         * - Updates the `title` attribute of the select to reflect its current value.
-         * - Invokes the `setCallback` function with the new value whenever the selection changes.
-         */
-        if (typeof setCallback === 'function') {
-            fieldContainer.addEventListener('input', () => {
-                select.title = select.value;
-                setCallback(select.value);
-            });
-        }
+        toggleSwitchElement.classList.add('sqd-base64-toggle__switch');
+        toggleSwitchElement.setAttribute('aria-hidden', 'true');
 
         /**
-         * If a container element is provided in the options, append the entire field container to it.
-         * This allows for flexible placement of the new switch field within the DOM.
+         * Synchronizes native input state and accessible action text after initialization and each user change.
+         *
+         * @returns {string} The lowercase string contract expected by existing switch-field consumers.
          */
+        const updateSwitchState = () => {
+            const switchValue = toggleInputElement.checked ? 'true' : 'false';
+            const actionLabel = toggleInputElement.checked
+                ? `Deactivate ${labelDisplayName}`
+                : `Activate ${labelDisplayName}`;
+
+            toggleInputElement.value = switchValue;
+            toggleElement.title = actionLabel;
+            toggleInputElement.setAttribute('aria-label', actionLabel);
+
+            return switchValue;
+        };
+
+        /**
+         * Commits a user-selected state while preserving the existing string callback contract.
+         */
+        const onSwitchChange = () => {
+            const switchValue = updateSwitchState();
+
+            if (typeof setCallback === 'function') {
+                setCallback(switchValue);
+            }
+        };
+
+        // Assemble the native checkbox before wiring its lifecycle so label clicks and keyboard input work normally.
+        toggleElement.append(toggleInputElement, toggleSwitchElement);
+        controllerContainer.appendChild(toggleElement);
+        updateSwitchState();
+
+        toggleInputElement.addEventListener('change', onSwitchChange);
+
+        // Attach the completed field only when a host was provided, preserving the method's existing return behavior.
         if (options.container) {
             options.container.appendChild(fieldContainer);
         }
 
-        /**
-         * Return the container that now includes the new switch field.
-         * - If an external container was provided, return that container.
-         * - Otherwise, return the newly created field container.
-         */
         return options.container ? options.container : fieldContainer;
     }
 
