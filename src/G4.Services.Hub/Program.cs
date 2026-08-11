@@ -19,6 +19,9 @@ using System;
 using System.IO;
 using System.Linq;
 
+// Keeps CORS registration and every middleware or endpoint reference bound to one policy identifier.
+const string CorsPolicyName = "CorsPolicy";
+
 // Write the ASCII logo for the Hub Controller with the specified version.
 ControllerUtilities.WriteHubAsciiLogo(version: "0000.00.00.0000");
 
@@ -96,7 +99,7 @@ var origins = string.IsNullOrEmpty(originsEnvironmentParameter)
 
 // Add and configure CORS (Cross-Origin Resource Sharing) to allow requests from any origin.
 builder.Services.AddCors(options =>
-    options.AddPolicy("CorsPolicy", policy => policy
+    options.AddPolicy(CorsPolicyName, policy => policy
         .SetIsOriginAllowed(origin =>
             origins.Contains(origin)
             || (origin != null && origin.StartsWith("vscode-webview://"))
@@ -158,7 +161,7 @@ app.UseCookiePolicy();
 app.UseRouting();
 
 // Add the CORS policy to the application to allow cross-origin requests
-app.UseCors("CorsPolicy");
+app.UseCors(CorsPolicyName);
 
 // Add the Swagger documentation and UI page to the application
 app.UseSwagger(i =>
@@ -228,13 +231,13 @@ app.UseStaticFiles(new StaticFileOptions
 });
 
 // Add the SignalR hub to the application for real-time communication with clients and other services
-app.MapHub<G4Hub>($"/hub/v{AppSettings.ApiVersion}/g4/orchestrator").RequireCors("CorsPolicy");
+app.MapHub<G4Hub>($"/hub/v{AppSettings.ApiVersion}/g4/orchestrator").RequireCors(CorsPolicyName);
 
 // Add the SignalR hub to send automation notifications to clients and other services in real-time
-app.MapHub<G4AutomationNotificationsHub>($"/hub/v{AppSettings.ApiVersion}/g4/notifications").RequireCors("CorsPolicy");
+app.MapHub<G4AutomationNotificationsHub>($"/hub/v{AppSettings.ApiVersion}/g4/notifications").RequireCors(CorsPolicyName);
 
 // Add the signalR hub the bots endpoint to send and receive messages in real-time
-app.MapHub<G4BotsHub>($"/hub/v{AppSettings.ApiVersion}/g4/bots").RequireCors("CorsPolicy");
+app.MapHub<G4BotsHub>($"/hub/v{AppSettings.ApiVersion}/g4/bots").RequireCors(CorsPolicyName);
 #endregion
 
 // Retrieve the logger service and log that the application has started.

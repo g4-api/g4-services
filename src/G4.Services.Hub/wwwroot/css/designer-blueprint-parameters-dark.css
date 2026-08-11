@@ -121,6 +121,12 @@
 	--smart-editor-label-help-icon-container-hover-background: #1F1F1F;
 	--smart-editor-label-help-icon-container-hover-fill: var(--primary-color-hover);
 	--smart-editor-label-help-icon-container-size: 1.2em;
+	--smart-editor-base64-toggle-active-background: var(--green);
+	--smart-editor-base64-toggle-focus-outline: 2px solid var(--smart-editor-input-focus-color);
+	--smart-editor-base64-toggle-focus-outline-offset: 2px;
+	--smart-editor-base64-toggle-thumb-background: var(--white);
+	--smart-editor-base64-toggle-track-background: var(--gray);
+	--smart-editor-base64-toggle-transition: background-color 0.15s, transform 0.15s;
 	--smart-editor-label-color: var(--base-font-color);
 	--smart-editor-subtitle-background: var(--secondary-color);
 	--smart-editor-subtitle-color: var(--base-font-color);
