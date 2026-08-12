@@ -39,11 +39,16 @@ namespace G4.Services.Domain.V4.Repositories
     /// shared HTTP client factory, cache manager, and G4 client dependencies.
     /// It acts as the main entry point for working with the registered tool catalog.
     /// </remarks>
-    public class ToolsRepository(
-        IHttpClientFactory clientFactory,
-        CacheManager cache,
-        G4Client client) : IToolsRepository
+    public class ToolsRepository : IToolsRepository
     {
+        #region *** Constants    ***
+        // Identifies the plugin-cache bucket that contributes executable tools to the derived domain catalogs.
+        private const string ActionPluginType = "Action";
+
+        // Serializes rebuilds so concurrent cache notifications publish derived catalogs in cache-observation order.
+        private static readonly Lock ToolsSyncLock = new();
+        #endregion
+
         #region *** Fields       ***
         // Buffer for storing intermediate results or state
         // related to G4 rules, keyed by a string identifier.
@@ -55,15 +60,45 @@ namespace G4.Services.Domain.V4.Repositories
         // Tracks active browser or agent sessions by session ID.
         private static readonly ConcurrentDictionary<object, object> s_sessions = [];
 
-        // Static, atomically swappable snapshot
-        private static ConcurrentDictionary<string, McpToolModel> s_tools =
-            FormatTools(cache: CacheManager.Instance);
+        // Holds the atomically swappable formatted-tool catalog derived from the primary capabilities cache.
+        private static ConcurrentDictionary<string, McpToolModel> s_tools = [];
+
+        // Provides the live capabilities database used to rebuild every derived tool index.
+        private readonly CacheManager _cache;
+
+        // Provides engine operations used by tool invocation and capability registration flows.
+        private readonly G4Client _client;
 
         // HTTP client configured for OpenAI API interactions, using a named configuration.
-        private readonly HttpClient _httpClient = clientFactory.CreateClient(name: "openai");
+        private readonly HttpClient _httpClient;
 
-        // Lexical retrieval manager instance used for finding relevant tools based on intent.
-        private readonly LexicalRetrievalManager _retrievalManager = new(CacheManager.Instance);
+        // Holds the application-scoped lexical index that synchronizes itself from the primary capabilities cache.
+        private readonly LexicalRetrievalManager _retrievalManager;
+        #endregion
+
+        #region *** Constructors ***
+        /// <summary>
+        /// Initializes the singleton tool repository and attaches its derived catalogs to cache-change notifications.
+        /// </summary>
+        /// <param name="clientFactory">The factory used to resolve the named OpenAI HTTP client.</param>
+        /// <param name="cache">The live capabilities database that owns plugin-cache mutations.</param>
+        /// <param name="client">The G4 client used to invoke tools and register capabilities.</param>
+        public ToolsRepository(IHttpClientFactory clientFactory, CacheManager cache, G4Client client)
+        {
+            // Capture application-lifetime dependencies before exposing this repository to cache notifications.
+            _cache = cache;
+            _client = client;
+            _httpClient = clientFactory.CreateClient(name: "openai");
+
+            // Create one lexical manager for this singleton repository so cache subscriptions do not accumulate.
+            _retrievalManager = new LexicalRetrievalManager(_cache);
+
+            // Subscribe before the initial rebuild so any concurrent mutation receives a serialized follow-up refresh.
+            _cache.CacheChanged += UpdateToolsOnCacheChanged;
+
+            // Initialize both derived catalogs from the same live cache used by the G4 client.
+            SyncTools();
+        }
         #endregion
 
         #region *** Methods      ***
@@ -75,7 +110,7 @@ namespace G4.Services.Domain.V4.Repositories
             var options = new InvokeOptions(parameters)
             {
                 Buffer = s_buffer,
-                G4Client = client,
+                G4Client = _client,
                 HttpClient = _httpClient,
                 Sessions = s_sessions,
                 Tools = s_tools
@@ -232,7 +267,7 @@ namespace G4.Services.Domain.V4.Repositories
             // to find the most relevant tools for the provided intent.
             if (!types.Any(i => i.Equals("system-tool", StringComparison.OrdinalIgnoreCase)))
             {
-                return new LexicalRetrievalManager(cache)
+                return _retrievalManager
                     .FindTools(prompt: options.Intent?.AgentIntent ?? string.Empty, take: take)
                     .Tools
                     .Select(result => s_tools.GetValueOrDefault(result.Name))
@@ -283,11 +318,8 @@ namespace G4.Services.Domain.V4.Repositories
             maxResults = maxResults <= 0 ? 3 : maxResults;
             threshold = threshold < 0 ? 0 : threshold;
 
-            // Initialize the lexical retrieval manager with the current plugin cache
-            var retrievalManager = new LexicalRetrievalManager(cache);
-
-            // Retrieve the most relevant tool names based on lexical matching
-            var results = retrievalManager
+            // Query the application-scoped lexical index that follows the same authoritative cache instance.
+            var results = _retrievalManager
                 .FindTools(prompt: intent, take: maxResults)
                 .Tools
                 .Where(i => i.Score >= threshold);
@@ -327,7 +359,7 @@ namespace G4.Services.Domain.V4.Repositories
             {
                 DriverSession = driverSession, // Session identifier to fetch the DOM for
                 Token = token,                 // Token authorizing the G4 engine to perform DOM retrieval
-                G4Client = client,             // Reference to the G4 engine client instance
+                G4Client = _client,            // Reference to the G4 engine client instance
                 HttpClient = _httpClient,      // HTTP client used for underlying communication
                 Sessions = s_sessions,         // Active sessions collection used by the engine
                 Tools = s_tools                // Registered tools available in the current context
@@ -346,7 +378,7 @@ namespace G4.Services.Domain.V4.Repositories
             var options = new InvokeOptions
             {
                 Arguments = JsonSerializer.SerializeToElement(new { manifest }, AppSettings.JsonOptions),
-                G4Client = client
+                G4Client = _client
             };
 
             // Delegate the actual registration to the shared handler.
@@ -391,7 +423,7 @@ namespace G4.Services.Domain.V4.Repositories
             var options = new InvokeOptions
             {
                 DriverSession = schema.DriverSession, // Session identifier to fetch the DOM for
-                G4Client = client,                    // Reference to the G4 engine client instance
+                G4Client = _client,                   // Reference to the G4 engine client instance
                 HttpClient = _httpClient,             // HTTP client used for underlying communication
                 Intent = schema.Intent,               // The intent describing the element to locate
                 OpenaiApiKey = schema.OpenaiApiKey,   // OpenAI API key for authentication
@@ -415,7 +447,7 @@ namespace G4.Services.Domain.V4.Repositories
             {
                 Driver = schema.Driver,
                 DriverBinaries = schema.DriverBinaries,
-                G4Client = client,
+                G4Client = _client,
                 HttpClient = _httpClient,
                 Sessions = s_sessions,
                 Token = schema.Token,
@@ -448,7 +480,7 @@ namespace G4.Services.Domain.V4.Repositories
             var options = new InvokeOptions
             {
                 DriverSession = schema.DriverSession,
-                G4Client = client,
+                G4Client = _client,
                 HttpClient = _httpClient,
                 Rule = ConvertToRule(arguments: jsonElement, schema.Intent, s_tools),
                 Sessions = s_sessions,
@@ -463,11 +495,38 @@ namespace G4.Services.Domain.V4.Repositories
         /// <inheritdoc />
         public void SyncTools()
         {
-            // Rebuild the tools collection from the cache manager.
-            var rebuilt = new ConcurrentDictionary<string, McpToolModel>(FormatTools(cache));
+            // Serialize complete rebuilds so an earlier notification cannot publish after a later cache mutation.
+            lock (ToolsSyncLock)
+            {
+                // Rebuild the formatted domain index while the long-lived lexical manager handles its own cache events.
+                var tools = new ConcurrentDictionary<string, McpToolModel>(FormatTools(_cache));
 
-            // Atomically replace the current tools collection with the rebuilt one.
-            Interlocked.Exchange(ref s_tools, rebuilt);
+                // Publish a complete replacement so readers never observe a partially populated derived catalog.
+                Interlocked.Exchange(ref s_tools, tools);
+            }
+        }
+
+        // Refreshes derived tool catalogs after the primary cache publishes a relevant completed mutation.
+        // The singleton cache and repository share the application lifetime, so no detached subscription remains.
+        private void UpdateToolsOnCacheChanged(object sender, CacheManager.CacheChangedEventArgs eventArgs)
+        {
+            // Limit rebuilds to full resets and Action mutations because other plugin types do not format as tools.
+            var isReset = string.Equals(
+                eventArgs.ChangeType,
+                CacheManager.CacheChangeTypes.Reset,
+                StringComparison.OrdinalIgnoreCase);
+            var isAction = string.Equals(
+                eventArgs.EntityType,
+                ActionPluginType,
+                StringComparison.OrdinalIgnoreCase);
+
+            if (!isReset && !isAction)
+            {
+                return;
+            }
+
+            // Rebuild synchronously after the cache mutation so its caller returns with current domain catalogs.
+            SyncTools();
         }
 
         // TODO: Implement logic to handle all types of G4 rules.
