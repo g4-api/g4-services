@@ -900,6 +900,7 @@ namespace G4.Services.Domain.V4.Repositories
                 {
                     EnvironmentsSettings = environmentsSettings
                 },
+                
                 // Define the stages of the automation process.
                 Stages =
                 [
