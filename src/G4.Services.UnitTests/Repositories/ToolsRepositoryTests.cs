@@ -2,7 +2,10 @@ using G4.Api;
 using G4.Attributes;
 using G4.Cache;
 using G4.Models;
+using G4.Models.Schema;
+using G4.Services.Domain.V4.Models;
 using G4.Services.Domain.V4.Repositories;
+using G4.Settings;
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -11,6 +14,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Reflection;
+using System.Text.Json;
 
 namespace G4.Services.UnitTests.Repositories
 {
@@ -22,6 +26,26 @@ namespace G4.Services.UnitTests.Repositories
     {
         // Identifies the cache bucket that contributes capabilities to the domain tool catalog.
         private const string PluginType = "Action";
+
+        [TestMethod(DisplayName = "Verify that buffer response entries serialize their timestamp and rule content.")]
+        public void BufferResponseModelSerializationTest()
+        {
+            // Arrange: create one deterministic buffer entry with both values that disappeared from tuple serialization.
+            const long Timestamp = 1700000000000;
+            var response = new BufferResponseModel
+            {
+                Timestamp = Timestamp,
+                Rule = new ActionRuleModel("NoAction")
+            };
+
+            // Act: serialize through the application options used by both MCP response boundaries.
+            var json = JsonSerializer.SerializeToElement(new[] { response }, AppSettings.JsonOptions);
+            var entry = json[0];
+
+            // Assert: the property-backed model exposes both values instead of producing an empty JSON object.
+            Assert.AreEqual(Timestamp, entry.GetProperty("timestamp").GetInt64());
+            Assert.AreEqual("NoAction", entry.GetProperty("rule").GetProperty("pluginName").GetString());
+        }
 
         [TestMethod(DisplayName = "Verify that an added cache capability appears in the domain tool catalog.")]
         public void CacheAdditionRefreshesToolsTest()

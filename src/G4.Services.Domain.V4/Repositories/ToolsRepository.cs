@@ -50,9 +50,8 @@ namespace G4.Services.Domain.V4.Repositories
         #endregion
 
         #region *** Fields       ***
-        // Buffer for storing intermediate results or state
-        // related to G4 rules, keyed by a string identifier.
-        private static readonly ConcurrentDictionary<string, ConcurrentBag<(long Timestamp, G4RuleModelBase Rule)>> s_buffer = [];
+        // Stores serializable rule-execution entries by session so MCP responses retain their timestamp and rule content.
+        private static readonly ConcurrentDictionary<string, ConcurrentBag<BufferResponseModel>> s_buffer = [];
 
         // Factory for converting CLI-style arguments into structured data.
         private static readonly CliFactory s_cliFactory = new();
@@ -335,7 +334,7 @@ namespace G4.Services.Domain.V4.Repositories
         }
 
         /// <inheritdoc />
-        public List<(long Timestamp, G4RuleModelBase Rule)> GetBuffer(string sessionId)
+        public List<BufferResponseModel> GetBuffer(string sessionId)
         {
             // Wrap the session identifier as the raw "arguments" payload the underlying
             // handler expects, matching the shape the MCP tool-call pipeline would supply.
@@ -835,7 +834,7 @@ namespace G4.Services.Domain.V4.Repositories
 
         // Retrieves the buffered rules associated with the session identifier
         // provided in the invocation arguments.
-        private static List<(long Timestamp, G4RuleModelBase Rule)> GetBuffer(InvokeOptions options)
+        private static List<BufferResponseModel> GetBuffer(InvokeOptions options)
         {
             // Read the session identifier from the invocation arguments.
             // When the argument is missing, keep the value as null.
@@ -1095,10 +1094,14 @@ namespace G4.Services.Domain.V4.Repositories
             // Add the session to the sessions dictionary to keep track of the active session.
             options.Sessions[session.Key] = session.Value;
 
-            // Add the executed rule to the buffer associated with the session key.
+            // Add a property-backed response entry so later MCP serialization preserves both buffer values.
             var buffer = options.Buffer.GetValueOrDefault(key: session.Key, defaultValue: null);
             var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-            buffer?.Add((timestamp, options.Rule));
+            buffer?.Add(new BufferResponseModel
+            {
+                Timestamp = timestamp,
+                Rule = options.Rule
+            });
 
             // Retrieve the response for the rule execution from the response tree structure.
             var ruleResponse = session
@@ -1287,7 +1290,7 @@ namespace G4.Services.Domain.V4.Repositories
             /// <summary>
             /// Gets or sets the buffer that tracks recently executed rules for each session.
             /// </summary>
-            public ConcurrentDictionary<string, ConcurrentBag<(long Timestamp, G4RuleModelBase Rule)>> Buffer { get; set; }
+            public ConcurrentDictionary<string, ConcurrentBag<BufferResponseModel>> Buffer { get; set; }
 
             /// <summary>
             /// The name or type of driver to use (e.g., "ChromeDriver").
