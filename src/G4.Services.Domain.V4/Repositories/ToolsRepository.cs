@@ -51,16 +51,16 @@ namespace G4.Services.Domain.V4.Repositories
 
         #region *** Fields       ***
         // Stores serializable rule-execution entries by session so MCP responses retain their timestamp and rule content.
-        private static readonly ConcurrentDictionary<string, ConcurrentBag<BufferResponseModel>> s_buffer = [];
+        private static readonly ConcurrentDictionary<string, ConcurrentBag<BufferResponseModel.BufferItem>> _buffer = [];
 
         // Factory for converting CLI-style arguments into structured data.
-        private static readonly CliFactory s_cliFactory = new();
+        private static readonly CliFactory _cliFactory = new();
 
         // Tracks active browser or agent sessions by session ID.
-        private static readonly ConcurrentDictionary<object, object> s_sessions = [];
+        private static readonly ConcurrentDictionary<object, object> _sessions = [];
 
         // Holds the atomically swappable formatted-tool catalog derived from the primary capabilities cache.
-        private static ConcurrentDictionary<string, McpToolModel> s_tools = [];
+        private static ConcurrentDictionary<string, McpToolModel> _tools = [];
 
         // Provides the live capabilities database used to rebuild every derived tool index.
         private readonly CacheManager _cache;
@@ -108,19 +108,19 @@ namespace G4.Services.Domain.V4.Repositories
             // This contains tool-specific input such as driver settings, session IDs, etc.
             var options = new InvokeOptions(parameters)
             {
-                Buffer = s_buffer,
+                Buffer = _buffer,
                 G4Client = _client,
                 HttpClient = _httpClient,
-                Sessions = s_sessions,
-                Tools = s_tools
+                Sessions = _sessions,
+                Tools = _tools
             };
 
             // Extract and convert the "arguments" to an executable rule format.
-            options.Rule = ConvertToRule(options.Arguments, options.Intent, s_tools);
+            options.Rule = ConvertToRule(options.Arguments, options.Intent, _tools);
 
             // Look up the tool definition in the registered tools dictionary.
             // If the tool is not found, 'tool' will be null and handled in the default branch below.
-            var tool = s_tools.GetValueOrDefault(options.ToolName);
+            var tool = _tools.GetValueOrDefault(options.ToolName);
 
             // Read the friendly intent text used to retrieve relevant tools.
             // Default to an empty string when the argument is missing.
@@ -201,7 +201,7 @@ namespace G4.Services.Domain.V4.Repositories
             var result = examples.Select(i => new ExamplesResultModel()
             {
                 ToolProperties = i.Example.Rule.ExportProperties(exclude),
-                ToolParameters = s_cliFactory
+                ToolParameters = _cliFactory
                     .ConvertToDictionary(
                         cli: i.Example?.Rule?.Argument ?? string.Empty,
                         normalize: false)
@@ -230,7 +230,7 @@ namespace G4.Services.Domain.V4.Repositories
         public McpToolModel FindTool(string intent, string toolName)
         {
             // Look up the tool by name in the internal registry.
-            return s_tools.GetValueOrDefault(toolName);
+            return _tools.GetValueOrDefault(toolName);
         }
 
         /// <inheritdoc />
@@ -269,7 +269,7 @@ namespace G4.Services.Domain.V4.Repositories
                 return _retrievalManager
                     .FindTools(prompt: options.Intent?.AgentIntent ?? string.Empty, take: take)
                     .Tools
-                    .Select(result => s_tools.GetValueOrDefault(result.Name))
+                    .Select(result => _tools.GetValueOrDefault(result.Name))
                     .Where(tool => tool != null)
                     .ToDictionary(tool => tool.Name, tool => tool, comparer);
             }
@@ -279,7 +279,7 @@ namespace G4.Services.Domain.V4.Repositories
 
             // Iterate through the entire tool collection
             // and filter by the requested types.
-            foreach (var tool in s_tools)
+            foreach (var tool in _tools)
             {
                 // Check whether the current tool type is included in the requested type list.
                 var isTypes = types.Contains(tool.Value.Type, comparer);
@@ -325,7 +325,7 @@ namespace G4.Services.Domain.V4.Repositories
 
             // Map the tool names to their corresponding McpToolModel instances
             return results
-                .Select(i => s_tools.GetValueOrDefault(i.Name))
+                .Select(i => _tools.GetValueOrDefault(i.Name))
                 .Where(i => i != null)
                 .ToDictionary(
                     i => i.Name,
@@ -334,14 +334,14 @@ namespace G4.Services.Domain.V4.Repositories
         }
 
         /// <inheritdoc />
-        public List<BufferResponseModel> GetBuffer(string sessionId)
+        public BufferResponseModel GetBuffer(string sessionId)
         {
             // Wrap the session identifier as the raw "arguments" payload the underlying
             // handler expects, matching the shape the MCP tool-call pipeline would supply.
             var options = new InvokeOptions
             {
                 Arguments = JsonSerializer.SerializeToElement(new { sessionId }, AppSettings.JsonOptions),
-                Buffer = s_buffer
+                Buffer = _buffer
             };
 
             // Delegate the actual buffer lookup to the shared handler.
@@ -360,8 +360,8 @@ namespace G4.Services.Domain.V4.Repositories
                 Token = token,                 // Token authorizing the G4 engine to perform DOM retrieval
                 G4Client = _client,            // Reference to the G4 engine client instance
                 HttpClient = _httpClient,      // HTTP client used for underlying communication
-                Sessions = s_sessions,         // Active sessions collection used by the engine
-                Tools = s_tools                // Registered tools available in the current context
+                Sessions = _sessions,         // Active sessions collection used by the engine
+                Tools = _tools                // Registered tools available in the current context
             };
 
             // Delegate DOM segmentation to the helper method,
@@ -392,7 +392,7 @@ namespace G4.Services.Domain.V4.Repositories
             var options = new InvokeOptions
             {
                 Arguments = JsonSerializer.SerializeToElement(new { sessionId }, AppSettings.JsonOptions),
-                Buffer = s_buffer
+                Buffer = _buffer
             };
 
             // Delegate the actual buffer removal to the shared handler.
@@ -407,7 +407,7 @@ namespace G4.Services.Domain.V4.Repositories
             var options = new InvokeOptions
             {
                 Arguments = JsonSerializer.SerializeToElement(new { sessionId }, AppSettings.JsonOptions),
-                Sessions = s_sessions
+                Sessions = _sessions
             };
 
             // Delegate the actual session removal to the shared handler.
@@ -428,9 +428,9 @@ namespace G4.Services.Domain.V4.Repositories
                 OpenaiApiKey = schema.OpenaiApiKey,   // OpenAI API key for authentication
                 OpenaiModel = schema.OpenaiModel,     // OpenAI model to use for locator resolution
                 OpenaiUri = schema.OpenaiUri,         // OpenAI API endpoint URI
-                Sessions = s_sessions,                // Active sessions collection used by the engine
+                Sessions = _sessions,                // Active sessions collection used by the engine
                 Token = schema.Token,                 // Token authorizing the G4 engine to perform DOM retrieval
-                Tools = s_tools                       // Registered tools available in the current context
+                Tools = _tools                       // Registered tools available in the current context
             };
 
             // Return the resolved locator using the provided intent and the retrieved DOM.
@@ -448,9 +448,9 @@ namespace G4.Services.Domain.V4.Repositories
                 DriverBinaries = schema.DriverBinaries,
                 G4Client = _client,
                 HttpClient = _httpClient,
-                Sessions = s_sessions,
+                Sessions = _sessions,
                 Token = schema.Token,
-                Tools = s_tools
+                Tools = _tools
             };
 
             // Delegate session creation to the G4 engine.
@@ -481,10 +481,10 @@ namespace G4.Services.Domain.V4.Repositories
                 DriverSession = schema.DriverSession,
                 G4Client = _client,
                 HttpClient = _httpClient,
-                Rule = ConvertToRule(arguments: jsonElement, schema.Intent, s_tools),
-                Sessions = s_sessions,
+                Rule = ConvertToRule(arguments: jsonElement, schema.Intent, _tools),
+                Sessions = _sessions,
                 Token = schema.Token,
-                Tools = s_tools
+                Tools = _tools
             };
 
             // Delegate the rule execution to the G4 engine and return its result.
@@ -501,7 +501,7 @@ namespace G4.Services.Domain.V4.Repositories
                 var tools = new ConcurrentDictionary<string, McpToolModel>(FormatTools(_cache));
 
                 // Publish a complete replacement so readers never observe a partially populated derived catalog.
-                Interlocked.Exchange(ref s_tools, tools);
+                Interlocked.Exchange(ref _tools, tools);
             }
         }
 
@@ -834,7 +834,7 @@ namespace G4.Services.Domain.V4.Repositories
 
         // Retrieves the buffered rules associated with the session identifier
         // provided in the invocation arguments.
-        private static List<BufferResponseModel> GetBuffer(InvokeOptions options)
+        private static BufferResponseModel GetBuffer(InvokeOptions options)
         {
             // Read the session identifier from the invocation arguments.
             // When the argument is missing, keep the value as null.
@@ -857,7 +857,10 @@ namespace G4.Services.Domain.V4.Repositories
             }
 
             // Return a materialized copy of the buffered rule entries.
-            return [.. buffer];
+            return new()
+            {
+                Buffer = [.. buffer]
+            };
         }
 
         // Creates a new G4 automation model with the provided session details and rule parameters.
@@ -1097,7 +1100,7 @@ namespace G4.Services.Domain.V4.Repositories
             // Add a property-backed response entry so later MCP serialization preserves both buffer values.
             var buffer = options.Buffer.GetValueOrDefault(key: session.Key, defaultValue: null);
             var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-            buffer?.Add(new BufferResponseModel
+            buffer?.Add(new BufferResponseModel.BufferItem
             {
                 Timestamp = timestamp,
                 Rule = options.Rule
@@ -1156,6 +1159,8 @@ namespace G4.Services.Domain.V4.Repositories
             // This dictionary contains configuration for the browser driver (e.g., driver name and path).
             // These parameters are required for the automation process to know which browser and driver binaries to use.
             automation.DriverParameters = driverParameters;
+
+            var j = JsonSerializer.Serialize(automation, AppSettings.JsonOptions);
 
             // Invoke the automation process and get the response.
             var response = options.G4Client.Automation.Invoke(automation);
@@ -1290,7 +1295,7 @@ namespace G4.Services.Domain.V4.Repositories
             /// <summary>
             /// Gets or sets the buffer that tracks recently executed rules for each session.
             /// </summary>
-            public ConcurrentDictionary<string, ConcurrentBag<BufferResponseModel>> Buffer { get; set; }
+            public ConcurrentDictionary<string, ConcurrentBag<BufferResponseModel.BufferItem>> Buffer { get; set; }
 
             /// <summary>
             /// The name or type of driver to use (e.g., "ChromeDriver").

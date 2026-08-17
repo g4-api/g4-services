@@ -85,7 +85,7 @@ namespace G4.Services.Domain.V4.Repositories
         /// </summary>
         /// <param name="sessionId">The unique identifier of the active G4 session whose buffered rules should be retrieved.</param>
         /// <returns>An ordered list of buffered rule entries, each paired with the timestamp it was recorded at.</returns>
-        List<BufferResponseModel> GetBuffer(string sessionId);
+        BufferResponseModel GetBuffer(string sessionId);
 
         /// <summary>
         /// Retrieves the document model (DOM) of the active session using the G4 engine.
