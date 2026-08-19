@@ -140,7 +140,9 @@ namespace G4.Services.Domain.V4.Repositories
                 { Name: "g4.FindTool" } => FindTool(options),
 
                 // Built-in: Lists all available tools.
-                { Name: "g4.FindTools" } => _retrievalManager.FindTools(intent),
+                { Name: "g4.FindTools" } => _retrievalManager.FindTools(
+                    prompt: intent,
+                    take: GetFindToolsTake(options.Arguments)),
 
                 // Built-in: Partitions the current application's DOM into semantic segments.
                 { Name: "g4.GetDomSegments" } => GetDomSegments(options),
@@ -254,13 +256,8 @@ namespace G4.Services.Domain.V4.Repositories
                     .ToArray()
                 : [];
 
-            // Read the optional maximum number of results to return.
-            // Default to 3 when the value is missing or invalid.
-            var take = options.Arguments.TryGetProperty("take", out var takeProperty) &&
-                    takeProperty.ValueKind == JsonValueKind.Number &&
-                    takeProperty.TryGetInt32(out var takeValue)
-                ? takeValue
-                : 3;
+            // Read one validated result limit shared with the MCP invocation path.
+            var take = GetFindToolsTake(options.Arguments);
 
             // When the caller is not explicitly asking for system tools, use lexical retrieval
             // to find the most relevant tools for the provided intent.
@@ -784,6 +781,23 @@ namespace G4.Services.Domain.V4.Repositories
             return !string.IsNullOrEmpty(toolName)
                 ? new { Tool = tool.ClientTool }
                 : null;
+        }
+
+        // Reads the optional lexical result limit while preserving the established default.
+        private static int GetFindToolsTake(JsonElement arguments)
+        {
+            // Accept only a positive integer so invalid limits cannot suppress or destabilize retrieval.
+            var hasTake = arguments.TryGetProperty("take", out var takeProperty);
+            if (!hasTake ||
+                takeProperty.ValueKind != JsonValueKind.Number ||
+                !takeProperty.TryGetInt32(out var take) ||
+                take <= 0)
+            {
+                return 3;
+            }
+
+            // Return the validated caller limit.
+            return take;
         }
 
         // Retrieves the page DOM, sanitizes it, and partitions it into semantic segments

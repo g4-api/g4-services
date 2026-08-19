@@ -12,6 +12,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
 using System.Reflection;
 using System.Text.Json;
@@ -27,12 +28,15 @@ namespace G4.Services.UnitTests.Repositories
         // Identifies the cache bucket that contributes capabilities to the domain tool catalog.
         private const string PluginType = "Action";
 
+        // Supplies one unique lexical signal shared by the retrieval boundary tests.
+        private const string RetrievalPhrase = "domainlexicalsentinel";
+
         [TestMethod(DisplayName = "Verify that buffer response entries serialize their timestamp and rule content.")]
         public void BufferResponseModelSerializationTest()
         {
             // Arrange: create one deterministic buffer entry with both values that disappeared from tuple serialization.
             const long Timestamp = 1700000000000;
-            var response = new BufferResponseModel
+            var response = new BufferResponseModel.BufferItem
             {
                 Timestamp = Timestamp,
                 Rule = new ActionRuleModel("NoAction")
@@ -158,6 +162,84 @@ namespace G4.Services.UnitTests.Repositories
             Assert.AreEqual("updated domain phrase", tool.Description);
         }
 
+        [TestMethod(DisplayName = "Verify that MCP tool discovery returns the requested ten scored results.")]
+        public void CallToolFindToolsHonorsTakeTest()
+        {
+            // Arrange: create more positively matching capabilities than the requested MCP result limit.
+            var repository = NewRetrievalRepository(toolCount: 12);
+            var parameters = NewFindToolsParameters(RetrievalPhrase, take: 10);
+            var expected = GetRetrievalManager(repository).FindTools(RetrievalPhrase, take: 10);
+
+            // Act: invoke the same FindTools boundary used by the MCP controller.
+            var actual = (LexicalRetrievalManager.ScoresResultModel)repository.CallTool(parameters);
+
+            // Assert: the MCP boundary preserves the requested count, ranking, and scored response shape.
+            Assert.AreEqual(10, actual.Tools.Length);
+            CollectionAssert.AreEqual(
+                expected.Tools.Select(tool => $"{tool.Name}:{tool.Score}").ToArray(),
+                actual.Tools.Select(tool => $"{tool.Name}:{tool.Score}").ToArray());
+        }
+
+        [TestMethod(DisplayName = "Verify that MCP tool discovery defaults a missing result limit to three.")]
+        public void CallToolFindToolsMissingTakeDefaultsTest()
+        {
+            // Arrange: create enough positively matching capabilities to expose the default result limit.
+            var repository = NewRetrievalRepository(toolCount: 12);
+            var parameters = NewFindToolsParameters(RetrievalPhrase);
+
+            // Act: invoke FindTools without a take argument.
+            var actual = (LexicalRetrievalManager.ScoresResultModel)repository.CallTool(parameters);
+
+            // Assert: the established default returns three scored matches.
+            Assert.AreEqual(3, actual.Tools.Length);
+        }
+
+        [TestMethod(DisplayName = "Verify that MCP tool discovery defaults an invalid result limit to three.")]
+        public void CallToolFindToolsInvalidTakeDefaultsTest()
+        {
+            // Arrange: provide a non-numeric result limit against a catalog with enough positive matches.
+            var repository = NewRetrievalRepository(toolCount: 12);
+            var parameters = NewFindToolsParameters(RetrievalPhrase, take: "ten");
+
+            // Act: invoke FindTools with the invalid take argument.
+            var actual = (LexicalRetrievalManager.ScoresResultModel)repository.CallTool(parameters);
+
+            // Assert: invalid input cannot replace the established three-result default.
+            Assert.AreEqual(3, actual.Tools.Length);
+        }
+
+        [TestMethod(DisplayName = "Verify that MCP tool discovery defaults non-positive result limits to three.")]
+        public void CallToolFindToolsNonPositiveTakeDefaultsTest()
+        {
+            // Arrange: create a matching catalog and both non-positive integer variants.
+            var repository = NewRetrievalRepository(toolCount: 12);
+            var zeroParameters = NewFindToolsParameters(RetrievalPhrase, take: 0);
+            var negativeParameters = NewFindToolsParameters(RetrievalPhrase, take: -1);
+
+            // Act: invoke FindTools once for each non-positive limit.
+            var zeroResult = (LexicalRetrievalManager.ScoresResultModel)repository.CallTool(zeroParameters);
+            var negativeResult = (LexicalRetrievalManager.ScoresResultModel)repository.CallTool(negativeParameters);
+
+            // Assert: both invalid integer variants retain the established three-result default.
+            Assert.AreEqual(3, zeroResult.Tools.Length);
+            Assert.AreEqual(3, negativeResult.Tools.Length);
+        }
+
+        [TestMethod(DisplayName = "Verify that MCP tool discovery returns only positive matches below the requested limit.")]
+        public void CallToolFindToolsReturnsAvailableMatchesTest()
+        {
+            // Arrange: create fewer positively matching capabilities than the requested MCP result limit.
+            var repository = NewRetrievalRepository(toolCount: 4);
+            var parameters = NewFindToolsParameters(RetrievalPhrase, take: 10);
+
+            // Act: request more results than the lexical catalog can positively match.
+            var actual = (LexicalRetrievalManager.ScoresResultModel)repository.CallTool(parameters);
+
+            // Assert: retrieval returns every positive match without padding the result.
+            Assert.AreEqual(4, actual.Tools.Length);
+            Assert.IsTrue(actual.Tools.All(tool => tool.Score > 0));
+        }
+
         // Reads the private lifecycle dependency so tests can prove SyncTools never replaces it.
         private static LexicalRetrievalManager GetRetrievalManager(ToolsRepository repository)
         {
@@ -212,6 +294,56 @@ namespace G4.Services.UnitTests.Repositories
                     Summary = [description]
                 }
             };
+        }
+
+        // Creates one MCP FindTools payload with no explicit result limit.
+        private static JsonElement NewFindToolsParameters(string intent)
+        {
+            // Delegate to the shared payload builder while omitting the optional take property.
+            return NewFindToolsParameters(intent, take: null);
+        }
+
+        // Creates one MCP FindTools payload with a caller-supplied result limit value.
+        private static JsonElement NewFindToolsParameters(string intent, object take)
+        {
+            // Build the arguments separately so tests can omit take or provide invalid JSON-compatible values.
+            var arguments = new Dictionary<string, object>
+            {
+                ["intent"] = new IntentModel
+                {
+                    AgentIntent = intent,
+                    UserIntent = intent
+                }
+            };
+
+            // Include the optional property only when the test supplies a value.
+            if (take != null)
+            {
+                arguments["take"] = take;
+            }
+
+            // Serialize through application options so the test uses the production JSON naming contract.
+            return JsonSerializer.SerializeToElement(
+                new Dictionary<string, object>
+                {
+                    ["name"] = "g4.FindTools",
+                    ["arguments"] = arguments
+                },
+                AppSettings.JsonOptions);
+        }
+
+        // Creates a repository whose Action catalog contains the requested number of positive lexical matches.
+        private static ToolsRepository NewRetrievalRepository(int toolCount)
+        {
+            // Populate the authoritative cache before repository construction initializes both tool projections.
+            var cacheManager = NewCacheManager();
+            for (var index = 0; index < toolCount; index++)
+            {
+                cacheManager.SyncCache(NewCacheModel($"UnitTestRetrieval{index:D2}", RetrievalPhrase));
+            }
+
+            // Bind the repository and lexical manager to the populated cache.
+            return NewRepository(cacheManager);
         }
 
         // Creates a domain repository and G4 client bound to the same authoritative cache instance.
