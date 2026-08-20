@@ -1,5 +1,6 @@
 ﻿using G4.Abstraction.Cli;
 using G4.Api;
+using G4.Attributes;
 using G4.Cache;
 using G4.Extensions;
 using G4.Models;
@@ -38,31 +39,65 @@ namespace G4.Services.Domain.V4.Repositories
     /// shared HTTP client factory, cache manager, and G4 client dependencies.
     /// It acts as the main entry point for working with the registered tool catalog.
     /// </remarks>
-    public class ToolsRepository(
-        IHttpClientFactory clientFactory,
-        CacheManager cache,
-        G4Client client) : IToolsRepository
+    public class ToolsRepository : IToolsRepository
     {
+        #region *** Constants    ***
+        // Identifies the plugin-cache bucket that contributes executable tools to the derived domain catalogs.
+        private const string ActionPluginType = "Action";
+
+        // Serializes rebuilds so concurrent cache notifications publish derived catalogs in cache-observation order.
+        private static readonly Lock ToolsSyncLock = new();
+        #endregion
+
         #region *** Fields       ***
-        // Buffer for storing intermediate results or state
-        // related to G4 rules, keyed by a string identifier.
-        private static readonly ConcurrentDictionary<string, ConcurrentBag<(long Timestamp, G4RuleModelBase Rule)>> s_buffer = [];
+        // Stores serializable rule-execution entries by session so MCP responses retain their timestamp and rule content.
+        private static readonly ConcurrentDictionary<string, ConcurrentBag<BufferResponseModel.BufferItem>> _buffer = [];
 
         // Factory for converting CLI-style arguments into structured data.
-        private static readonly CliFactory s_cliFactory = new();
+        private static readonly CliFactory _cliFactory = new();
 
         // Tracks active browser or agent sessions by session ID.
-        private static readonly ConcurrentDictionary<object, object> s_sessions = [];
+        private static readonly ConcurrentDictionary<object, object> _sessions = [];
 
-        // Static, atomically swappable snapshot
-        private static ConcurrentDictionary<string, McpToolModel> s_tools =
-            FormatTools(cache: CacheManager.Instance);
+        // Holds the atomically swappable formatted-tool catalog derived from the primary capabilities cache.
+        private static ConcurrentDictionary<string, McpToolModel> _tools = [];
+
+        // Provides the live capabilities database used to rebuild every derived tool index.
+        private readonly CacheManager _cache;
+
+        // Provides engine operations used by tool invocation and capability registration flows.
+        private readonly G4Client _client;
 
         // HTTP client configured for OpenAI API interactions, using a named configuration.
-        private readonly HttpClient _httpClient = clientFactory.CreateClient(name: "openai");
+        private readonly HttpClient _httpClient;
 
-        // Lexical retrieval manager instance used for finding relevant tools based on intent.
-        private readonly LexicalRetrievalManager _retrievalManager = new(CacheManager.Instance);
+        // Holds the application-scoped lexical index that synchronizes itself from the primary capabilities cache.
+        private readonly LexicalRetrievalManager _retrievalManager;
+        #endregion
+
+        #region *** Constructors ***
+        /// <summary>
+        /// Initializes the singleton tool repository and attaches its derived catalogs to cache-change notifications.
+        /// </summary>
+        /// <param name="clientFactory">The factory used to resolve the named OpenAI HTTP client.</param>
+        /// <param name="cache">The live capabilities database that owns plugin-cache mutations.</param>
+        /// <param name="client">The G4 client used to invoke tools and register capabilities.</param>
+        public ToolsRepository(IHttpClientFactory clientFactory, CacheManager cache, G4Client client)
+        {
+            // Capture application-lifetime dependencies before exposing this repository to cache notifications.
+            _cache = cache;
+            _client = client;
+            _httpClient = clientFactory.CreateClient(name: "openai");
+
+            // Create one lexical manager for this singleton repository so cache subscriptions do not accumulate.
+            _retrievalManager = new LexicalRetrievalManager(_cache);
+
+            // Subscribe before the initial rebuild so any concurrent mutation receives a serialized follow-up refresh.
+            _cache.CacheChanged += UpdateToolsOnCacheChanged;
+
+            // Initialize both derived catalogs from the same live cache used by the G4 client.
+            SyncTools();
+        }
         #endregion
 
         #region *** Methods      ***
@@ -73,19 +108,19 @@ namespace G4.Services.Domain.V4.Repositories
             // This contains tool-specific input such as driver settings, session IDs, etc.
             var options = new InvokeOptions(parameters)
             {
-                Buffer = s_buffer,
-                G4Client = client,
+                Buffer = _buffer,
+                G4Client = _client,
                 HttpClient = _httpClient,
-                Sessions = s_sessions,
-                Tools = s_tools
+                Sessions = _sessions,
+                Tools = _tools
             };
 
             // Extract and convert the "arguments" to an executable rule format.
-            options.Rule = ConvertToRule(options.Arguments, options.Intent, s_tools);
+            options.Rule = ConvertToRule(options.Arguments, options.Intent, _tools);
 
             // Look up the tool definition in the registered tools dictionary.
             // If the tool is not found, 'tool' will be null and handled in the default branch below.
-            var tool = s_tools.GetValueOrDefault(options.ToolName);
+            var tool = _tools.GetValueOrDefault(options.ToolName);
 
             // Read the friendly intent text used to retrieve relevant tools.
             // Default to an empty string when the argument is missing.
@@ -99,19 +134,24 @@ namespace G4.Services.Domain.V4.Repositories
                 { Name: "g4.ConvertToRule" } => new { options.Rule },
 
                 // Built-in: Finds and returns relevant examples based on the provided intent and tool filters.
-                { Name: "g4.FindExamples" } => FindExamples(options.Arguments),
+                { Name: "g4.FindExamples" } => FindExamples(options),
 
                 // Built-in: Finds and returns metadata about a tool by its name.
                 { Name: "g4.FindTool" } => FindTool(options),
 
                 // Built-in: Lists all available tools.
-                { Name: "g4.FindTools" } => _retrievalManager.FindTools(intent),
+                { Name: "g4.FindTools" } => _retrievalManager.FindTools(
+                    prompt: intent,
+                    take: GetFindToolsTake(options.Arguments)),
 
                 // Built-in: Partitions the current application's DOM into semantic segments.
                 { Name: "g4.GetDomSegments" } => GetDomSegments(options),
 
                 // Built-in: Retrieves the current set of rules stored in the buffer for a given key.
                 { Name: "g4.GetBuffer" } => GetBuffer(options),
+
+                // Built-in: Registers a new flow-template capability from a submitted plugin manifest.
+                { Name: "g4.RegisterCapability" } => RegisterCapability(options),
 
                 // Built-in: Clears the rules stored in the buffer for a given key.
                 { Name: "g4.RemoveBuffer" } => RemoveBuffer(options),
@@ -128,34 +168,6 @@ namespace G4.Services.Domain.V4.Repositories
                 // Default: Assumes this is a plugin-based tool and converts parameters into an executable rule.
                 _ => SendRule(options)
             };
-
-            // Finds and returns a tool model from the available tool collection
-            // using the tool name provided in the InvokeOptions arguments.
-            static object FindTool(InvokeOptions options)
-            {
-                // Read the "tool_name" argument from the invocation payload.
-                // When it is missing, default to an empty string.
-                var toolName = options.Arguments.GetOrDefault("tool_name", () => string.Empty);
-
-                // Fall back to "toolName" when "tool_name" is not present.
-                toolName = string.IsNullOrEmpty(toolName)
-                    ? options.Arguments.GetOrDefault("toolName", () => string.Empty)
-                    : toolName;
-
-                // Try to resolve the tool directly from the available tools dictionary.
-                var isName = options.Tools.TryGetValue(key: toolName, out var tool);
-
-                // If the direct lookup failed, try matching by the tool's G4 name instead.
-                tool = isName
-                    ? tool
-                    : options.Tools.Values.FirstOrDefault(i => i.QualifiedName.Equals(toolName, StringComparison.OrdinalIgnoreCase));
-
-                // Return the matched tool when a tool name was provided.
-                // Return null when the caller did not supply any tool name.
-                return !string.IsNullOrEmpty(toolName)
-                    ? new { Tool = tool.ClientTool }
-                    : null;
-            }
         }
 
         /// <inheritdoc />
@@ -191,7 +203,7 @@ namespace G4.Services.Domain.V4.Repositories
             var result = examples.Select(i => new ExamplesResultModel()
             {
                 ToolProperties = i.Example.Rule.ExportProperties(exclude),
-                ToolParameters = s_cliFactory
+                ToolParameters = _cliFactory
                     .ConvertToDictionary(
                         cli: i.Example?.Rule?.Argument ?? string.Empty,
                         normalize: false)
@@ -207,11 +219,20 @@ namespace G4.Services.Domain.V4.Repositories
             };
         }
 
+        // Unwraps the raw "arguments" payload from an MCP tool-call invocation and delegates
+        // to the public, strongly-typed FindExamples(JsonElement) overload. This gives the
+        // g4.FindExamples switch arm in CallTool the same "Xxx(options)" call shape as every
+        // other built-in tool handler, instead of reaching into options.Arguments directly.
+        private object FindExamples(InvokeOptions options)
+        {
+            return FindExamples(options.Arguments);
+        }
+
         /// <inheritdoc />
         public McpToolModel FindTool(string intent, string toolName)
         {
             // Look up the tool by name in the internal registry.
-            return s_tools.GetValueOrDefault(toolName);
+            return _tools.GetValueOrDefault(toolName);
         }
 
         /// <inheritdoc />
@@ -235,22 +256,17 @@ namespace G4.Services.Domain.V4.Repositories
                     .ToArray()
                 : [];
 
-            // Read the optional maximum number of results to return.
-            // Default to 3 when the value is missing or invalid.
-            var take = options.Arguments.TryGetProperty("take", out var takeProperty) &&
-                    takeProperty.ValueKind == JsonValueKind.Number &&
-                    takeProperty.TryGetInt32(out var takeValue)
-                ? takeValue
-                : 3;
+            // Read one validated result limit shared with the MCP invocation path.
+            var take = GetFindToolsTake(options.Arguments);
 
             // When the caller is not explicitly asking for system tools, use lexical retrieval
             // to find the most relevant tools for the provided intent.
             if (!types.Any(i => i.Equals("system-tool", StringComparison.OrdinalIgnoreCase)))
             {
-                return new LexicalRetrievalManager(cache)
+                return _retrievalManager
                     .FindTools(prompt: options.Intent?.AgentIntent ?? string.Empty, take: take)
                     .Tools
-                    .Select(result => s_tools.GetValueOrDefault(result.Name))
+                    .Select(result => _tools.GetValueOrDefault(result.Name))
                     .Where(tool => tool != null)
                     .ToDictionary(tool => tool.Name, tool => tool, comparer);
             }
@@ -260,7 +276,7 @@ namespace G4.Services.Domain.V4.Repositories
 
             // Iterate through the entire tool collection
             // and filter by the requested types.
-            foreach (var tool in s_tools)
+            foreach (var tool in _tools)
             {
                 // Check whether the current tool type is included in the requested type list.
                 var isTypes = types.Contains(tool.Value.Type, comparer);
@@ -280,41 +296,53 @@ namespace G4.Services.Domain.V4.Repositories
         public IDictionary<string, McpToolModel> FindTools(string prompt)
         {
             // Delegate to the main overload with default maxResult=3 and threshold=0
-            return FindTools(prompt, maxResult: 3, threshold: 0);
+            return FindTools(prompt, maxResults: 3, threshold: 0);
         }
 
         /// <inheritdoc />
-        public IDictionary<string, McpToolModel> FindTools(string prompt, int maxResult)
+        public IDictionary<string, McpToolModel> FindTools(string prompt, int maxResults)
         {
             // Delegate to the main overload with threshold=0
-            return FindTools(prompt, maxResult, threshold: 0);
+            return FindTools(prompt, maxResults, threshold: 0);
         }
 
         /// <inheritdoc />
-        public IDictionary<string, McpToolModel> FindTools(string intent, int maxResult, int threshold)
+        public IDictionary<string, McpToolModel> FindTools(string intent, int maxResults, int threshold)
         {
             // Validate and sanitize input parameters,
             // ensuring maxResult is positive and threshold is non-negative.
-            maxResult = maxResult <= 0 ? 3 : maxResult;
+            maxResults = maxResults <= 0 ? 3 : maxResults;
             threshold = threshold < 0 ? 0 : threshold;
 
-            // Initialize the lexical retrieval manager with the current plugin cache
-            var retrievalManager = new LexicalRetrievalManager(cache);
-
-            // Retrieve the most relevant tool names based on lexical matching
-            var results = retrievalManager
-                .FindTools(prompt: intent, take: maxResult)
+            // Query the application-scoped lexical index that follows the same authoritative cache instance.
+            var results = _retrievalManager
+                .FindTools(prompt: intent, take: maxResults)
                 .Tools
                 .Where(i => i.Score >= threshold);
 
             // Map the tool names to their corresponding McpToolModel instances
             return results
-                .Select(i => s_tools.GetValueOrDefault(i.Name))
+                .Select(i => _tools.GetValueOrDefault(i.Name))
                 .Where(i => i != null)
                 .ToDictionary(
                     i => i.Name,
                     i => i,
                     StringComparer.OrdinalIgnoreCase);
+        }
+
+        /// <inheritdoc />
+        public BufferResponseModel GetBuffer(string sessionId)
+        {
+            // Wrap the session identifier as the raw "arguments" payload the underlying
+            // handler expects, matching the shape the MCP tool-call pipeline would supply.
+            var options = new InvokeOptions
+            {
+                Arguments = JsonSerializer.SerializeToElement(new { sessionId }, AppSettings.JsonOptions),
+                Buffer = _buffer
+            };
+
+            // Delegate the actual buffer lookup to the shared handler.
+            return GetBuffer(options);
         }
 
         // TODO: Needs to refacor to take profile and segmentation options into account.
@@ -327,15 +355,60 @@ namespace G4.Services.Domain.V4.Repositories
             {
                 DriverSession = driverSession, // Session identifier to fetch the DOM for
                 Token = token,                 // Token authorizing the G4 engine to perform DOM retrieval
-                G4Client = client,             // Reference to the G4 engine client instance
+                G4Client = _client,            // Reference to the G4 engine client instance
                 HttpClient = _httpClient,      // HTTP client used for underlying communication
-                Sessions = s_sessions,         // Active sessions collection used by the engine
-                Tools = s_tools                // Registered tools available in the current context
+                Sessions = _sessions,         // Active sessions collection used by the engine
+                Tools = _tools                // Registered tools available in the current context
             };
 
             // Delegate DOM segmentation to the helper method,
             // which uses the constructed options.
             return GetDomSegments(options);
+        }
+
+        /// <inheritdoc />
+        public object RegisterCapability(G4PluginAttribute manifest)
+        {
+            // Wrap the manifest as the raw "arguments" payload the underlying handler
+            // expects, matching the shape the MCP tool-call pipeline would supply.
+            var options = new InvokeOptions
+            {
+                Arguments = JsonSerializer.SerializeToElement(new { manifest }, AppSettings.JsonOptions),
+                G4Client = _client
+            };
+
+            // Delegate the actual registration to the shared handler.
+            return RegisterCapability(options);
+        }
+
+        /// <inheritdoc />
+        public object RemoveBuffer(string sessionId)
+        {
+            // Wrap the session identifier as the raw "arguments" payload the underlying
+            // handler expects, matching the shape the MCP tool-call pipeline would supply.
+            var options = new InvokeOptions
+            {
+                Arguments = JsonSerializer.SerializeToElement(new { sessionId }, AppSettings.JsonOptions),
+                Buffer = _buffer
+            };
+
+            // Delegate the actual buffer removal to the shared handler.
+            return RemoveBuffer(options);
+        }
+
+        /// <inheritdoc />
+        public object RemoveSession(string sessionId)
+        {
+            // Wrap the session identifier as the raw "arguments" payload the underlying
+            // handler expects, matching the shape the MCP tool-call pipeline would supply.
+            var options = new InvokeOptions
+            {
+                Arguments = JsonSerializer.SerializeToElement(new { sessionId }, AppSettings.JsonOptions),
+                Sessions = _sessions
+            };
+
+            // Delegate the actual session removal to the shared handler.
+            return RemoveSession(options);
         }
 
         /// <inheritdoc />
@@ -346,15 +419,15 @@ namespace G4.Services.Domain.V4.Repositories
             var options = new InvokeOptions
             {
                 DriverSession = schema.DriverSession, // Session identifier to fetch the DOM for
-                G4Client = client,                    // Reference to the G4 engine client instance
+                G4Client = _client,                   // Reference to the G4 engine client instance
                 HttpClient = _httpClient,             // HTTP client used for underlying communication
                 Intent = schema.Intent,               // The intent describing the element to locate
                 OpenaiApiKey = schema.OpenaiApiKey,   // OpenAI API key for authentication
                 OpenaiModel = schema.OpenaiModel,     // OpenAI model to use for locator resolution
                 OpenaiUri = schema.OpenaiUri,         // OpenAI API endpoint URI
-                Sessions = s_sessions,                // Active sessions collection used by the engine
+                Sessions = _sessions,                // Active sessions collection used by the engine
                 Token = schema.Token,                 // Token authorizing the G4 engine to perform DOM retrieval
-                Tools = s_tools                       // Registered tools available in the current context
+                Tools = _tools                       // Registered tools available in the current context
             };
 
             // Return the resolved locator using the provided intent and the retrieved DOM.
@@ -370,11 +443,11 @@ namespace G4.Services.Domain.V4.Repositories
             {
                 Driver = schema.Driver,
                 DriverBinaries = schema.DriverBinaries,
-                G4Client = client,
+                G4Client = _client,
                 HttpClient = _httpClient,
-                Sessions = s_sessions,
+                Sessions = _sessions,
                 Token = schema.Token,
-                Tools = s_tools
+                Tools = _tools
             };
 
             // Delegate session creation to the G4 engine.
@@ -403,12 +476,12 @@ namespace G4.Services.Domain.V4.Repositories
             var options = new InvokeOptions
             {
                 DriverSession = schema.DriverSession,
-                G4Client = client,
+                G4Client = _client,
                 HttpClient = _httpClient,
-                Rule = ConvertToRule(arguments: jsonElement, schema.Intent, s_tools),
-                Sessions = s_sessions,
+                Rule = ConvertToRule(arguments: jsonElement, schema.Intent, _tools),
+                Sessions = _sessions,
                 Token = schema.Token,
-                Tools = s_tools
+                Tools = _tools
             };
 
             // Delegate the rule execution to the G4 engine and return its result.
@@ -418,11 +491,38 @@ namespace G4.Services.Domain.V4.Repositories
         /// <inheritdoc />
         public void SyncTools()
         {
-            // Rebuild the tools collection from the cache manager.
-            var rebuilt = new ConcurrentDictionary<string, McpToolModel>(FormatTools(cache));
+            // Serialize complete rebuilds so an earlier notification cannot publish after a later cache mutation.
+            lock (ToolsSyncLock)
+            {
+                // Rebuild the formatted domain index while the long-lived lexical manager handles its own cache events.
+                var tools = new ConcurrentDictionary<string, McpToolModel>(FormatTools(_cache));
 
-            // Atomically replace the current tools collection with the rebuilt one.
-            Interlocked.Exchange(ref s_tools, rebuilt);
+                // Publish a complete replacement so readers never observe a partially populated derived catalog.
+                Interlocked.Exchange(ref _tools, tools);
+            }
+        }
+
+        // Refreshes derived tool catalogs after the primary cache publishes a relevant completed mutation.
+        // The singleton cache and repository share the application lifetime, so no detached subscription remains.
+        private void UpdateToolsOnCacheChanged(object sender, CacheManager.CacheChangedEventArgs eventArgs)
+        {
+            // Limit rebuilds to full resets and Action mutations because other plugin types do not format as tools.
+            var isReset = string.Equals(
+                eventArgs.ChangeType,
+                CacheManager.CacheChangeTypes.Reset,
+                StringComparison.OrdinalIgnoreCase);
+            var isAction = string.Equals(
+                eventArgs.EntityType,
+                ActionPluginType,
+                StringComparison.OrdinalIgnoreCase);
+
+            if (!isReset && !isAction)
+            {
+                return;
+            }
+
+            // Rebuild synchronously after the cache mutation so its caller returns with current domain catalogs.
+            SyncTools();
         }
 
         // TODO: Implement logic to handle all types of G4 rules.
@@ -655,6 +755,51 @@ namespace G4.Services.Domain.V4.Repositories
             }
         }
 
+        // Finds and returns a tool model from the available tool collection
+        // using the tool name provided in the InvokeOptions arguments.
+        private static object FindTool(InvokeOptions options)
+        {
+            // Read the "tool_name" argument from the invocation payload.
+            // When it is missing, default to an empty string.
+            var toolName = options.Arguments.GetOrDefault("tool_name", () => string.Empty);
+
+            // Fall back to "toolName" when "tool_name" is not present.
+            toolName = string.IsNullOrEmpty(toolName)
+                ? options.Arguments.GetOrDefault("toolName", () => string.Empty)
+                : toolName;
+
+            // Try to resolve the tool directly from the available tools dictionary.
+            var isName = options.Tools.TryGetValue(key: toolName, out var tool);
+
+            // If the direct lookup failed, try matching by the tool's G4 name instead.
+            tool = isName
+                ? tool
+                : options.Tools.Values.FirstOrDefault(i => i.QualifiedName.Equals(toolName, StringComparison.OrdinalIgnoreCase));
+
+            // Return the matched tool when a tool name was provided.
+            // Return null when the caller did not supply any tool name.
+            return !string.IsNullOrEmpty(toolName)
+                ? new { Tool = tool.ClientTool }
+                : null;
+        }
+
+        // Reads the optional lexical result limit while preserving the established default.
+        private static int GetFindToolsTake(JsonElement arguments)
+        {
+            // Accept only a positive integer so invalid limits cannot suppress or destabilize retrieval.
+            var hasTake = arguments.TryGetProperty("take", out var takeProperty);
+            if (!hasTake ||
+                takeProperty.ValueKind != JsonValueKind.Number ||
+                !takeProperty.TryGetInt32(out var take) ||
+                take <= 0)
+            {
+                return 3;
+            }
+
+            // Return the validated caller limit.
+            return take;
+        }
+
         // Retrieves the page DOM, sanitizes it, and partitions it into semantic segments
         // by invoking a JavaScript script to extract the HTML content and running the segmentation pipeline.
         private static Dictionary<string, object> GetDomSegments(InvokeOptions options)
@@ -703,7 +848,7 @@ namespace G4.Services.Domain.V4.Repositories
 
         // Retrieves the buffered rules associated with the session identifier
         // provided in the invocation arguments.
-        private static List<(long Timestamp, G4RuleModelBase Rule)> GetBuffer(InvokeOptions options)
+        private static BufferResponseModel GetBuffer(InvokeOptions options)
         {
             // Read the session identifier from the invocation arguments.
             // When the argument is missing, keep the value as null.
@@ -726,7 +871,10 @@ namespace G4.Services.Domain.V4.Repositories
             }
 
             // Return a materialized copy of the buffered rule entries.
-            return [.. buffer];
+            return new()
+            {
+                Buffer = [.. buffer]
+            };
         }
 
         // Creates a new G4 automation model with the provided session details and rule parameters.
@@ -768,6 +916,7 @@ namespace G4.Services.Domain.V4.Repositories
                 {
                     EnvironmentsSettings = environmentsSettings
                 },
+                
                 // Define the stages of the automation process.
                 Stages =
                 [
@@ -867,6 +1016,43 @@ namespace G4.Services.Domain.V4.Repositories
             return JsonSerializer.Deserialize<JsonElement>(content, AppSettings.JsonOptions);
         }
 
+        // Registers a new flow-template capability by converting the supplied manifest into a
+        // G4 plugin definition and persisting it through the underlying Templates client. This
+        // mirrors the REST TemplatesController.AddTemplate behavior, but is invoked through the
+        // MCP tool-call pipeline instead of an HTTP PUT request.
+        private static object RegisterCapability(InvokeOptions options)
+        {
+            // Read the "manifest" argument and deserialize it into a full G4 plugin manifest.
+            // When the argument is missing, keep the value as null so validation below can react.
+            // Reject the request early when no manifest was supplied, mirroring the tool's
+            // required "manifest" argument as declared in its input schema.
+            var manifest = options.Arguments.GetOrDefault("manifest", () => default(G4PluginAttribute)) 
+                ?? throw new ArgumentException("The manifest argument is required to register a new capability.");
+
+            // Default the manifest's Source to "Template", matching the behavior of the
+            // TemplatesController.AddTemplate endpoint that this tool mirrors.
+            manifest.Source = !string.IsNullOrEmpty(manifest.Source) && manifest.Source.Equals("Template", StringComparison.OrdinalIgnoreCase)
+                ? manifest.Source
+                : "Template";
+
+            // Register the manifest as a new (or overwritten) template. This also normalizes the
+            // manifest's PluginType to "Action" and refreshes the plugin cache, so the capability
+            // becomes callable as its own tool once the tool catalog is synced. Any validation
+            // failure (ConfirmTemplate()'s InvalidOperationException) propagates uncaught, exactly
+            // like GetBuffer's InvalidSessionIdException does today — ErrorHandlingMiddleware turns
+            // it into a 500 with the real validation message preserved in the response's "detail".
+            options.G4Client.Templates.AddTemplate(manifest);
+
+            // Return a confirmation payload describing the registered capability.
+            return new
+            {
+                Registered = true,
+                manifest.Key,
+                manifest.Source,
+                manifest.PluginType
+            };
+        }
+
         // Removes the buffer associated with the session identifier provided in the invocation arguments.
         // This is typically used to clean up resources when a session is closed or no longer needed.
         private static object RemoveBuffer(InvokeOptions options)
@@ -925,10 +1111,14 @@ namespace G4.Services.Domain.V4.Repositories
             // Add the session to the sessions dictionary to keep track of the active session.
             options.Sessions[session.Key] = session.Value;
 
-            // Add the executed rule to the buffer associated with the session key.
+            // Add a property-backed response entry so later MCP serialization preserves both buffer values.
             var buffer = options.Buffer.GetValueOrDefault(key: session.Key, defaultValue: null);
             var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-            buffer?.Add((timestamp, options.Rule));
+            buffer?.Add(new BufferResponseModel.BufferItem
+            {
+                Timestamp = timestamp,
+                Rule = options.Rule
+            });
 
             // Retrieve the response for the rule execution from the response tree structure.
             var ruleResponse = session
@@ -983,6 +1173,8 @@ namespace G4.Services.Domain.V4.Repositories
             // This dictionary contains configuration for the browser driver (e.g., driver name and path).
             // These parameters are required for the automation process to know which browser and driver binaries to use.
             automation.DriverParameters = driverParameters;
+
+            var j = JsonSerializer.Serialize(automation, AppSettings.JsonOptions);
 
             // Invoke the automation process and get the response.
             var response = options.G4Client.Automation.Invoke(automation);
@@ -1104,7 +1296,7 @@ namespace G4.Services.Domain.V4.Repositories
             /// <summary>
             /// Gets the system prompts used for tool invocation, loaded from embedded resources.
             /// </summary>
-            public static ReadOnlyDictionary<string, string> SystemPrompts = new(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            public static readonly ReadOnlyDictionary<string, string> SystemPrompts = new(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
                 ["LocatorSystemPrompt.md"] = ReadSystemPrompt(instrcutionsManifest: "LocatorSystemPrompt.md")
             });
@@ -1117,7 +1309,7 @@ namespace G4.Services.Domain.V4.Repositories
             /// <summary>
             /// Gets or sets the buffer that tracks recently executed rules for each session.
             /// </summary>
-            public ConcurrentDictionary<string, ConcurrentBag<(long Timestamp, G4RuleModelBase Rule)>> Buffer { get; set; }
+            public ConcurrentDictionary<string, ConcurrentBag<BufferResponseModel.BufferItem>> Buffer { get; set; }
 
             /// <summary>
             /// The name or type of driver to use (e.g., "ChromeDriver").

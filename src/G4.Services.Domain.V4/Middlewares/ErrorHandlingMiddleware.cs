@@ -78,7 +78,9 @@ namespace G4.Services.Domain.V4.Middlewares
                 responseBody = Regex.Replace(
                     input: responseBody,
                     pattern: @"(?i),({?)""traceId"".*?}",
-                    replacement: string.Empty);
+                    replacement: string.Empty,
+                    options: RegexOptions.IgnoreCase,
+                    matchTimeout: TimeSpan.FromSeconds(30));
 
                 // Reset the memory stream position again for potential further use
                 memoryStream.Seek(0, SeekOrigin.Begin);

@@ -1,0 +1,42 @@
+{
+	"description": "Registers a promoted G4 flow-template capability as a discoverable, callable tool. Accepts a full G4 plugin manifest (the same shape produced by the flow-to-template promotion pipeline) and persists it through the G4 engine's Templates store.",
+	"inputSchema": {
+		"properties": {
+			"manifest": {
+				"description": "The full G4 plugin manifest describing the capability to register, matching the G4PluginAttribute JSON shape (key, pluginType, source, summary, description, parameters, properties, rules, context, etc.) — the same manifest shape accepted by PUT /api/v4/g4/templates.",
+				"type": "object"
+			}
+		},
+		"required": [
+			"manifest"
+		],
+		"type": "object"
+	},
+	"name": "g4.RegisterCapability",
+	"outputSchema": {
+		"properties": {
+			"key": {
+				"description": "The unique key of the registered capability, taken from the submitted manifest.",
+				"type": "string"
+			},
+			"pluginType": {
+				"description": "The plugin type assigned to the registered manifest by the engine. Always \"Action\" after registration, regardless of what was submitted.",
+				"type": "string"
+			},
+			"registered": {
+				"description": "Indicates whether the manifest was successfully registered as a template.",
+				"type": "boolean"
+			},
+			"source": {
+				"description": "The normalized source of the registered manifest. Always \"Template\" for capabilities registered through this tool.",
+				"type": "string"
+			}
+		},
+		"required": [
+			"registered",
+			"key"
+		],
+		"type": "object"
+	},
+	"title": "Register G4 Capability"
+}

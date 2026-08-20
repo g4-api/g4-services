@@ -183,7 +183,7 @@ class G4Client {
 		this.svgsUrl = `${this.baseUrl}/integration/svgs`;
 
 		// An in-memory cache to store fetched manifests.
-		this.manifests = [];
+		this.manifests = {};
 	}
 
 	/**
@@ -397,8 +397,123 @@ class G4Client {
 			return type;
 		}
 
+		/**
+		 * Returns a stable list of valid Base64 field names for rule serialization.
+		 *
+		 * @param {*} fieldNames - Candidate field names from the step capabilities.
+		 *
+		 * @returns {string[]} Unique string field names in deterministic order.
+		 *
+		 * @remarks This helper is compute-only so capability cleanup cannot mutate editor state.
+		 */
+		const getBase64EncodedFieldNames = (fieldNames) => {
+			if (!Array.isArray(fieldNames)) {
+				return [];
+			}
+
+			return [...new Set(
+				fieldNames.filter((fieldName) => typeof fieldName === 'string')
+			)].sort((leftName, rightName) => leftName.localeCompare(rightName));
+		};
+
+		/**
+		 * Creates the serialized capabilities while retaining unopened legacy Base64 state.
+		 *
+		 * @param {Object} currentStep - Step whose capabilities are being serialized.
+		 *
+		 * @returns {Object} Capabilities safe to include in the generated rule.
+		 *
+		 * @remarks This helper is compute-only and never infers Base64 state from field values.
+		 */
+		const getRuleCapabilities = (currentStep) => {
+			// Start with the display contract required by every serialized rule.
+			const capabilities = {
+				"displayName": currentStep.name
+			};
+			const base64EncodedFields = currentStep.capabilities?.base64EncodedFields;
+			const isBase64EncodedFieldsObject = Utilities.assertObject(base64EncodedFields)
+				&& !Array.isArray(base64EncodedFields);
+
+			// Normalize a valid per-field registry so mixed Base64 states survive a rule round trip.
+			if (isBase64EncodedFieldsObject) {
+				const parameters = getBase64EncodedFieldNames(base64EncodedFields.parameters);
+				const properties = getBase64EncodedFieldNames(base64EncodedFields.properties);
+				const normalizedFields = {};
+
+				if (parameters.length > 0) {
+					normalizedFields.parameters = parameters;
+				}
+
+				if (properties.length > 0) {
+					normalizedFields.properties = properties;
+				}
+
+				const isRegistryPopulated = Object.keys(normalizedFields).length > 0;
+
+				if (isRegistryPopulated) {
+					capabilities.base64EncodedFields = normalizedFields;
+				}
+
+				return capabilities;
+			}
+
+			// Preserve unopened legacy steps without inspecting values; the editor performs migration.
+			if (currentStep.capabilities?.isBase64Encoded === true) {
+				capabilities.isBase64Encoded = true;
+			}
+
+			return capabilities;
+		};
+
+		/**
+		 * Resolves the child rule and transformer collections for the current model shape.
+		 *
+		 * @param {Object} currentStep - Step that may own nested rules or transformers.
+		 * @param {string|undefined} model - Normalized model name used by the serializer.
+		 *
+		 * @returns {{rules: Array, transformers: Array}} Collections to recursively serialize.
+		 *
+		 * @remarks This helper is compute-only so model-specific selection stays out of rule mutation.
+		 */
+		const getRuleChildren = (currentStep, model) => {
+			const children = {
+				rules: currentStep.sequence || [],
+				transformers: []
+			};
+
+			// Only content models can redirect nested collections to switch branches.
+			if (model !== "CONTENTRULEMODEL") {
+				return children;
+			}
+
+			const isSwitchComponent = currentStep.componentType.toUpperCase() === "SWITCH";
+
+			if (!isSwitchComponent) {
+				return children;
+			}
+
+			return {
+				rules: currentStep.branches["Actions"],
+				transformers: currentStep.branches["Transformers"]
+			};
+		};
+
+		/**
+		 * Recursively converts a homogeneous collection of nested steps.
+		 *
+		 * @param {Array} nestedSteps - Steps to convert using the current client instance.
+		 *
+		 * @returns {Array} Serialized child rules in their original order.
+		 */
+		const convertRuleSteps = (nestedSteps) => {
+			return nestedSteps.map((nestedStep) => this.convertToRule(nestedStep));
+		};
+
         // Get the rule type from the step's context.
         const ruleType = getRuleType(step);
+
+		// Isolate capability normalization so the main conversion flow remains model-focused.
+		const capabilities = getRuleCapabilities(step);
 
 		// Construct the base rule object with type, pluginName, and a reference ID.
 		const rule = {
@@ -407,10 +522,8 @@ class G4Client {
 			"reference": {
 				"id": step.id
 			},
-			"capabilities": {
-				"displayName": step.name
-			}
-		}
+			"capabilities": capabilities
+		};
 
 		// Iterate over the step's properties to populate the rule object.
 		for (const key in step.properties) {
@@ -425,72 +538,32 @@ class G4Client {
 		const parameters = formatParameters(step);
 
 		// If parameters exist, set them on the rule's argument property.
-		if (parameters && parameters !== "") {
-			rule.argument = parameters;
+		if (parameters !== "") {
+		rule.argument = parameters;
 		}
 
-		// If the step context model is a condition rule model, convert the branches.
+		// Branch-oriented models own named child collections and complete serialization here.
 		const model = step?.context?.model?.toUpperCase();
-		if (model === "SWITCHRULEMODEL" || model === "CONDITIONRULEMODEL") {
-			// Convert the branches to rules and negativeRules.
-			const branches = convertConditionRuleModel(step);
+		const isConditionBranchModel = ["CONDITIONRULEMODEL", "SWITCHRULEMODEL"].includes(model);
 
-			// Assign the branches to the rule object.
-			rule.branches = branches;
+		if (isConditionBranchModel) {
+			rule.branches = convertConditionRuleModel(step);
 
-			// Return the rule object with the branches.
 			return rule;
 		}
 
-        // Handle the CONTENTRULEMODEL case, which has a specific structure for switches.
-		let stepSequence = step.sequence || [];
-        let stepTransformers = [];
+		// Resolve the model-specific child sources before recursively extending the rule.
+		const children = getRuleChildren(step, model);
 
-		if (model === "CONTENTRULEMODEL" && step.componentType.toUpperCase() === "SWITCH") {
-			stepSequence = step.branches["Actions"];
-			stepTransformers = step.branches["Transformers"];
+		if (children.rules.length > 0) {
+			rule.rules = convertRuleSteps(children.rules);
 		}
 
-        // Check if the step has a sequence of rules or transformers.
-		const isRules = stepSequence && stepSequence.length > 0;
-		const isTransformers = stepTransformers && stepTransformers.length > 0;
-
-		// If there's no sequence in the step, we can return the rule here.
-		if (!isRules && !isTransformers) {
-			return rule;
+		if (children.transformers.length > 0) {
+			rule.transformers = convertRuleSteps(children.transformers);
 		}
 
-        // Convert the sequence of steps into rules if 'rules' is present.
-		if (isRules) {
-			const rules = []
-			for (const nestedStep of stepSequence) {
-				// Convert the nested step to a rule object.
-				const childRule = this.convertToRule(nestedStep);
-
-				// If the child rule is not null, add it to the rules array.
-				rules.push(childRule);
-			}
-
-			// Assign the array of child rules to our main rule under 'rules'.
-			rule.rules = rules;
-		}
-
-        // Convert the transformers if 'transformers' is present.
-		if (isTransformers) {
-			const transformers = [];
-			for (const transformer of stepTransformers) {
-                // Convert the transformer to a rule object.
-				const childTransformer = this.convertToRule(transformer);
-
-				// If the child transformer is not null, add it to the transformers array.
-				transformers.push(childTransformer);
-			}
-
-            // Assign the array of transformers to our main rule under 'transformers'.
-            rule.transformers = transformers;
-		}
-
-		// Finally, return the fully-constructed rule object.
+		// Return the fully constructed rule after all applicable child collections are attached.
 		return rule;
 	}
 
@@ -508,59 +581,6 @@ class G4Client {
 	 * @throws {TypeError} Throws an error if `g4ResponseModel` is not a non-null object or if `referenceId` is not a string.
 	 */
 	findPlugin(referenceId, g4ResponseModel) {
-		/**
-		 * Generator function to traverse all plugins within the G4 response model.
-		 *
-		 * Iterates through each response, session, response tree, stage, job, and plugin,
-		 * yielding each plugin encountered.
-		 */
-		function* traversePlugins(g4ResponseModel) {
-			// Iterate over each response in the G4 response model
-			for (const response of Object.values(g4ResponseModel)) {
-				// Extract the sessions object from the current response
-				const sessions = response.sessions;
-
-				// Continue to the next response if sessions is not an object
-				if (!sessions || typeof sessions !== 'object') continue;
-
-				// Iterate over each session within the current response
-				for (const session of Object.values(sessions)) {
-					// Extract the response tree object from the current session
-					const responseTree = session.responseTree;
-
-					// Continue to the next session if responseTree is not an object
-					if (!responseTree || typeof responseTree !== 'object') continue;
-
-					const stages = responseTree.stages;
-					// Continue to the next session if stages is not an array
-					if (!Array.isArray(stages)) continue;
-
-					// Iterate over each stage within the response tree
-					for (const stage of stages) {
-						// Extract the jobs array from the current stage
-						const jobs = stage.jobs;
-
-						// Continue to the next stage if jobs is not an array
-						if (!Array.isArray(jobs)) continue;
-
-						// Iterate over each job within the current stage
-						for (const job of jobs) {
-							// Extract the plugins array from the current job
-							const plugins = job.plugins;
-
-							// Continue to the next job if plugins is not an array
-							if (!Array.isArray(plugins)) continue;
-
-							// Iterate over each plugin within the current job and yield it
-							for (const plugin of plugins) {
-								yield plugin;
-							}
-						}
-					}
-				}
-			}
-		}
-
 		// Input validation to ensure `g4ResponseModel` is a non-null object
 		if (typeof g4ResponseModel !== 'object' || g4ResponseModel === null) {
 			throw new TypeError('g4ResponseModel must be a non-null object');
@@ -572,7 +592,7 @@ class G4Client {
 		}
 
 		// Traverse through all plugins and search for the one with the matching reference ID
-		for (const plugin of traversePlugins(g4ResponseModel)) {
+		for (const plugin of getResponsePlugins(g4ResponseModel)) {
 
 			// Check if the plugin's performancePoint.reference.id matches the referenceId
 			// Return the matching plugin
@@ -741,7 +761,7 @@ class G4Client {
 		}
 
 		// Define the plugin types to include in the fetch request.
-		const includeTypes = ["ACTION", "CONTENT", "TRANSFORMER"];
+		const includeTypes = new Set(["ACTION", "CONTENT", "TRANSFORMER"]);
 
 		try {
 			// Fetch the plugin manifests from the API.
@@ -757,7 +777,7 @@ class G4Client {
 
 			// Filter only the plugins of type 'Action' and organize them into a dictionary by `key`.
 			this.manifests = data
-				.filter(item => includeTypes.includes(item.pluginType.toUpperCase()))
+				.filter(item => includeTypes.has(item.pluginType.toUpperCase()))
 				.reduce((cache, manifest) => {
 					// Use the `key` field of the manifest as the dictionary key.
 					cache[manifest.key] = manifest;
@@ -1269,6 +1289,134 @@ class G4Client {
 			return copiedParameters;
 		};
 
+		/**
+		 * Returns the editor-ready description while preserving the manifest's supported formats.
+		 *
+		 * @param {Array|string|undefined} description - Manifest description to normalize.
+		 *
+		 * @returns {string} Trimmed description text for the step editor.
+		 */
+		const getParameterDescription = (description) => {
+			if (Array.isArray(description)) {
+				return description.join('\n').trim();
+			}
+
+			return description?.trim() || "";
+		};
+
+		/**
+		 * Tests whether a parsed value should use dictionary conversion for its parameter type.
+		 *
+		 * @param {string} parameterType - Uppercase manifest parameter type.
+		 * @param {*} value - Parsed command-line value for the parameter.
+		 *
+		 * @returns {boolean} Whether dictionary conversion applies.
+		 *
+		 * @remarks This helper preserves the legacy requirement that DICTIONARY needs a parsed value.
+		 */
+		const testDictionaryParameter = (parameterType, value) => {
+			const isPopulatedDictionary = Boolean(value) && parameterType === 'DICTIONARY';
+			const isKeyValueType = ['KEY/VALUE', 'KEYVALUE', 'OBJECT'].includes(parameterType);
+
+			return isPopulatedDictionary || isKeyValueType;
+		};
+
+		/**
+		 * Copies manifest parameters into the step while retaining editor-owned display names.
+		 *
+		 * @param {Object} currentStep - Step whose parameter definitions are being refreshed.
+		 * @param {Array} manifestParameters - Cloned manifest parameter definitions.
+		 *
+		 * @remarks This helper intentionally mutates only currentStep.parameters.
+		 */
+		const setManifestParameters = (currentStep, manifestParameters) => {
+			// Refresh definitions from the manifest without discarding display names owned by the editor.
+			for (const parameter of manifestParameters) {
+				const key = parameter.name;
+
+				parameter.displayName = currentStep.parameters[key]?.displayName;
+				currentStep.parameters[key] = parameter;
+				currentStep.parameters[key].description = getParameterDescription(parameter.description);
+			}
+		};
+
+		/**
+		 * Copies supported rule fields into existing step property definitions.
+		 *
+		 * @param {Object} currentStep - Step whose property values are being synchronized.
+		 * @param {Object} currentRule - Rule providing serialized property values.
+		 * @param {string[]} includedKeys - Rule keys supported by the step editor.
+		 *
+		 * @remarks This helper intentionally mutates only properties already declared by the step.
+		 */
+		const setRuleProperties = (currentStep, currentRule, includedKeys) => {
+			// Copy only the intersection of supported rule keys and declared step properties.
+			for (const key in currentRule) {
+				const isIncludedKey = includedKeys.includes(key);
+				const isStepProperty = key in currentStep.properties;
+				const isSupportedProperty = isIncludedKey && isStepProperty;
+
+				if (!isSupportedProperty) {
+					continue;
+				}
+
+				currentStep.properties[key].value = currentRule[key];
+			}
+		};
+
+		/**
+		 * Applies one parsed command-line value according to its manifest parameter type.
+		 *
+		 * @param {Object} parameter - Step parameter definition and current value.
+		 * @param {string} parameterKey - Original parameter name used by the step.
+		 * @param {Object} parsedParameters - Parsed parameters keyed with uppercase names.
+		 *
+		 * @remarks This helper mutates only the supplied parameter and preserves missing scalar values.
+		 */
+		const setParameterValue = (parameter, parameterKey, parsedParameters) => {
+			const key = parameterKey.toUpperCase();
+			const value = parsedParameters[key];
+			const parameterType = parameter.type?.toUpperCase() || 'STRING';
+			const isSwitch = Boolean(value) && parameterType === 'SWITCH';
+			const isDictionary = testDictionaryParameter(parameterType, value);
+
+			// A present switch token represents true regardless of the token's serialized value.
+			if (isSwitch) {
+				parameter.value = "true";
+				return;
+			}
+
+			// Scalar parameters retain their current value when the argument does not provide one.
+			if (!isDictionary) {
+				parameter.value = value || parameter.value;
+				return;
+			}
+
+			// Dictionary-like parameters convert only populated parsed collections.
+			if (value) {
+				parameter.value = convertArrayToDictionary(value);
+			}
+		};
+
+		/**
+		 * Parses the rule argument and applies its values to every declared step parameter.
+		 *
+		 * @param {Object} currentStep - Step whose parameter values are being synchronized.
+		 * @param {string} argument - Serialized command-line argument from the rule.
+		 *
+		 * @remarks This helper owns parameter-value mutation while parsing remains delegated.
+		 */
+		const setRuleParameters = (currentStep, argument) => {
+			// Normalize parsed keys once so manifest parameter names can be matched case-insensitively.
+			const parsedArgument = formatArgumentString(argument);
+			const parsedParameters = Utilities.convertToUpperCase(parsedArgument);
+
+			// Apply each parsed value through the type-specific mutation contract.
+			for (const parameterKey of Object.keys(currentStep.parameters)) {
+				setParameterValue(currentStep.parameters[parameterKey], parameterKey, parsedParameters);
+			}
+		};
+
 		// Retrieve the manifest for the step's plugin
 		const manifest = _manifests[step.pluginName];
 
@@ -1290,71 +1438,13 @@ class G4Client {
 		// Ensure the step has a parameters object
 		step.parameters = step.parameters || {};
 
-		// Populate step.parameters with data from the manifest
-		for (const parameter of parameters) {
-			const key = parameter.name;
+		// Refresh parameter definitions and supported property values before applying argument values.
+		setManifestParameters(step, parameters);
+		setRuleProperties(step, rule, includeKeys);
 
-			parameter.displayName = step.parameters[key]?.displayName;
-			step.parameters[key] = parameter;
-
-			// Join the description array into a single string if it exists
-			step.parameters[key].description = Array.isArray(parameter.description)
-				? parameter.description?.join('\n').trim()
-				: parameter.description?.trim() || "";
-		}
-
-		// Iterate over each key in the rule object to update the corresponding step properties
-		for (const key in rule) {
-			// Skip keys that are not in the includeKeys list or do not exist in step.properties
-			if (!includeKeys.includes(key) || !(key in step.properties)) {
-				continue;
-			}
-
-			// Update the value of the step's property with the value from the rule
-			step.properties[key].value = rule[key];
-		}
-
-		// Check if the rule contains an 'argument' field to process parameters
+		// Parse arguments only when present so absent rule arguments leave parameter values untouched.
 		if (rule.argument) {
-			// Parse the argument string into a dictionary of parameters
-			const parsedParameters = formatArgumentString(rule.argument);
-
-			// Convert parameter keys to uppercase for consistency
-			const parameters = Utilities.convertToUpperCase(parsedParameters);
-			const parameterKeys = Object.keys(step.parameters);
-
-			// Update step.parameters with values from the parsed argument
-			for (const parameterKey of parameterKeys) {
-				const key = parameterKey.toUpperCase();
-				const value = parameters[key];
-				const parameterType = step.parameters[parameterKey].type?.toUpperCase() || 'STRING';
-
-				// Assert if the parameter type is boolean/switch
-				const isSwitch = parameters[key] && parameterType === 'SWITCH';
-
-				// Assert if the parameter type is dictionary or key/value
-				const isDictionary = parameters[key] && parameterType === 'DICTIONARY'
-					|| parameterType === 'KEY/VALUE'
-					|| parameterType === 'KEYVALUE'
-					|| parameterType === 'OBJECT';
-
-				// For switch types, set the value to "true" if the key is present
-				if (isSwitch) {
-					step.parameters[parameterKey].value = "true";
-					continue;
-				}
-
-				// Use the value from the parsed argument if available; otherwise, retain the existing value
-				if (!isDictionary) {
-					step.parameters[parameterKey].value = value || step.parameters[parameterKey].value;
-					continue;
-				}
-
-				// Handle the case where the parameter is a dictionary type
-				if (value) {
-					step.parameters[parameterKey].value = convertArrayToDictionary(value);
-				}
-			}
+			setRuleParameters(step, rule.argument);
 		}
 
 		// Return the updated step object after all synchronizations are complete
@@ -1402,5 +1492,118 @@ class G4Client {
 			// Using 'throw error' preserves the original error stack and message.
 			throw error;
 		}
+	}
+}
+
+/**
+ * Enumerates the plugins declared by one job.
+ *
+ * @param {Object} job - Job that may expose a plugin collection.
+ *
+ * @returns {Generator<Object>} Plugins yielded in their original order.
+ *
+ * @remarks This compute-only generator keeps malformed jobs isolated from valid siblings.
+ */
+function* getJobPlugins(job) {
+	const plugins = job.plugins;
+
+	if (!Array.isArray(plugins)) {
+		return;
+	}
+
+	// Delegate directly to the array iterator so consumers retain lazy, ordered access.
+	yield* plugins;
+}
+
+/**
+ * Enumerates the plugins contained in one response entry.
+ *
+ * @param {Object} response - Response that may contain a sessions object.
+ *
+ * @returns {Generator<Object>} Plugins yielded from valid sessions in source order.
+ *
+ * @remarks This compute-only generator validates only the response-to-session boundary it owns.
+ */
+function* getResponseEntryPlugins(response) {
+	const sessions = response.sessions;
+	const isSessionsObject = sessions !== null && typeof sessions === 'object';
+
+	if (!isSessionsObject) {
+		return;
+	}
+
+	// Delegate each session so deeper validation does not increase this layer's nesting.
+	for (const session of Object.values(sessions)) {
+		yield* getSessionPlugins(session);
+	}
+}
+
+/**
+ * Enumerates every plugin contained in a G4 response model.
+ *
+ * The generator preserves source order and lazy iteration so callers can stop immediately after
+ * finding a matching plugin.
+ *
+ * @param {Object} g4ResponseModel - Validated response model containing nested plugin collections.
+ *
+ * @returns {Generator<Object>} Plugins yielded in their original traversal order.
+ *
+ * @remarks This compute-only generator delegates each structural layer to keep complexity bounded.
+ */
+function* getResponsePlugins(g4ResponseModel) {
+	// Delegate each response independently so malformed branches do not hide valid siblings.
+	for (const response of Object.values(g4ResponseModel)) {
+		yield* getResponseEntryPlugins(response);
+	}
+}
+
+/**
+ * Enumerates the plugins reachable from one session.
+ *
+ * @param {Object} session - Session that may contain a staged response tree.
+ *
+ * @returns {Generator<Object>} Plugins yielded from valid stages in source order.
+ *
+ * @remarks This compute-only generator validates only the session-to-stage boundaries it owns.
+ */
+function* getSessionPlugins(session) {
+	const responseTree = session.responseTree;
+	const isResponseTreeObject = responseTree !== null && typeof responseTree === 'object';
+
+	if (!isResponseTreeObject) {
+		return;
+	}
+
+	const stages = responseTree.stages;
+
+	if (!Array.isArray(stages)) {
+		return;
+	}
+
+	// Delegate each stage so job and plugin validation remain isolated at their own layers.
+	for (const stage of stages) {
+		yield* getStagePlugins(stage);
+	}
+}
+
+/**
+ * Enumerates the plugins reachable from one stage.
+ *
+ * @param {Object} stage - Stage that may expose a job collection.
+ *
+ * @returns {Generator<Object>} Plugins yielded from valid jobs in source order.
+ *
+ * @remarks This compute-only generator validates only the stage-to-job boundary it owns.
+ */
+function* getStagePlugins(stage) {
+	const jobs = stage.jobs;
+
+	if (!Array.isArray(jobs)) {
+		return;
+	}
+
+	// Delegate each job so plugin validation and yielding remain lazy and independently testable.
+	for (const job of jobs) {
+		yield* getJobPlugins(job);
 	}
 }

@@ -44,19 +44,19 @@ const newFieldContainer = (id, labelDisplayName, hintText) => {
     const controllerContainer = document.createElement('div');
 
     // Set the data-g4-role attribute to 'field' for the field container
-    titleContainer.setAttribute('data-g4-role', 'field');
+    titleContainer.dataset.g4Role = 'field';
     titleContainer.id = `${id}-field`;
 
     // Set the data-g4-role attribute to 'label' for the label container
-    labelContainer.setAttribute('data-g4-role', 'label');
+    labelContainer.dataset.g4Role = 'label';
     labelContainer.id = `${id}-label`;
 
     // Set the data-g4-role and id attributes to for the hint container
-    hintContainer.setAttribute('data-g4-role', 'hint');
+    hintContainer.dataset.g4Role = 'hint';
     hintContainer.id = `${id}-hint`;
 
     // Set data-g4-role attribute to 'controller' for the controller container
-    controllerContainer.setAttribute('data-g4-role', 'controller');
+    controllerContainer.dataset.g4Role = 'controller';
     controllerContainer.id = `${id}-controller`;
 
     // Create a new `label` element
@@ -124,13 +124,13 @@ const newUnlabeledFieldContainer = (id, role) => {
     const controllerContainer = document.createElement('div');
 
     // Set the custom attribute 'data-g4-role' to 'field' for the main container.
-    fieldContainer.setAttribute('data-g4-role', 'field');
+    fieldContainer.dataset.g4Role = 'field';
 
     // Assign a unique ID to the main field container using the provided 'id'.
     fieldContainer.id = `${id}-field`;
 
     // Set the custom attribute 'data-g4-role' to 'controller' for the controller container.
-    controllerContainer.setAttribute('data-g4-role', role || 'controller');
+    controllerContainer.dataset.g4Role = role || 'controller';
 
     // Assign a unique ID to the controller container using the provided 'id'.
     controllerContainer.id = `${id}-${role || 'controller'}`;
@@ -244,7 +244,7 @@ const newObjectArrayFieldsContainer = (id, options, setCallback) => {
 
         // Add an event listener to handle the removal of the array item.
         buttonController.addEventListener('click', () => {
-            controllerContainer.removeChild(arrayContainer);
+            arrayContainer.remove();
             setCallback({
                 [indexKey]: null
             });
@@ -497,6 +497,7 @@ class CustomG4Fields {
             {
                 container: controller,
                 initialValue: options.initialValue?.username || '',
+                isBase64Enabled: false,
                 isReadonly: false,
                 label: 'Username',
                 title: 'A valid G4™ username required for authentication.'
@@ -516,6 +517,7 @@ class CustomG4Fields {
             {
                 container: controller,
                 initialValue: options.initialValue?.password || '',
+                isBase64Enabled: false,
                 isReadonly: false,
                 label: 'Password',
                 title: 'A valid G4™ password required for authentication.'
@@ -535,6 +537,7 @@ class CustomG4Fields {
             {
                 container: controller,
                 initialValue: options.initialValue?.token || '',
+                isBase64Enabled: false,
                 isReadonly: false,
                 label: 'Token',
                 title: 'A valid G4™ license token. This optional token replaces username/password authentication for streamlined access.'
@@ -848,6 +851,7 @@ class CustomG4Fields {
             {
                 container: controller,
                 initialValue: options.initialValue?.filter || '',
+                isBase64Enabled: false,
                 isReadonly: false,
                 label: 'Filter',
                 title: 'Specifies the row-filtering criteria to select data. For examples on how to filter rows, see ' +
@@ -872,6 +876,7 @@ class CustomG4Fields {
             {
                 container: controller,
                 initialValue: options.initialValue?.repository || '',
+                isBase64Enabled: false,
                 isReadonly: false,
                 label: 'Repository',
                 title: 'Specifies the data container (e.g., DataTable, DataView, or List) used as the data source.'
@@ -896,6 +901,7 @@ class CustomG4Fields {
             {
                 container: controller,
                 initialValue: options.initialValue?.source || '',
+                isBase64Enabled: false,
                 isReadonly: false,
                 label: 'Source',
                 title: 'Specifies the connection string, file path, or URL needed to locate the repository.'
@@ -1020,6 +1026,7 @@ class CustomG4Fields {
             {
                 container: controller,
                 initialValue: options.initialValue?.repository || '',
+                isBase64Enabled: false,
                 isReadonly: false,
                 label: 'Repository',
                 title: 'Specifies the data container (e.g., DataTable, DataView, or List) used as the data source.'
@@ -1044,6 +1051,7 @@ class CustomG4Fields {
             {
                 container: controller,
                 initialValue: options.initialValue?.source || '',
+                isBase64Enabled: false,
                 isReadonly: false,
                 label: 'Source',
                 title: 'Specifies the connection string, file path, or URL needed to locate the repository.'
@@ -1286,6 +1294,7 @@ class CustomG4Fields {
             {
                 container: controller,
                 initialValue: options.initialValue?.driverBinaries || '',
+                isBase64Enabled: false,
                 isReadonly: false,
                 label: 'Driver Binaries',
                 title: 'The driver binaries location on local machine or grid endpoint.'
@@ -1311,7 +1320,8 @@ class CustomG4Fields {
                 container: alwaysMatchField.querySelector('[data-g4-role="always-match-capabilities"]'),
                 label: 'Capabilities',
                 title: 'A collection of capabilities with additional custom information for the invocation.',
-                initialValue: alwaysMatch
+                initialValue: alwaysMatch,
+                isBase64Enabled: false
             },
             (value) => {
                 const alwaysMatch = Utilities.convertFromJson(value);
@@ -1383,6 +1393,7 @@ class CustomG4Fields {
             {
                 container: controller,
                 initialValue: options.initialValue?.defaultEnvironment || 'SystemParameters',
+                isBase64Enabled: false,
                 isReadonly: false,
                 label: 'Default Environment',
                 title: 'The default environment to use for automation requests.'
@@ -1559,6 +1570,7 @@ class CustomG4Fields {
             {
                 container: controller,
                 initialValue: options.initialValue?.type || '',
+                isBase64Enabled: false,
                 isReadonly: false,
                 label: 'Type',
                 title: 'Specifies the type of the queue manager.'
@@ -2023,6 +2035,7 @@ class CustomG4Fields {
             {
                 container: controller,
                 initialValue: options.initialValue?.outputFolder || '.',
+                isBase64Enabled: false,
                 isReadonly: false,
                 label: 'Output Folder',
                 title: 'Specifies the default folder path for saving screenshots.'
@@ -2172,13 +2185,13 @@ class CustomFields {
         const newInput = (options, setCallback) => {
             // Create a div element to serve as the row container for the input and remove button
             const row = document.createElement('div');
-            row.setAttribute('data-g4-role', 'input-row');
+            row.dataset.g4Role = 'input-row';
 
             // Create the text input field
             const input = document.createElement('input');
             input.type = 'text';
             input.value = options.value || '';
-            input.setAttribute('data-g4-role', 'valueitem');
+            input.dataset.g4Role = 'valueitem';
             input.setAttribute('title', options.value);
 
             // Create the remove button
@@ -2189,7 +2202,7 @@ class CustomFields {
             // Add a click event listener to the remove button
             removeButton.addEventListener('click', () => {
                 // Remove the row from the container
-                options.container.removeChild(row);
+                row.remove();
 
                 // Locate the controller section within the closest field container
                 const titleContainer = options.container
@@ -2359,7 +2372,7 @@ class CustomFields {
         inputElement.setAttribute("id", inputId);
 
         // Metadata used by the editor to map this field to workflow parameters.
-        inputElement.setAttribute("data-g4-attribute", options.input.label);
+        inputElement.dataset.g4Attribute = options.input.label;
         inputElement.setAttribute("spellcheck", "false");
         inputElement.setAttribute("title", options.input.title || "");
         inputElement.value = options.input.initialValue || "";
@@ -2445,9 +2458,9 @@ class CustomFields {
                     return obj;
                 }, {});
             }
-            // If itemSource is neither a string nor an array, throw an error
+            // Reject unsupported item sources with a TypeError so callers can distinguish contract violations.
             else {
-                throw new Error('Invalid itemSource type. Must be a string or an array.');
+                throw new TypeError('Invalid itemSource type. Must be a string or an array.');
             }
 
             /**
@@ -2564,6 +2577,143 @@ class CustomFields {
         // When true, the field commits the typed value (free text) on Enter and on blur,
         // in addition to committing on option selection. Defaults to false (selection-only).
         const allowFreeText = options.allowFreeText === true;
+
+        /**
+         * Closes the listbox and clears its active-option state without committing a value.
+         */
+        const closeDataList = () => {
+            // Reset the visual and accessible list state together so they cannot diverge.
+            list.style.display = "none";
+            input.setAttribute("aria-expanded", "false");
+            input.setAttribute("aria-activedescendant", "");
+            activeIndex = -1;
+        };
+
+        /**
+         * Applies one keyboard-navigation index to the listbox presentation.
+         *
+         * @param {number} nextActiveIndex - Index selected after applying the navigation boundary.
+         */
+        const setActiveOption = (nextActiveIndex) => {
+            // Publish the new active index before synchronizing the option elements and viewport.
+            activeIndex = nextActiveIndex;
+            input.setAttribute("aria-activedescendant", `opt-${activeIndex}`);
+
+            Array
+                .from(list.children)
+                .forEach((optionElement, optionIndex) =>
+                    optionElement.setAttribute("aria-selected", optionIndex === activeIndex)
+                );
+
+            document
+                .getElementById(`opt-${activeIndex}`)
+                ?.scrollIntoView({ block: "nearest" });
+        };
+
+        /**
+         * Commits literal input when Enter is permitted to represent free text.
+         *
+         * @param {KeyboardEvent} event - Keyboard event that may request a free-text commit.
+         */
+        const setFreeTextValue = (event) => {
+            const isEnterKey = event.key === "Enter";
+            const isFreeTextCommit = isEnterKey && allowFreeText;
+
+            // Ignore every empty-list key path except an explicitly permitted Enter commit.
+            if (!isFreeTextCommit) {
+                return;
+            }
+
+            // Prevent form submission, close the list, and publish the literal typed value.
+            event.preventDefault();
+            closeDataList();
+            input.title = input.value || "Please select an option";
+            updateState(input.value, setCallback);
+        };
+
+        /**
+         * Commits the highlighted option or the permitted literal input value.
+         *
+         * @param {KeyboardEvent} event - Enter event that requested the current value.
+         */
+        const setCurrentValue = (event) => {
+            const isActiveIndex = activeIndex >= 0;
+            const activeOption = isActiveIndex
+                ? filtered[activeIndex]
+                : undefined;
+            const hasActiveOption = isActiveIndex && Boolean(activeOption);
+            const isValueAllowed = hasActiveOption || allowFreeText;
+
+            // Leave Enter untouched when neither a highlighted option nor free text can be committed.
+            if (!isValueAllowed) {
+                return;
+            }
+
+            // Prevent form submission and close the list before publishing the resolved value.
+            event.preventDefault();
+            closeDataList();
+
+            if (hasActiveOption) {
+                input.value = activeOption.value;
+                input.title = activeOption.manifest.summary || "No summary available";
+            } else {
+                input.title = input.value || "Please select an option";
+            }
+
+            // Notify the field owner only after the input and accessibility state are synchronized.
+            updateState(input.value, setCallback);
+        };
+
+        /**
+         * Routes supported keyboard actions while preserving the listbox's open and filtered state.
+         *
+         * @param {KeyboardEvent} event - Keyboard event raised by the datalist input.
+         */
+        const onDataListKeyDown = (event) => {
+            const isListEmpty = filtered.length === 0;
+
+            // Give an empty list one free-text commit opportunity, then stop all navigation handling.
+            if (isListEmpty) {
+                setFreeTextValue(event);
+                return;
+            }
+
+            const isDownKey = event.key === "ArrowDown";
+            const isUpKey = event.key === "ArrowUp";
+            const isNavigationKey = isDownKey || isUpKey;
+            const isListClosed = list.style.display !== "block";
+            const isClosedNonNavigationKey = isListClosed && !isNavigationKey;
+
+            // Ignore non-navigation keys while closed so Enter and Escape retain their prior behavior.
+            if (isClosedNonNavigationKey) {
+                return;
+            }
+
+            // Reuse filtering to populate a closed list before applying its first navigation step.
+            if (isListClosed) {
+                input.dispatchEvent(new Event("input"));
+            }
+
+            // Route one mutually exclusive key action so the handler remains flat and auditable.
+            switch (event.key) {
+                case "ArrowDown":
+                    event.preventDefault();
+                    setActiveOption(Math.min(activeIndex + 1, filtered.length - 1));
+                    return;
+                case "ArrowUp":
+                    event.preventDefault();
+                    setActiveOption(Math.max(activeIndex - 1, 0));
+                    return;
+                case "Enter":
+                    setCurrentValue(event);
+                    return;
+                case "Escape":
+                    closeDataList();
+                    return;
+                default:
+                    return;
+            }
+        };
 
         /**
          * Handles live filtering of listbox options based on user input.
@@ -2706,150 +2856,7 @@ class CustomFields {
          * - Updates `aria-selected` on options
          * - Ensures active option stays visible via scroll management
          */
-        input.addEventListener("keydown", (e) => {
-            // Key intent flags (kept explicit for readability)
-            const isDown = e.key === "ArrowDown";
-            const isEscape = e.key === "Escape";
-            const isEnter = e.key === "Enter";
-            const isUp = e.key === "ArrowUp";
-
-            // Exit early if there are no filtered options.
-            // Exception: when free text is allowed, Enter still commits the typed value.
-            if (!filtered.length) {
-                if (isEnter && allowFreeText) {
-                    e.preventDefault();
-
-                    // Close listbox and reset ARIA state.
-                    list.style.display = "none";
-                    input.setAttribute("aria-expanded", "false");
-                    input.setAttribute("aria-activedescendant", "");
-                    activeIndex = -1;
-
-                    // Commit the literal typed text.
-                    input.title = input.value || "Please select an option";
-                    updateState(input.value, setCallback);
-                }
-                return;
-            }
-
-            /**
-             * If the listbox is currently closed:
-             * - ArrowUp / ArrowDown should open it and initialize state
-             * - All other keys are ignored
-             */
-            if (list.style.display !== "block") {
-                if (isDown || isUp) {
-                    // Reuse filtering logic to open and populate the list
-                    input.dispatchEvent(new Event("input"));
-                } else {
-                    return;
-                }
-            }
-
-            /**
-             * ArrowDown → move selection forward
-             */
-            if (isDown) {
-                e.preventDefault();
-
-                // Clamp index to last available option
-                activeIndex = Math.min(activeIndex + 1, filtered.length - 1);
-
-                // Update active descendant reference
-                input.setAttribute("aria-activedescendant", `opt-${activeIndex}`);
-
-                // Sync aria-selected state across all options
-                Array
-                    .from(list.children)
-                    .forEach((c, idx) =>
-                        c.setAttribute("aria-selected", idx === activeIndex)
-                    );
-
-                // Ensure active option remains visible
-                document
-                    .getElementById(`opt-${activeIndex}`)
-                    ?.scrollIntoView({ block: "nearest" });
-            }
-
-            /**
-             * ArrowUp → move selection backward
-             */
-            if (isUp) {
-                e.preventDefault();
-
-                // Clamp index to first option
-                activeIndex = Math.max(activeIndex - 1, 0);
-
-                // Update active descendant reference
-                input.setAttribute("aria-activedescendant", `opt-${activeIndex}`);
-
-                // Sync aria-selected state across all options
-                Array
-                    .from(list.children)
-                    .forEach((c, idx) =>
-                        c.setAttribute("aria-selected", idx === activeIndex)
-                    );
-
-                // Ensure active option remains visible
-                document
-                    .getElementById(`opt-${activeIndex}`)
-                    ?.scrollIntoView({ block: "nearest" });
-            }
-
-            /**
-             * Enter → commit the active selection
-             */
-            if (isEnter) {
-                // Determine whether an option is currently highlighted in the listbox.
-                const hasActiveOption = activeIndex >= 0 && !!filtered[activeIndex];
-
-                // If no option is highlighted and free text is not allowed, do nothing.
-                if (!hasActiveOption && !allowFreeText) {
-                    return;
-                }
-
-                // Prevent form submission or other default behaviors
-                // associated with Enter key press in an input field
-                e.preventDefault();
-
-                // Close listbox
-                list.style.display = "none";
-
-                if (hasActiveOption) {
-                    // Apply the highlighted option's value to the input.
-                    input.value = filtered[activeIndex].value;
-                    input.title = filtered[activeIndex].manifest.summary || "No summary available";
-                } else {
-                    // Free text: keep whatever the user typed.
-                    input.title = input.value || "Please select an option";
-                }
-
-                // Reset ARIA state
-                input.setAttribute("aria-expanded", "false");
-                input.setAttribute("aria-activedescendant", "");
-
-                // Clear active index
-                activeIndex = -1;
-
-                // Commit the resolved value (highlighted option or typed text).
-                updateState(input.value, setCallback);
-            }
-
-            /**
-             * Escape → close listbox without selection
-             */
-            if (isEscape) {
-                // Close listbox
-                list.style.display = "none";
-
-                // Reset ARIA state
-                input.setAttribute("aria-expanded", "false");
-                input.setAttribute("aria-activedescendant", "");
-
-                // Clear active index
-                activeIndex = -1;
-            }
-        });
+        input.addEventListener("keydown", onDataListKeyDown);
 
         // When free text is allowed, commit whatever is currently in the input on focus-out.
         // Option selection uses mousedown + preventDefault, so a click commits before blur;
@@ -2936,7 +2943,7 @@ class CustomFields {
 
         // Prepare the error container element
         const errorContainer = document.createElement('div');
-        errorContainer.setAttribute('data-g4-role', `error`);
+        errorContainer.dataset.g4Role = `error`;
 
         // Insert all error blocks inside the container
         errorContainer.insertAdjacentHTML('beforeend', html);
@@ -2944,7 +2951,7 @@ class CustomFields {
         // Insert the error container into the DOM after the first existing child
         const refElement = options.container.firstElementChild;
         if (refElement) {
-            refElement.insertAdjacentElement('afterend', errorContainer);
+            refElement.after(errorContainer);
         } else {
             // Fallback: append if no reference child exists
             options.container.appendChild(errorContainer);
@@ -3006,13 +3013,13 @@ class CustomFields {
             // Create a div element to serve as the row container for the key-value pair
             const row = document.createElement('div');
             const inputId = Utilities.newUid();
-            row.setAttribute('data-g4-role', 'keyvalue');
+            row.dataset.g4Role = 'keyvalue';
 
             // Create the key input field
             const newKeyInput = document.createElement('input');
             newKeyInput.type = 'text';
             newKeyInput.value = options.key || '';
-            newKeyInput.setAttribute('data-g4-role', 'key');
+            newKeyInput.dataset.g4Role = 'key';
             newKeyInput.setAttribute('title', `Key: ${options.key || ''}`);
             newKeyInput.setAttribute('placeholder', 'Enter key');
             newKeyInput.setAttribute('name', `${inputId}-key`)
@@ -3021,7 +3028,7 @@ class CustomFields {
             const newValueInput = document.createElement('input');
             newValueInput.type = 'text';
             newValueInput.value = options.value || '';
-            newValueInput.setAttribute('data-g4-role', 'value');
+            newValueInput.dataset.g4Role = 'value';
             newValueInput.setAttribute('title', `Value: ${options.value || ''}`);
             newValueInput.setAttribute('placeholder', 'Enter value');
             newKeyInput.setAttribute('name', `${inputId}-value`)
@@ -3036,7 +3043,7 @@ class CustomFields {
             // Define the click event handler for the remove button
             removeButton.addEventListener('click', () => {
                 // Remove the current row from the container
-                options.container.removeChild(row);
+                row.remove();
 
                 // Find the closest parent container with the role "field"
                 const fieldContainer = options.container.closest('[data-g4-role="field"]');
@@ -3266,9 +3273,9 @@ class CustomFields {
                     return obj;
                 }, {});
             }
-            // If itemsSource is neither string nor array, throw an error
+            // Reject unsupported item sources with a TypeError so callers can distinguish contract violations.
             else {
-                throw new Error('Invalid itemsSource type. Must be a string or an array.');
+                throw new TypeError('Invalid itemsSource type. Must be a string or an array.');
             }
 
             /**
@@ -3515,7 +3522,7 @@ class CustomFields {
          * Validate and sanitize the initial value.
          * If the initial value is not provided, is NaN, or is the string 'undefined', default it to an empty string.
          */
-        options.initialValue = (!options.initialValue || isNaN(options.initialValue) || options.initialValue === 'undefined')
+        options.initialValue = (!options.initialValue || Number.isNaN(Number(options.initialValue)) || options.initialValue === 'undefined')
             ? ''
             : options.initialValue;
 
@@ -3594,19 +3601,26 @@ class CustomFields {
      * @param {string}        options.label              - The identifier for the string field, used for data attributes and labeling.
      * @param {string}        [options.title]            - The title attribute for the field container, often used for tooltips.
      * @param {string|number} [options.initialValue='']  - The initial value of the textarea. Defaults to an empty string if not provided or invalid.
+     * @param {boolean}       [options.isBase64Enabled=true] - Determines whether the Base64 representation toggle is displayed.
+     * @param {boolean}       [options.isBase64Encoded=false] - Indicates whether the initial value is already Base64 encoded.
      * @param {boolean}       [options.isReadonly=false] - Determines if the textarea is read-only.
-     * @param {Function}      setCallback                - Callback function to handle changes to the textarea's value.
+     * @param {Function}      setCallback                - Callback invoked with the value and current Base64 state when the field changes.
      *
      * @returns {HTMLElement} The container element that includes the newly created string field.
      */
     static newStringField(options, setCallback) {
+        // Enable Base64 controls by default so existing callers retain their current field behavior.
+        const isBase64Enabled = options.isBase64Enabled !== false;
+
+        // Track the explicit representation state independently from whether its conversion control is displayed.
+        let isBase64Encoded = options.isBase64Encoded === true;
+
         /**
-         * Adjusts the size of the textarea dynamically based on its content
-         * and invokes the callback with the current value.
+         * Adjusts the textarea size dynamically based on its content.
          *
          * @param {HTMLTextAreaElement} textarea - The textarea element to resize and process.
          */
-        const callback = (textarea) => {
+        const updateTextareaLayout = (textarea) => {
             // Reset the height to 'auto' to recalculate the required height based on content.
             textarea.style.height = 'auto';
 
@@ -3615,8 +3629,8 @@ class CustomFields {
 
             // Get the computed styles of the textarea to determine line height and minimum height.
             const computedStyle = window.getComputedStyle(textarea);
-            const lineHeight = parseFloat(computedStyle.lineHeight);
-            const minHeight = parseFloat(computedStyle.minHeight);
+            const lineHeight = Number.parseFloat(computedStyle.lineHeight);
+            const minHeight = Number.parseFloat(computedStyle.minHeight);
 
             // Define the maximum number of lines the textarea can expand to before enabling scroll.
             const maxLines = 8;
@@ -3638,9 +3652,114 @@ class CustomFields {
                 // Enable the vertical scrollbar to allow scrolling through content.
                 textarea.style.overflowY = contentHeight === 0 ? 'hidden' : 'scroll';
             }
+        };
 
-            // Invoke the callback function with the current value of the textarea.
-            setCallback(textarea.value);
+        /**
+         * Applies the current value to the field presentation and notifies its owner.
+         *
+         * @param {HTMLTextAreaElement} textarea - The textarea whose current value should be published.
+         */
+        const updateStringFieldValue = (textarea) => {
+            // Keep validation, tooltip text, and dynamic sizing aligned with the accepted value.
+            textarea.setCustomValidity('');
+            textarea.title = textarea.value;
+            updateTextareaLayout(textarea);
+
+            // Publish both the value and its explicit representation state without breaking one-argument callbacks.
+            if (typeof setCallback === 'function') {
+                setCallback(textarea.value, { isBase64Encoded });
+            }
+        };
+
+        /**
+         * Adds the Base64 representation control to a string field when that capability is enabled.
+         *
+         * @param {Object} base64ToggleOptions - Elements and identifiers owned by the target string field.
+         * @param {HTMLElement} base64ToggleOptions.fieldContainer - Container that owns the field header.
+         * @param {string} base64ToggleOptions.inputId - Unique identifier shared by the field controls.
+         * @param {HTMLTextAreaElement} base64ToggleOptions.textareaElement - Textarea converted by the toggle.
+         */
+        const addBase64Toggle = (base64ToggleOptions) => {
+            const {
+                fieldContainer,
+                inputId,
+                textareaElement
+            } = base64ToggleOptions;
+
+            // Group the representation switch with the help icon so both controls remain together in the field header.
+            const helpIconElement = fieldContainer.querySelector('.sqd-help-icon-container');
+            const labelActionsElement = document.createElement('span');
+            labelActionsElement.classList.add('sqd-label-actions');
+
+            // Reproduce the settings-component checkbox slider while keeping native keyboard and form semantics.
+            const base64ToggleElement = document.createElement('label');
+            base64ToggleElement.classList.add('sqd-base64-toggle');
+            base64ToggleElement.dataset.g4Role = 'base64-toggle';
+
+            const base64ToggleTextElement = document.createElement('span');
+            base64ToggleTextElement.classList.add('sqd-base64-toggle__label');
+            base64ToggleTextElement.textContent = 'Base64';
+
+            const base64ToggleInputElement = document.createElement('input');
+            base64ToggleInputElement.classList.add('sqd-base64-toggle__input');
+            base64ToggleInputElement.id = `${inputId}-base64-toggle`;
+            base64ToggleInputElement.type = 'checkbox';
+            base64ToggleInputElement.checked = isBase64Encoded;
+
+            const base64ToggleSwitchElement = document.createElement('span');
+            base64ToggleSwitchElement.classList.add('sqd-base64-toggle__switch');
+            base64ToggleSwitchElement.setAttribute('aria-hidden', 'true');
+
+            /**
+             * Updates the slider's accessible action text to describe the next conversion.
+             */
+            const updateBase64ToggleAccessibility = () => {
+                const actionLabel = isBase64Encoded
+                    ? 'Decode Base64 value'
+                    : 'Encode value as Base64';
+
+                base64ToggleElement.title = actionLabel;
+                base64ToggleInputElement.setAttribute('aria-label', actionLabel);
+            };
+
+            /**
+             * Converts the field when the user changes the Base64 representation switch.
+             */
+            const onBase64ToggleChange = () => {
+                const isRequestedBase64Encoded = base64ToggleInputElement.checked;
+
+                // Convert only in the direction selected by the explicit switch state so content is never auto-detected.
+                try {
+                    textareaElement.value = isRequestedBase64Encoded
+                        ? Utilities.convertToBase64(textareaElement.value)
+                        : Utilities.convertFromBase64(textareaElement.value);
+                } catch {
+                    // Restore the prior mode when decoding fails so invalid input is never discarded or mislabeled.
+                    base64ToggleInputElement.checked = isBase64Encoded;
+                    base64ToggleInputElement.setCustomValidity('The value is not valid Base64-encoded UTF-8 text.');
+                    base64ToggleInputElement.reportValidity();
+                    return;
+                }
+
+                // Commit the new representation only after conversion succeeds, including for read-only textareas.
+                isBase64Encoded = isRequestedBase64Encoded;
+                base64ToggleInputElement.setCustomValidity('');
+                updateBase64ToggleAccessibility();
+                updateStringFieldValue(textareaElement);
+            };
+
+            // Assemble the header controls before wiring the toggle so the existing help action remains available.
+            base64ToggleElement.append(
+                base64ToggleTextElement,
+                base64ToggleInputElement,
+                base64ToggleSwitchElement
+            );
+            helpIconElement.before(labelActionsElement);
+            labelActionsElement.append(base64ToggleElement, helpIconElement);
+            updateBase64ToggleAccessibility();
+
+            // Keep the Base64 action available for read-only fields because representation changes are still intentional.
+            base64ToggleInputElement.addEventListener('change', onBase64ToggleChange);
         };
 
         /**
@@ -3665,14 +3784,14 @@ class CustomFields {
             // Find and remove any existing modal with the same ID in the container
             const existingModal = fieldContainer?.querySelector(`#${escapedId}-modal`);
             if (existingModal) {
-                fieldContainer.removeChild(existingModal);
+                existingModal.remove();
             }
 
             // Create a container <div> to serve as the modal
             const modalElement = document.createElement('div');
             modalElement.setAttribute('id', `${inputId}-modal`);
             modalElement.setAttribute('class', 'sqd-modal');
-            modalElement.setAttribute('data-g4-role', 'input-modal');
+            modalElement.dataset.g4Role = 'input-modal';
 
             // Create a container for the textarea and close button
             const textareaContainerElement = document.createElement('div');
@@ -3683,12 +3802,14 @@ class CustomFields {
             textareaElement.setAttribute('wrap', 'off');
             textareaElement.setAttribute('spellcheck', 'false');
 
-            // Listen for changes in the modal's textarea and update the original field's value
-            textareaElement.addEventListener('input', () => {
+            const onModalTextareaInput = () => {
+                // Mirror modal edits through the field's normal publication path so representation state is retained.
                 const textarea = fieldContainer.querySelector(`#${escapedId}`);
                 textarea.value = textareaElement.value;
-                callback(textarea);
-            });
+                updateStringFieldValue(textarea);
+            };
+
+            textareaElement.addEventListener('input', onModalTextareaInput);
 
             // Create a button to close the modal
             const closeButtonElement = document.createElement('button');
@@ -3701,12 +3822,12 @@ class CustomFields {
                 const textarea = fieldContainer.querySelector(`#${escapedId}`);
                 if (!textarea) {
                     app.inert = false;
-                    document.body.removeChild(modalElement);
+                    modalElement.remove();
                     return;
                 }
                 app.inert = false;
                 textarea.disabled = false;
-                fieldContainer.removeChild(modalElement);
+                modalElement.remove();
             });
 
             // Add the textarea and close button to the container
@@ -3744,7 +3865,7 @@ class CustomFields {
         textareaElement.setAttribute('id', inputId);
         textareaElement.setAttribute('rows', '1');                        // Start with a single row; height will adjust dynamically.
         textareaElement.setAttribute('wrap', 'off');                      // Disable text wrapping to allow horizontal scrolling if needed.
-        textareaElement.setAttribute('data-g4-attribute', options.label); // Custom data attribute for identification.
+        textareaElement.dataset.g4Attribute = options.label;              // Custom data attribute for identification.
         textareaElement.setAttribute('spellcheck', 'false');              // Disable spell checking.
         textareaElement.setAttribute('title', options.initialValue);      // Tooltip displaying the current value.
         textareaElement.value = options.initialValue;                     // Set the initial value of the textarea.
@@ -3764,6 +3885,15 @@ class CustomFields {
         // Create a container for the field using a helper function, passing the unique ID, display label, and title.
         const fieldContainer = newFieldContainer(inputId, labelDisplayName, options.title);
 
+        // Add the optional representation control without disturbing the textarea or its help action when disabled.
+        if (isBase64Enabled) {
+            addBase64Toggle({
+                fieldContainer,
+                inputId,
+                textareaElement
+            });
+        }
+
         // Escape the inputId to safely use it in a CSS selector.
         const escapedId = CSS.escape(inputId);
 
@@ -3778,19 +3908,12 @@ class CustomFields {
             textareaElement.setAttribute('readonly', 'readonly');
         }
 
-        /**
-         * If a callback function is provided, add an event listener to handle changes to the select field.
-         * - Updates the `title` attribute of the select to reflect its current value.
-         * - Invokes the `setCallback` function with the new value whenever the selection changes.
-         */
-        if (typeof setCallback === 'function') {
-            ['input', 'paste', 'cut', 'drop'].forEach(e => {
-                fieldContainer.addEventListener(e, () => {
-                    textareaElement.title = textareaElement.value;
-                    callback(textareaElement);
-                });
-            });
-        }
+        const onTextareaInput = () => {
+            // Publish after the browser applies paste, cut, drop, or keyboard changes to the textarea.
+            updateStringFieldValue(textareaElement);
+        };
+
+        textareaElement.addEventListener('input', onTextareaInput);
 
         // If a container element is provided in the options, append the entire field container to it.
         if (options.container) {
@@ -3806,83 +3929,84 @@ class CustomFields {
     }
 
     /**
-     * Creates and appends a new switch (select) field to the specified container based on provided options.
+     * Creates and appends a checkbox-based toggle field that uses the established editor switch appearance.
      *
      * @param {Object}         options                      - Configuration options for the switch field.
      * @param {HTMLElement}    [options.container]          - The DOM element to which the switch field will be appended.
      * @param {string}         options.label                - The identifier for the switch field, used for data attributes and labeling.
      * @param {string}         [options.title]              - The title attribute for the field container, often used for tooltips.
-     * @param {boolean|string} [options.initialValue=false] - The initial value of the switch field. Can be `true`, `false`, or a falsy value.
+     * @param {boolean|string} [options.initialValue=false] - The initial state as a boolean or lowercase boolean string.
      * @param {Function}       setCallback                  - Callback function to handle changes to the switch field's value.
      *
      * @returns {HTMLElement} The container element that includes the newly created switch field.
      */
     static newSwitchField(options, setCallback) {
-        // Generate a unique identifier for the switch field to ensure uniqueness in the DOM
+        // Normalize the supported boolean representations so persisted string values select the correct state.
         const inputId = Utilities.newUid();
-
-        // Convert the label from PascalCase to a space-separated format for display purposes
         const labelDisplayName = options.label;
+        const isInitiallyEnabled = options.initialValue === true || options.initialValue === 'true';
 
-        /**
-         * Validate and sanitize the initial value.
-         * If the initial value is not provided, is NaN, or is undefined, default it to `false`.
-         */
-        options.initialValue = (!options.initialValue || options.initialValue === null || Number.isNaN(options.initialValue) || options.initialValue === undefined)
-            ? false
-            : options.initialValue;
-
-        /**
-         * Construct the HTML string for the select element with the necessary attributes.
-         * - `data-g4-attribute`: Custom data attribute for identifying the field.
-         * - `title`            : Tooltip text showing the current value.
-         * - `select`           : Creates a dropdown with options to activate or deactivate the switch.
-         */
-        const html = `
-        <select name="${inputId}-switch" data-g4-attribute="${options.label}" title="${options.initialValue}">
-            <option value="" disabled selected>-- Please select an option --</option>
-            <option value="true" title="Activate switch">True</option>
-            <option value="false" title="Deactivate switch">False</option>
-        </select>`;
-
-        // Create a container for the field using a helper function, passing the unique ID, display label, and title
+        // Reuse the established Base64 slider structure so boolean fields share its appearance without CSS changes.
         const fieldContainer = newFieldContainer(inputId, labelDisplayName, options.title);
-
-        // Select the specific sub-container within the field container where the select element will reside
         const controllerContainer = fieldContainer.querySelector('[data-g4-role="controller"]');
+        const toggleElement = document.createElement('label');
+        const toggleInputElement = document.createElement('input');
+        const toggleSwitchElement = document.createElement('span');
 
-        // Insert the select HTML into the controller container at the end of its current content
-        controllerContainer.insertAdjacentHTML('beforeend', html);
+        toggleElement.classList.add('sqd-base64-toggle');
+        toggleElement.dataset.g4Role = 'switch-toggle';
 
-        // Retrieve the newly inserted select element for further manipulation
-        const select = controllerContainer.querySelector('select');
-        select.value = options.initialValue;
+        toggleInputElement.classList.add('sqd-base64-toggle__input');
+        toggleInputElement.id = `${inputId}-switch`;
+        toggleInputElement.name = `${inputId}-switch`;
+        toggleInputElement.type = 'checkbox';
+        toggleInputElement.checked = isInitiallyEnabled;
+        toggleInputElement.dataset.g4Attribute = options.label;
 
-        /**
-         * If a callback function is provided, add an event listener to handle changes to the select field.
-         * - Updates the `title` attribute of the select to reflect its current value.
-         * - Invokes the `setCallback` function with the new value whenever the selection changes.
-         */
-        if (typeof setCallback === 'function') {
-            fieldContainer.addEventListener('input', () => {
-                select.title = select.value;
-                setCallback(select.value);
-            });
-        }
+        toggleSwitchElement.classList.add('sqd-base64-toggle__switch');
+        toggleSwitchElement.setAttribute('aria-hidden', 'true');
 
         /**
-         * If a container element is provided in the options, append the entire field container to it.
-         * This allows for flexible placement of the new switch field within the DOM.
+         * Synchronizes native input state and accessible action text after initialization and each user change.
+         *
+         * @returns {string} The lowercase string contract expected by existing switch-field consumers.
          */
+        const updateSwitchState = () => {
+            const switchValue = toggleInputElement.checked ? 'true' : 'false';
+            const actionLabel = toggleInputElement.checked
+                ? `Deactivate ${labelDisplayName}`
+                : `Activate ${labelDisplayName}`;
+
+            toggleInputElement.value = switchValue;
+            toggleElement.title = actionLabel;
+            toggleInputElement.setAttribute('aria-label', actionLabel);
+
+            return switchValue;
+        };
+
+        /**
+         * Commits a user-selected state while preserving the existing string callback contract.
+         */
+        const onSwitchChange = () => {
+            const switchValue = updateSwitchState();
+
+            if (typeof setCallback === 'function') {
+                setCallback(switchValue);
+            }
+        };
+
+        // Assemble the native checkbox before wiring its lifecycle so label clicks and keyboard input work normally.
+        toggleElement.append(toggleInputElement, toggleSwitchElement);
+        controllerContainer.appendChild(toggleElement);
+        updateSwitchState();
+
+        toggleInputElement.addEventListener('change', onSwitchChange);
+
+        // Attach the completed field only when a host was provided, preserving the method's existing return behavior.
         if (options.container) {
             options.container.appendChild(fieldContainer);
         }
 
-        /**
-         * Return the container that now includes the new switch field.
-         * - If an external container was provided, return that container.
-         * - Otherwise, return the newly created field container.
-         */
         return options.container ? options.container : fieldContainer;
     }
 
@@ -4020,7 +4144,7 @@ class CustomFields {
 
         // Create a new div element to contain the title and subtitle.
         const titleContainer = document.createElement('div');
-        titleContainer.setAttribute('data-g4-role', 'title');
+        titleContainer.dataset.g4Role = 'title';
 
         // Define the HTML structure for the title, subtitle, and hint icon.
         const html = `

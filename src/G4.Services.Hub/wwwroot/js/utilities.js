@@ -139,6 +139,32 @@
     }
 
     /**
+     * Converts a Base64-encoded UTF-8 value back to its original string.
+     *
+     * The browser Base64 decoder returns a binary string, so this method maps
+     * each binary character back to its byte value before applying UTF-8 decoding.
+     * Invalid Base64 or invalid UTF-8 is allowed to throw so the field controller
+     * can preserve the user's value and report conversion feedback.
+     *
+     * @param {string} value - The Base64-encoded UTF-8 value to decode.
+     *
+     * @returns {string} The decoded UTF-8 string.
+     */
+    static convertFromBase64(value) {
+        // Decode the Base64 payload into its byte-oriented browser representation.
+        const binaryValue = atob(value);
+
+        // Restore the original byte sequence so Unicode text can be decoded without data loss.
+        const utf8Bytes = Uint8Array.from(
+            binaryValue,
+            character => character.charCodeAt(0)
+        );
+        const decoder = new TextDecoder('utf-8', { fatal: true });
+
+        return decoder.decode(utf8Bytes);
+    }
+
+    /**
      * Converts a given string to its Base64-encoded representation.
      *
      * This method takes a UTF-8 string, encodes it into bytes, and then

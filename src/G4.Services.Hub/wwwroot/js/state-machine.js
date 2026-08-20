@@ -282,6 +282,7 @@ class StateMachineSteps {
 			return {
 				aliases: [],
 				categories: "G-ERROR",
+				capabilities: {},
 				componentType: "task",
 				context: {},
 				description: "Description not provided.",
@@ -351,6 +352,7 @@ class StateMachineSteps {
 
 		// Set the remaining properties of the new G4 step object
 		step.categories = manifest.categories ? manifest.categories.join("|").toUpperCase() : "";
+		step.capabilities = {};
 		step.description = manifest.summary ? manifest.summary.join('\n') : 'Description not provided.';
 		step.id = Utilities.newUid();
 		step.name = label;

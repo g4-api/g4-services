@@ -469,6 +469,25 @@ const setDefinition = (definition) => {
 		// Create a new step using the state machine factory and the retrieved manifest.
 		const step = StateMachineSteps.newG4Step(manifest, rule.pluginName);
 
+		// Copy the per-field registry so each property and parameter restores its own representation state.
+		const ruleBase64EncodedFields = rule?.capabilities?.base64EncodedFields;
+		const isBase64EncodedFieldsObject = Utilities.assertObject(ruleBase64EncodedFields)
+			&& !Array.isArray(ruleBase64EncodedFields);
+
+		if (isBase64EncodedFieldsObject) {
+			step.capabilities.base64EncodedFields = {
+				parameters: Array.isArray(ruleBase64EncodedFields.parameters)
+					? [...ruleBase64EncodedFields.parameters]
+					: [],
+				properties: Array.isArray(ruleBase64EncodedFields.properties)
+					? [...ruleBase64EncodedFields.properties]
+					: []
+			};
+		} else {
+			// Preserve the former all-fields contract until the editor migrates it from bridge metadata.
+			step.capabilities.isBase64Encoded = rule?.capabilities?.isBase64Encoded === true;
+		}
+
 		// Compose the step label: keep the plugin's current name behaviour (its manifest name, or an
 		// explicit displayName override), then append the recorder-attached element name when present
 		// so recorded actions read as "<plugin> — <element>" without losing the plugin's own naming.

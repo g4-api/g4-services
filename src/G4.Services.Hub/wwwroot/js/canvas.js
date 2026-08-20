@@ -1218,6 +1218,136 @@ async function stopDefinition() {
  * @returns {HTMLElement} The fully populated step editor container element.
  */
 function stepEditorProvider(step, editorContext) {
+	// Normalize capabilities for older in-memory steps so per-field Base64 state always has a writable owner.
+	step.capabilities = step.capabilities || {};
+
+	/**
+	 * Tests whether a bridge field is rendered through newStringField.
+	 *
+	 * @param {Object} field - The property or parameter bridge object to inspect.
+	 * @returns {boolean} True when no specialized field renderer owns the bridge object.
+	 */
+	const testStringField = (field) => {
+		const fieldType = field?.type?.toUpperCase() || 'STRING';
+		const isArrayField = fieldType === 'ARRAY';
+		const isDataListField = _cacheKeys.includes(fieldType);
+		const isKeyValueField = ['KEY/VALUE', 'KEYVALUE', 'DICTIONARY', 'OBJECT'].includes(fieldType);
+		const isOptionsField = Array.isArray(field?.values) && field.values.length > 0;
+		const isSwitchField = ['SWITCH', 'BOOLEAN', 'BOOL'].includes(fieldType);
+		const isSpecializedField = isArrayField
+			|| isDataListField
+			|| isKeyValueField
+			|| isOptionsField
+			|| isSwitchField;
+
+		return !isSpecializedField;
+	};
+
+	/**
+	 * Tests whether a named bridge field is both visible and rendered as a string field.
+	 *
+	 * @param {'parameters'|'properties'} groupName - The bridge collection that owns the field.
+	 * @param {string} fieldName - The stable field name within the bridge collection.
+	 * @returns {boolean} True when the field receives an independent Base64 toggle.
+	 */
+	const testVisibleStringField = (groupName, fieldName) => {
+		const group = step[groupName] || {};
+		const normalizedFieldName = fieldName.toUpperCase();
+		const isParameterCollectionPopulated = Object.keys(step.parameters || {}).length > 0;
+		const isArgumentHidden = groupName === 'properties'
+			&& isParameterCollectionPopulated
+			&& normalizedFieldName === 'ARGUMENT';
+		const isStructuralProperty = groupName === 'properties'
+			&& ['RULES', 'TRANSFORMERS', 'DATACOLLECTOR'].includes(normalizedFieldName);
+
+		if (isArgumentHidden || isStructuralProperty) {
+			return false;
+		}
+
+		return testStringField(group[fieldName]);
+	};
+
+	/**
+	 * Initializes the authoritative per-field Base64 registry.
+	 *
+	 * Existing registries are normalized without inspecting their values. A legacy
+	 * rule-level true flag deterministically migrates every visible string field to
+	 * the encoded registry because the former contract could only mean "all".
+	 */
+	const initializeBase64EncodedFields = () => {
+		const currentRegistry = step.capabilities.base64EncodedFields;
+		const isCurrentRegistryObject = Utilities.assertObject(currentRegistry)
+			&& !Array.isArray(currentRegistry);
+
+		const getNormalizedFieldNames = (groupName) => {
+			const fieldNames = currentRegistry?.[groupName];
+
+			if (!Array.isArray(fieldNames)) {
+				return [];
+			}
+
+			return [...new Set(fieldNames.filter(fieldName => typeof fieldName === 'string'))]
+				.sort((leftName, rightName) => leftName.localeCompare(rightName));
+		};
+
+		if (isCurrentRegistryObject) {
+			step.capabilities.base64EncodedFields = {
+				parameters: getNormalizedFieldNames('parameters'),
+				properties: getNormalizedFieldNames('properties')
+			};
+			delete step.capabilities.isBase64Encoded;
+			return;
+		}
+
+		// Expand the legacy all-fields flag from bridge metadata only; field contents are never inspected.
+		const isLegacyBase64Encoded = step.capabilities.isBase64Encoded === true;
+		const newRegistry = {
+			parameters: [],
+			properties: []
+		};
+
+		if (isLegacyBase64Encoded) {
+			newRegistry.parameters = Object.keys(step.parameters || {})
+				.filter(fieldName => testVisibleStringField('parameters', fieldName));
+			newRegistry.properties = Object.keys(step.properties || {})
+				.filter(fieldName => testVisibleStringField('properties', fieldName));
+		}
+
+		step.capabilities.base64EncodedFields = newRegistry;
+		delete step.capabilities.isBase64Encoded;
+	};
+
+	/**
+	 * Tests the persisted representation state for one field identity.
+	 *
+	 * @param {'parameters'|'properties'} groupName - The bridge collection that owns the field.
+	 * @param {string} fieldName - The stable field name within the bridge collection.
+	 * @returns {boolean} True when that specific field is Base64 encoded.
+	 */
+	const testBase64EncodedField = (groupName, fieldName) => {
+		return step.capabilities.base64EncodedFields[groupName].includes(fieldName);
+	};
+
+	/**
+	 * Updates only the selected field in the Base64 registry.
+	 *
+	 * @param {'parameters'|'properties'} groupName - The bridge collection that owns the field.
+	 * @param {string} fieldName - The stable field name within the bridge collection.
+	 * @param {boolean} isBase64Encoded - The representation selected for that field.
+	 */
+	const setBase64EncodedField = (groupName, fieldName, isBase64Encoded) => {
+		const encodedFieldNames = new Set(step.capabilities.base64EncodedFields[groupName]);
+
+		if (isBase64Encoded) {
+			encodedFieldNames.add(fieldName);
+		} else {
+			encodedFieldNames.delete(fieldName);
+		}
+
+		step.capabilities.base64EncodedFields[groupName] = [...encodedFieldNames]
+			.sort((leftName, rightName) => leftName.localeCompare(rightName));
+	};
+
 	/**
 	 * Initializes and appends the appropriate input field to the container based on the parameter type.
 	 *
@@ -1359,13 +1489,17 @@ function stepEditorProvider(step, editorContext) {
 			{
 				container: container,
 				initialValue: parameter.value,
+				isBase64Encoded: testBase64EncodedField(type, key),
 				isReadonly: false,
 				label: label,
 				title: parameter.description
 			},
-			(value) => {
+			(value, fieldState) => {
 				// Update the parameter's string value with the new input.
 				parameter.value = value;
+
+				// Persist the representation only for this property or parameter so sibling toggles remain independent.
+				setBase64EncodedField(type, key, fieldState.isBase64Encoded);
 
 				// Notify the editor context that properties have changed.
 				editorContext.notifyPropertiesChanged();
@@ -1764,6 +1898,9 @@ function stepEditorProvider(step, editorContext) {
 	if (step.type?.toUpperCase() === 'EXPORT') {
 		initializeExportDataEditorProvider(stepEditorContainer, step);
 	}
+
+	// Initialize rule-field representation state only after container-specific editors have exited.
+	initializeBase64EncodedFields();
 
 	// Sort the properties of the step alphabetically for consistent display.
 	let sortedProperties = Object.keys(step.properties).sort((a, b) => a.localeCompare(b));

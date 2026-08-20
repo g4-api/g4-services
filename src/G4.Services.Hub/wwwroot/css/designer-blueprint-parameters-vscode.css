@@ -115,6 +115,12 @@
     --smart-editor-label-help-icon-container-hover-background: var(--vscode-button-hoverBackground);
     --smart-editor-label-help-icon-container-hover-fill: var(--vscode-button-foreground);
     --smart-editor-label-help-icon-container-size: 1.2em;
+    --smart-editor-base64-toggle-active-background: var(--green);
+    --smart-editor-base64-toggle-focus-outline: 2px solid var(--smart-editor-input-focus-color);
+    --smart-editor-base64-toggle-focus-outline-offset: 2px;
+    --smart-editor-base64-toggle-thumb-background: var(--white);
+    --smart-editor-base64-toggle-track-background: var(--gray);
+    --smart-editor-base64-toggle-transition: background-color 0.15s, transform 0.15s;
     --smart-editor-label-color: var(--vscode-foreground);
     --smart-editor-subtitle-background: var(--vscode-sideBarTitle-background);
     --smart-editor-subtitle-color: var(--vscode-sideBarTitle-foreground);

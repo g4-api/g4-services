@@ -132,8 +132,8 @@ namespace G4.Services.Hub.Api.V4.Controllers
         [HttpGet, Route("sync")]
         #region *** OpenApi Documentation ***
         [SwaggerOperation(
-            Summary = "Sync the list of tools available to the Copilot agent",
-            Description = "Refreshes the cached tool definitions so that the Copilot agent has the most up-to-date list of tools.",
+            Summary = "Sync the MCP tool catalog",
+            Description = "Refreshes the cached tool definitions so that connected MCP agents have the most up-to-date list of tools.",
             Tags = ["Mcp"]
         )]
         [SwaggerResponse(StatusCodes.Status204NoContent, description: "The tools list was successfully synced. No content is returned.")]
@@ -145,7 +145,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         #endregion
         public IActionResult SyncTools()
         {
-            // Update the list of tools available to the Copilot agent
+            // Update the list of tools available to connected MCP agents
             _domain.G4.Tools.SyncTools();
 
             // Return an empty 204 No Content response

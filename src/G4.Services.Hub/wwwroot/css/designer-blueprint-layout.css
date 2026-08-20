@@ -220,6 +220,12 @@ select {
 	min-height: 2.6em;
 }
 
+.sqd-smart-editor .sqd-editor input,
+.sqd-smart-editor .sqd-editor select,
+.sqd-smart-editor .sqd-editor textarea {
+	font-size: inherit;
+}
+
 input[type="text"],
 input[type="number"],
 input[type="file"],
@@ -283,6 +289,44 @@ textarea {
 	position: relative;
 	text-align: center;
 }
+
+.sqd-label-actions {
+	align-items: center;
+	display: flex;
+	gap: 0.5em;
+}
+
+.sqd-base64-toggle {
+	align-items: center;
+	display: inline-flex;
+	gap: 0.4em;
+	user-select: none;
+}
+
+.sqd-base64-toggle__input {
+	height: 0;
+	position: absolute;
+	width: 0;
+}
+
+.sqd-base64-toggle__switch {
+	flex-shrink: 0;
+	height: 18px;
+	position: relative;
+	width: 34px;
+}
+
+	.sqd-base64-toggle__switch::after {
+		height: 14px;
+		left: 2px;
+		position: absolute;
+		top: 2px;
+		width: 14px;
+	}
+
+	.sqd-base64-toggle__input:checked + .sqd-base64-toggle__switch::after {
+		transform: translateX(16px);
+	}
 
 .sqd-label--with-help-icon {
 	align-items: center;
@@ -374,6 +418,11 @@ textarea {
 		.sqd-layout-desktop .sqd-smart-editor .sqd-editor .sqd-help-icon-container {
 			height: var(--smart-editor-label-help-icon-container-size);
 			width: var(--smart-editor-label-help-icon-container-size);
+		}
+
+		.sqd-layout-desktop .sqd-smart-editor .sqd-editor .sqd-base64-toggle__label {
+			font-size: 0.85em;
+			line-height: 1;
 		}
 
 .sqd-title,

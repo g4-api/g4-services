@@ -36,7 +36,7 @@ jobs:
 
     steps:
     - name: Checkout Repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
     
     - name: Parse Build Version for GitHub Tag
       id: parse-version
@@ -56,7 +56,7 @@ jobs:
 
     steps:
       - name: Checkout Workflow Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Build G4 Services Hub Docker Image
         run: docker build -f ./docker/G4.Services.Hub.Dockerfile -t g4-services-hub .
@@ -99,7 +99,7 @@ jobs:
           }
 
       - name: Checkout Target Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: g4-api/g4-external-python
           ref: main
@@ -222,7 +222,7 @@ jobs:
             }
 
       - name: Checkout Workflow Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set Up Node.js Environment
         uses: actions/setup-node@v4
@@ -264,7 +264,7 @@ jobs:
             --reporter-junit-export ./test-results.xml
 
       - name: Upload a Build Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: postman-test-results
           path: "./test-results.xml"
@@ -290,7 +290,7 @@ jobs:
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Log in to Docker Hub
         run:  echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
@@ -317,10 +317,10 @@ jobs:
 
     steps:
       - name: Checkout Workflow Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup .NET Core SDK
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10
 
@@ -350,7 +350,7 @@ jobs:
               -DestinationPath ${{ env.artifactStagingDirectory }}/g4-hub.v${{ env.buildVersion }}-win-linux-osx-x64.zip
   
       - name: Upload a Build Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: g4-hub
           path: ${{ env.artifactStagingDirectory }}/*.zip
@@ -369,15 +369,15 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
 
     - name: Download Build Artifacts
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         name: g4-hub
 
     - name: Create GitHub Release & Tag v${{ env.buildVersion }}
-      uses: softprops/action-gh-release@v2
+      uses: softprops/action-gh-release@v3
       with:
         files: ./*.zip
         tag_name: v${{ env.buildVersion }}
