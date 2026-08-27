@@ -1174,8 +1174,6 @@ namespace G4.Services.Domain.V4.Repositories
             // These parameters are required for the automation process to know which browser and driver binaries to use.
             automation.DriverParameters = driverParameters;
 
-            var j = JsonSerializer.Serialize(automation, AppSettings.JsonOptions);
-
             // Invoke the automation process and get the response.
             var response = options.G4Client.Automation.Invoke(automation);
 
