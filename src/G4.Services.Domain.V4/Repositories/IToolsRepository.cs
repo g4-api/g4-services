@@ -138,6 +138,15 @@ namespace G4.Services.Domain.V4.Repositories
         object SendRule(SendRuleInputSchema schema);
 
         /// <summary>
+        /// Sends an ordered collection of rules for execution within an active G4 driver session.
+        /// All rules are executed sequentially as a single job against the specified driver session,
+        /// sharing the same page and session state.
+        /// </summary>
+        /// <param name="schema">The input schema that includes the driver session identifier, the ordered rule definitions to execute, and the authorization token required by the G4 engine.</param>
+        /// <returns>An object representing the outcome of the rule collection execution, including the ordered per-rule output. The exact structure of the result is defined by the G4 engine.</returns>
+        object SendRules(SendRulesInputSchema schema);
+
+        /// <summary>
         /// Starts a new driver session using the provided input schema.  
         /// The session is created through the G4 engine using the driver configuration
         /// and authorization token specified in the schema.
