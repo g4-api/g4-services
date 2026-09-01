@@ -37,6 +37,11 @@ namespace G4.Models
         public string Name { get; set; }
 
         /// <summary>
+        /// Gets or sets the namespace that owns the tool.
+        /// </summary>
+        public string Namespace { get; set; }
+
+        /// <summary>
         /// Gets or sets additional metadata about the tool.
         /// </summary>
         [JsonIgnore, Newtonsoft.Json.JsonIgnore]

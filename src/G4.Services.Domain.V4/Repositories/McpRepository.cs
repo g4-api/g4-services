@@ -96,7 +96,7 @@ namespace G4.Services.Domain.V4.Repositories
                 {
                     response.Result = new
                     {
-                        Tool = tool.ClientTool
+                        Tool = tool
                     };
                 }
 

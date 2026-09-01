@@ -768,6 +768,7 @@ namespace G4.Services.Domain.V4.Repositories
                             ClientTool = clientTool,
                             QualifiedName = $"system.{clientTool.Name}",
                             Name = clientTool.Name,
+                            Namespace = "G4.System",
                             Description = clientTool.Description,
                             Metadata = new()
                             {
@@ -818,10 +819,10 @@ namespace G4.Services.Domain.V4.Repositories
                 ? tool
                 : options.Tools.Values.FirstOrDefault(i => i.QualifiedName.Equals(toolName, StringComparison.OrdinalIgnoreCase));
 
-            // Return the matched tool when a tool name was provided.
-            // Return null when the caller did not supply any tool name.
-            return !string.IsNullOrEmpty(toolName)
-                ? new { Tool = tool.ClientTool }
+            // Return the complete authoritative tool model when it was found.
+            // Return null when the caller did not supply a valid tool name.
+            return !string.IsNullOrEmpty(toolName) && tool != null
+                ? new { Tool = tool }
                 : null;
         }
 
