@@ -51,6 +51,52 @@ namespace G4.Services.UnitTests.Repositories
             Assert.AreEqual("NoAction", entry.GetProperty("rule").GetProperty("pluginName").GetString());
         }
 
+        [TestMethod(DisplayName = "Verify that rule conversion preserves an explicitly supplied G4 argument.")]
+        public void ConvertRuleDataPreservesExplicitArgumentTest()
+        {
+            // Arrange: provide both the authoritative expression and structured parameters that previously replaced it.
+            const string Argument = "{{$ --Key:Ctrl --Key:A --Sticky}}";
+            var ruleData = JsonSerializer.SerializeToElement(new
+            {
+                toolParameters = new
+                {
+                    Key = new[] { "Ctrl", "A" },
+                    Sticky = string.Empty
+                },
+                toolProperties = new
+                {
+                    argument = Argument
+                }
+            });
+
+            // Act: convert through the shared path used by SendRule and SendRules.
+            var rule = ConvertRuleData(ruleData);
+
+            // Assert: structured parameters cannot rewrite a valid caller-supplied G4 expression.
+            Assert.AreEqual(Argument, rule.Argument);
+        }
+
+        [TestMethod(DisplayName = "Verify that rule conversion expands array parameters into repeated G4 switches.")]
+        public void ConvertRuleDataExpandsArrayParametersTest()
+        {
+            // Arrange: omit the expression so conversion must synthesize it from structured parameters.
+            var ruleData = JsonSerializer.SerializeToElement(new
+            {
+                toolParameters = new
+                {
+                    Key = new[] { "Ctrl", "A" },
+                    Sticky = string.Empty
+                },
+                toolProperties = new { }
+            });
+
+            // Act: convert through the shared fallback formatter.
+            var rule = ConvertRuleData(ruleData);
+
+            // Assert: every array item becomes its own switch and scalar flag behavior remains unchanged.
+            Assert.AreEqual("{{$ --Key:Ctrl --Key:A --Sticky}}", rule.Argument);
+        }
+
         [TestMethod(DisplayName = "Verify that an added cache capability appears in the domain tool catalog.")]
         public void CacheAdditionRefreshesToolsTest()
         {
@@ -65,6 +111,49 @@ namespace G4.Services.UnitTests.Repositories
             // Assert: the synchronous addition notification refreshes the formatted domain entry before returning.
             Assert.IsNotNull(tool);
             Assert.AreEqual("domain addition phrase", tool.Description);
+            Assert.AreEqual("G4.Services.UnitTests", tool.Namespace);
+        }
+
+        [TestMethod(DisplayName = "Verify that FindTool returns the complete tool model with its authoritative namespace.")]
+        public void CallToolFindToolReturnsCompleteModelTest()
+        {
+            // Arrange: register one manifest-backed tool with a deterministic namespace.
+            const string Key = "UnitTestFindToolModel";
+            var (cacheManager, repository) = NewContext();
+            cacheManager.SyncCache(NewCacheModel(Key, "find tool model phrase"));
+
+            // Act: invoke the same g4.FindTool boundary used by MCP clients and serialize its response.
+            var result = repository.CallTool(NewFindToolParameters(Key));
+            var json = JsonSerializer.SerializeToElement(result, AppSettings.JsonOptions);
+            var tool = json.GetProperty("tool");
+
+            // Assert: the authoritative model and its client definition are both returned.
+            Assert.AreEqual(Key, tool.GetProperty("name").GetString());
+            Assert.AreEqual("G4.Services.UnitTests", tool.GetProperty("namespace").GetString());
+            Assert.AreEqual(Key, tool.GetProperty("clientTool").GetProperty("name").GetString());
+            Assert.IsTrue(tool.GetProperty("clientTool").TryGetProperty("inputSchema", out _));
+        }
+
+        [TestMethod(DisplayName = "Verify that the FindTool system definition uses the G4.System namespace and requires only a tool name.")]
+        public void FindToolSystemDefinitionContractTest()
+        {
+            // Arrange: build the repository containing its embedded system tools.
+            var (_, repository) = NewContext();
+
+            // Act: resolve the FindTool definition from the authoritative tool catalog.
+            var tool = repository.FindTool(intent: string.Empty, toolName: "g4.FindTool");
+            var inputSchema = tool.ClientTool.InputSchema;
+            var required = inputSchema
+                .GetProperty("required")
+                .EnumerateArray()
+                .Select(item => item.GetString())
+                .ToArray();
+
+            // Assert: callers discover the namespace from the response instead of supplying one as input.
+            Assert.AreEqual("G4.System", tool.Namespace);
+            CollectionAssert.AreEqual(new[] { "toolName" }, required);
+            Assert.IsFalse(inputSchema.GetProperty("properties").TryGetProperty("namespace", out _));
+            Assert.IsFalse(inputSchema.GetProperty("properties").TryGetProperty("intent", out _));
         }
 
         [TestMethod(DisplayName = "Verify that direct cache mutation requires a compatibility notification to refresh domain tools.")]
@@ -252,6 +341,21 @@ namespace G4.Services.UnitTests.Repositories
             return (LexicalRetrievalManager)field.GetValue(repository);
         }
 
+        // Invokes the shared private conversion boundary without involving a live automation session.
+        private static ActionRuleModel ConvertRuleData(JsonElement ruleData)
+        {
+            const BindingFlags Flags = BindingFlags.Static | BindingFlags.NonPublic;
+            var method = typeof(ToolsRepository).GetMethod("ConvertRuleData", Flags);
+
+            Assert.IsNotNull(method);
+            return (ActionRuleModel)method.Invoke(null,
+            [
+                ruleData,
+                new IntentModel(),
+                new ConcurrentDictionary<string, McpToolModel>(StringComparer.OrdinalIgnoreCase)
+            ]);
+        }
+
         // Creates an isolated cache and its repository so direct-event tests share one assigned application instance.
         private static (CacheManager CacheManager, ToolsRepository Repository) NewContext()
         {
@@ -328,6 +432,21 @@ namespace G4.Services.UnitTests.Repositories
                 {
                     ["name"] = "g4.FindTools",
                     ["arguments"] = arguments
+                },
+                AppSettings.JsonOptions);
+        }
+
+        // Creates one MCP FindTool payload using the exact-name-only public contract.
+        private static JsonElement NewFindToolParameters(string toolName)
+        {
+            return JsonSerializer.SerializeToElement(
+                new Dictionary<string, object>
+                {
+                    ["name"] = "g4.FindTool",
+                    ["arguments"] = new Dictionary<string, object>
+                    {
+                        ["toolName"] = toolName
+                    }
                 },
                 AppSettings.JsonOptions);
         }

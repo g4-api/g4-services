@@ -1,0 +1,84 @@
+{
+	"description": "Sends a collection of G4 rules for sequential execution within a single driver session.",
+	"inputSchema": {
+		"properties": {
+			"driverSession": {
+				"type": "string",
+				"description": "The unique session ID associated with the current browser session. This ID is used to retrieve the appropriate browser driver for interacting with the session and performing automation tasks."
+			},
+			"intent": {
+				"description": "The user and agent intent describing what the rules are meant to accomplish during execution.",
+				"properties": {
+					"agentIntent": {
+						"description": "The normalized intent produced by the agent for tool discovery, routing, or execution.",
+						"type": "string"
+					},
+					"userIntent": {
+						"description": "The original intent as expressed by the user.",
+						"type": "string"
+					}
+				},
+				"required": [
+					"agentIntent",
+					"userIntent"
+				],
+				"type": "object"
+			},
+			"token": {
+				"type": "string",
+				"description": "The G4 Authentication token used to authenticate the session initiation process. This is required to authorize the session creation."
+			},
+			"rules": {
+				"description": "The ordered collection of G4 rules to be executed as one job, including their parameters and configuration.",
+				"type": "array",
+				"items": {
+					"description": "The G4 rule to be executed, including its parameters and configuration.",
+					"properties": {
+						"toolName": {
+							"type": "string",
+							"description": "The unique identifier of the tool (plugin) that defines the rule to be executed."
+						},
+						"toolParameters": {
+							"type": "object",
+							"description": "The parameters to be passed to the rule during execution."
+						},
+						"toolProperties": {
+							"type": "object",
+							"description": "Additional properties and configuration for the rule."
+						}
+					},
+					"required": [
+						"toolName"
+					],
+					"type": "object"
+				}
+			}
+		},
+		"required": [
+			"driverSession",
+			"intent",
+			"token",
+			"rules"
+		],
+		"type": "object"
+	},
+	"name": "g4.SendRules",
+	"outputSchema": {
+		"properties": {
+			"driverSession": {
+				"description": "The session key for the browser session from which the rules were executed.",
+				"type": "string"
+			},
+			"value": {
+				"description": "The result of the rule collection execution, including the ordered per-rule output and the session buffer.",
+				"type": "object"
+			}
+		},
+		"required": [
+			"driverSession",
+			"value"
+		],
+		"type": "object"
+	},
+	"title": "Send G4 Rules"
+}

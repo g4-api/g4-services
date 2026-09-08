@@ -221,6 +221,7 @@ namespace G4.Extensions
                     Description = description,
                     QualifiedName = manifest.Key,
                     Name = name,
+                    Namespace = manifest.Namespace,
                     Metadata = new McpToolModel.ToolMetadataModel
                     {
                         Description = string.Join(Environment.NewLine, manifest.Summary),

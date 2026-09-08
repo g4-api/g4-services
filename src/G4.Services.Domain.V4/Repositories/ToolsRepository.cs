@@ -134,7 +134,7 @@ namespace G4.Services.Domain.V4.Repositories
                 { Name: "g4.ConvertToRule" } => new { options.Rule },
 
                 // Built-in: Finds and returns relevant examples based on the provided intent and tool filters.
-                { Name: "g4.FindExamples" } => FindExamples(options),
+                { Name: "g4.FindExamples" } => FindExamples(options.Arguments),
 
                 // Built-in: Finds and returns metadata about a tool by its name.
                 { Name: "g4.FindTool" } => FindTool(options),
@@ -161,6 +161,9 @@ namespace G4.Services.Domain.V4.Repositories
 
                 // Built-in: Retrieves the locator for a specific element on the page.
                 { Name: "g4.ResolveLocator" } => ResolveLocator(options),
+
+                // Built-in: Executes an ordered collection of rules as a single job in one driver session.
+                { Name: "g4.SendRules" } => SendRules(options),
 
                 // Built-in: Starts a new G4 browser automation session.
                 { Name: "g4.StartSession" } => StartSession(options),
@@ -217,15 +220,6 @@ namespace G4.Services.Domain.V4.Repositories
             {
                 Examples = result
             };
-        }
-
-        // Unwraps the raw "arguments" payload from an MCP tool-call invocation and delegates
-        // to the public, strongly-typed FindExamples(JsonElement) overload. This gives the
-        // g4.FindExamples switch arm in CallTool the same "Xxx(options)" call shape as every
-        // other built-in tool handler, instead of reaching into options.Arguments directly.
-        private object FindExamples(InvokeOptions options)
-        {
-            return FindExamples(options.Arguments);
         }
 
         /// <inheritdoc />
@@ -489,6 +483,42 @@ namespace G4.Services.Domain.V4.Repositories
         }
 
         /// <inheritdoc />
+        public object SendRules(SendRulesInputSchema schema)
+        {
+            // Wrap the incoming rule collection in an anonymous arguments object so it can be
+            // serialized and converted through the standard rule conversion pipeline.
+            var arguments = new
+            {
+                schema.Rules
+            };
+
+            // Serialize the arguments payload using the shared JSON settings.
+            var json = JsonSerializer.Serialize(value: arguments, AppSettings.JsonOptions);
+
+            // Parse the serialized payload into a JsonElement so it can be passed
+            // into the rule conversion routine.
+            var jsonElement = JsonDocument.Parse(json).RootElement;
+
+            // Build the invocation options using the driver session, token,
+            // tool catalog, and shared runtime services required by the G4 engine.
+            var options = new InvokeOptions
+            {
+                Arguments = jsonElement,
+                Buffer = _buffer,
+                DriverSession = schema.DriverSession,
+                G4Client = _client,
+                HttpClient = _httpClient,
+                Intent = schema.Intent,
+                Sessions = _sessions,
+                Token = schema.Token,
+                Tools = _tools
+            };
+
+            // Delegate the rule collection execution to the G4 engine and return its result.
+            return SendRules(options);
+        }
+
+        /// <inheritdoc />
         public void SyncTools()
         {
             // Serialize complete rebuilds so an earlier notification cannot publish after a later cache mutation.
@@ -538,6 +568,18 @@ namespace G4.Services.Domain.V4.Repositories
                 ? ruleOut
                 : JsonDocument.Parse("{}").RootElement;
 
+            // Delegate the actual conversion to the shared single-rule routine.
+            return ConvertRuleData(ruleData, intent, tools);
+        }
+
+        // Converts a single rule-data JSON object (tool name, parameters, and properties)
+        // into a G4 action rule model, resolving the plugin name from the tool registry and
+        // attaching the supplied intent to the rule's capabilities.
+        private static ActionRuleModel ConvertRuleData(
+            JsonElement ruleData,
+            IntentModel intent,
+            ConcurrentDictionary<string, McpToolModel> tools)
+        {
             // Retrieve the "name" of the tool to be invoked. Defaults to null if not provided.
             var includes = new[] { "tool_name", "toolName", "name", "tool" };
             var toolName = includes
@@ -552,9 +594,6 @@ namespace G4.Services.Domain.V4.Repositories
             var parameters = ruleData.TryGetProperty("toolParameters", out var parametersOut)
                 ? parametersOut
                 : JsonDocument.Parse("{}").RootElement;
-
-            // Format the parameters into a command-line style string (e.g., "--param1:value1 --param2:value2").
-            var parametersCli = FormatParameters(parameters);
 
             // Get the properties from the ruleData, defaulting to a JSON object with the plugin name if not provided.
             var properties = ruleData.TryGetProperty("toolProperties", out var propertiesOut)
@@ -573,10 +612,15 @@ namespace G4.Services.Domain.V4.Repositories
             // Set the PluginName property of the rule to the retrieved plugin name
             rule.PluginName = pluginName;
 
-            // Set the Argument property of the rule to the formatted parameters if provided
-            rule.Argument = string.IsNullOrEmpty(parametersCli) || parametersCli.Equals("{{$ }}")
-                ? rule.Argument
-                : parametersCli;
+            // Preserve an explicitly supplied G4 expression and synthesize one only as a fallback.
+            if (string.IsNullOrWhiteSpace(rule.Argument))
+            {
+                var parametersCli = FormatParameters(parameters);
+                if (!string.IsNullOrEmpty(parametersCli) && !parametersCli.Equals("{{$ }}"))
+                {
+                    rule.Argument = parametersCli;
+                }
+            }
 
             // Return the created rule
             return rule;
@@ -590,23 +634,20 @@ namespace G4.Services.Domain.V4.Repositories
                     return string.Empty;
                 }
 
-                // Build a case-insensitive dictionary of name → textual value.
-                // $"{i.Value}" calls JsonElement.ToString() (see boolean casing note above).
-                var parametersObject = parameters
+                // Expand arrays into repeated switches, as required by the G4 parameter schema.
+                var parametersCollection = parameters
                     .EnumerateObject()
-                    .ToDictionary(i => i.Name, i => $"{i.Value}", StringComparer.OrdinalIgnoreCase);
+                    .SelectMany(parameter => parameter.Value.ValueKind == JsonValueKind.Array
+                        ? parameter.Value
+                            .EnumerateArray()
+                            .Select(value => new KeyValuePair<string, string>(parameter.Name, $"{value}"))
+                        : [new KeyValuePair<string, string>(parameter.Name, $"{parameter.Value}")]);
 
-                // Round-trip through System.Text.Json to apply G4JsonOptions policies (e.g., snake_case keys).
-                var json = JsonSerializer.Serialize(value: parametersObject, options: AppSettings.JsonOptions);
-                var parametersCollection = JsonSerializer.Deserialize<Dictionary<string, string>>(
-                    json,
-                    options: AppSettings.JsonOptions)!;
-
-                // Convert keys to PascalCase and render as --Key[:Value] (omit :Value when empty).
+                // Render each scalar value as --Key[:Value] and each array item as its own switch.
                 var parametersExpression = parametersCollection
-                    .Select(i =>
-                        $"--{i.Key}" +
-                        (string.IsNullOrEmpty(i.Value) ? "" : $":{i.Value}"))
+                    .Select(parameter =>
+                        $"--{parameter.Key}" +
+                        (string.IsNullOrEmpty(parameter.Value) ? "" : $":{parameter.Value}"))
                     .ToArray();
 
                 // Wrap with G4 template delimiters.
@@ -726,6 +767,7 @@ namespace G4.Services.Domain.V4.Repositories
                             ClientTool = clientTool,
                             QualifiedName = $"system.{clientTool.Name}",
                             Name = clientTool.Name,
+                            Namespace = "G4.System",
                             Description = clientTool.Description,
                             Metadata = new()
                             {
@@ -776,10 +818,10 @@ namespace G4.Services.Domain.V4.Repositories
                 ? tool
                 : options.Tools.Values.FirstOrDefault(i => i.QualifiedName.Equals(toolName, StringComparison.OrdinalIgnoreCase));
 
-            // Return the matched tool when a tool name was provided.
-            // Return null when the caller did not supply any tool name.
-            return !string.IsNullOrEmpty(toolName)
-                ? new { Tool = tool.ClientTool }
+            // Return the complete authoritative tool model when it was found.
+            // Return null when the caller did not supply a valid tool name.
+            return !string.IsNullOrEmpty(toolName) && tool != null
+                ? new { Tool = tool }
                 : null;
         }
 
@@ -1154,6 +1196,87 @@ namespace G4.Services.Domain.V4.Repositories
             };
         }
 
+        // Executes an ordered collection of rules as a single job within one driver session,
+        // and retrieves the response, including the driver session and the ordered per-rule output.
+        private static object SendRules(InvokeOptions options)
+        {
+            // Read the "rules" argument and reject the request when it is missing or not an array,
+            // mirroring the tool's required "rules" argument as declared in its input schema.
+            if (!options.Arguments.TryGetProperty("rules", out var rulesElement) ||
+                rulesElement.ValueKind != JsonValueKind.Array)
+            {
+                throw new ArgumentException("The rules argument is required and must be a non-empty array.");
+            }
+
+            // Convert every rule-data entry into an executable G4 action rule, preserving order.
+            var rules = rulesElement
+                .EnumerateArray()
+                .Select(ruleData => ConvertRuleData(ruleData, options.Intent, options.Tools))
+                .ToArray();
+
+            // Reject an empty collection so the engine is not invoked with a job that has no rules.
+            if (rules.Length == 0)
+            {
+                throw new ArgumentException("The rules argument is required and must be a non-empty array.");
+            }
+
+            // Create a single automation model whose only job carries every converted rule in order.
+            var automation = NewAutomation(options.DriverSession, options.Token, rules);
+
+            // Invoke the automation process using the client and retrieve the response.
+            var response = options.G4Client.Automation.Invoke(automation);
+
+            // Extract the session object from the response, ensuring we track the latest session.
+            var session = response.Values.Last().Sessions.Last();
+
+            // Add the session to the sessions dictionary to keep track of the active session.
+            options.Sessions[session.Key] = session.Value;
+
+            // Add one property-backed response entry per rule so later MCP serialization preserves the buffer values.
+            var buffer = options.Buffer.GetValueOrDefault(key: session.Key, defaultValue: null);
+            var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            for (var i = 0; i < rules.Length; i++)
+            {
+                buffer?.Add(new BufferResponseModel.BufferItem
+                {
+                    Timestamp = timestamp + i,
+                    Rule = rules[i]
+                });
+            }
+
+            // Retrieve the complete set of plugin responses for the executed rule collection.
+            var ruleResponse = session
+                .Value
+                .ResponseTree
+                .Stages.Last()
+                .Jobs.Last()
+                .Plugins;
+
+            // Get the current buffer for the session, defaulting to an empty list if none exists.
+            var bufferOut = buffer ?? [];
+
+            // If the last rule closes the browser, clean up the session and buffer.
+            if (rules[^1].PluginName.Equals("CloseBrowser", StringComparison.OrdinalIgnoreCase))
+            {
+                // Remove the session from the sessions dictionary when closing the browser.
+                options.Sessions.TryRemove(session.Key, out _);
+
+                // Clear the buffer associated with the session key.
+                options.Buffer.TryRemove(session.Key, out bufferOut);
+            }
+
+            // Return an anonymous object containing the session key and the ordered rule response values.
+            return new
+            {
+                DriverSession = session.Key,
+                Value = new
+                {
+                    Buffer = bufferOut.OrderBy(i => i.Timestamp).Select(i => i.Rule),
+                    Response = ruleResponse
+                }
+            };
+        }
+
         // Starts a new G4 session by invoking the automation process with the provided parameters.
         // The session information is returned, and the session is added to the provided dictionary of active sessions.
         private static object StartSession(InvokeOptions options)
@@ -1173,8 +1296,6 @@ namespace G4.Services.Domain.V4.Repositories
             // This dictionary contains configuration for the browser driver (e.g., driver name and path).
             // These parameters are required for the automation process to know which browser and driver binaries to use.
             automation.DriverParameters = driverParameters;
-
-            var j = JsonSerializer.Serialize(automation, AppSettings.JsonOptions);
 
             // Invoke the automation process and get the response.
             var response = options.G4Client.Automation.Invoke(automation);
