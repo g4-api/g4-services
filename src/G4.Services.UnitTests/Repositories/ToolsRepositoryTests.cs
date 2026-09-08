@@ -51,6 +51,52 @@ namespace G4.Services.UnitTests.Repositories
             Assert.AreEqual("NoAction", entry.GetProperty("rule").GetProperty("pluginName").GetString());
         }
 
+        [TestMethod(DisplayName = "Verify that rule conversion preserves an explicitly supplied G4 argument.")]
+        public void ConvertRuleDataPreservesExplicitArgumentTest()
+        {
+            // Arrange: provide both the authoritative expression and structured parameters that previously replaced it.
+            const string Argument = "{{$ --Key:Ctrl --Key:A --Sticky}}";
+            var ruleData = JsonSerializer.SerializeToElement(new
+            {
+                toolParameters = new
+                {
+                    Key = new[] { "Ctrl", "A" },
+                    Sticky = string.Empty
+                },
+                toolProperties = new
+                {
+                    argument = Argument
+                }
+            });
+
+            // Act: convert through the shared path used by SendRule and SendRules.
+            var rule = ConvertRuleData(ruleData);
+
+            // Assert: structured parameters cannot rewrite a valid caller-supplied G4 expression.
+            Assert.AreEqual(Argument, rule.Argument);
+        }
+
+        [TestMethod(DisplayName = "Verify that rule conversion expands array parameters into repeated G4 switches.")]
+        public void ConvertRuleDataExpandsArrayParametersTest()
+        {
+            // Arrange: omit the expression so conversion must synthesize it from structured parameters.
+            var ruleData = JsonSerializer.SerializeToElement(new
+            {
+                toolParameters = new
+                {
+                    Key = new[] { "Ctrl", "A" },
+                    Sticky = string.Empty
+                },
+                toolProperties = new { }
+            });
+
+            // Act: convert through the shared fallback formatter.
+            var rule = ConvertRuleData(ruleData);
+
+            // Assert: every array item becomes its own switch and scalar flag behavior remains unchanged.
+            Assert.AreEqual("{{$ --Key:Ctrl --Key:A --Sticky}}", rule.Argument);
+        }
+
         [TestMethod(DisplayName = "Verify that an added cache capability appears in the domain tool catalog.")]
         public void CacheAdditionRefreshesToolsTest()
         {
@@ -293,6 +339,21 @@ namespace G4.Services.UnitTests.Repositories
             // Assert the known repository structure before converting the lifecycle dependency to its concrete type.
             Assert.IsNotNull(field);
             return (LexicalRetrievalManager)field.GetValue(repository);
+        }
+
+        // Invokes the shared private conversion boundary without involving a live automation session.
+        private static ActionRuleModel ConvertRuleData(JsonElement ruleData)
+        {
+            const BindingFlags Flags = BindingFlags.Static | BindingFlags.NonPublic;
+            var method = typeof(ToolsRepository).GetMethod("ConvertRuleData", Flags);
+
+            Assert.IsNotNull(method);
+            return (ActionRuleModel)method.Invoke(null,
+            [
+                ruleData,
+                new IntentModel(),
+                new ConcurrentDictionary<string, McpToolModel>(StringComparer.OrdinalIgnoreCase)
+            ]);
         }
 
         // Creates an isolated cache and its repository so direct-event tests share one assigned application instance.

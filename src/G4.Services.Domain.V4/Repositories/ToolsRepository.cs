@@ -595,9 +595,6 @@ namespace G4.Services.Domain.V4.Repositories
                 ? parametersOut
                 : JsonDocument.Parse("{}").RootElement;
 
-            // Format the parameters into a command-line style string (e.g., "--param1:value1 --param2:value2").
-            var parametersCli = FormatParameters(parameters);
-
             // Get the properties from the ruleData, defaulting to a JSON object with the plugin name if not provided.
             var properties = ruleData.TryGetProperty("toolProperties", out var propertiesOut)
                 ? propertiesOut.GetRawText()
@@ -615,10 +612,15 @@ namespace G4.Services.Domain.V4.Repositories
             // Set the PluginName property of the rule to the retrieved plugin name
             rule.PluginName = pluginName;
 
-            // Set the Argument property of the rule to the formatted parameters if provided
-            rule.Argument = string.IsNullOrEmpty(parametersCli) || parametersCli.Equals("{{$ }}")
-                ? rule.Argument
-                : parametersCli;
+            // Preserve an explicitly supplied G4 expression and synthesize one only as a fallback.
+            if (string.IsNullOrWhiteSpace(rule.Argument))
+            {
+                var parametersCli = FormatParameters(parameters);
+                if (!string.IsNullOrEmpty(parametersCli) && !parametersCli.Equals("{{$ }}"))
+                {
+                    rule.Argument = parametersCli;
+                }
+            }
 
             // Return the created rule
             return rule;
@@ -632,23 +634,20 @@ namespace G4.Services.Domain.V4.Repositories
                     return string.Empty;
                 }
 
-                // Build a case-insensitive dictionary of name → textual value.
-                // $"{i.Value}" calls JsonElement.ToString() (see boolean casing note above).
-                var parametersObject = parameters
+                // Expand arrays into repeated switches, as required by the G4 parameter schema.
+                var parametersCollection = parameters
                     .EnumerateObject()
-                    .ToDictionary(i => i.Name, i => $"{i.Value}", StringComparer.OrdinalIgnoreCase);
+                    .SelectMany(parameter => parameter.Value.ValueKind == JsonValueKind.Array
+                        ? parameter.Value
+                            .EnumerateArray()
+                            .Select(value => new KeyValuePair<string, string>(parameter.Name, $"{value}"))
+                        : [new KeyValuePair<string, string>(parameter.Name, $"{parameter.Value}")]);
 
-                // Round-trip through System.Text.Json to apply G4JsonOptions policies (e.g., snake_case keys).
-                var json = JsonSerializer.Serialize(value: parametersObject, options: AppSettings.JsonOptions);
-                var parametersCollection = JsonSerializer.Deserialize<Dictionary<string, string>>(
-                    json,
-                    options: AppSettings.JsonOptions)!;
-
-                // Convert keys to PascalCase and render as --Key[:Value] (omit :Value when empty).
+                // Render each scalar value as --Key[:Value] and each array item as its own switch.
                 var parametersExpression = parametersCollection
-                    .Select(i =>
-                        $"--{i.Key}" +
-                        (string.IsNullOrEmpty(i.Value) ? "" : $":{i.Value}"))
+                    .Select(parameter =>
+                        $"--{parameter.Key}" +
+                        (string.IsNullOrEmpty(parameter.Value) ? "" : $":{parameter.Value}"))
                     .ToArray();
 
                 // Wrap with G4 template delimiters.
