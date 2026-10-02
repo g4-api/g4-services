@@ -35,10 +35,13 @@
 				<p class="cache-header__subtitle">Metadata catalog — discoverable, self-contained execution units</p>
 			</div>
 
-			<!-- Readiness indicator -->
-			<div class="cache-conn cache-conn--loading" id="readinessIndicator" aria-live="polite">
-				<span class="cache-conn__dot"></span>
-				<span class="cache-conn__label" id="readinessLabel">Loading…</span>
+			<!-- Readiness indicator + last sync timestamp -->
+			<div class="cache-header__status" data-test-id="capabilities-status-panel">
+				<div class="cache-conn cache-conn--loading" id="readinessIndicator" aria-live="polite">
+					<span class="cache-conn__dot"></span>
+					<span class="cache-conn__label" id="readinessLabel">Loading…</span>
+				</div>
+				<span id="lastSyncLabel" class="cache-header__sync" title="Last sync" data-test-id="capabilities-last-sync-timestamp">—</span>
 			</div>
 		</header>
 
@@ -60,6 +63,10 @@
 				<div class="stat-chip">
 					<span class="stat-chip__num" id="chipTemplate">—</span>
 					<span class="stat-chip__label">Template</span>
+				</div>
+				<div class="stat-chip">
+					<span id="chipFlows" class="stat-chip__num" data-test-id="flows-count-stat-chip-value">0</span>
+					<span class="stat-chip__label">Flows</span>
 				</div>
 				<div class="stat-chip">
 					<span class="stat-chip__num" id="chipMcp">—</span>
@@ -167,6 +174,14 @@
 			<span class="cache-card__label">Templates</span>
 		</div>
 
+		<div class="cache-card cache-card--flow" data-test-id="flows-count-card">
+			<svg class="cache-card__icon" viewBox="0 0 640 640" aria-hidden="true">
+				<path d="M64 144C64 117.5 85.5 96 112 96L208 96C234.5 96 256 117.5 256 144L256 160L384 160L384 144C384 117.5 405.5 96 432 96L528 96C554.5 96 576 117.5 576 144L576 240C576 266.5 554.5 288 528 288L432 288C405.5 288 384 266.5 384 240L384 224L256 224L256 240C256 247.3 254.3 254.3 251.4 260.5L320 352L400 352C426.5 352 448 373.5 448 400L448 496C448 522.5 426.5 544 400 544L304 544C277.5 544 256 522.5 256 496L256 400C256 392.7 257.7 385.7 260.6 379.5L192 288L112 288C85.5 288 64 266.5 64 240L64 144z"/>
+			</svg>
+			<span id="cardFlows" class="cache-card__value" data-test-id="flows-count-card-value">0</span>
+			<span class="cache-card__label">Flows</span>
+		</div>
+
 		<div class="cache-card cache-card--mcp">
 			<svg class="cache-card__icon" viewBox="0 0 640 640" aria-hidden="true">
 				<path d="M102.8 57.3C108.2 51.9 116.6 51.1 123 55.3L241.9 134.5C250.8 140.4 256.1 150.4 256.1 161.1L256.1 210.7L346.9 301.5C380.2 286.5 420.8 292.6 448.1 320L574.2 446.1C592.9 464.8 592.9 495.2 574.2 514L514.1 574.1C495.4 592.8 465 592.8 446.2 574.1L320.1 448C292.7 420.6 286.6 380.1 301.6 346.8L210.8 256L161.2 256C150.5 256 140.5 250.7 134.6 241.8L55.4 122.9C51.2 116.6 52 108.1 57.4 102.7L102.8 57.3zM247.8 360.8C241.5 397.7 250.1 436.7 274 468L179.1 563C151 591.1 105.4 591.1 77.3 563C49.2 534.9 49.2 489.3 77.3 461.2L212.7 325.7L247.9 360.8zM416.1 64C436.2 64 455.5 67.7 473.2 74.5C483.2 78.3 485 91 477.5 98.6L420.8 155.3C417.8 158.3 416.1 162.4 416.1 166.6L416.1 208C416.1 216.8 423.3 224 432.1 224L473.5 224C477.7 224 481.8 222.3 484.8 219.3L541.5 162.6C549.1 155.1 561.8 156.9 565.6 166.9C572.4 184.6 576.1 203.9 576.1 224C576.1 267.2 558.9 306.3 531.1 335.1L482 286C448.9 253 403.5 240.3 360.9 247.6L304.1 190.8L304.1 161.1L303.9 156.1C303.1 143.7 299.5 131.8 293.4 121.2C322.8 86.2 366.8 64 416.1 63.9z"/>
@@ -181,14 +196,6 @@
 			</svg>
 			<span class="cache-card__value" id="cardExt">—</span>
 			<span class="cache-card__label">External Repos</span>
-		</div>
-
-		<div class="cache-card cache-card--ready">
-			<svg class="cache-card__icon" viewBox="0 0 640 640" aria-hidden="true">
-				<path d="M320 64C177.3 64 62 179.3 62 322C62 464.7 177.3 580 320 580C462.7 580 578 464.7 578 322C578 179.3 462.7 64 320 64zM320 128C429.3 128 514 212.7 514 322C514 431.3 429.3 516 320 516C210.7 516 126 431.3 126 322C126 212.7 210.7 128 320 128zM444.7 231.3C432.2 218.8 412 218.8 399.5 231.3L285.3 345.4L240.5 300.7C228 288.2 207.8 288.2 195.3 300.7C182.8 313.2 182.8 333.3 195.3 345.8L262.7 413.3C275.2 425.8 295.3 425.8 307.8 413.3L444.7 276.3C457.2 263.8 457.2 243.8 444.7 231.3z"/>
-			</svg>
-			<span class="cache-card__value" id="cardSync">—</span>
-			<span class="cache-card__label">Last Sync</span>
 		</div>
 
 	</div>
@@ -214,6 +221,10 @@
 		<div class="cache-filter-chips" role="group" aria-label="Filter by source">
 			<button class="filter-chip filter-chip--internal" data-filter="internal">Internal</button>
 			<button class="filter-chip filter-chip--template" data-filter="template">Template</button>
+			<button type="button"
+			        class="filter-chip filter-chip--flow"
+			        data-filter="flows"
+			        data-test-id="filter-by-flows-chip">Flows</button>
 			<button class="filter-chip filter-chip--mcp"      data-filter="mcp">MCP</button>
 			<button class="filter-chip filter-chip--external" data-filter="external">External</button>
 		</div>
@@ -277,6 +288,11 @@
 				<button class="inspector-tab inspector-tab--active" data-tab="overview"    role="tab">Overview</button>
 				<button class="inspector-tab"                        data-tab="parameters"  role="tab">Parameters</button>
 				<button class="inspector-tab"                        data-tab="examples"    role="tab">Examples</button>
+				<button type="button"
+				        class="inspector-tab inspector-tab--flow"
+				        data-tab="automation"
+				        data-test-id="show-flow-automation-inspector-tab"
+				        role="tab">Automation</button>
 				<button class="inspector-tab"                        data-tab="raw"         role="tab">Raw JSON</button>
 			</div>
 

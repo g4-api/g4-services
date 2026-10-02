@@ -185,6 +185,16 @@ async function initializeDesigner() {
 			return;
 		}
 
+		// Check whether the step exists on the canvas. Rules expanded at runtime
+		// (e.g., the nested rules of a template) carry server-generated IDs that
+		// have no matching step, so selecting them would remove the current frame.
+		const isOnCanvas = _designer.getWalker().findById(_designer.getDefinition(), message.id) !== null;
+
+		// Exit early to keep the current selection (e.g., the playing template) framed.
+		if (!isOnCanvas) {
+			return;
+		}
+
 		// Select the step in the designer using the provided ID.
 		_designer.selectStepById(message.id);
 

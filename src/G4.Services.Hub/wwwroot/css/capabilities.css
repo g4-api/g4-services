@@ -1427,3 +1427,62 @@
     from { opacity: 0; }
     to   { opacity: 1; }
 }
+
+/* ── Flows ────────────────────────────────────────────────────── */
+.cache-card--flow .cache-card__value { color: #F472B6; }
+
+.filter-chip--flow.filter-chip--active {
+    border-color: #F472B6;
+    color: #F472B6;
+    background: rgba(244, 114, 182, 0.08);
+}
+
+.badge--flow {
+    border-color: rgba(244, 114, 182, 0.3);
+    color: #F472B6;
+    background: rgba(244, 114, 182, 0.07);
+}
+
+/* Namespace shown next to a flow key, since the Flows box is not split by namespace */
+.cache-plugin-row__namespace {
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    font-family: 'Consolas', monospace;
+    white-space: nowrap;
+}
+
+/* Automation tab exists only for flow selections */
+.cache-inspector:not(.cache-inspector--flow) .inspector-tab--flow { display: none; }
+
+.inspector-automation__bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.6rem;
+}
+
+.inspector-automation__note {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+}
+
+.inspector-automation__note--error { color: var(--red); }
+
+/* Readiness bubble with the last sync timestamp underneath */
+.cache-header__status {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2rem;
+    flex-shrink: 0;
+}
+
+.cache-header__sync {
+    font-size: 0.58rem;
+    line-height: 1;
+    color: var(--green);
+    letter-spacing: 0.03em;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
