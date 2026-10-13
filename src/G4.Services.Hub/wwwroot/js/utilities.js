@@ -645,33 +645,26 @@
     }
 
     /**
-     * Toggles the theme of the application between the default and dark modes.
+     * Toggles the designer theme between the g4 theme and the dark theme.
      *
-     * This method checks the current theme by inspecting the 'href' attribute of the
-     * <link> element with the ID 'theme-stylesheet'. It then switches the theme
-     * to the opposite mode by updating the 'href' accordingly.
+     * Only the file name of the <link id="theme-stylesheet"> is swapped; its folder (or full URL) is kept,
+     * so the toggle works wherever the page is served from.
      */
     static switchMode() {
         // Retrieve the <link> element that holds the current theme stylesheet using its ID
         const themeStylesheet = document.getElementById('theme-stylesheet');
 
-        // Get the current stylesheet path and convert it to lowercase for comparison
-        const theme = themeStylesheet.getAttribute('href').toLowerCase();
+        // Read the current stylesheet reference
+        const href = themeStylesheet.getAttribute('href');
 
-        // Define the default (blueprint) theme stylesheet path
-        const defaultTheme = './css/designer-blueprint-parameters.css';
+        // Decide by file name: dark goes back to g4, anything else goes to dark
+        const isDark = href.toLowerCase().endsWith('designer-blueprint-parameters-dark.css');
+        const themeFile = isDark
+            ? 'designer-blueprint-parameters-g4.css'
+            : 'designer-blueprint-parameters-dark.css';
 
-        // Define the dark theme stylesheet path
-        const darkTheme = './css/designer-blueprint-parameters-dark.css';
-
-        // Toggle the theme:
-        // If the current theme is the default theme, switch to the dark theme;
-        // otherwise, switch back to the default theme.
-        if (theme === defaultTheme) {
-            themeStylesheet.setAttribute('href', darkTheme);
-        } else {
-            themeStylesheet.setAttribute('href', defaultTheme);
-        }
+        // Replace only the file name (everything after the last '/'); linear, one character class
+        themeStylesheet.setAttribute('href', href.replace(/[^/]*$/, themeFile));
     }
 
     /**

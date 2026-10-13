@@ -49,6 +49,7 @@
 	--designer-background: var(--primary-color);
 	--designer-header-background: var(--primary-color);
 	--designer-header-border: 2px solid var(--primary-color);
+	--designer-header-border-color: transparent;
 	--designer-header-color: var(--base-font-color);
 	--designer-header-title-color: var(--base-font-color);
 	--designer-header-title-font: 700 2.5vmin 'Space Grotesk', 'Inter', sans-serif;
@@ -69,7 +70,7 @@
 	--control-bar-button-stop-icon-path: var(--red);
 	/* Line Grid */
 	--line-grid-path-stroke: rgba(var(--white-rgb), 0.3);
-	--line-grid-path-stroke-witdh: 1;
+	--line-grid-path-stroke-width: 1;
 	/* TODO: Fix background */
 	/* Modal */
 	--modal-button-background: var(--secondary-color);
@@ -79,6 +80,13 @@
 	--modal-button-hover-background: var(--secondary-color);
 	--modal-button-hover-border: 1px solid var(--red);
 	/* Smart Editor */
+	--run-state-failed-fill: rgba(237, 72, 0, 0.2);
+	--run-state-failed-stroke: var(--red);
+	--run-state-passed-fill: rgba(0, 153, 104, 0.2);
+	--run-state-passed-stroke: var(--green);
+	--run-state-running-fill: rgba(55, 148, 255, 0.2);
+	--run-state-running-stroke: #3794FF;
+	--run-state-stroke-width: 2;
 	--smart-editor-background: var(--secondary-color);
 	--smart-editor-box-shadow: 0 0 0px rgba(var(--secondary-color-rgb), 0.15);
 	--smart-editor-button-background: var(--primary-color);
@@ -93,8 +101,10 @@
 	--smart-editor-details-hover-color: var(--red);
 	--smart-editor-error-background: #FDECEA;
 	--smart-editor-error-border: 1px solid #E74C3C;
+	--smart-editor-error-color: var(--black);
 	--smart-editor-error-description-color: var(--black);
-	--smart-editor-error-description-font: var(--smart-editor-font);
+	--smart-editor-error-description-font: 400 1.0em 'Inter', sans-serif;
+	--smart-editor-error-font: 400 1.0em 'Inter', sans-serif;
 	--smart-editor-error-title-color: #C0392B;
 	--smart-editor-error-title-font: var(--smart-editor-label-font);
 	--smart-editor-group-background: transparent;
@@ -200,7 +210,8 @@
 	--step-task-rect-filter: drop-shadow(0 1.5px 1.5px rgba(var(--black-rgb), 0.15));
 	--step-task-rect-stroke: var(--base-font-color);
 	--step-task-rect-stroke-width: 2;
-	--step-task-selected-rect-stroke: var(--red);
+	--step-task-selected-rect-fill: rgba(55, 148, 255, 0.2);
+	--step-task-selected-rect-stroke: #3794FF;
 	--step-task-selected-rect-stroke-width: 2;
 	--step-task-text-fill: var(--base-font-color);
 	--step-task-text-font: 400 1.0em 'Inter', sans-serif;
@@ -223,7 +234,7 @@
 	--workflow-placeholder-rect-stroke: rgba(var(--base-font-color-rgb), 0.5);
 	--workflow-placeholder-rect-stroke-dasharray: 0;
 	--workflow-placeholder-rect-stroke-width: 1;
-	--workflow-region-selected-stroke: var(--red);
+	--workflow-region-selected-stroke: #3794FF;
 	--workflow-region-selected-stroke-dasharray: 0;
 	--workflow-region-selected-stroke-width: 2;
 	--workflow-region-stroke: rgba(var(--base-font-color-rgb), 0.5);

@@ -893,18 +893,44 @@ class CustomG4Fields {
         );
 
         /**
+         * Tests whether a source value is the Base64 encoding of JSON, by the engine's rule:
+         * text starting with '[' or '{' is JSON, anything else is Base64 when it decodes to JSON.
+         *
+         * @param {string} value - The source value.
+         * @returns {boolean} True when the value is Base64-encoded JSON.
+         */
+        const testBase64Source = (value) => {
+            const text = (value || '').trim();
+
+            if (text === '' || text.startsWith('[') || text.startsWith('{')) {
+                return false;
+            }
+
+            try {
+                const decoded = Utilities.convertFromBase64(text).replace(/^\uFEFF/, '').trim();
+
+                return decoded.startsWith('[') || decoded.startsWith('{');
+            } catch {
+                return false;
+            }
+        };
+
+        /**
          * Create a string input field for the "source" property.
          * - Defaults to an empty string if not provided in initialValue.
          * - May represent a connection string, file path, or URL to locate the repository.
+         * - JSON data can be stored as Base64; the engine decodes it before reading the rows.
          */
         CustomFields.newStringField(
             {
                 container: controller,
                 initialValue: options.initialValue?.source || '',
-                isBase64Enabled: false,
+                isBase64Enabled: true,
+                isBase64Encoded: testBase64Source(options.initialValue?.source),
                 isReadonly: false,
                 label: 'Source',
-                title: 'Specifies the connection string, file path, or URL needed to locate the repository.'
+                title: 'Specifies the connection string, file path, or URL needed to locate the repository. ' +
+                    'For a Json data source, it can also be the JSON array of rows itself, or its Base64 encoding.'
             },
             (value) => {
                 // Build an object containing the updated source value
@@ -2493,6 +2519,9 @@ class CustomFields {
                 return;
             }
 
+            // Remember the last published value so a cleared field is committed only once.
+            committedValue = value;
+
             // Forward the value to the provided state setter
             setCallback(value);
         };
@@ -2516,6 +2545,9 @@ class CustomFields {
         options.initialValue = !options.initialValue || options.initialValue === 'undefined'
             ? ''
             : options.initialValue;
+
+        // Track the last value published to the owner, starting from the initial value.
+        let committedValue = options.initialValue;
 
         /**
          * Construct the HTML for the input and its associated datalist:
@@ -2574,6 +2606,10 @@ class CustomFields {
         // Track the index of the currently active option in the listbox for keyboard navigation.
         let activeIndex = -1;
 
+        // True once the user moves through the options with the arrow keys since the last input,
+        // so Enter on an empty field selects the option only when the user explicitly navigated to it.
+        let isNavigated = false;
+
         // When true, the field commits the typed value (free text) on Enter and on blur,
         // in addition to committing on option selection. Defaults to false (selection-only).
         const allowFreeText = options.allowFreeText === true;
@@ -2597,6 +2633,7 @@ class CustomFields {
         const setActiveOption = (nextActiveIndex) => {
             // Publish the new active index before synchronizing the option elements and viewport.
             activeIndex = nextActiveIndex;
+            isNavigated = true;
             input.setAttribute("aria-activedescendant", `opt-${activeIndex}`);
 
             Array
@@ -2637,6 +2674,17 @@ class CustomFields {
          * @param {KeyboardEvent} event - Enter event that requested the current value.
          */
         const setCurrentValue = (event) => {
+            // An empty field without explicit navigation clears the value instead of taking the first option.
+            const isEmptyInput = input.value.trim() === "";
+            if (isEmptyInput && !isNavigated) {
+                event.preventDefault();
+                closeDataList();
+                input.value = "";
+                input.title = "Please select an option";
+                updateState("", setCallback);
+                return;
+            }
+
             const isActiveIndex = activeIndex >= 0;
             const activeOption = isActiveIndex
                 ? filtered[activeIndex]
@@ -2742,6 +2790,9 @@ class CustomFields {
             // - First item if results exist
             // - -1 if list is empty
             activeIndex = filtered.length ? 0 : -1;
+
+            // The default highlight is not an explicit choice until the user navigates again.
+            isNavigated = false;
 
             // Clear existing listbox content before rebuilding
             list.innerHTML = "";
@@ -2861,12 +2912,25 @@ class CustomFields {
         // When free text is allowed, commit whatever is currently in the input on focus-out.
         // Option selection uses mousedown + preventDefault, so a click commits before blur;
         // a subsequent blur simply re-commits the same value, which is harmless.
-        if (allowFreeText) {
-            input.addEventListener("blur", () => {
+        // Selection-only fields commit on focus-out only when the user cleared the input,
+        // so removing a value is saved instead of returning when the editor is rebuilt.
+        input.addEventListener("blur", () => {
+            if (allowFreeText) {
                 input.title = input.value || "Please select an option";
                 updateState(input.value, setCallback);
-            });
-        }
+                return;
+            }
+
+            // Skip non-empty input (selection is required) and values that are already cleared.
+            const isCleared = input.value.trim() === "";
+            if (!isCleared || committedValue === "") {
+                return;
+            }
+
+            input.value = "";
+            input.title = "Please select an option";
+            updateState("", setCallback);
+        });
 
         // Close if opened and clicking outside
         document.addEventListener("mousedown", (e) => {

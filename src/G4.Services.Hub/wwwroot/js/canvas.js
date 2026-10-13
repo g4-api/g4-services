@@ -164,6 +164,9 @@ async function initializeDesigner() {
 		// Replace <image>/<img> tags in step task icons with inline SVG
 		// and apply styling class to the <path> inside each SVG.
 		Utilities.switchImages(tasksSelector, tasksClass, _svgsCache);
+
+		// Re-apply the run-state frames, since re-rendering the canvas recreates the step elements.
+		applyRunStates();
 	});
 
 	// Listen for the "StartAutomation" message from the server
@@ -188,12 +191,23 @@ async function initializeDesigner() {
 		// Check whether the step exists on the canvas. Rules expanded at runtime
 		// (e.g., the nested rules of a template) carry server-generated IDs that
 		// have no matching step, so selecting them would remove the current frame.
-		const isOnCanvas = _designer.getWalker().findById(_designer.getDefinition(), message.id) !== null;
+		const isOnCanvas = isStepOnCanvas(message.id);
 
 		// Exit early to keep the current selection (e.g., the playing template) framed.
+		// The owning canvas step (e.g., the template) is marked as running again while its nested rule runs.
 		if (!isOnCanvas) {
+			const ownerStepId = resolveCanvasStepId(message);
+			if (ownerStepId) {
+				setRunState(ownerStepId, "running");
+			}
 			return;
 		}
+
+		// Remember the step as the owner of any nested rule events that follow.
+		_lastStartedStepId = message.id;
+
+		// Color the step's frame with the neutral "running" color.
+		setRunState(message.id, "running");
 
 		// Select the step in the designer using the provided ID.
 		_designer.selectStepById(message.id);
@@ -206,6 +220,32 @@ async function initializeDesigner() {
 			_averageCounter.addOne();
 			_counter.addOne();
 		}
+	});
+
+	// Listen for the "ReceiveAutomationEndEvent" message from the server
+	_connection.on("ReceiveAutomationEndEvent", (message) => {
+		// Convert the message type to uppercase for consistent comparison.
+		const messageType = message.type.toUpperCase();
+
+		// Exit early if the message type is not one of the included types.
+		if (!_flowableTypes.includes(messageType)) {
+			return;
+		}
+
+		// Resolve the canvas step that owns this event (nested rules resolve to their template).
+		const stepId = resolveCanvasStepId(message);
+
+		// Exit early if the event cannot be tied to a step on the canvas.
+		if (!stepId) {
+			return;
+		}
+
+		// The step failed if the execution returned any exception.
+		const exceptions = message?.value?.exceptions;
+		const isFailed = Array.isArray(exceptions) && exceptions.length > 0;
+
+		// Color the step's frame with the result.
+		setRunState(stepId, isFailed ? "failed" : "passed");
 	});
 
 	// Listen for the "ReceiveAutomationRequestInitializedEvent" message from the server
@@ -232,6 +272,9 @@ async function initializeDesigner() {
 		// Stop the timer after the automation has completed
 		_timer.stop();
 
+		// Clear the frames of steps whose outcome is unknown (e.g., the run was stopped).
+		clearRunningStates();
+
 		// Convert the message object to a JSON string for logging or further processing.
 		const automationResults = JSON.stringify(message?.value?.response || {});
 
@@ -247,6 +290,150 @@ async function initializeDesigner() {
 		// Log the console message, which can be captured by external tools or scripts to retrieve the automation results.
 		console.log(consoleMessage)
 	});
+}
+
+/**
+ * Applies the stored run state of a step to its frame on the canvas.
+ *
+ * Removes any previous run-state class from the step's SVG group and adds the class
+ * matching the state stored in `_runStates`. Steps that are not rendered are ignored.
+ *
+ * @param {string} stepId - The ID of the step on the canvas.
+ */
+function applyRunState(stepId) {
+	// Find the step's SVG group on the canvas; exit if it is not rendered.
+	const element = document.querySelector(`#designer g[data-step-id="${CSS.escape(stepId)}"]`);
+	if (!element) {
+		return;
+	}
+
+	// Remove any previous run-state class from the step.
+	element.classList.remove(...Object.values(_runStateClasses));
+
+	// Add the class for the current run state, if the step has one.
+	const state = _runStates.get(stepId);
+	if (state) {
+		element.classList.add(_runStateClasses[state]);
+	}
+}
+
+/**
+ * Applies all stored run states to the canvas. Used after the canvas re-renders.
+ */
+function applyRunStates() {
+	for (const stepId of _runStates.keys()) {
+		applyRunState(stepId);
+	}
+}
+
+/**
+ * Removes the "running" state from all steps.
+ *
+ * Called when the automation ends: a step still marked as running at that point
+ * (e.g., the run was stopped) has an unknown outcome, so its frame is cleared.
+ */
+function clearRunningStates() {
+	for (const [stepId, state] of _runStates) {
+		// Skip steps that already have a final state.
+		if (state !== "running") {
+			continue;
+		}
+
+		// Drop the state and refresh the step's frame.
+		_runStates.delete(stepId);
+		applyRunState(stepId);
+	}
+
+	// No step is running anymore.
+	_lastStartedStepId = null;
+}
+
+/**
+ * Checks whether a step with the given ID exists in the canvas definition.
+ *
+ * @param {string} stepId - The step ID to look up.
+ *
+ * @returns {boolean} True if the step exists on the canvas; otherwise, false.
+ */
+function isStepOnCanvas(stepId) {
+	// Treat empty IDs as not on the canvas.
+	if (!stepId) {
+		return false;
+	}
+
+	// The walker returns null (it does not throw) when the step is not found.
+	return _designer.getWalker().findById(_designer.getDefinition(), stepId) !== null;
+}
+
+/**
+ * Clears all run states and removes the run-state classes from the canvas.
+ * Called when a new run starts.
+ */
+function resetRunStates() {
+	// Forget all stored states and the last started step.
+	_runStates.clear();
+	_lastStartedStepId = null;
+
+	// Remove every run-state class still present on the canvas.
+	const classes = Object.values(_runStateClasses);
+	const selector = classes.map(i => `#designer .${i}`).join(", ");
+	for (const element of document.querySelectorAll(selector)) {
+		element.classList.remove(...classes);
+	}
+}
+
+/**
+ * Resolves the canvas step that an automation event belongs to.
+ *
+ * Rules expanded at runtime (e.g., the nested rules of a template) are not on the canvas.
+ * Their events belong to the nearest ancestor that is on the canvas, found by walking the
+ * rule's parent references. If none is found, the last started canvas step is used, which
+ * is correct because a job runs one action at a time.
+ *
+ * @param {Object} message - The automation event message received from the server.
+ *
+ * @returns {string|null} The ID of the canvas step, or null if it cannot be resolved.
+ */
+function resolveCanvasStepId(message) {
+	// The event's own step is on the canvas.
+	if (isStepOnCanvas(message.id)) {
+		return message.id;
+	}
+
+	// Start events carry the rule as the value; end events wrap it in a "rule" property.
+	const reference = message?.value?.reference || message?.value?.rule?.reference;
+
+	// Walk up the parent references until a step on the canvas is found.
+	let parent = reference?.parentReference;
+	while (parent) {
+		if (isStepOnCanvas(parent.id)) {
+			return parent.id;
+		}
+		parent = parent.parentReference;
+	}
+
+	// Fall back to the last started canvas step.
+	return _lastStartedStepId;
+}
+
+/**
+ * Sets the run state of a step and updates its frame on the canvas.
+ *
+ * A failed state is final for the run: later states never replace it, so a template
+ * stays red if any of its nested rules failed.
+ *
+ * @param {string} stepId - The ID of the step on the canvas.
+ * @param {"running"|"passed"|"failed"} state - The new run state.
+ */
+function setRunState(stepId, state) {
+	// Keep the failed state until the next run resets it.
+	if (_runStates.get(stepId) === "failed") {
+		return;
+	}
+
+	// Store the new state and refresh the step's frame.
+	_runStates.set(stepId, state);
+	applyRunState(stepId);
 }
 
 /**
@@ -1183,6 +1370,9 @@ async function startDefinition() {
 	// Set the designer to read-only mode to prevent further editing while the workflow is running
 	_designer.setIsReadonly(true);
 
+	// Reset the run-state frames left from the previous run
+	resetRunStates();
+
 	// Retrieve the current definition from the designer
 	const definition = _designer.getDefinition();
 
@@ -2005,7 +2195,12 @@ function stepEditorProvider(step, editorContext) {
 		initializeContainerableEditorProvider(stepEditorContainer, step);
 	}
 
-	if ((step.componentType || (step.context && step.context.componentType) || '').toLowerCase() === "switch") {
+	// A switch step gets the branch editor unless its manifest sets canEditBranches to false (e.g. SetCondition,
+	// whose True/False branches are fixed).
+	const isSwitch = (step.componentType || (step.context && step.context.componentType) || '').toLowerCase() === "switch";
+	const canEditBranches = step.context?.canEditBranches !== false;
+
+	if (isSwitch && canEditBranches) {
 		initializeBranchableEditorProvider(stepEditorContainer, step);
 	}
 

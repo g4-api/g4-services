@@ -71,7 +71,7 @@ html, body {
 .sqd-theme-light #designer--header {
 	background: var(--designer-header-background);
 	border-bottom: 1px solid transparent;
-	border-image: linear-gradient(90deg, transparent, var(--electric-blue-dim), transparent) 1;
+	border-image: linear-gradient(90deg, transparent, var(--designer-header-border-color), transparent) 1;
 }
 
 	.sqd-theme-light .sqd-header__avatar {
@@ -537,9 +537,34 @@ html, body {
 	stroke-width: var(--step-task-rect-stroke-width);
 }
 
-	.sqd-theme-light .sqd-step-task .sqd-step-task-rect.sqd-selected {
+	/* The selector is more specific than the run-state rules, so a step that passed or failed in the
+	   last run still shows as selected when clicked. */
+	.sqd-theme-light g.sqd-step-task > rect.sqd-step-task-rect.sqd-selected {
+		fill: var(--step-task-selected-rect-fill);
 		stroke: var(--step-task-selected-rect-stroke);
 		stroke-width: var(--step-task-selected-rect-stroke-width);
+	}
+
+	/* Run-state frames: the frame width shared by the running, passed, and failed steps. */
+	.sqd-theme-light g.sqd-step-task.g4-run--running > .sqd-step-task-rect,
+	.sqd-theme-light g.sqd-step-task.g4-run--passed > .sqd-step-task-rect,
+	.sqd-theme-light g.sqd-step-task.g4-run--failed > .sqd-step-task-rect {
+		stroke-width: var(--run-state-stroke-width);
+	}
+
+	.sqd-theme-light g.sqd-step-task.g4-run--running > .sqd-step-task-rect {
+		fill: var(--run-state-running-fill);
+		stroke: var(--run-state-running-stroke);
+	}
+
+	.sqd-theme-light g.sqd-step-task.g4-run--passed > .sqd-step-task-rect {
+		fill: var(--run-state-passed-fill);
+		stroke: var(--run-state-passed-stroke);
+	}
+
+	.sqd-theme-light g.sqd-step-task.g4-run--failed > .sqd-step-task-rect {
+		fill: var(--run-state-failed-fill);
+		stroke: var(--run-state-failed-stroke);
 	}
 
 .sqd-theme-light .sqd-step-task .sqd-step-task-text {

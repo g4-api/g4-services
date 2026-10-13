@@ -160,18 +160,26 @@
 						// Set a custom data attribute for identification
 						customButtonsContainer.setAttribute("data-g4-role", "custom-buttons");
 
+						// Inside the VS Code extension the theme follows the VS Code theme; its header script sets
+						// window.vscodeApi before this page runs, so there the switch is disabled and does nothing.
+						const isVsCode = Boolean(window.vscodeApi);
+
 						/**
 						 * Creates and configures the Dark Mode button.
 						 */
 						CustomG4Fields.newControlBarButton({
-							classList: ['sqd-control-bar-button'],
+							classList: isVsCode ? ['sqd-control-bar-button', 'sqd-disabled'] : ['sqd-control-bar-button'],
 							container: customButtonsContainer,
 							icon: darkModeSvg,
 							pathClassList: ['sqd-icon-path'],
 							svgClassList: ['sqd-control-bar-button-icon'],
-							title: 'Dark/Light Mode',
+							title: isVsCode ? 'Dark/Light Mode (follows the VS Code theme)' : 'Dark/Light Mode',
 							viewBox: '0 0 640 640',
 							onClick: () => {
+								if (isVsCode) {
+									return;
+								}
+
 								Utilities.switchMode();
 							}
 						});
@@ -194,6 +202,9 @@
 
 								// Release the designer from read-only mode
 								_designer.setIsReadonly(false);
+
+								// Clear the passed/failed/running frames so the workflow looks as it does before a run
+								resetRunStates();
 							}
 						});
 
