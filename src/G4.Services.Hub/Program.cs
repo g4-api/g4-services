@@ -74,6 +74,11 @@ builder.Services.AddSwaggerGen(i =>
     // Enable annotations to allow for additional metadata in Swagger documentation.
     i.EnableAnnotations();
 
+    // Publish model descriptions from the G4 XML documentation files shipped next to the app
+    // (for example G4.Attributes.xml), so clients such as the VS Code flow publisher can show
+    // field help. Assemblies without a documentation file are simply skipped.
+    i.IncludeG4XmlComments(AppContext.BaseDirectory);
+
     // Add a custom document filter to remove any controllers that do not have any
     // actions defined, keeping the Swagger documentation clean and relevant.
     i.DocumentFilter<RemoveEmptyControllersDocumentMiddleware>();

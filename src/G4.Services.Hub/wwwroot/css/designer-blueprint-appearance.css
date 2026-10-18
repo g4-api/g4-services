@@ -304,18 +304,6 @@ html, body {
 		fill: var(--control-bar-button-delete-icon-path);
 	}
 
-.sqd-theme-light .sqd-modal button {
-	background: var(--modal-button-background) !important;
-	border: var(--modal-button-border) !important;
-	color: var(--modal-button-color) !important;
-	font: var(--modal-button-font) !important;
-}
-
-	.sqd-theme-light .sqd-modal button:hover {
-		border: var(--modal-button-hover-border) !important;
-		background: var(--modal-button-hover-background) !important;
-	}
-
 .sqd-theme-light .sqd-smart-editor {
 	background: var(--smart-editor-background);
 	border-radius: 0 var(--border-radius) var(--border-radius) var(--border-radius);
@@ -396,32 +384,33 @@ html, body {
 			background: var(--smart-editor-label-help-icon-container-hover-background);
 		}
 
-	.sqd-theme-light .sqd-smart-editor .sqd-editor .sqd-base64-toggle {
+	/* The Base64 switch shows in a field header and in the expanded editor's header. */
+	.sqd-theme-light .sqd-base64-toggle {
 		cursor: pointer;
 	}
 
-	.sqd-theme-light .sqd-smart-editor .sqd-editor .sqd-base64-toggle__input {
+	.sqd-theme-light .sqd-base64-toggle__input {
 		opacity: 0;
 	}
 
-	.sqd-theme-light .sqd-smart-editor .sqd-editor .sqd-base64-toggle__switch {
+	.sqd-theme-light .sqd-base64-toggle__switch {
 		background: var(--smart-editor-base64-toggle-track-background);
 		border-radius: 9px;
 		transition: var(--smart-editor-base64-toggle-transition);
 	}
 
-		.sqd-theme-light .sqd-smart-editor .sqd-editor .sqd-base64-toggle__switch::after {
+		.sqd-theme-light .sqd-base64-toggle__switch::after {
 			background: var(--smart-editor-base64-toggle-thumb-background);
 			border-radius: 50%;
 			content: '';
 			transition: var(--smart-editor-base64-toggle-transition);
 		}
 
-		.sqd-theme-light .sqd-smart-editor .sqd-editor .sqd-base64-toggle__input:checked + .sqd-base64-toggle__switch {
+		.sqd-theme-light .sqd-base64-toggle__input:checked + .sqd-base64-toggle__switch {
 			background: var(--smart-editor-base64-toggle-active-background);
 		}
 
-		.sqd-theme-light .sqd-smart-editor .sqd-editor .sqd-base64-toggle__input:focus-visible + .sqd-base64-toggle__switch {
+		.sqd-theme-light .sqd-base64-toggle__input:focus-visible + .sqd-base64-toggle__switch {
 			outline: var(--smart-editor-base64-toggle-focus-outline);
 			outline-offset: var(--smart-editor-base64-toggle-focus-outline-offset);
 		}

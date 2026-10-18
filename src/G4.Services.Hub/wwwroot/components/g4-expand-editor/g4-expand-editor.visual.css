@@ -1,0 +1,51 @@
+/*
+ * G4 expand editor visual language: a borderless text surface under the modal header.
+ */
+.g4-expand-editor__body textarea.g4-expand-editor__textarea,
+.g4-expand-editor__body textarea.g4-expand-editor__textarea:hover,
+.g4-expand-editor__body textarea.g4-expand-editor__textarea:focus {
+    color: var(--g4-expand-editor-foreground);
+    font-family: var(--g4-expand-editor-font-family);
+    background-color: var(--g4-expand-editor-background);
+    border-radius: 0;
+    outline: none;
+}
+
+.g4-expand-editor__error {
+    color: var(--g4-expand-editor-error-foreground);
+}
+
+/* Markdown reference */
+.g4-expand-editor__reference-note,
+.g4-expand-editor__reference thead th {
+    color: var(--g4-expand-editor-reference-muted-foreground);
+}
+
+.g4-expand-editor__reference th,
+.g4-expand-editor__reference td {
+    border-bottom-color: var(--g4-expand-editor-reference-rule-color);
+}
+
+.g4-expand-editor__syntax,
+.g4-expand-editor__result pre {
+    font-family: var(--g4-expand-editor-font-family);
+    background-color: var(--g4-expand-editor-reference-code-background);
+    border-color: var(--g4-expand-editor-reference-code-border-color);
+}
+
+.g4-expand-editor__result code {
+    font-family: var(--g4-expand-editor-font-family);
+    background-color: var(--g4-expand-editor-reference-code-background);
+    border-radius: var(--g4-expand-editor-reference-radius);
+}
+
+.g4-expand-editor__result blockquote {
+    color: var(--g4-expand-editor-reference-muted-foreground);
+    border-left-color: var(--g4-expand-editor-reference-rule-color);
+}
+
+.g4-expand-editor__result hr,
+.g4-expand-editor__result table th,
+.g4-expand-editor__result table td {
+    border-color: var(--g4-expand-editor-reference-rule-color);
+}

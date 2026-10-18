@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
 
 using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Net.Mime;
@@ -39,6 +40,17 @@ namespace G4.Services.Hub.Api.V4.Controllers
         public IActionResult AddTemplate(
             [FromBody][Required][SwaggerParameter(description: "The manifest of the template to be added.", Required = true)] G4PluginAttribute manifest)
         {
+            // Reject a parameter or property without a name, or with a name used twice in the same list,
+            // so a template that cannot be offered as a tool is never stored.
+            var nameError = FindParameterNameError(manifest.Parameters, "parameters")
+                ?? FindParameterNameError(manifest.Properties, "properties");
+
+            if (nameError != null)
+            {
+                var error400 = new GenericErrorModel(HttpContext).AddError(name: "InvalidManifest", value: nameError);
+                return BadRequest(error400);
+            }
+
             try
             {
                 // Validate the manifest to ensure it contains the required source property
@@ -151,6 +163,31 @@ namespace G4.Services.Hub.Api.V4.Controllers
 
             // Return a 404 Not Found response with an error message
             return NotFound(error404);
+        }
+
+        // Describes the first entry in a parameters or properties list that has no name, or repeats a name
+        // (ignoring case); returns null when every entry is valid. The Hub keys tool inputs by name.
+        private static string FindParameterNameError(IEnumerable<PluginParameterModel> parameters, string listName)
+        {
+            var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var index = 0;
+
+            foreach (var parameter in parameters ?? [])
+            {
+                if (string.IsNullOrWhiteSpace(parameter?.Name))
+                {
+                    return $"{listName}[{index}] has no name.";
+                }
+
+                if (!names.Add(parameter.Name))
+                {
+                    return $"{listName}[{index}] repeats the name '{parameter.Name}'.";
+                }
+
+                index++;
+            }
+
+            return null;
         }
     }
 }

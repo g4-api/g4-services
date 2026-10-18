@@ -654,237 +654,138 @@ function newConfiguration() {
 }
 
 /**
- * Creates and displays a new import modal on the page.
+ * Opens the Import Definition editor: a large JSON editor in a modal, where a definition is typed,
+ * pasted, or imported from a file, and then applied to the designer.
  *
- * This function generates a unique identifier for the modal and its related elements,
- * removes any existing modals, and then creates a new modal that contains a hidden file input,
- * a textarea for editing/importing definitions, and a set of action buttons (Import, Apply, Close).
- * When the Apply button is clicked, the definition is processed and set.
+ * The editor checks the JSON while typing and offers Format. Apply refuses invalid JSON and keeps
+ * the error in view; an empty editor applies an empty definition, as before. Escape or the corner
+ * button closes the editor without applying anything.
  */
 function newImportModal() {
+	// SVG namespace for the header button icons.
+	const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
+
+	// Import icon (arrow into a tray), embedded here for this editor only.
+	const IMPORT_ICON_PATH = 'M352 96C352 78.3 337.7 64 320 64C302.3 64 288 78.3 288 96L288 306.7L246.6 265.3C234.1 252.8 213.8 252.8 201.3 265.3C188.8 277.8 188.8 298.1 201.3 310.6L297.3 406.6C309.8 419.1 330.1 419.1 342.6 406.6L438.6 310.6C451.1 298.1 451.1 277.8 438.6 265.3C426.1 252.8 405.8 252.8 393.3 265.3L352 306.7L352 96zM160 384C124.7 384 96 412.7 96 448L96 480C96 515.3 124.7 544 160 544L480 544C515.3 544 544 515.3 544 480L544 448C544 412.7 515.3 384 480 384L433.1 384L376.5 440.6C345.3 471.8 294.6 471.8 263.4 440.6L206.9 384L160 384zM464 440C477.3 440 488 450.7 488 464C488 477.3 477.3 488 464 488C450.7 488 440 477.3 440 464C440 450.7 450.7 440 464 440z';
+
+	// Apply icon (document with a check mark), embedded here for this editor only.
+	const APPLY_ICON_PATH = 'M128 64C92.7 64 64 92.7 64 128L64 512C64 547.3 92.7 576 128 576L308 576C285.3 544.5 272 505.8 272 464C272 363.4 349.4 280.8 448 272.7L448 234.6C448 217.6 441.3 201.3 429.3 189.3L322.7 82.7C310.7 70.7 294.5 64 277.5 64L128 64zM389.5 240L296 240C282.7 240 272 229.3 272 216L272 122.5L389.5 240zM608 464C608 384.5 543.5 320 464 320C384.5 320 320 384.5 320 464C320 543.5 384.5 608 464 608C543.5 608 608 543.5 608 464zM521.4 403.1C528.5 408.3 530.1 418.3 524.9 425.4L460.9 513.4C458.1 517.2 453.9 519.6 449.2 519.9C444.5 520.2 439.9 518.6 436.6 515.3L396.6 475.3C390.4 469.1 390.4 458.9 396.6 452.7C402.8 446.5 413 446.5 419.2 452.7L446 479.5L499 406.6C504.2 399.5 514.2 397.9 521.4 403.1z';
+
 	/**
-	 * Creates a container element with Import, Apply, and Close buttons for modal interactions.
+	 * Creates one icon-only header button of the Import Definition editor.
 	 *
-	 * This function creates a div element that contains three buttons:
-	 * - **Import**: Triggers a click on an assumed existing file input element (`inputFileElement`) to import data.
-	 * - **Apply** : Retrieves JSON from a textarea within the modal, parses it, removes the modal from the DOM, and invokes a callback with the parsed value.
-	 * - **Close** : Simply removes the modal element from the DOM.
-	 *
-	 * **Note:** The code assumes that `fieldContainer` and `inputFileElement` are available in the enclosing scope.
+	 * @param {Object} buttonOptions - Button icon, tooltip, and test id.
+	 * @param {string} buttonOptions.iconPath - SVG path data of the icon (640 x 640 view box).
+	 * @param {string} buttonOptions.testId - Value of data-test-id.
+	 * @param {string} buttonOptions.title - Tooltip and accessible name.
+	 * @returns {HTMLButtonElement} The button, styled as a modal header tool.
 	 */
-	const newButtonsContainerElement = (inputId, modalElement, setCallback) => {
-		// Create a container for the buttons with inline-flex layout for horizontal alignment.
-		const buttonsContainerElement = document.createElement("div");
-		buttonsContainerElement.setAttribute("style", "display: inline-flex; gap: 0.2em; margin-bottom: 0.2em;");
+	const newHeaderButton = (buttonOptions) => {
+		const buttonElement = document.createElement('button');
+		const svgElement = document.createElementNS(SVG_NAMESPACE, 'svg');
+		const pathElement = document.createElementNS(SVG_NAMESPACE, 'path');
 
-		// Create the Close button.
-		const closeButtonElement = document.createElement('button');
-		closeButtonElement.setAttribute('id', `${inputId}-closeButton`);
-		closeButtonElement.setAttribute('type', 'button');
-		closeButtonElement.innerText = 'Close';
+		// The icon takes the button's text colour, so it follows the theme.
+		svgElement.setAttribute('viewBox', '0 0 640 640');
+		svgElement.setAttribute('aria-hidden', 'true');
+		pathElement.setAttribute('fill', 'currentColor');
+		pathElement.setAttribute('d', buttonOptions.iconPath);
+		svgElement.append(pathElement);
 
-		// Add event listener to remove the modal when the Close button is clicked.
-		// Remove the modal element from the field container.
-		closeButtonElement.addEventListener('click', () => {
-			modalElement.remove();
-		});
+		// Icon only: the tooltip and the accessible name say what the button does.
+		buttonElement.type = 'button';
+		buttonElement.className = 'g4-modal__tool';
+		buttonElement.title = buttonOptions.title;
+		buttonElement.dataset.testId = buttonOptions.testId;
+		buttonElement.setAttribute('aria-label', buttonOptions.title);
+		buttonElement.append(svgElement);
 
-		// Create the Import button.
-		const importButtonElement = document.createElement('button');
-		importButtonElement.setAttribute('id', `${inputId}-importButton`);
-		importButtonElement.setAttribute('type', 'button');
-		importButtonElement.innerText = 'Import';
+		return buttonElement;
+	};
 
-		// Add event listener to simulate a click on the file input element when the Import button is clicked.
-		// Trigger the file input element's click event (assumed to exist in the outer scope).
-		importButtonElement.addEventListener('click', () => {
-			inputFileElement.click();
-		});
-
-		// Create the Apply button.
-		const applyButtonElement = document.createElement('button');
-		applyButtonElement.setAttribute('id', `${inputId}-applyButton`);
-		applyButtonElement.setAttribute('type', 'button');
-		applyButtonElement.innerText = 'Apply';
-
-		// Add event listener to handle JSON parsing and applying the callback.
-		applyButtonElement.addEventListener('click', () => {
-			try {
-				// Retrieve the textarea element within the modal.
-				const textareaElement = modalElement.querySelector('textarea');
-
-				// Parse the JSON from the textarea's value.
-				// If the textarea is empty, default to an empty object.
-				const value = !textareaElement.value || textareaElement.value === ""
-					? {}
-					: JSON.parse(textareaElement.value);
-
-				// Remove the modal element from the field container.
-				modalElement.remove();
-
-				// Invoke the callback function with the parsed JSON value.
-				setCallback(value);
-			}
-			catch (error) {
-				// Log any error encountered during parsing.
-				console.error(error);
-			}
-		});
-
-		// Append the buttons to the container in the order: Import, Apply, Close.
-		buttonsContainerElement.appendChild(importButtonElement);
-		buttonsContainerElement.appendChild(applyButtonElement);
-		buttonsContainerElement.appendChild(closeButtonElement);
-
-		// Return the container element with the buttons.
-		return buttonsContainerElement;
+	// Only one Import Definition editor is open at a time; a second click keeps the open one.
+	if (document.querySelector('g4-modal[test-id="import-definition"]')) {
+		return;
 	}
 
-	/**
-	 * Creates a hidden file input element that, when a file is selected, reads its content and
-	 * sets the content as the value of the specified textarea element.
-	 *
-	 * This function is used to allow users to import file content (either .txt or .json)
-	 * into a textarea via a hidden file input.
-	 */
-	const newInputFileElement = (inputId, textareaElement) => {
-		// Create a new input element.
-		const inputFileElement = document.createElement("input");
+	// Watch the workspace, so the view can be reset once the new definition is drawn.
+	const workspaceObserver = new Observer(document.querySelector('.sqd-workspace'));
 
-		// Set the input element type to "file" so that it opens a file picker.
-		inputFileElement.setAttribute("type", "file");
-
-		// Assign a unique ID to the input element.
-		inputFileElement.setAttribute("id", `${inputId}-input-file`);
-
-		// Restrict the accepted file types to .txt and .json.
-		inputFileElement.setAttribute("accept", `.txt,.json`);
-
-		// Hide the input element from the UI.
-		inputFileElement.setAttribute("style", `display: none;`);
-
-		// Add an event listener to handle file selection.
-		inputFileElement.addEventListener('change', (event) => {
-			// Get the first file from the file input.
-			const file = event.target.files[0];
-
-			if (file) {
-				// Create a FileReader to read the file content.
-				const reader = new FileReader();
-
-				// When the file has been read, update the textarea with its content.
-				reader.onload = (e) => {
-					textareaElement.value = e.target.result;
-				};
-
-				// Read the file as text.
-				reader.readAsText(file);
-			}
-		});
-
-		// Return the configured file input element.
-		return inputFileElement;
-	};
-
-	/**
-	 * Creates a modal element used for import operations.
-	 *
-	 * This function creates and returns a div element configured as a modal.
-	 * The modal is centered on the screen with a fixed position and high z-index to ensure it appears on top.
-	 */
-	const newModalElement = (inputId) => {
-		// Create a new div element to act as the modal.
-		const modalElement = document.createElement('div');
-
-		// Set a unique ID for the modal element using the provided inputId.
-		modalElement.setAttribute('id', `${inputId}-import-modal`);
-
-		// Set a custom data attribute to indicate the role of this element.
-		modalElement.setAttribute('data-g4-role', 'import-modal');
-
-		// Apply inline styles to center the modal and set display properties.
-		modalElement.setAttribute('class', 'sqd-modal');
-
-		// Return the configured modal element.
-		return modalElement;
-	};
-
-	/**
-	 * Creates a textarea element configured for importing or editing definitions.
-	 *
-	 * The textarea is styled with a specific width, height, and other attributes for optimal use.
-	 */
-	const newTextareaElement = (inputId) => {
-		// Create a new textarea element.
-		const textareaElement = document.createElement("textarea");
-
-		// Set a unique ID for the textarea using the provided inputId.
-		textareaElement.setAttribute("id", `${inputId}-textarea`);
-
-		// Apply inline styles to define the size of the textarea.
-		textareaElement.setAttribute("style", "width: 60vw; height: 25vh;");
-
-		// Disable text wrapping in the textarea.
-		textareaElement.setAttribute("wrap", "off");
-
-		// Disable spellchecking to prevent browser spell-check from interfering.
-		textareaElement.setAttribute("spellcheck", "false");
-
-		// Set a placeholder text to guide the user on what to do.
-		textareaElement.setAttribute("placeholder", "Type, paste or import definition here...");
-
-		// Return the configured textarea element.
-		return textareaElement;
-	};
-
-	// Generate a unique identifier for this modal instance.
-	const inputId = Utilities.newUid();
-
-	// Select the target node that we want to observe for DOM changes.
-	const workspaceElement = document.querySelector('.sqd-workspace');
-
-    // Create a new MutationObserver instance to observe the canvas for DOM changes.
-	const workspaceObserver = new Observer(workspaceElement);
-
-	// Select the field container where the modal will be appended. In this case, it's the <body> element.
-	const fieldContainer = document.querySelector("#designer > div");
-
-	// Find and remove any existing modals to ensure only one is visible at a time.
-	const existingModals = fieldContainer?.querySelectorAll("[id*=import-modal]");
-	for (const existingModal of existingModals) {
-		fieldContainer.removeChild(existingModal);
-	}
-
-	// Create a new modal element using the unique identifier.
-	const modalElement = newModalElement(inputId);
-
-	// Create a new textarea element for inputting or editing the definition.
-	const textareaElement = newTextareaElement(inputId);
-
-	// Create a hidden file input element that updates the textarea when a file is selected.
-	const inputFileElement = newInputFileElement(inputId, textareaElement);
-
-	// Create a container with Import, Apply, and Close buttons.
-	const buttonsContainerElement = newButtonsContainerElement(inputId, modalElement, (definition) => {
-        // Set the definition using the parsed JSON value.
-		setDefinition(definition);
-
-		// Reset the view to adjust the viewport after setting the new definition.
-		resetView(workspaceObserver);
+	// The editor and its header tools: Import reads a file, Apply sends the definition to the designer.
+	const editor = document.createElement('g4-expand-editor');
+	const fileInputElement = document.createElement('input');
+	const importButtonElement = newHeaderButton({
+		iconPath: IMPORT_ICON_PATH,
+		testId: 'import-definition-import-file-button',
+		title: 'Import a definition file (.json or .txt)'
+	});
+	const applyButtonElement = newHeaderButton({
+		iconPath: APPLY_ICON_PATH,
+		testId: 'import-definition-apply-button',
+		title: 'Apply the definition to the designer'
 	});
 
-	// Create a container for the textarea and the buttons.
-	const textareaContainerElement = document.createElement('div');
-	textareaContainerElement.setAttribute("style", "margin-top:0.2em;");
-	textareaContainerElement.appendChild(textareaElement);
-	textareaContainerElement.appendChild(buttonsContainerElement);
+	// A file picker that is never shown: the Import button opens it.
+	fileInputElement.type = 'file';
+	fileInputElement.accept = '.txt,.json';
 
-	// Append the hidden file input and the textarea container to the modal.
-	modalElement.appendChild(inputFileElement);
-	modalElement.appendChild(textareaContainerElement);
+	/**
+	 * Shows the picked file's text in the editor, checked like typed text.
+	 */
+	const onFileInputChange = () => {
+		const file = fileInputElement.files[0];
 
-	// Append the modal to the field container, making it visible on the page.
-	fieldContainer.appendChild(modalElement);
+		if (!file) {
+			return;
+		}
+
+		// Read the file as text, then show it with its line numbers and JSON check.
+		const reader = new FileReader();
+
+		reader.addEventListener('load', () => {
+			editor.setText(typeof reader.result === 'string' ? reader.result : '');
+		});
+
+		reader.readAsText(file);
+	};
+
+	/**
+	 * Applies the definition and closes the editor; invalid JSON keeps the editor open.
+	 */
+	const onApplyClick = () => {
+		// The error line already says what is wrong; nothing half-parsed may reach the designer.
+		if (editor.error !== '') {
+			return;
+		}
+
+		// An empty editor applies an empty definition, as the import did before.
+		const text = editor.value;
+		const definition = text.trim() === '' ? {} : JSON.parse(text);
+
+		// Close first, then draw the new definition and fit the view to it.
+		editor.close();
+		setDefinition(definition);
+		resetView(workspaceObserver);
+	};
+
+	fileInputElement.addEventListener('change', onFileInputChange);
+
+	importButtonElement.addEventListener('click', () => {
+		fileInputElement.click();
+	});
+
+	applyButtonElement.addEventListener('click', onApplyClick);
+
+	// Open the editor in JSON mode, and give focus back to the control bar button when it closes.
+	editor.setAttribute('editor-title', 'Import Definition');
+	editor.setAttribute('test-id', 'import-definition');
+	editor.open({
+		focusReturnElement: document.activeElement,
+		isJson: true,
+		placeholder: 'Type, paste or import a definition here...',
+		text: '',
+		tools: [importButtonElement, applyButtonElement]
+	});
 }
 
 /**
@@ -2256,6 +2157,9 @@ window.addEventListener('load', async () => {
 				await wait(CHECK_INTERVAL);
 			}
 		}
+
+		// Wait for the component templates, so the first editors the designer draws get their text boxes
+		await window.G4Templates?.ready;
 
 		// Initialize the designer after exiting the loop
 		await initializeDesigner();

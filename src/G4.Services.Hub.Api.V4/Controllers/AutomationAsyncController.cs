@@ -1,4 +1,5 @@
-﻿using G4.Models;
+﻿using G4.Exceptions;
+using G4.Models;
 using G4.Services.Domain.V4;
 using G4.Services.Domain.V4.Models;
 
@@ -50,10 +51,23 @@ namespace G4.Services.Hub.Api.V4.Controllers
             Description = "The automation task has been accepted and enqueued. The response is empty as processing is performed asynchronously.",
             Type = typeof(void),
             ContentTypes = [MediaTypeNames.Application.Json])]
+        [SwaggerResponse(StatusCodes.Status400BadRequest,
+            Description = "Invalid data source. The automation's `dataSource` cannot be read: its source is not a file path, a JSON array, or the Base64 encoding of a JSON array; its rows or filter are not valid; or its type is not supported. The error explains why.",
+            Type = typeof(GenericErrorModel),
+            ContentTypes = [MediaTypeNames.Application.Json])]
         public IActionResult Start([FromBody] G4AutomationModel automation)
         {
-            // Enqueue the automation model into the pending queue for asynchronous processing by an available worker.
-            _domain.G4.Client.AutomationAsync.AddPendingAutomation(automation);
+            // Enqueue the automation model into the pending queue for asynchronous processing by an available worker;
+            // its data source is read now, so a data source that cannot be read is rejected before anything is queued.
+            try
+            {
+                _domain.G4.Client.AutomationAsync.AddPendingAutomation(automation);
+            }
+            catch (G4DataSourceException exception)
+            {
+                // Return a 400 Bad Request response that explains why the data source cannot be read.
+                return BadRequest(NewDataSourceError(context: HttpContext, exception));
+            }
 
             // Return an HTTP 202 Accepted response indicating that the automation task has been accepted.
             return Accepted();
@@ -69,6 +83,10 @@ namespace G4.Services.Hub.Api.V4.Controllers
             Description = "The automation task has been accepted and enqueued. The response is empty as processing is performed asynchronously.",
             Type = typeof(void),
             ContentTypes = [MediaTypeNames.Application.Json])]
+        [SwaggerResponse(StatusCodes.Status400BadRequest,
+            Description = "Invalid data source. The automation's `dataSource` cannot be read: its source is not a file path, a JSON array, or the Base64 encoding of a JSON array; its rows or filter are not valid; or its type is not supported. The error explains why.",
+            Type = typeof(GenericErrorModel),
+            ContentTypes = [MediaTypeNames.Application.Json])]
         public IActionResult Start(
             [FromBody]
             [SwaggerRequestBody(
@@ -82,11 +100,26 @@ namespace G4.Services.Hub.Api.V4.Controllers
             // Deserialize the file content into a G4 automation model using the domain JSON options.
             var automation = JsonSerializer.Deserialize<G4AutomationModel>(content, _domain.Asp.JsonOptions);
 
-            // Enqueue the automation model into the pending queue for asynchronous processing by an available worker.
-            _domain.G4.Client.AutomationAsync.AddPendingAutomation(automation);
+            // Enqueue the automation model into the pending queue for asynchronous processing by an available worker;
+            // its data source is read now, so a data source that cannot be read is rejected before anything is queued.
+            try
+            {
+                _domain.G4.Client.AutomationAsync.AddPendingAutomation(automation);
+            }
+            catch (G4DataSourceException exception)
+            {
+                // Return a 400 Bad Request response that explains why the data source cannot be read.
+                return BadRequest(NewDataSourceError(context: HttpContext, exception));
+            }
 
             // Return an HTTP 202 Accepted response indicating that the automation task has been accepted.
             return Accepted();
+        }
+
+        // Creates the 400 error model for an automation data source that cannot be read, naming the reason.
+        private static GenericErrorModel NewDataSourceError(HttpContext context, G4DataSourceException exception)
+        {
+            return new GenericErrorModel(context).AddError(name: "InvalidDataSource", value: exception.Message);
         }
     }
 }

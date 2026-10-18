@@ -69,12 +69,43 @@
 	--line-grid-path-stroke: rgba(var(--secondary-color-rgb), 0.3);
 	--line-grid-path-stroke-width: 1;
 	/* Modal */
+	--modal-backdrop-background: rgba(var(--black-rgb), 0.45);
+	--modal-background: var(--secondary-color);
+	--modal-border-color: var(--primary-color);
 	--modal-button-background: var(--secondary-color);
-	--modal-button-border: 1px solid var(--primary-color);
+	--modal-button-border-color: var(--primary-color);
 	--modal-button-color: var(--primary-color);
-	--modal-button-font: 400 1.0em 'Inter', sans-serif;
-	--modal-button-hover-background: var(--secondary-color);
-	--modal-button-hover-border: 1px solid var(--red);
+	--modal-button-hover-background: var(--light-gray);
+	--modal-button-hover-border-color: var(--red);
+	--modal-close-background: var(--secondary-color);
+	--modal-close-color: var(--primary-color);
+	--modal-close-hover-color: var(--primary-color-hover);
+	--modal-color: var(--primary-color);
+	--modal-focus-outline-color: var(--red);
+	--modal-font-family: 'Inter', sans-serif;
+	--modal-header-background: var(--light-gray);
+	--modal-shadow: 0 8px 24px rgba(var(--black-rgb), 0.3);
+	/* Expand Editor */
+	--expand-editor-background: var(--secondary-color);
+	--expand-editor-color: var(--primary-color);
+	--expand-editor-error-color: var(--red);
+	--expand-editor-font-family: Consolas, 'Courier New', monospace;
+	/* Line Numbers */
+	--line-numbers-background: var(--light-gray);
+	--line-numbers-border-color: var(--primary-color);
+	--line-numbers-color: var(--primary-color-hover);
+	--line-numbers-editor-border-color: var(--gray);
+	/* Markdown Reference */
+	--markdown-reference-code-background: var(--light-gray);
+	--markdown-reference-code-border-color: var(--gray);
+	--markdown-reference-muted-color: var(--primary-color-hover);
+	--markdown-reference-rule-color: var(--gray);
+	/* Text Box */
+	--text-box-tool-background: var(--secondary-color);
+	--text-box-tool-border-color: var(--primary-color);
+	--text-box-tool-color: var(--primary-color);
+	--text-box-tool-hover-background: var(--light-gray);
+	--text-box-tool-hover-border-color: var(--red);
 	/* Smart Editor */
 	--run-state-failed-fill: rgba(237, 72, 0, 0.2);
 	--run-state-failed-stroke: var(--red);

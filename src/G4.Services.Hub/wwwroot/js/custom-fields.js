@@ -1346,6 +1346,7 @@ class CustomG4Fields {
                 container: alwaysMatchField.querySelector('[data-g4-role="always-match-capabilities"]'),
                 label: 'Capabilities',
                 title: 'A collection of capabilities with additional custom information for the invocation.',
+                editorType: 'json',
                 initialValue: alwaysMatch,
                 isBase64Enabled: false
             },
@@ -3658,16 +3659,21 @@ class CustomFields {
 
     /**
      * Creates and appends a new string input field (textarea) to the specified container based on provided options.
-     * The textarea dynamically adjusts its height based on content and invokes a callback with the current value upon input.
+     * The textarea dynamically adjusts its height based on content, numbers its lines, and invokes a callback with the
+     * current value upon input. Its Expand button opens the same text in a large editor (<g4-expand-editor>), where
+     * every edit is copied back to the field as it is typed.
      *
      * @param {Object}        options                    - Configuration options for the string field.
      * @param {HTMLElement}   [options.container]        - The DOM element to which the string field will be appended.
      * @param {string}        options.label              - The identifier for the string field, used for data attributes and labeling.
      * @param {string}        [options.title]            - The title attribute for the field container, often used for tooltips.
      * @param {string|number} [options.initialValue='']  - The initial value of the textarea. Defaults to an empty string if not provided or invalid.
+     * @param {string}        [options.editorType]       - 'json' when the value is always JSON: the large editor then offers
+     *                                                     Check & Format and an error line. Other fields get them when their
+     *                                                     text starts with { or [. An invalid value is still saved.
      * @param {boolean}       [options.isBase64Enabled=true] - Determines whether the Base64 representation toggle is displayed.
      * @param {boolean}       [options.isBase64Encoded=false] - Indicates whether the initial value is already Base64 encoded.
-     * @param {boolean}       [options.isReadonly=false] - Determines if the textarea is read-only.
+     * @param {boolean}       [options.isReadonly=false] - Determines if the textarea is read-only; the large editor is read-only too.
      * @param {Function}      setCallback                - Callback invoked with the value and current Base64 state when the field changes.
      *
      * @returns {HTMLElement} The container element that includes the newly created string field.
@@ -3678,6 +3684,29 @@ class CustomFields {
 
         // Track the explicit representation state independently from whether its conversion control is displayed.
         let isBase64Encoded = options.isBase64Encoded === true;
+
+        // The Base64 switches that show the representation: the field header's, and the large editor's while it is open.
+        const base64ToggleInputs = [];
+
+        // The large editor while it is open; it mirrors the field's text and representation.
+        let expandEditor = null;
+
+        // Runs of characters that cannot appear in a test id. Linear: one negated class, one quantifier.
+        const testIdSeparatorPattern = /[^a-z0-9]+/;
+
+        /**
+         * Converts a field label to a test id prefix ("Invocation Interval (ms)" becomes "invocation-interval-ms").
+         *
+         * @param {string} label - The field label.
+         * @returns {string} The lowercase kebab-case prefix.
+         */
+        const convertToTestId = (label) => {
+            return `${label ?? ''}`
+                .toLowerCase()
+                .split(testIdSeparatorPattern)
+                .filter((word) => word !== '')
+                .join('-');
+        };
 
         /**
          * Adjusts the textarea size dynamically based on its content.
@@ -3729,6 +3758,9 @@ class CustomFields {
             textarea.title = textarea.value;
             updateTextareaLayout(textarea);
 
+            // Renumber the gutter, because a value set in code (editor, Base64 switch) raises no input event.
+            textBoxElement.refresh?.();
+
             // Publish both the value and its explicit representation state without breaking one-argument callbacks.
             if (typeof setCallback === 'function') {
                 setCallback(textarea.value, { isBase64Encoded });
@@ -3736,176 +3768,193 @@ class CustomFields {
         };
 
         /**
-         * Adds the Base64 representation control to a string field when that capability is enabled.
+         * Tests whether the large editor should offer its JSON tools for the current value.
          *
-         * @param {Object} base64ToggleOptions - Elements and identifiers owned by the target string field.
-         * @param {HTMLElement} base64ToggleOptions.fieldContainer - Container that owns the field header.
-         * @param {string} base64ToggleOptions.inputId - Unique identifier shared by the field controls.
-         * @param {HTMLTextAreaElement} base64ToggleOptions.textareaElement - Textarea converted by the toggle.
+         * @returns {boolean} True for readable JSON: a field marked as JSON, or text that starts with { or [.
          */
-        const addBase64Toggle = (base64ToggleOptions) => {
-            const {
-                fieldContainer,
-                inputId,
-                textareaElement
-            } = base64ToggleOptions;
+        const testJsonValue = () => {
+            // Encoded text is never readable JSON; the tools return when the value is decoded.
+            if (isBase64Encoded) {
+                return false;
+            }
 
-            // Group the representation switch with the help icon so both controls remain together in the field header.
-            const helpIconElement = fieldContainer.querySelector('.sqd-help-icon-container');
-            const labelActionsElement = document.createElement('span');
-            labelActionsElement.classList.add('sqd-label-actions');
+            if (options.editorType === 'json') {
+                return true;
+            }
 
+            const text = textareaElement.value.trimStart();
+
+            return text.startsWith('{') || text.startsWith('[');
+        };
+
+        /**
+         * Shows the current representation on every Base64 switch, with the action each would take next.
+         */
+        const updateBase64Toggles = () => {
+            const actionLabel = isBase64Encoded
+                ? 'Decode Base64 value'
+                : 'Encode value as Base64';
+
+            for (const toggleInputElement of base64ToggleInputs) {
+                toggleInputElement.checked = isBase64Encoded;
+                toggleInputElement.setAttribute('aria-label', actionLabel);
+                toggleInputElement.closest('label').title = actionLabel;
+            }
+        };
+
+        /**
+         * Converts the field when the user changes a Base64 switch (in the field header or in the editor).
+         *
+         * @param {HTMLInputElement} toggleInputElement - The switch the user changed.
+         */
+        const setBase64Representation = (toggleInputElement) => {
+            const isRequestedBase64Encoded = toggleInputElement.checked;
+
+            // Convert only in the direction selected by the explicit switch state so content is never auto-detected.
+            try {
+                textareaElement.value = isRequestedBase64Encoded
+                    ? Utilities.convertToBase64(textareaElement.value)
+                    : Utilities.convertFromBase64(textareaElement.value);
+            } catch {
+                // Restore the prior mode when decoding fails so invalid input is never discarded or mislabeled.
+                toggleInputElement.checked = isBase64Encoded;
+                toggleInputElement.setCustomValidity('The value is not valid Base64-encoded UTF-8 text.');
+                toggleInputElement.reportValidity();
+                return;
+            }
+
+            // Commit the new representation only after conversion succeeds, including for read-only textareas.
+            isBase64Encoded = isRequestedBase64Encoded;
+            toggleInputElement.setCustomValidity('');
+            updateBase64Toggles();
+            updateStringFieldValue(textareaElement);
+
+            // An open editor shows the converted text; its JSON tools apply only to readable text.
+            if (expandEditor) {
+                expandEditor.setText(textareaElement.value);
+                expandEditor.setJsonMode(testJsonValue());
+            }
+        };
+
+        /**
+         * Creates a Base64 switch that shows and changes the field's representation.
+         *
+         * @param {Object} toggleOptions - Identifiers of the new switch.
+         * @param {string} toggleOptions.role - Value of data-g4-role.
+         * @param {string} toggleOptions.testId - Value of the input's data-test-id.
+         * @param {string} toggleOptions.toggleId - Id of the switch input.
+         * @returns {HTMLLabelElement} The switch, kept in step with every other switch of the field.
+         */
+        const newBase64Toggle = (toggleOptions) => {
             // Reproduce the settings-component checkbox slider while keeping native keyboard and form semantics.
             const base64ToggleElement = document.createElement('label');
             base64ToggleElement.classList.add('sqd-base64-toggle');
-            base64ToggleElement.dataset.g4Role = 'base64-toggle';
+            base64ToggleElement.dataset.g4Role = toggleOptions.role;
 
             const base64ToggleTextElement = document.createElement('span');
             base64ToggleTextElement.classList.add('sqd-base64-toggle__label');
             base64ToggleTextElement.textContent = 'Base64';
 
             const base64ToggleInputElement = document.createElement('input');
-            base64ToggleInputElement.classList.add('sqd-base64-toggle__input');
-            base64ToggleInputElement.id = `${inputId}-base64-toggle`;
             base64ToggleInputElement.type = 'checkbox';
-            base64ToggleInputElement.checked = isBase64Encoded;
+            base64ToggleInputElement.id = toggleOptions.toggleId;
+            base64ToggleInputElement.classList.add('sqd-base64-toggle__input');
+            base64ToggleInputElement.dataset.testId = toggleOptions.testId;
 
             const base64ToggleSwitchElement = document.createElement('span');
             base64ToggleSwitchElement.classList.add('sqd-base64-toggle__switch');
             base64ToggleSwitchElement.setAttribute('aria-hidden', 'true');
 
-            /**
-             * Updates the slider's accessible action text to describe the next conversion.
-             */
-            const updateBase64ToggleAccessibility = () => {
-                const actionLabel = isBase64Encoded
-                    ? 'Decode Base64 value'
-                    : 'Encode value as Base64';
-
-                base64ToggleElement.title = actionLabel;
-                base64ToggleInputElement.setAttribute('aria-label', actionLabel);
-            };
-
-            /**
-             * Converts the field when the user changes the Base64 representation switch.
-             */
-            const onBase64ToggleChange = () => {
-                const isRequestedBase64Encoded = base64ToggleInputElement.checked;
-
-                // Convert only in the direction selected by the explicit switch state so content is never auto-detected.
-                try {
-                    textareaElement.value = isRequestedBase64Encoded
-                        ? Utilities.convertToBase64(textareaElement.value)
-                        : Utilities.convertFromBase64(textareaElement.value);
-                } catch {
-                    // Restore the prior mode when decoding fails so invalid input is never discarded or mislabeled.
-                    base64ToggleInputElement.checked = isBase64Encoded;
-                    base64ToggleInputElement.setCustomValidity('The value is not valid Base64-encoded UTF-8 text.');
-                    base64ToggleInputElement.reportValidity();
-                    return;
-                }
-
-                // Commit the new representation only after conversion succeeds, including for read-only textareas.
-                isBase64Encoded = isRequestedBase64Encoded;
-                base64ToggleInputElement.setCustomValidity('');
-                updateBase64ToggleAccessibility();
-                updateStringFieldValue(textareaElement);
-            };
-
-            // Assemble the header controls before wiring the toggle so the existing help action remains available.
+            // Assemble the switch, then show the current representation on it and on every other switch.
             base64ToggleElement.append(
                 base64ToggleTextElement,
                 base64ToggleInputElement,
                 base64ToggleSwitchElement
             );
-            helpIconElement.before(labelActionsElement);
-            labelActionsElement.append(base64ToggleElement, helpIconElement);
-            updateBase64ToggleAccessibility();
+            base64ToggleInputs.push(base64ToggleInputElement);
+            updateBase64Toggles();
 
             // Keep the Base64 action available for read-only fields because representation changes are still intentional.
-            base64ToggleInputElement.addEventListener('change', onBase64ToggleChange);
+            base64ToggleInputElement.addEventListener('change', () => {
+                setBase64Representation(base64ToggleInputElement);
+            });
+
+            return base64ToggleElement;
         };
 
         /**
-         * Creates and appends a new modal containing a textarea and a close button
-         * for a given input field. If a modal with the same ID already exists,
-         * it is first removed. The contents of the textarea are mirrored into
-         * the original input field. Clicking the close button removes the modal
-         * and re-enables the original input.
+         * Adds the Base64 representation switch to the field header, next to the help icon.
          *
-         * @param {string} inputId - The unique identifier of the target input.
-         * @param {HTMLElement} fieldContainer - The container element to which the modal will be appended.
-         * @returns {HTMLElement} The newly created modal element.
+         * @param {HTMLElement} fieldContainer - Container that owns the field header.
          */
-        const newModal = (inputId, fieldContainer) => {
-            const app = document.getElementById('app');
+        const addBase64Toggle = (fieldContainer) => {
+            // Group the representation switch with the help icon so both controls remain together in the field header.
+            const helpIconElement = fieldContainer.querySelector('.sqd-help-icon-container');
+            const labelActionsElement = document.createElement('span');
+            labelActionsElement.classList.add('sqd-label-actions');
 
-            app.inert = true;
-
-            // Escape the inputId to ensure valid and safe usage in CSS selectors
-            const escapedId = CSS.escape(inputId);
-
-            // Find and remove any existing modal with the same ID in the container
-            const existingModal = fieldContainer?.querySelector(`#${escapedId}-modal`);
-            if (existingModal) {
-                existingModal.remove();
-            }
-
-            // Create a container <div> to serve as the modal
-            const modalElement = document.createElement('div');
-            modalElement.setAttribute('id', `${inputId}-modal`);
-            modalElement.setAttribute('class', 'sqd-modal');
-            modalElement.dataset.g4Role = 'input-modal';
-
-            // Create a container for the textarea and close button
-            const textareaContainerElement = document.createElement('div');
-
-            // Create the textarea element
-            const textareaElement = document.createElement('textarea');
-            textareaElement.setAttribute('id', `${inputId}-textarea`);
-            textareaElement.setAttribute('wrap', 'off');
-            textareaElement.setAttribute('spellcheck', 'false');
-
-            const onModalTextareaInput = () => {
-                // Mirror modal edits through the field's normal publication path so representation state is retained.
-                const textarea = fieldContainer.querySelector(`#${escapedId}`);
-                textarea.value = textareaElement.value;
-                updateStringFieldValue(textarea);
-            };
-
-            textareaElement.addEventListener('input', onModalTextareaInput);
-
-            // Create a button to close the modal
-            const closeButtonElement = document.createElement('button');
-            closeButtonElement.setAttribute('id', `${inputId}-closeButton`);
-            closeButtonElement.setAttribute('type', 'button');
-            closeButtonElement.innerText = 'Close';
-
-            // On click, re-enable the original textarea and remove the modal
-            closeButtonElement.addEventListener('click', () => {
-                const textarea = fieldContainer.querySelector(`#${escapedId}`);
-                if (!textarea) {
-                    app.inert = false;
-                    modalElement.remove();
-                    return;
-                }
-                app.inert = false;
-                textarea.disabled = false;
-                modalElement.remove();
+            const base64ToggleElement = newBase64Toggle({
+                role: 'base64-toggle',
+                testId: `${testId}-base64-toggle`,
+                toggleId: `${inputId}-base64-toggle`
             });
 
-            // Add the textarea and close button to the container
-            textareaContainerElement.appendChild(textareaElement);
-            textareaContainerElement.appendChild(closeButtonElement);
+            helpIconElement.before(labelActionsElement);
+            labelActionsElement.append(base64ToggleElement, helpIconElement);
+        };
 
-            // Add the container to the modal
-            modalElement.appendChild(textareaContainerElement);
+        /**
+         * Opens the field's text in the large editor when the Expand button is clicked.
+         */
+        const onTextBoxExpand = () => {
+            // The editor shows the field's text and, for a Base64 field, its own copy of the switch.
+            const editor = document.createElement('g4-expand-editor');
+            const editorBase64ToggleElement = isBase64Enabled
+                ? newBase64Toggle({
+                    role: 'editor-base64-toggle',
+                    testId: `${testId}-expand-editor-base64-toggle`,
+                    toggleId: `${inputId}-editor-base64-toggle`
+                })
+                : null;
 
-            // Append the newly created modal to the field container
-            fieldContainer.appendChild(modalElement);
+            /**
+             * Copies every editor edit to the field through its normal publication path.
+             *
+             * @param {CustomEvent} event - The editor's g4-input event.
+             */
+            const onEditorInput = (event) => {
+                textareaElement.value = event.detail.value;
+                updateStringFieldValue(textareaElement);
+            };
 
-            // Return the modal element so it can be referenced if needed
-            return modalElement;
+            /**
+             * Forgets the closed editor and its switch, so they no longer mirror the field.
+             */
+            const onEditorClose = () => {
+                const index = base64ToggleInputs.indexOf(editorBase64ToggleElement?.querySelector('input'));
+
+                if (index !== -1) {
+                    base64ToggleInputs.splice(index, 1);
+                }
+
+                expandEditor = null;
+            };
+
+            // Open the editor titled after the field, where the caret was, and give focus back to the field on close.
+            editor.setAttribute('editor-title', labelDisplayName);
+            editor.setAttribute('test-id', `${testId}-expand-editor`);
+            editor.addEventListener('g4-input', onEditorInput);
+            expandEditor = editor;
+            editor.open({
+                focusReturnElement: textareaElement,
+                isJson: testJsonValue(),
+                isReadonly: options.isReadonly === true,
+                selectionEnd: textareaElement.selectionEnd,
+                selectionStart: textareaElement.selectionStart,
+                text: textareaElement.value,
+                tools: editorBase64ToggleElement ? [editorBase64ToggleElement] : []
+            });
+            editor.closest('g4-modal')?.addEventListener('g4-close', onEditorClose);
         };
 
         // Generate a unique identifier for the textarea to ensure uniqueness in the DOM.
@@ -3913,6 +3962,9 @@ class CustomFields {
 
         // Convert the label from PascalCase to a space-separated format for display purposes.
         const labelDisplayName = options.label;
+
+        // Every part of the field gets a test id under the label's name.
+        const testId = `${convertToTestId(options.label)}-string-field`;
 
         /**
          * Validate and sanitize the initial value.
@@ -3930,32 +3982,24 @@ class CustomFields {
         textareaElement.setAttribute('rows', '1');                        // Start with a single row; height will adjust dynamically.
         textareaElement.setAttribute('wrap', 'off');                      // Disable text wrapping to allow horizontal scrolling if needed.
         textareaElement.dataset.g4Attribute = options.label;              // Custom data attribute for identification.
+        textareaElement.dataset.testId = `${testId}-textarea`;            // Stable test id for the field's text.
         textareaElement.setAttribute('spellcheck', 'false');              // Disable spell checking.
         textareaElement.setAttribute('title', options.initialValue);      // Tooltip displaying the current value.
         textareaElement.value = options.initialValue;                     // Set the initial value of the textarea.
 
-        // Listen for double-click events to open a modal for editing the textarea content.
-        textareaElement.addEventListener("dblclick", () => {
-            // Create a modal for the textarea using a helper function.
-            const modalElement = newModal(inputId, document.body);
+        // Dress the textarea with line numbers and an Expand button that opens the large editor.
+        const textBoxElement = document.createElement('g4-text-box');
+        textBoxElement.setAttribute('test-id', testId);
+        textBoxElement.append(textareaElement);
 
-            // Disable the original textarea to prevent editing while the modal is open
-            textareaElement.disabled = true;
-
-            // Mirror the textarea content into the modal textarea
-            modalElement.querySelector("textarea").value = textareaElement.value;
-        });
+        textBoxElement.addEventListener('g4-expand', onTextBoxExpand);
 
         // Create a container for the field using a helper function, passing the unique ID, display label, and title.
         const fieldContainer = newFieldContainer(inputId, labelDisplayName, options.title);
 
         // Add the optional representation control without disturbing the textarea or its help action when disabled.
         if (isBase64Enabled) {
-            addBase64Toggle({
-                fieldContainer,
-                inputId,
-                textareaElement
-            });
+            addBase64Toggle(fieldContainer);
         }
 
         // Escape the inputId to safely use it in a CSS selector.
@@ -3964,8 +4008,8 @@ class CustomFields {
         // Select the specific sub-container within the field container where the textarea will reside.
         const controllerContainer = fieldContainer.querySelector(`#${escapedId}-controller`);
 
-        // Append the textarea element to the controller container.
-        controllerContainer.appendChild(textareaElement);
+        // Append the text box (and the textarea inside it) to the controller container.
+        controllerContainer.appendChild(textBoxElement);
 
         // If the textarea should be read-only, set the 'readonly' attribute.
         if (options.isReadonly) {

@@ -81,6 +81,15 @@ namespace G4.Services.Domain.V4.Models
 
             new()
             {
+                Name = "flows",
+                Url = "flows/docs.json",
+                Description = "API documentation for the G4 platform's flow management features.",
+                Summary = "Comprehensive API documentation for the G4 platform's flow management capabilities.",
+                Tags = ["Flows"]
+            },
+
+            new()
+            {
                 Name = "manifests",
                 Url = "manifests/docs.json",
                 Description = "API documentation for the G4 platform's manifest management features.",

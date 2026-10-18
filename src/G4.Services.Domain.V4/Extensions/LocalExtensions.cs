@@ -148,12 +148,14 @@ namespace G4.Extensions
                 var description = string.Join(' ', manifest.Summary);
 
                 // Convert all declared manifest parameters into schema entries keyed by name.
-                var pluginParameters = (manifest.Parameters ?? [])
+                // Entries without a name, or repeating a name, are skipped: they cannot be keyed, and one
+                // malformed manifest must not fail the whole tools catalog.
+                var pluginParameters = GetNamedEntries(manifest.Parameters)
                     .Select(ConvertToInputSchema)
                     .ToDictionary(i => i.Name, i => i);
 
                 // Convert all declared manifest properties into schema entries keyed by name.
-                var pluginProperties = (manifest.Properties ?? [])
+                var pluginProperties = GetNamedEntries(manifest.Properties)
                     .Select(ConvertToInputSchema)
                     .ToDictionary(i => i.Name, i => i);
 
@@ -270,6 +272,11 @@ namespace G4.Extensions
                     return (parameterModel.Name, parameterModel.Mandatory, JsonElement.Parse(json));
                 }
 
+                // Returns the entries that have a name, keeping the first of any names that repeat (ignoring case).
+                static IEnumerable<PluginParameterModel> GetNamedEntries(IEnumerable<PluginParameterModel> entries) => (entries ?? [])
+                    .Where(i => !string.IsNullOrWhiteSpace(i?.Name))
+                    .DistinctBy(i => i.Name, StringComparer.OrdinalIgnoreCase);
+
                 // Parses and normalizes the 'Type' string into valid JSON schema types
                 static string[] ConvertType(string input)
                 {
@@ -277,7 +284,8 @@ namespace G4.Extensions
                     var approvedTypes = new[] { "null", "boolean", "object", "array", "number", "integer", "string" };
 
                     // Create a set of approved types for input validation and normalization
-                    var types = input
+                    // A missing type is treated as unset, so one malformed manifest cannot fail the tools catalog.
+                    var types = (input ?? string.Empty)
                         .Split('|')
                         .Select(i => (approvedTypes.Contains(i, StringComparer.OrdinalIgnoreCase) ? i.Trim().ToLower() : "string"))
                         .Distinct()

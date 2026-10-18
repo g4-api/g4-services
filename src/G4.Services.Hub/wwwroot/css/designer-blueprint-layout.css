@@ -149,21 +149,6 @@
 	margin-top: 0.3em;
 }
 
-.sqd-modal {
-	display: block;
-	position: fixed;
-	top: 50%;
-	left: 50%;
-	transform: translate(-50%, -50%);
-	z-index: 9999;
-}
-
-	.sqd-modal textarea {
-		height: 30vh;
-		overflow: auto;
-		width: 60vw;
-	}
-
 .sqd-listbox {
 	left: 0;
 	margin-top: var(--base-space);
@@ -328,6 +313,12 @@ textarea {
 		transform: translateX(16px);
 	}
 
+/* The switch shows in a field header and in the expanded editor's header. */
+.sqd-base64-toggle__label {
+	font-size: 0.85em;
+	line-height: 1;
+}
+
 .sqd-label--with-help-icon {
 	align-items: center;
 	display: flex;
@@ -418,11 +409,6 @@ textarea {
 		.sqd-layout-desktop .sqd-smart-editor .sqd-editor .sqd-help-icon-container {
 			height: var(--smart-editor-label-help-icon-container-size);
 			width: var(--smart-editor-label-help-icon-container-size);
-		}
-
-		.sqd-layout-desktop .sqd-smart-editor .sqd-editor .sqd-base64-toggle__label {
-			font-size: 0.85em;
-			line-height: 1;
 		}
 
 .sqd-title,

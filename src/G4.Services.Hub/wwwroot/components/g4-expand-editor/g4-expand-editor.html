@@ -1,0 +1,125 @@
+<!--
+    G4 expand editor: a large text editor in a modal, with line numbers and an error line.
+    See g4-expand-editor.js.
+-->
+<template id="g4-expand-editor-template" data-dependencies="g4-modal g4-line-numbers">
+    <div class="g4-expand-editor__body" data-test-id="body">
+        <g4-line-numbers variant="editor"></g4-line-numbers>
+        <textarea class="g4-expand-editor__textarea"
+                  data-part="textarea"
+                  data-test-id="textarea"
+                  spellcheck="false"
+                  wrap="off"></textarea>
+    </div>
+    <div class="g4-expand-editor__error"
+         data-part="error"
+         data-test-id="error-message"
+         role="alert"></div>
+</template>
+
+<!-- Check & Format button for the modal header, shown in JSON mode. -->
+<template id="g4-expand-editor-format-template">
+    <button type="button"
+            class="g4-modal__tool g4-expand-editor__format"
+            title="Check &amp; Format JSON"
+            data-test-id="format-button"
+            aria-label="Check &amp; Format JSON">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path fill="currentColor" d="M392.8 65.2C375.8 60.3 358.1 70.2 353.2 87.2L225.2 535.2C220.3 552.2 230.2 569.9 247.2 574.8C264.2 579.7 281.9 569.8 286.8 552.8L414.8 104.8C419.7 87.8 409.8 70.1 392.8 65.2zM457.4 201.3C444.9 213.8 444.9 234.1 457.4 246.6L530.8 320L457.4 393.4C444.9 405.9 444.9 426.2 457.4 438.7C469.9 451.2 490.2 451.2 502.7 438.7L598.7 342.7C611.2 330.2 611.2 309.9 598.7 297.4L502.7 201.4C490.2 188.9 469.9 188.9 457.4 201.4zM182.7 201.3C170.2 188.8 149.9 188.8 137.4 201.3L41.4 297.3C28.9 309.8 28.9 330.1 41.4 342.6L137.4 438.6C149.9 451.1 170.2 451.1 182.7 438.6C195.2 426.1 195.2 405.8 182.7 393.3L109.3 320L182.6 246.6C195.1 234.1 195.1 213.8 182.6 201.3z"/></svg>
+    </button>
+</template>
+
+<!-- Markdown reference button for the modal header, shown when the editor is not in JSON mode. -->
+<template id="g4-expand-editor-markdown-template">
+    <button type="button"
+            class="g4-modal__tool g4-expand-editor__markdown"
+            title="Markdown reference"
+            data-test-id="markdown-button"
+            aria-label="Markdown reference">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path fill="currentColor" d="M593.8 123.1L46.2 123.1C20.7 123.1 0 143.8 0 169.2L0 470.7C0 496.2 20.7 516.9 46.2 516.9L593.9 516.9C619.4 516.9 640.1 496.2 640 470.8L640 169.2C640 143.8 619.3 123.1 593.8 123.1zM338.5 424.6L277 424.6L277 304.6L215.5 381.5L154 304.6L154 424.6L92.3 424.6L92.3 215.4L153.8 215.4L215.3 292.3L276.8 215.4L338.3 215.4L338.3 424.6L338.5 424.6zM473.8 427.7L381.5 320L443 320L443 215.4L504.5 215.4L504.5 320L566 320L473.8 427.7z"/></svg>
+    </button>
+</template>
+
+<!-- Static Markdown reference: what to type and how it looks, for the common elements. -->
+<template id="g4-expand-editor-reference-template">
+    <div class="g4-expand-editor__reference-note" data-test-id="reference-note">This text supports Markdown. The most common syntax:</div>
+    <table class="g4-expand-editor__reference" data-test-id="reference-table">
+        <thead>
+            <tr><th scope="col">Element</th><th scope="col">You type</th><th scope="col">It looks like</th></tr>
+        </thead>
+        <tbody>
+            <tr>
+                <th scope="row">Heading</th>
+                <td><pre class="g4-expand-editor__syntax"># Title
+## Section
+### Subsection</pre></td>
+                <td class="g4-expand-editor__result"><h3>Title</h3><h4>Section</h4><h5>Subsection</h5></td>
+            </tr>
+            <tr>
+                <th scope="row">Bold</th>
+                <td><pre class="g4-expand-editor__syntax">**bold text**</pre></td>
+                <td class="g4-expand-editor__result"><strong>bold text</strong></td>
+            </tr>
+            <tr>
+                <th scope="row">Italic</th>
+                <td><pre class="g4-expand-editor__syntax">*italic text*</pre></td>
+                <td class="g4-expand-editor__result"><em>italic text</em></td>
+            </tr>
+            <tr>
+                <th scope="row">Strikethrough</th>
+                <td><pre class="g4-expand-editor__syntax">~~removed text~~</pre></td>
+                <td class="g4-expand-editor__result"><del>removed text</del></td>
+            </tr>
+            <tr>
+                <th scope="row">Inline code</th>
+                <td><pre class="g4-expand-editor__syntax">Run `npm install` first.</pre></td>
+                <td class="g4-expand-editor__result">Run <code>npm install</code> first.</td>
+            </tr>
+            <tr>
+                <th scope="row">Code block</th>
+                <td><pre class="g4-expand-editor__syntax">```json
+{ "key": "value" }
+```</pre></td>
+                <td class="g4-expand-editor__result"><pre><code>{ "key": "value" }</code></pre></td>
+            </tr>
+            <tr>
+                <th scope="row">Link</th>
+                <td><pre class="g4-expand-editor__syntax">[G4 Hub](https://example.com)</pre></td>
+                <td class="g4-expand-editor__result"><a href="#" tabindex="-1">G4 Hub</a></td>
+            </tr>
+            <tr>
+                <th scope="row">Bulleted list</th>
+                <td><pre class="g4-expand-editor__syntax">- First item
+- Second item
+  - Nested item</pre></td>
+                <td class="g4-expand-editor__result"><ul><li>First item</li><li>Second item<ul><li>Nested item</li></ul></li></ul></td>
+            </tr>
+            <tr>
+                <th scope="row">Numbered list</th>
+                <td><pre class="g4-expand-editor__syntax">1. First step
+2. Second step</pre></td>
+                <td class="g4-expand-editor__result"><ol><li>First step</li><li>Second step</li></ol></td>
+            </tr>
+            <tr>
+                <th scope="row">Blockquote</th>
+                <td><pre class="g4-expand-editor__syntax">&gt; Note: runs on Windows only.</pre></td>
+                <td class="g4-expand-editor__result"><blockquote>Note: runs on Windows only.</blockquote></td>
+            </tr>
+            <tr>
+                <th scope="row">Table</th>
+                <td><pre class="g4-expand-editor__syntax">| Name | Type |
+| ---- | ---- |
+| Url  | String |</pre></td>
+                <td class="g4-expand-editor__result"><table><thead><tr><th>Name</th><th>Type</th></tr></thead><tbody><tr><td>Url</td><td>String</td></tr></tbody></table></td>
+            </tr>
+            <tr>
+                <th scope="row">Horizontal rule</th>
+                <td><pre class="g4-expand-editor__syntax">Above
+
+---
+
+Below</pre></td>
+                <td class="g4-expand-editor__result">Above<hr>Below</td>
+            </tr>
+        </tbody>
+    </table>
+</template>

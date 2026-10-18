@@ -78,12 +78,43 @@
 	--line-grid-path-stroke: rgba(var(--electric-blue-rgb), 0.12);
 	--line-grid-path-stroke-width: 1;
 	/* Modal */
+	--modal-backdrop-background: rgba(var(--black-rgb), 0.6);
+	--modal-background: var(--primary-color);
+	--modal-border-color: var(--electric-blue-dim);
 	--modal-button-background: var(--surface-color);
-	--modal-button-border: 1px solid var(--electric-blue-dim);
+	--modal-button-border-color: var(--electric-blue-dim);
 	--modal-button-color: var(--light-gray);
-	--modal-button-font: 400 1.0em 'Inter', sans-serif;
 	--modal-button-hover-background: var(--surface-color);
-	--modal-button-hover-border: 1px solid var(--electric-blue);
+	--modal-button-hover-border-color: var(--electric-blue);
+	--modal-close-background: var(--white);
+	--modal-close-color: var(--electric-blue-dim);
+	--modal-close-hover-color: var(--electric-blue);
+	--modal-color: var(--light-gray);
+	--modal-focus-outline-color: var(--electric-blue);
+	--modal-font-family: 'Inter', sans-serif;
+	--modal-header-background: var(--secondary-color);
+	--modal-shadow: 0 0 16px rgba(var(--electric-blue-rgb), 0.2);
+	/* Expand Editor */
+	--expand-editor-background: var(--surface-color);
+	--expand-editor-color: var(--light-gray);
+	--expand-editor-error-color: var(--red);
+	--expand-editor-font-family: Consolas, 'Courier New', monospace;
+	/* Line Numbers */
+	--line-numbers-background: var(--secondary-color);
+	--line-numbers-border-color: var(--electric-blue-dim);
+	--line-numbers-color: var(--gray);
+	--line-numbers-editor-border-color: var(--electric-blue-dim);
+	/* Markdown Reference */
+	--markdown-reference-code-background: var(--surface-color);
+	--markdown-reference-code-border-color: var(--electric-blue-dim);
+	--markdown-reference-muted-color: var(--gray);
+	--markdown-reference-rule-color: rgba(var(--electric-blue-rgb), 0.25);
+	/* Text Box */
+	--text-box-tool-background: var(--surface-color);
+	--text-box-tool-border-color: var(--electric-blue-dim);
+	--text-box-tool-color: var(--light-gray);
+	--text-box-tool-hover-background: var(--surface-color);
+	--text-box-tool-hover-border-color: var(--electric-blue);
 	/* Smart Editor */
 	--run-state-failed-fill: rgba(255, 61, 61, 0.2);
 	--run-state-failed-stroke: var(--red);

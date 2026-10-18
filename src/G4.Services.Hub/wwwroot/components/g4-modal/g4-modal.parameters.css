@@ -1,0 +1,25 @@
+/*
+ * G4 modal parameters: the values the visual layer reads, mapped to the canvas theme. Every theme
+ * file (designer-blueprint-parameters*.css) defines the Modal values below.
+ */
+:root {
+    --g4-modal-backdrop-background: var(--modal-backdrop-background);
+    --g4-modal-background: var(--modal-background);
+    --g4-modal-border-color: var(--modal-border-color);
+    --g4-modal-close-background: var(--modal-close-background);
+    --g4-modal-close-foreground: var(--modal-close-color);
+    --g4-modal-close-hover-foreground: var(--modal-close-hover-color);
+    --g4-modal-focus-outline: 1px solid var(--modal-focus-outline-color);
+    --g4-modal-focus-outline-offset: 1px;
+    --g4-modal-font-family: var(--modal-font-family);
+    --g4-modal-foreground: var(--modal-color);
+    --g4-modal-header-background: var(--modal-header-background);
+    --g4-modal-radius: var(--border-radius);
+    --g4-modal-shadow: var(--modal-shadow);
+    --g4-modal-tool-background: var(--modal-button-background);
+    --g4-modal-tool-border-color: var(--modal-button-border-color);
+    --g4-modal-tool-focus-border-color: var(--modal-focus-outline-color);
+    --g4-modal-tool-foreground: var(--modal-button-color);
+    --g4-modal-tool-hover-background: var(--modal-button-hover-background);
+    --g4-modal-tool-hover-border-color: var(--modal-button-hover-border-color);
+}

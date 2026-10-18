@@ -1,0 +1,46 @@
+/*
+ * G4 line numbers layout: a column on the left of its text box. The numbers sit in an absolutely
+ * placed layer, so they never stretch the box; the script sets the column width and row height.
+ */
+g4-line-numbers {
+    position: relative;
+    display: block;
+    flex: 0 0 auto;
+    min-width: 36px;
+    user-select: none;
+    border-width: 1px 0 1px 1px;
+    border-style: solid;
+}
+
+/* In an expanded editor the gutter fills the editor height and is separated by one line. */
+g4-line-numbers[variant="editor"] {
+    min-width: 48px;
+    border-width: 0 1px 0 0;
+}
+
+.g4-line-numbers__rows {
+    position: absolute;
+    inset: 0;
+    padding: 0 8px 24px;
+    overflow: hidden;
+    text-align: right;
+    white-space: nowrap;
+}
+
+g4-line-numbers[variant="editor"] .g4-line-numbers__rows {
+    padding: 0 10px 32px 8px;
+}
+
+/* Hidden one-row text area, used to measure how tall a text box row is. The canvas gives every
+   text area a minimum height and padding, so this rule clears them with an extra class. */
+textarea.g4-line-numbers__probe.g4-line-numbers__probe {
+    position: absolute;
+    top: 0;
+    left: -10000px;
+    visibility: hidden;
+    height: 0;
+    min-height: 0;
+    padding: 0;
+    border-style: none;
+    overflow: hidden;
+}

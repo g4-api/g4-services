@@ -1,0 +1,36 @@
+/*
+ * G4 text box visual language: the text area joins the gutter on its left edge, and the corner
+ * button shows while the box is hovered or focused.
+ */
+g4-text-box .g4-text-box__box textarea.g4-text-box__input {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+}
+
+.g4-text-box__tools {
+    opacity: 0;
+    transition: var(--g4-text-box-tools-transition);
+}
+
+.g4-text-box__box:hover .g4-text-box__tools,
+.g4-text-box__box:focus-within .g4-text-box__tools {
+    opacity: 1;
+}
+
+g4-text-box .g4-text-box__box .g4-text-box__tools button.g4-text-box__tool {
+    cursor: pointer;
+    color: var(--g4-text-box-tool-foreground);
+    background-color: var(--g4-text-box-tool-background);
+    border-color: var(--g4-text-box-tool-border-color);
+    border-radius: var(--g4-text-box-radius);
+}
+
+g4-text-box .g4-text-box__box .g4-text-box__tools button.g4-text-box__tool:hover {
+    background-color: var(--g4-text-box-tool-hover-background);
+    border-color: var(--g4-text-box-tool-hover-border-color);
+}
+
+g4-text-box .g4-text-box__box .g4-text-box__tools button.g4-text-box__tool:focus-visible {
+    outline: var(--g4-text-box-tool-focus-outline);
+    outline-offset: var(--g4-text-box-tool-focus-outline-offset);
+}

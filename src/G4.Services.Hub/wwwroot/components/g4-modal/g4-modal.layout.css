@@ -1,0 +1,127 @@
+/*
+ * G4 modal layout: a fixed backdrop that centers the dialog above the designer.
+ *
+ * Some selectors carry an extra class: the canvas styles every button with element and theme
+ * selectors (designer-blueprint-layout.css and -appearance.css), and these rules must win.
+ */
+.g4-modal__backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 120000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+}
+
+.g4-modal__dialog {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: min(1000px, 100%);
+    max-height: 100%;
+    border-width: 1px;
+    border-style: solid;
+}
+
+/* A large editor: tall, with its content filling the space under the header. */
+.g4-modal__dialog--editor {
+    height: 80vh;
+}
+
+/* A reference page: narrower, and its content scrolls. */
+.g4-modal__dialog--reference {
+    width: min(820px, 100%);
+    max-height: 85vh;
+}
+
+/* The right padding keeps header tools clear of the corner Close button. */
+.g4-modal__header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 43px;
+    padding: 8px 28px 8px 16px;
+    border-bottom-width: 1px;
+    border-bottom-style: solid;
+}
+
+.g4-modal__title {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.g4-modal__spacer {
+    flex: 1;
+}
+
+.g4-modal__tools {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.g4-modal__tools:empty {
+    display: none;
+}
+
+.g4-modal__tools .g4-modal__tool {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-width: 0;
+    min-height: 26px;
+    padding: 3px 10px;
+    font-size: 12px;
+    line-height: 18px;
+    border-width: 1px;
+    border-style: solid;
+}
+
+/* A hidden tool stays hidden although tools are flex boxes. */
+.g4-modal__tools .g4-modal__tool[hidden] {
+    display: none;
+}
+
+.g4-modal__tools .g4-modal__tool svg {
+    width: 14px;
+    height: 14px;
+    display: block;
+}
+
+.g4-modal__content {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.g4-modal__dialog--reference .g4-modal__content {
+    display: block;
+    padding: 16px;
+    overflow: auto;
+}
+
+/* Icon-only Close button centered on the dialog's top-right corner. */
+.g4-modal__dialog > .g4-modal__close {
+    position: absolute;
+    top: -15px;
+    right: -15px;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    min-width: 0;
+    height: 30px;
+    min-height: 0;
+    padding: 0;
+    border-style: none;
+}
+
+.g4-modal__dialog > .g4-modal__close svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
