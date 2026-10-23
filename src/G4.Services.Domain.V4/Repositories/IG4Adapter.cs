@@ -9,6 +9,8 @@ namespace G4.Services.Domain.V4.Repositories
     /// </summary>
     public interface IG4Adapter
     {
+        #region *** Properties   ***
+
         /// <summary>
         /// Repository for managing bot-related data and operations.
         /// Provides access to bot creation, retrieval, updates, and deletions.
@@ -32,10 +34,13 @@ namespace G4.Services.Domain.V4.Repositories
         G4Client Client { get; set; }
 
         /// <summary>
-        /// Repository for managing copilot-related data and interactions.
-        /// Allows handling copilot-related functionalities like training, interaction, and state management.
+        /// Gets or sets the repository that manages stored flows and runs them.
         /// </summary>
-        IMcpRepository Mcp { get; set; }
+        /// <remarks>
+        /// The same singleton instance serves the REST flows controller and the MCP flow tools, so both transports
+        /// observe one flows collection and report failures through the same exception contract.
+        /// </remarks>
+        IFlowsRepository Flows { get; set; }
 
         /// <summary>
         /// Client for interacting with OpenAI services.
@@ -44,9 +49,20 @@ namespace G4.Services.Domain.V4.Repositories
         IOpenAiClient OpenAi { get; set; }
 
         /// <summary>
+        /// Gets or sets the repository that owns in-memory recording sessions.
+        /// </summary>
+        /// <remarks>
+        /// The same singleton instance serves the REST recordings controller and the MCP recording tools,
+        /// so session identifiers issued by one transport resolve through the other.
+        /// </remarks>
+        IRecordingsRepository Recordings { get; set; }
+
+        /// <summary>
         /// Repository for managing tool-related operations within the G4 platform.
         /// Handles access to tools, configurations, and associated data for automation and other tasks.
         /// </summary>
         IToolsRepository Tools { get; set; }
+
+        #endregion
     }
 }

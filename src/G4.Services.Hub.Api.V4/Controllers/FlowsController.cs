@@ -1,5 +1,4 @@
-﻿using G4.Exceptions;
-using G4.Models;
+﻿using G4.Models;
 using G4.Services.Domain.V4;
 
 using Microsoft.AspNetCore.Http;
@@ -8,10 +7,8 @@ using Microsoft.AspNetCore.Mvc.ModelBinding;
 
 using Swashbuckle.AspNetCore.Annotations;
 
-using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using System.Linq;
 using System.Net.Mime;
 
 namespace G4.Services.Hub.Api.V4.Controllers
@@ -25,13 +22,9 @@ namespace G4.Services.Hub.Api.V4.Controllers
     [ApiExplorerSettings(GroupName = "G4 Hub")]
     public class FlowsController(IDomain domain) : ControllerBase
     {
-        #region *** Constants    ***
-        // The namespace the flows client assigns to flows addressed without an explicit namespace; used in error messages.
-        private const string SystemNamespace = "G4.System";
-        #endregion
-
         #region *** Fields       ***
-        // The domain service whose G4 client owns the flows persistence and the flows cache.
+        // The domain service whose flows repository owns persistence, caching, and the failure contract shared
+        // with the MCP flow tools.
         private readonly IDomain _domain = domain;
         #endregion
 
@@ -50,33 +43,11 @@ namespace G4.Services.Hub.Api.V4.Controllers
         public IActionResult AddFlow(
             [FromBody][Required][SwaggerRequestBody(description: "The manifest of the flow to be added, with the automation encoded as Base64.", Required = true)] G4FlowManifestModel manifest)
         {
-            try
-            {
-                // Persist and cache the flow; the client validates the key and the Base64 automation before any write.
-                var statusCode = _domain.G4.Client.Flows.AddFlow(manifest);
+            // Persist and cache the flow; invalid manifests and identity conflicts surface through the middleware.
+            _domain.G4.Flows.AddFlow(manifest);
 
-                // Report success once the flow is stored and the flows cache is synchronized.
-                if (statusCode == StatusCodes.Status204NoContent)
-                {
-                    return NoContent();
-                }
-
-                // Describe the rejected manifest, since the client only reports a status code for validation failures.
-                var error400 = new GenericErrorModel(HttpContext).AddError(
-                    name: "InvalidFlow",
-                    value: "The flow manifest must have a key and an automation encoded as Base64 that deserializes into a G4AutomationModel.");
-
-                // Return a 400 Bad Request response with the error details.
-                return BadRequest(error400);
-            }
-            catch (Exception e) when (e.GetBaseException() is InvalidOperationException baseException)
-            {
-                // Surface the cache identity conflict raised before persistence changed, so nothing was stored.
-                var error409 = new GenericErrorModel(HttpContext).AddError(name: "InvalidManifest", value: baseException.Message);
-
-                // Return a 409 Conflict response with the error details.
-                return Conflict(error409);
-            }
+            // Report success once the flow is stored and the flows cache is synchronized.
+            return NoContent();
         }
 
         [HttpDelete]
@@ -90,7 +61,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         public IActionResult ClearFlows()
         {
             // Remove every stored flow; the client clears the flows cache after persistence succeeds.
-            _domain.G4.Client.Flows.ClearFlows();
+            _domain.G4.Flows.ClearFlows();
 
             // Return a 204 No Content response to indicate success.
             return NoContent();
@@ -127,17 +98,8 @@ namespace G4.Services.Hub.Api.V4.Controllers
             [FromRoute][SwaggerParameter(description: "The namespace of the flow, for example G4.System.", Required = true)] string @namespace,
             [FromRoute][SwaggerParameter(description: "The key of the flow to retrieve the manifest for.", Required = true)] string key)
         {
-            // Retrieve the stored manifest of the specified flow.
-            var (statusCode, manifest) = _domain.G4.Client.Flows.GetFlow(@namespace, key);
-
-            // If the flow is found, return a 200 OK response with the manifest in JSON format.
-            if (statusCode == StatusCodes.Status200OK)
-            {
-                return Ok(manifest);
-            }
-
-            // Return a 404 Not Found response that names the normalized flow identity.
-            return NotFound(NewFlowNotFoundError(HttpContext, @namespace, key));
+            // Return the stored manifest; an unknown flow surfaces as 404 through the error middleware.
+            return Ok(_domain.G4.Flows.GetFlow(@namespace, key));
         }
 
         [HttpGet]
@@ -152,9 +114,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
             [FromQuery][SwaggerParameter(description: "The optional namespace to filter by. When omitted, flows of every namespace are returned.", Required = false)] string @namespace)
         {
             // Select every flow when no namespace is requested; otherwise, narrow to the requested namespace.
-            var manifests = string.IsNullOrEmpty(@namespace)
-                ? _domain.G4.Client.Flows.GetFlows().ToArray()
-                : _domain.G4.Client.Flows.GetFlows(@namespace).ToArray();
+            var manifests = _domain.G4.Flows.GetFlows(@namespace);
 
             // Append a custom header with the count of manifests.
             Response.Headers.Append("X-Manifest-Count", $"{manifests.Length}");
@@ -212,37 +172,8 @@ namespace G4.Services.Hub.Api.V4.Controllers
             [FromRoute][SwaggerParameter(description: "The key or alias of the flow to invoke.", Required = true)] string key,
             [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)][SwaggerRequestBody(description: "The parameter values and the caller's authentication, driver parameters, and settings.", Required = false)] G4FlowInvokeModel invokeModel)
         {
-            try
-            {
-                // Run the flow with its parameter values and the caller's overrides; a missing body runs it as stored.
-                var (statusCode, responses) = _domain.G4.Client.Flows.Invoke(@namespace, key, invokeModel ?? new G4FlowInvokeModel());
-
-                // Return the automation responses once the flow finished.
-                if (statusCode == StatusCodes.Status200OK)
-                {
-                    return Ok(responses);
-                }
-
-                // Return a 404 Not Found response that names the normalized flow identity.
-                if (statusCode == StatusCodes.Status404NotFound)
-                {
-                    return NotFound(NewFlowNotFoundError(HttpContext, @namespace, key));
-                }
-
-                // Describe the flow that could not be built, since the client only reports a status code.
-                var invalidFlowMessage = "The flow could not be decoded into an automation, or it is not valid JSON after its parameters were applied. " +
-                    "Parameter values are inserted as they are: check values that hold quotes or backslashes.";
-                var error400 = new GenericErrorModel(HttpContext).AddError(name: "InvalidFlow", value: invalidFlowMessage);
-
-                // Return a 400 Bad Request response with the error details.
-                return BadRequest(error400);
-            }
-            catch (G4DataSourceException exception)
-            {
-                // Return a 400 Bad Request response that explains why the flow's data source cannot be read.
-                var dataSourceError = new GenericErrorModel(HttpContext).AddError(name: "InvalidDataSource", value: exception.Message);
-                return BadRequest(dataSourceError);
-            }
+            // Run the flow and return its responses; unknown and invalid flows surface through the error middleware.
+            return Ok(_domain.G4.Flows.InvokeFlow(@namespace, key, invokeModel));
         }
 
         [HttpDelete]
@@ -276,17 +207,11 @@ namespace G4.Services.Hub.Api.V4.Controllers
             [FromRoute][SwaggerParameter(description: "The namespace of the flow, for example G4.System.", Required = true)] string @namespace,
             [FromRoute][SwaggerParameter(description: "The key of the flow to be removed.", Required = true)] string key)
         {
-            // Remove the flow from the collection and the flows cache.
-            var statusCode = _domain.G4.Client.Flows.RemoveFlow(@namespace, key);
+            // Remove the flow; an unknown flow surfaces as 404 through the error middleware.
+            _domain.G4.Flows.RemoveFlow(@namespace, key);
 
-            // If the flow was successfully removed, return 204 No Content.
-            if (statusCode == StatusCodes.Status204NoContent)
-            {
-                return NoContent();
-            }
-
-            // Return a 404 Not Found response that names the normalized flow identity.
-            return NotFound(NewFlowNotFoundError(HttpContext, @namespace, key));
+            // Return 204 No Content once the flow is removed from the collection and the flows cache.
+            return NoContent();
         }
 
         [HttpDelete]
@@ -303,23 +228,10 @@ namespace G4.Services.Hub.Api.V4.Controllers
             [FromRoute][SwaggerParameter(description: "The automation ID of the running flow invocation to stop.", Required = true)] string automationId)
         {
             // Stop the flow invocation with the specified automation ID.
-            var response = _domain.G4.Client.Flows.StopAutomation(automationId);
+            var response = _domain.G4.Flows.StopInvocation(automationId);
 
             // Return a 200 OK response with the stop result.
             return Ok(response);
-        }
-
-        // Creates the 404 error model for a flow identity, naming the namespace the flows client actually searched.
-        // An omitted namespace is reported as G4.System, because the client normalizes it before the lookup.
-        private static GenericErrorModel NewFlowNotFoundError(HttpContext context, string @namespace, string key)
-        {
-            // Resolve the namespace exactly as the flows client normalizes it.
-            var flowNamespace = string.IsNullOrEmpty(@namespace) ? SystemNamespace : @namespace;
-
-            // Build the error model with a message that identifies the missing flow.
-            return new GenericErrorModel(context).AddError(
-                name: "FlowNotFound",
-                value: $"The flow '{flowNamespace}.{key}' was not found. Please try re-adding the flow or reload the service.");
         }
         #endregion
     }

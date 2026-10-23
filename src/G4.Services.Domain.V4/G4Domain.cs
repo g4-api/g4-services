@@ -66,9 +66,10 @@ namespace G4.Services.Domain.V4
     /// </summary>
     internal class G4Adapter(
         IBotsRepository bots,
-        IMcpRepository mcp,
+        IFlowsRepository flows,
         G4Client g4,
         IOpenAiClient openAi,
+        IRecordingsRepository recordings,
         IToolsRepository tools) : IG4Adapter
     {
         /// <inheritdoc />
@@ -81,10 +82,13 @@ namespace G4.Services.Domain.V4
         public G4Client Client { get; set; } = g4;
 
         /// <inheritdoc />
-        public IMcpRepository Mcp { get; set; } = mcp;
+        public IFlowsRepository Flows { get; set; } = flows;
 
         /// <inheritdoc />
         public IOpenAiClient OpenAi { get; set; } = openAi;
+
+        /// <inheritdoc />
+        public IRecordingsRepository Recordings { get; set; } = recordings;
 
         /// <inheritdoc />
         public IToolsRepository Tools { get; set; } = tools;

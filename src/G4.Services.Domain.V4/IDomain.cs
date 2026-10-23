@@ -90,9 +90,6 @@ namespace G4.Services.Domain.V4
             // Register Bots repository as a singleton service
             builder.Services.AddSingleton<IBotsRepository, BotsRepository>();
 
-            // Register Copilot repository as a singleton service
-            builder.Services.AddSingleton<IMcpRepository, McpRepository>();
-
             // Register open AI client as a singleton service implementing IOpenAiClient interface
             builder.Services.AddSingleton<IOpenAiClient, OpenAiClient>();
 
@@ -104,6 +101,17 @@ namespace G4.Services.Domain.V4
 
             // Register OpenAI tools repository as a singleton service implementing IToolsRepository interface
             builder.Services.AddSingleton<IToolsRepository, ToolsRepository>();
+
+            // Register the recordings repository as a singleton so REST and MCP share one session table;
+            // host shutdown disposes it, which stops every remaining session and closes owned browsers.
+            builder.Services.AddSingleton<IRecordingsRepository, RecordingsRepository>();
+
+            // Register the flows repository over the G4 client's flows client so REST and MCP share one contract.
+            builder.Services.AddSingleton<IFlowsRepository>(implementationFactory: provider =>
+                new FlowsRepository(flows: provider.GetRequiredService<G4Client>().Flows));
+
+            // Register the SDK-hosted MCP server with the system, recording, and flow tools.
+            builder.Services.AddG4Mcp();
 
             // Register various adapters as transient services for dependency injection
             builder.Services.AddTransient<AspAdapter>();

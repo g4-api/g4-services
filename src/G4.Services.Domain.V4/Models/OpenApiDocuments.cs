@@ -117,6 +117,15 @@ namespace G4.Services.Domain.V4.Models
 
             new()
             {
+                Name = "recordings",
+                Url = "recordings/docs.json",
+                Description = "API documentation for the G4 platform's recording features.",
+                Summary = "Comprehensive API documentation for the G4 platform's recording capabilities.",
+                Tags = ["Recordings"]
+            },
+
+            new()
+            {
                 Name = "templates",
                 Url = "templates/docs.json",
                 Description = "API documentation for the G4 platform's template management features.",

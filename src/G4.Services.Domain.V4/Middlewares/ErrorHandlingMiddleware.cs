@@ -9,6 +9,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Net.Mime;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -163,11 +164,23 @@ namespace G4.Services.Domain.V4.Middlewares
             // Set the Content-Type header to indicate a JSON response with problem details
             context.Response.ContentType = MediaTypeNames.Application.ProblemJson;
 
-            // Determine the HTTP status code and error title based on the exception type
-            (int statusCode, string title) = exception.GetBaseException().GetType().Name switch
+            // Resolve the root cause once so the status mapping reads the exception that actually failed the request.
+            var rootCause = exception.GetBaseException();
+            var rootCauseName = rootCause.GetType().Name;
+
+            // Map the root cause to a caller-visible status so domain failures are distinguishable from server faults.
+            // Credential and quota failures match by name because their types live in assemblies this project
+            // does not reference; the remaining families are ordinary domain exceptions, such as recording failures.
+            (int statusCode, string title) = rootCause switch
             {
-                "InvalidCredentialException" => (StatusCodes.Status401Unauthorized, "Invalid credentials provided."),
-                "NoAvailableRunningTimeException" => (StatusCodes.Status403Forbidden, "No available running time."),
+                _ when rootCauseName == "InvalidCredentialException" =>
+                    (StatusCodes.Status401Unauthorized, "Invalid credentials provided."),
+                _ when rootCauseName == "NoAvailableRunningTimeException" =>
+                    (StatusCodes.Status403Forbidden, "No available running time."),
+                ArgumentException or JsonException => (StatusCodes.Status400BadRequest, "Invalid request."),
+                KeyNotFoundException => (StatusCodes.Status404NotFound, "Resource not found."),
+                InvalidOperationException => (StatusCodes.Status409Conflict, "The request conflicts with the current state."),
+                HttpRequestException => (StatusCodes.Status502BadGateway, "An upstream service failed."),
                 _ => (StatusCodes.Status500InternalServerError, "An unexpected error occurred.")
             };
 
