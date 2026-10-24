@@ -1,8 +1,9 @@
-using G4.Extensions;
+﻿using G4.Extensions;
 using G4.Services.Domain.V4;
 using G4.Services.Domain.V4.Extensions;
 using G4.Services.Domain.V4.Formatters;
 using G4.Services.Domain.V4.Hubs;
+using G4.Services.Domain.V4.Mcp;
 using G4.Services.Domain.V4.Middlewares;
 using G4.Services.Domain.V4.Models;
 using G4.Settings;
@@ -74,9 +75,17 @@ builder.Services.AddSwaggerGen(i =>
     // Enable annotations to allow for additional metadata in Swagger documentation.
     i.EnableAnnotations();
 
+    // Publish model descriptions from the G4 XML documentation files shipped next to the app
+    // (for example G4.Attributes.xml), so clients such as the VS Code flow publisher can show
+    // field help. Assemblies without a documentation file are simply skipped.
+    i.IncludeG4XmlComments(AppContext.BaseDirectory);
+
     // Add a custom document filter to remove any controllers that do not have any
     // actions defined, keeping the Swagger documentation clean and relevant.
     i.DocumentFilter<RemoveEmptyControllersDocumentMiddleware>();
+
+    // Document the SDK-hosted MCP endpoint, which MVC API discovery cannot see.
+    i.DocumentFilter<McpDocumentFilter>();
 });
 
 // Configure cookie policy options to manage user consent and cookie behavior.
@@ -130,9 +139,16 @@ var app = builder.Build();
 
 // Configure the application to use compression for responses
 // Configure the application to use the exception handling middleware
-// Apply compression and error handling to everything EXCEPT OpenAI proxy route:
+// Apply compression and error handling to everything EXCEPT the OpenAI proxy route and the MCP endpoint:
+// both stream their responses, and the MCP SDK writes its own JSON-RPC errors that ProblemDetails rewriting corrupts.
 app.UseWhen(
-    context => !context.Request.Path.StartsWithSegments("/api/v4/g4/openai"),
+    context =>
+    {
+        // Classify the two excluded routes separately so each exclusion stays visible.
+        var isOpenAiProxy = context.Request.Path.StartsWithSegments("/api/v4/g4/openai");
+        var isMcpEndpoint = context.Request.Path.Equals(McpServiceExtensions.McpRoute, StringComparison.OrdinalIgnoreCase);
+        return !isOpenAiProxy && !isMcpEndpoint;
+    },
     branch =>
     {
         branch.UseResponseCompression();
@@ -185,15 +201,24 @@ app.UseSwaggerUI(i =>
     // Enable the built-in filter box
     i.EnableFilter();
 
-    // Turn on �Try it out� by default
+    // Turn on "Try it out" by default
     i.EnableTryItOutByDefault();
 
     // Set header content to specify UTF-8 character encoding for the Swagger UI page
     i.HeadContent = "<meta charset='UTF-8'>";
+
+    // Swagger's default JSON-only Accept header does not express the MCP Streamable HTTP response contract.
+    var mcpInterceptor = "(request) => { if (request.url.includes('" + McpServiceExtensions.McpRoute + "')) " +
+        "{ request.headers['Accept'] = 'application/json, text/event-stream'; } return request; }";
+    i.UseRequestInterceptor(mcpInterceptor);
 });
 
 app.MapDefaultControllerRoute();
 app.MapControllers();
+
+// Map the SDK-hosted MCP Streamable HTTP endpoint that serves the recording tools and the G4 tool catalog.
+app.MapG4Mcp();
+
 app.UseStaticFiles(new StaticFileOptions
 {
     OnPrepareResponse = context =>

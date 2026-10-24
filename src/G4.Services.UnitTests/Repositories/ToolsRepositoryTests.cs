@@ -1,8 +1,9 @@
-using G4.Api;
+﻿using G4.Api;
 using G4.Attributes;
 using G4.Cache;
 using G4.Models;
 using G4.Models.Schema;
+using G4.Services.Domain.V4.Mcp;
 using G4.Services.Domain.V4.Models;
 using G4.Services.Domain.V4.Repositories;
 using G4.Settings;
@@ -16,6 +17,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Reflection;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace G4.Services.UnitTests.Repositories
 {
@@ -30,6 +32,12 @@ namespace G4.Services.UnitTests.Repositories
 
         // Supplies one unique lexical signal shared by the retrieval boundary tests.
         private const string RetrievalPhrase = "domainlexicalsentinel";
+
+        // Supplies the keyboard chord that the rule conversion tests expand into repeated G4 switches.
+        private static readonly string[] s_chord = ["Ctrl", "A"];
+
+        // Supplies the catalog type filter that selects the built-in system tools.
+        private static readonly string[] s_systemToolTypes = ["system-tool"];
 
         [TestMethod(DisplayName = "Verify that buffer response entries serialize their timestamp and rule content.")]
         public void BufferResponseModelSerializationTest()
@@ -60,7 +68,7 @@ namespace G4.Services.UnitTests.Repositories
             {
                 toolParameters = new
                 {
-                    Key = new[] { "Ctrl", "A" },
+                    Key = s_chord,
                     Sticky = string.Empty
                 },
                 toolProperties = new
@@ -84,7 +92,7 @@ namespace G4.Services.UnitTests.Repositories
             {
                 toolParameters = new
                 {
-                    Key = new[] { "Ctrl", "A" },
+                    Key = s_chord,
                     Sticky = string.Empty
                 },
                 toolProperties = new { }
@@ -137,7 +145,7 @@ namespace G4.Services.UnitTests.Repositories
         [TestMethod(DisplayName = "Verify that the FindTool system definition uses the G4.System namespace and requires only a tool name.")]
         public void FindToolSystemDefinitionContractTest()
         {
-            // Arrange: build the repository containing its embedded system tools.
+            // Arrange: build the repository containing its attribute-defined system tools.
             var (_, repository) = NewContext();
 
             // Act: resolve the FindTool definition from the authoritative tool catalog.
@@ -151,9 +159,33 @@ namespace G4.Services.UnitTests.Repositories
 
             // Assert: callers discover the namespace from the response instead of supplying one as input.
             Assert.AreEqual("G4.System", tool.Namespace);
-            CollectionAssert.AreEqual(new[] { "toolName" }, required);
+            Assert.AreSequenceEqual(expected: ["toolName"], actual: required);
             Assert.IsFalse(inputSchema.GetProperty("properties").TryGetProperty("namespace", out _));
             Assert.IsFalse(inputSchema.GetProperty("properties").TryGetProperty("intent", out _));
+        }
+
+        [TestMethod(DisplayName = "Verify that the system catalog entries are the SDK definitions " +
+            "of the MCP attribute tools.")]
+        public void SystemToolsFromAttributeDefinitionsTest()
+        {
+            // Arrange: build the repository and the definitions the MCP server registration advertises.
+            var (_, repository) = NewContext();
+            var definitions = McpToolTypes.NewDefinitions();
+            var filter = JsonSerializer.SerializeToElement(new { arguments = new { types = s_systemToolTypes } });
+
+            // Act: list the system tools exactly as the catalog type filter returns them.
+            var systemTools = repository.FindTools(parameters: filter);
+
+            // Assert: the catalog holds one G4.System entry per attribute tool, with the identical client schema.
+            Assert.HasCount(expected: definitions.Length, collection: systemTools);
+            foreach (var definition in definitions)
+            {
+                var tool = systemTools[definition.Name];
+                var expected = JsonSerializer.SerializeToNode(definition.InputSchema);
+                var actual = JsonSerializer.SerializeToNode(tool.ClientTool.InputSchema);
+                Assert.AreEqual(expected: "G4.System", actual: tool.Namespace);
+                Assert.IsTrue(condition: JsonNode.DeepEquals(node1: expected, node2: actual), message: definition.Name);
+            }
         }
 
         [TestMethod(DisplayName = "Verify that direct cache mutation requires a compatibility notification to refresh domain tools.")]
@@ -263,10 +295,10 @@ namespace G4.Services.UnitTests.Repositories
             var actual = (LexicalRetrievalManager.ScoresResultModel)repository.CallTool(parameters);
 
             // Assert: the MCP boundary preserves the requested count, ranking, and scored response shape.
-            Assert.AreEqual(10, actual.Tools.Length);
-            CollectionAssert.AreEqual(
-                expected.Tools.Select(tool => $"{tool.Name}:{tool.Score}").ToArray(),
-                actual.Tools.Select(tool => $"{tool.Name}:{tool.Score}").ToArray());
+            Assert.HasCount(expected: 10, collection: actual.Tools);
+            Assert.AreSequenceEqual(
+                expected: expected.Tools.Select(tool => $"{tool.Name}:{tool.Score}").ToArray(),
+                actual: actual.Tools.Select(tool => $"{tool.Name}:{tool.Score}").ToArray());
         }
 
         [TestMethod(DisplayName = "Verify that MCP tool discovery defaults a missing result limit to three.")]
@@ -280,7 +312,7 @@ namespace G4.Services.UnitTests.Repositories
             var actual = (LexicalRetrievalManager.ScoresResultModel)repository.CallTool(parameters);
 
             // Assert: the established default returns three scored matches.
-            Assert.AreEqual(3, actual.Tools.Length);
+            Assert.HasCount(expected: 3, collection: actual.Tools);
         }
 
         [TestMethod(DisplayName = "Verify that MCP tool discovery defaults an invalid result limit to three.")]
@@ -294,7 +326,7 @@ namespace G4.Services.UnitTests.Repositories
             var actual = (LexicalRetrievalManager.ScoresResultModel)repository.CallTool(parameters);
 
             // Assert: invalid input cannot replace the established three-result default.
-            Assert.AreEqual(3, actual.Tools.Length);
+            Assert.HasCount(expected: 3, collection: actual.Tools);
         }
 
         [TestMethod(DisplayName = "Verify that MCP tool discovery defaults non-positive result limits to three.")]
@@ -310,8 +342,8 @@ namespace G4.Services.UnitTests.Repositories
             var negativeResult = (LexicalRetrievalManager.ScoresResultModel)repository.CallTool(negativeParameters);
 
             // Assert: both invalid integer variants retain the established three-result default.
-            Assert.AreEqual(3, zeroResult.Tools.Length);
-            Assert.AreEqual(3, negativeResult.Tools.Length);
+            Assert.HasCount(expected: 3, collection: zeroResult.Tools);
+            Assert.HasCount(expected: 3, collection: negativeResult.Tools);
         }
 
         [TestMethod(DisplayName = "Verify that MCP tool discovery returns only positive matches below the requested limit.")]
@@ -325,7 +357,7 @@ namespace G4.Services.UnitTests.Repositories
             var actual = (LexicalRetrievalManager.ScoresResultModel)repository.CallTool(parameters);
 
             // Assert: retrieval returns every positive match without padding the result.
-            Assert.AreEqual(4, actual.Tools.Length);
+            Assert.HasCount(expected: 4, collection: actual.Tools);
             Assert.IsTrue(actual.Tools.All(tool => tool.Score > 0));
         }
 

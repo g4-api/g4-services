@@ -46,6 +46,7 @@
 	--designer-background: var(--primary-color);
 	--designer-header-background: var(--primary-color);
 	--designer-header-border: 2px solid var(--secondary-color);
+	--designer-header-border-color: transparent;
 	--designer-header-color: var(--secondary-color);
 	--designer-header-title-color: var(--secondary-color);
 	--designer-header-title-font: 700 2.5vmin 'Space Grotesk', 'Inter', sans-serif;
@@ -66,15 +67,53 @@
 	--control-bar-button-stop-icon-path: var(--red);
 	/* Line Grid */
 	--line-grid-path-stroke: rgba(var(--secondary-color-rgb), 0.3);
-	--line-grid-path-stroke-witdh: 1;
+	--line-grid-path-stroke-width: 1;
 	/* Modal */
+	--modal-backdrop-background: rgba(var(--black-rgb), 0.45);
+	--modal-background: var(--secondary-color);
+	--modal-border-color: var(--primary-color);
 	--modal-button-background: var(--secondary-color);
-	--modal-button-border: 1px solid var(--primary-color);
+	--modal-button-border-color: var(--primary-color);
 	--modal-button-color: var(--primary-color);
-	--modal-button-font: 400 1.0em 'Inter', sans-serif;
-	--modal-button-hover-background: var(--secondary-color);
-	--modal-button-hover-border: 1px solid var(--red);
+	--modal-button-hover-background: var(--light-gray);
+	--modal-button-hover-border-color: var(--red);
+	--modal-close-background: var(--secondary-color);
+	--modal-close-color: var(--primary-color);
+	--modal-close-hover-color: var(--primary-color-hover);
+	--modal-color: var(--primary-color);
+	--modal-focus-outline-color: var(--red);
+	--modal-font-family: 'Inter', sans-serif;
+	--modal-header-background: var(--light-gray);
+	--modal-shadow: 0 8px 24px rgba(var(--black-rgb), 0.3);
+	/* Expand Editor */
+	--expand-editor-background: var(--secondary-color);
+	--expand-editor-color: var(--primary-color);
+	--expand-editor-error-color: var(--red);
+	--expand-editor-font-family: Consolas, 'Courier New', monospace;
+	/* Line Numbers */
+	--line-numbers-background: var(--light-gray);
+	--line-numbers-border-color: var(--primary-color);
+	--line-numbers-color: var(--primary-color-hover);
+	--line-numbers-editor-border-color: var(--gray);
+	/* Markdown Reference */
+	--markdown-reference-code-background: var(--light-gray);
+	--markdown-reference-code-border-color: var(--gray);
+	--markdown-reference-muted-color: var(--primary-color-hover);
+	--markdown-reference-rule-color: var(--gray);
+	/* Text Box */
+	--text-box-tool-background: var(--secondary-color);
+	--text-box-tool-border-color: var(--primary-color);
+	--text-box-tool-color: var(--primary-color);
+	--text-box-tool-hover-background: var(--light-gray);
+	--text-box-tool-hover-border-color: var(--red);
 	/* Smart Editor */
+	--run-state-failed-fill: rgba(237, 72, 0, 0.2);
+	--run-state-failed-stroke: var(--red);
+	--run-state-passed-fill: rgba(57, 170, 64, 0.2);
+	--run-state-passed-stroke: var(--green);
+	--run-state-running-fill: rgba(30, 136, 229, 0.2);
+	--run-state-running-stroke: #1E88E5;
+	--run-state-stroke-width: 2;
 	--smart-editor-background: var(--secondary-color);
 	--smart-editor-box-shadow: 0 0 0px rgba(var(--secondary-color-rgb), 0.15);
 	--smart-editor-button-background: var(--primary-color);
@@ -92,8 +131,10 @@
 	--smart-editor-group-font: 400 1.2em/1.2em 'Inter', sans-serif;
 	--smart-editor-error-background: #FDECEA;
 	--smart-editor-error-border: 1px solid #E74C3C;
+	--smart-editor-error-color: var(--black);
 	--smart-editor-error-description-color: var(--black);
 	--smart-editor-error-description-font: var(--smart-editor-font);
+	--smart-editor-error-font: 400 1.0em 'Inter', sans-serif;
 	--smart-editor-error-title-color: #C0392B;
 	--smart-editor-error-title-font: var(--smart-editor-label-font);
 	--smart-editor-font: 400 1.0em 'Inter', sans-serif;
@@ -197,7 +238,8 @@
 	--step-task-rect-filter: drop-shadow(0 1.5px 1.5px rgba(var(--black-rgb), 0.15));
 	--step-task-rect-stroke: var(--secondary-color);
 	--step-task-rect-stroke-width: 2;
-	--step-task-selected-rect-stroke: var(--red);
+	--step-task-selected-rect-fill: rgba(30, 136, 229, 0.2);
+	--step-task-selected-rect-stroke: #1E88E5;
 	--step-task-selected-rect-stroke-width: 2;
 	--step-task-text-fill: var(--secondary-color);
 	--step-task-text-font: 400 1.0em 'Inter', sans-serif;
@@ -220,7 +262,7 @@
 	--workflow-placeholder-rect-stroke: rgba(var(--primary-color-rgb), 0.5);
 	--workflow-placeholder-rect-stroke-dasharray: 0;
 	--workflow-placeholder-rect-stroke-width: 1;
-	--workflow-region-selected-stroke: var(--red);
+	--workflow-region-selected-stroke: #1E88E5;
 	--workflow-region-selected-stroke-dasharray: 0;
 	--workflow-region-selected-stroke-width: 2;
 	--workflow-region-stroke: rgba(var(--secondary-color-rgb), 0.5);

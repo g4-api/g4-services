@@ -16,6 +16,16 @@ const G4CacheApi = {
         return r.json();
     },
 
+    /**
+     * GET /flows — the raw flows cache (namespace → key/alias → cache model).
+     * Bypasses the browser cache so a refresh always reflects flows added or removed on the server.
+     */
+    async getFlowsCache() {
+        const r = await fetch(`${API}/flows`, { cache: 'no-store' });
+        if (!r.ok) throw new Error(`HTTP ${r.status} — ${r.statusText}`);
+        return r.json();
+    },
+
     async getCredentials() {
         const r = await fetch(`${API}/credentials`);
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
@@ -77,6 +87,66 @@ function joinArr(val) {
     return val || '';
 }
 
+/**
+ * Decodes a Base64 string into UTF-8 text.
+ *
+ * @remarks
+ * atob yields one character per byte, so the bytes are re-decoded as UTF-8 to keep non-ASCII
+ * automation content intact. Throws when the input is not valid Base64.
+ *
+ * @param {string} base64Text Base64 payload, such as a flow's automation.
+ * @returns {string} Decoded UTF-8 text.
+ */
+function convertBase64ToText(base64Text) {
+    const binaryText = atob(base64Text.trim());
+    const bytes = Uint8Array.from(binaryText, (character) => character.codePointAt(0));
+
+    return new TextDecoder().decode(bytes);
+}
+
+/**
+ * Flattens the namespace-keyed flows cache into one entry per flow.
+ *
+ * @remarks
+ * Compute-only. Aliases are stored as extra keys that reference the same model on the server, but
+ * JSON serialization turns them into separate copies, so entries are de-duplicated by the canonical
+ * manifest key within each namespace bucket.
+ *
+ * @param {Record<string, Record<string, object>>|null} flowsCache Raw cache from the server.
+ * @returns {{ namespace: string, key: string, model: object }[]} Entries sorted by key, then namespace.
+ */
+function getFlowEntries(flowsCache) {
+    const entries = [];
+
+    for (const [bucketName, bucket] of Object.entries(flowsCache ?? {})) {
+        // Track canonical keys per bucket so alias copies of the same flow are skipped.
+        const seenKeys = new Set();
+
+        for (const [lookupKey, model] of Object.entries(bucket ?? {})) {
+            const manifest = model?.manifest ?? {};
+            const isCanonicalKey = typeof manifest.key === 'string' && manifest.key !== '';
+            const key = isCanonicalKey ? manifest.key : lookupKey;
+            const identity = key.toLowerCase();
+
+            if (seenKeys.has(identity)) {
+                continue;
+            }
+
+            seenKeys.add(identity);
+
+            // Prefer the namespace as authored; the bucket key is the engine's normalized form.
+            const isNamespaceAuthored = typeof manifest.namespace === 'string' && manifest.namespace !== '';
+            const namespace = isNamespaceAuthored ? manifest.namespace : bucketName;
+
+            entries.push({ namespace, key, model });
+        }
+    }
+
+    // Sort once so the single Flows box lists flows in a stable, alphabetical order.
+    return entries.sort((left, right) =>
+        left.key.localeCompare(right.key) || left.namespace.localeCompare(right.namespace));
+}
+
 // ── Page controller ────────────────────────────────────────────
 
 class CachePage {
@@ -84,6 +154,8 @@ class CachePage {
         /** @type {Record<string,Record<string,object>>|null} */
         this._cache      = null;
         this._creds      = null;
+        this._flowsCache = null;   // raw flows cache, for the Developer View
+        this._flows      = [];     // de-duplicated flow entries rendered in the Flows box
         this._lastSync   = null;
         this._selected   = null;   // { typeName, name, model }
         this._filter     = '';     // 'internal' | 'mcp' | 'external' | ''
@@ -106,10 +178,15 @@ class CachePage {
         this._setReadiness('loading');
         this._showState('Loading');
 
-        const [cacheResult, credsResult] = await Promise.allSettled([
+        const [cacheResult, credsResult, flowsResult] = await Promise.allSettled([
             G4CacheApi.getCache(),
-            G4CacheApi.getCredentials()
+            G4CacheApi.getCredentials(),
+            G4CacheApi.getFlowsCache()
         ]);
+
+        // Flows are optional: a failed flows request leaves the Flows box empty instead of blocking plugins.
+        this._flowsCache = flowsResult.status === 'fulfilled' ? flowsResult.value : null;
+        this._flows      = getFlowEntries(this._flowsCache);
 
         if (cacheResult.status === 'rejected') {
             this._setReadiness('error');
@@ -155,11 +232,15 @@ class CachePage {
                 }
             }
         }
+        // Flows are capabilities too, so they count toward the overall total; Types stays plugin types only.
+        const flows = this._flows.length;
+        total += flows;
+
         const types = this._cache ? Object.keys(this._cache).length : 0;
         const creds = !this._creds ? 0 :
             Array.isArray(this._creds) ? this._creds.length :
             (typeof this._creds === 'object' ? Object.keys(this._creds).length : 0);
-        return { total, types, mcp, ext, internal, template, creds };
+        return { total, types, mcp, ext, internal, template, flows, creds };
     }
 
     _updateChips() {
@@ -167,6 +248,7 @@ class CachePage {
         this._setText('chipTotal',    s.total);
         this._setText('chipTypes',    s.types);
         this._setText('chipTemplate', s.template);
+        this._setText('chipFlows',    s.flows);
         this._setText('chipMcp',      s.mcp);
         this._setText('chipExt',      s.ext);
         this._setText('chipCreds',    s.creds);
@@ -178,10 +260,17 @@ class CachePage {
         this._setText('cardTypes',    s.types);
         this._setText('cardInternal', s.internal);
         this._setText('cardTemplate', s.template);
+        this._setText('cardFlows',    s.flows);
         this._setText('cardMcp',      s.mcp);
         this._setText('cardExt',      s.ext);
         this._setText('cardCreds',    s.creds);
-        this._setText('cardSync',     this._lastSync ? this._lastSync.toLocaleTimeString() : '—');
+
+        // The last sync time sits under the readiness bubble; only the time is shown so it fits the
+        // bubble width, and the "Last sync" wording moves to the tooltip.
+        const lastSyncText = this._lastSync ? this._lastSync.toLocaleTimeString() : '—';
+        const lastSyncLabel = document.getElementById('lastSyncLabel');
+        lastSyncLabel.textContent = lastSyncText;
+        lastSyncLabel.title = `Last sync ${lastSyncText}`;
     }
 
     _setText(id, val) {
@@ -246,6 +335,20 @@ class CachePage {
             rendered++;
         });
 
+        // Flows form one box after the plugin types; it shows with no filter or the Flows filter only.
+        const isFlowsVisible = filter === '' || filter === 'flows';
+
+        if (isFlowsVisible) {
+            const flowMatches = this._flows
+                .map((entry, index) => ({ entry, index }))
+                .filter(({ entry }) => this._testFlowSearchMatch(entry, term));
+
+            if (flowMatches.length > 0) {
+                fragment.appendChild(this._buildFlowsSection(flowMatches, types.length));
+                rendered++;
+            }
+        }
+
         container.innerHTML = '';
         if (rendered === 0) {
             container.innerHTML = '<div class="cache-empty">No capabilities match the current filter.</div>';
@@ -285,6 +388,29 @@ class CachePage {
             </div>`;
 
         // Expand / collapse toggle
+        this._bindDomainToggle(section);
+
+        // Plugin row clicks
+        section.querySelectorAll('.cache-plugin-row').forEach(row => {
+            row.addEventListener('click', () => {
+                const model = this._cache[row.dataset.domainType]?.[row.dataset.plugin];
+                if (model) this._selectPlugin(row.dataset.domainType, row.dataset.plugin, model, row);
+            });
+            row.addEventListener('keydown', e => {
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); row.click(); }
+            });
+        });
+
+        return section;
+    }
+
+    /**
+     * Wires click and keyboard expand/collapse on one .cache-domain section.
+     * Shared by the plugin-type boxes and the Flows box, which use the same markup.
+     *
+     * @param {HTMLElement} section Section containing a header, body, and chevron.
+     */
+    _bindDomainToggle(section) {
         const header  = section.querySelector('.cache-domain__header');
         const body    = section.querySelector('.cache-domain__body');
         const chevron = section.querySelector('.cache-domain__chevron');
@@ -300,12 +426,47 @@ class CachePage {
         header.addEventListener('keydown', e => {
             if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
         });
+    }
 
-        // Plugin row clicks
+    /**
+     * Builds the single Flows box: every flow in one flat list, not split by namespace.
+     *
+     * @param {{ entry: object, index: number }[]} flowMatches Flows passing the search, with their index in this._flows.
+     * @param {number} animIdx Position, used to stagger the entrance animation after the plugin boxes.
+     * @returns {HTMLElement} Section element.
+     */
+    _buildFlowsSection(flowMatches, animIdx) {
+        const section = document.createElement('div');
+        section.className = 'cache-domain';
+        section.dataset.domainType = 'Flows';
+        section.dataset.testId = 'flows-domain-section';
+        section.style.animationDelay = `${animIdx * 0.03}s`;
+
+        const flowCountLabel = flowMatches.length === 1 ? '1 flow' : `${flowMatches.length} flows`;
+
+        section.innerHTML = `
+            <div class="cache-domain__header" role="button" tabindex="0" aria-expanded="true">
+                <svg class="cache-domain__chevron" viewBox="0 0 640 640" fill="currentColor" aria-hidden="true">
+                    <path d="M342.6 441.4C336.4 447.5 328.2 451 320 451C311.8 451 303.6 447.5 297.4 441.4L105.4 249.4C93.1 237.2 93.1 217.3 105.4 205.1C117.6 192.8 137.5 192.8 149.7 205.1L320 375.3L490.3 205.1C502.5 192.8 522.4 192.8 534.6 205.1C546.9 217.3 546.9 237.2 534.6 249.4L342.6 441.4z"/>
+                </svg>
+                <span class="cache-domain__name">Flows</span>
+                <span class="cache-domain__count">${flowMatches.length}</span>
+                <div class="cache-domain__mix"><span class="badge badge--flow">${flowCountLabel}</span></div>
+            </div>
+            <div class="cache-domain__body">
+                <div class="cache-plugin-list" role="list">
+                    ${flowMatches.map(match => this._buildFlowRow(match)).join('')}
+                </div>
+            </div>`;
+
+        // Share the plugin boxes' expand/collapse behavior.
+        this._bindDomainToggle(section);
+
+        // Rows carry their index into this._flows, so a click resolves the flow without re-deriving identity.
         section.querySelectorAll('.cache-plugin-row').forEach(row => {
             row.addEventListener('click', () => {
-                const model = this._cache[row.dataset.domainType]?.[row.dataset.plugin];
-                if (model) this._selectPlugin(row.dataset.domainType, row.dataset.plugin, model, row);
+                const entry = this._flows[Number(row.dataset.flowIndex)];
+                if (entry) this._selectFlow(entry, row);
             });
             row.addEventListener('keydown', e => {
                 if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); row.click(); }
@@ -313,6 +474,56 @@ class CachePage {
         });
 
         return section;
+    }
+
+    /**
+     * Builds one flow row: key, summary, namespace (the box is flat, so it is shown per row), Flow badge.
+     *
+     * @param {{ entry: object, index: number }} match Flow entry and its index in this._flows.
+     * @returns {string} Row HTML.
+     */
+    _buildFlowRow(match) {
+        const { entry, index } = match;
+        const summary = joinArr(entry.model.manifest?.summary).slice(0, 120);
+
+        return `
+            <div class="cache-plugin-row"
+                 title="${esc(entry.namespace)}/${esc(entry.key)}"
+                 data-flow-index="${index}"
+                 data-test-id="flow-row-${esc(entry.namespace.toLowerCase())}-${esc(entry.key.toLowerCase())}"
+                 role="listitem button"
+                 tabindex="0">
+                <span class="cache-plugin-row__name">${esc(entry.key)}</span>
+                <span class="cache-plugin-row__summary">${esc(summary)}</span>
+                <div class="cache-plugin-row__meta">
+                    <span class="cache-plugin-row__namespace">${esc(entry.namespace)}</span>
+                    <span class="badge badge--flow">Flow</span>
+                </div>
+            </div>`;
+    }
+
+    /**
+     * Tests whether a flow matches the search term (key, namespace, aliases, summary, or description).
+     *
+     * @param {object} entry Flow entry.
+     * @param {string} term Lower-cased search term; empty matches everything.
+     * @returns {boolean} True when the flow should be listed.
+     */
+    _testFlowSearchMatch(entry, term) {
+        if (!term) {
+            return true;
+        }
+
+        const manifest = entry.model.manifest || {};
+        const searchableText = [
+            entry.key,
+            entry.namespace,
+            joinArr(manifest.aliases),
+            joinArr(manifest.summary),
+            joinArr(manifest.description)
+        ].join(' ').toLowerCase();
+
+        return searchableText.includes(term);
     }
 
     _buildPluginRow(typeName, name, model) {
@@ -352,6 +563,9 @@ class CachePage {
         const inspector = document.getElementById('cacheInspector');
         inspector.classList.remove('hidden');
 
+        // Plugins have no Automation tab; it is shown only while a flow is selected.
+        inspector.classList.remove('cache-inspector--flow');
+
         // Populate header
         document.getElementById('inspectorTitle').textContent = name;
         document.getElementById('inspectorType').textContent  = typeName;
@@ -360,6 +574,39 @@ class CachePage {
             `<span class="badge badge--${src}">${sourceLabel(src)}</span>`;
 
         // Reset to overview tab
+        this._renderInspectorTab('overview');
+    }
+
+    /**
+     * Opens one flow in the shared inspector.
+     *
+     * @remarks
+     * Flow manifests expose the same summary, description, parameters, and examples fields as plugin
+     * manifests, so the plugin tab renderers are reused; the cache-inspector--flow class reveals the
+     * flow-only Automation tab.
+     *
+     * @param {{ namespace: string, key: string, model: object }} entry Flow to inspect.
+     * @param {HTMLElement} rowEl Row to highlight.
+     */
+    _selectFlow(entry, rowEl) {
+        // Move the active highlight to the chosen row.
+        document.querySelectorAll('.cache-plugin-row--active')
+            .forEach(r => r.classList.remove('cache-plugin-row--active'));
+        rowEl?.classList.add('cache-plugin-row--active');
+
+        // Record the selection; isFlow lets tab rendering and diagnostics tell flows from plugins.
+        this._selected = { typeName: entry.namespace, name: entry.key, model: entry.model, isFlow: true };
+
+        // Reveal the inspector column in flow mode and fill its header.
+        document.getElementById('cacheSplit').classList.add('cache-split--with-inspector');
+        const inspector = document.getElementById('cacheInspector');
+        inspector.classList.remove('hidden');
+        inspector.classList.add('cache-inspector--flow');
+
+        document.getElementById('inspectorTitle').textContent = entry.key;
+        document.getElementById('inspectorType').textContent  = entry.namespace;
+        document.getElementById('inspectorSource').innerHTML  = '<span class="badge badge--flow">Flow</span>';
+
         this._renderInspectorTab('overview');
     }
 
@@ -387,7 +634,16 @@ class CachePage {
             case 'parameters': body.innerHTML = this._tabParameters(model);  break;
             case 'examples':   body.innerHTML = this._tabExamples(model);    break;
             case 'raw':        body.innerHTML = this._tabRaw(model);         break;
+            case 'automation': body.innerHTML = this._tabAutomation(model);  break;
         }
+
+        // The automation copy button exists only after its tab has rendered.
+        document.getElementById('btnCopyAutomation')?.addEventListener('click', () => {
+            const text = document.getElementById('flowAutomationText')?.textContent ?? '';
+            navigator.clipboard.writeText(text)
+                .then(() => this._toast('Automation copied.', 'success'))
+                .catch(() => this._toast('Copy failed.', 'error'));
+        });
     }
 
     // ── Inspector tab content ─────────────────────────────────
@@ -516,6 +772,60 @@ class CachePage {
         return `<pre class="inspector-raw">${esc(JSON.stringify(model, null, 4))}</pre>`;
     }
 
+    /**
+     * Builds the flow Automation tab: the Base64 automation decoded and pretty-printed.
+     *
+     * @remarks
+     * Falls back to the decoded text when it is not JSON, and to the stored value with an error
+     * note when it is not valid Base64, so a malformed flow stays inspectable.
+     *
+     * @param {object} model Flow cache model.
+     * @returns {string} Tab HTML.
+     */
+    _tabAutomation(model) {
+        const automation = model.manifest?.automation;
+        const isAutomationMissing = typeof automation !== 'string' || automation.trim() === '';
+
+        if (isAutomationMissing) {
+            return '<p class="inspector-empty">This flow has no automation.</p>';
+        }
+
+        // Builds the note line, copy button, and code block shared by every outcome below.
+        const newPanel = (note, isError, text) => {
+            const noteClass = isError
+                ? 'inspector-automation__note inspector-automation__note--error'
+                : 'inspector-automation__note';
+
+            return `
+                <div class="inspector-automation__bar">
+                    <span class="${noteClass}">${esc(note)}</span>
+                    <button type="button"
+                            id="btnCopyAutomation"
+                            class="cache-btn"
+                            data-test-id="copy-flow-automation-button">Copy</button>
+                </div>
+                <pre id="flowAutomationText"
+                     class="inspector-raw"
+                     data-test-id="flow-automation-json">${esc(text)}</pre>`;
+        };
+
+        // Decode the Base64 payload; an invalid payload is shown as stored with an error note.
+        let decodedText;
+
+        try {
+            decodedText = convertBase64ToText(automation);
+        } catch {
+            return newPanel('The automation is not valid Base64; showing the stored value.', true, automation);
+        }
+
+        // Pretty-print JSON; non-JSON text is still shown so nothing is hidden.
+        try {
+            return newPanel('Decoded G4AutomationModel', false, JSON.stringify(JSON.parse(decodedText), null, 4));
+        } catch {
+            return newPanel('Decoded text is not valid JSON; showing it as-is.', true, decodedText);
+        }
+    }
+
     // ── Actions ───────────────────────────────────────────────
 
     async _handleRefresh() {
@@ -615,8 +925,9 @@ class CachePage {
 
     _showDevView() {
         const pre = document.getElementById('devViewRaw');
+        // Show both caches side by side so flows are inspectable alongside plugins.
         pre.textContent = this._cache
-            ? JSON.stringify(this._cache, null, 2)
+            ? JSON.stringify({ plugins: this._cache, flows: this._flowsCache }, null, 2)
             : 'No cache data loaded.';
         this._showDialog('dlgDevView');
     }
@@ -639,6 +950,7 @@ class CachePage {
             internalPlugins: s.internal,
             mcpPlugins:     s.mcp,
             externalPlugins: s.ext,
+            flows:          s.flows,
             credentials:    s.creds
         };
         navigator.clipboard.writeText(JSON.stringify(diag, null, 2))

@@ -1,0 +1,60 @@
+/*
+ * G4 modal visual language: backdrop, dialog surface, header, header buttons, and the round Close
+ * button.
+ */
+.g4-modal__backdrop {
+    background-color: var(--g4-modal-backdrop-background);
+}
+
+.g4-modal__dialog {
+    color: var(--g4-modal-foreground);
+    font-family: var(--g4-modal-font-family);
+    background-color: var(--g4-modal-background);
+    border-color: var(--g4-modal-border-color);
+    border-radius: var(--g4-modal-radius);
+    box-shadow: var(--g4-modal-shadow);
+}
+
+.g4-modal__header {
+    background-color: var(--g4-modal-header-background);
+    border-bottom-color: var(--g4-modal-border-color);
+    border-radius: var(--g4-modal-radius) var(--g4-modal-radius) 0 0;
+}
+
+.g4-modal__tools .g4-modal__tool {
+    cursor: pointer;
+    color: var(--g4-modal-tool-foreground);
+    font-family: var(--g4-modal-font-family);
+    background-color: var(--g4-modal-tool-background);
+    border-color: var(--g4-modal-tool-border-color);
+    border-radius: var(--g4-modal-radius);
+}
+
+.g4-modal__tools .g4-modal__tool:hover {
+    background-color: var(--g4-modal-tool-hover-background);
+    border-color: var(--g4-modal-tool-hover-border-color);
+}
+
+/* Keyboard focus recolours the button's own border instead of adding an outline around it, so a
+   focused button never shows two borders. */
+.g4-modal__tools .g4-modal__tool:focus-visible {
+    border-color: var(--g4-modal-tool-focus-border-color);
+    outline: none;
+}
+
+/* Close: a theme-colored circle; the disc behind it shows through the X. */
+.g4-modal__dialog > .g4-modal__close {
+    cursor: pointer;
+    color: var(--g4-modal-close-foreground);
+    background: radial-gradient(circle closest-side, var(--g4-modal-close-background) 0 76%, transparent 78%);
+    border-radius: 50%;
+}
+
+.g4-modal__dialog > .g4-modal__close:hover {
+    color: var(--g4-modal-close-hover-foreground);
+}
+
+.g4-modal__dialog > .g4-modal__close:focus-visible {
+    outline: var(--g4-modal-focus-outline);
+    outline-offset: var(--g4-modal-focus-outline-offset);
+}

@@ -5,7 +5,7 @@
     --a-link: var(--vscode-textLink-foreground);
     --a-visited: var(--vscode-textLink-foreground);
     --base-font: 400 1.5vmin 'Inter', sans-serif;
-    --base-font-color: var(--secondary-color);
+    --base-font-color: var(--vscode-foreground);
     --border-radius: 2px;
     --card-border: 1px solid var(--vscode-inputOption-activeBorder);
     --card-background: var(--vscode-input-background);
@@ -19,6 +19,7 @@
     --gray: var(--vscode-terminal-ansiBrightBlack);
     --green: var(--vscode-terminal-ansiGreen);
     --red: var(--vscode-terminal-ansiRed);
+    --text-tiny: 400 0.8em 'Inter', sans-serif;
     --white: #FFF;
     --yellow: var(--vscode-terminal-ansiYellow);
     /* Context Menu */
@@ -40,6 +41,7 @@
     --designer-background: var(--vscode-editor-background);
     --designer-header-background: var(--vscode-sideBar-background);
     --designer-header-border: 2px solid var(--vscode-sideBar-border);
+    --designer-header-border-color: transparent;
     --designer-header-color: var(--vscode-foreground);
     --designer-header-subtitle-color: var(--vscode-foreground);
     --designer-header-subtitle-font: 700 1.6vmin 'Inter', sans-serif;
@@ -59,19 +61,57 @@
     --control-bar-button-start-icon-path: var(--green);
     --control-bar-button-stop-icon-path: var(--red);
     /* Line Grid */
-    --line-grid-path-stroke: rgba(var(--secondary-color-rgb), 0.3);
-    --line-grid-path-stroke-witdh: 1;
+    --line-grid-path-stroke: var(--vscode-editor-background);
+    --line-grid-path-stroke-width: 1;
     /* Loading Indicator */
     --primary-color: var(--vscode-editor-background);
     --electric-blue: var(--vscode-progressBar-background);
     /* Modal */
+    --modal-backdrop-background: rgba(var(--black-rgb), 0.45);
+    --modal-background: var(--vscode-editor-background);
+    --modal-border-color: var(--vscode-panel-border);
     --modal-button-background: var(--vscode-button-background);
-    --modal-button-border: 1px solid var(--vscode-button-border);
+    --modal-button-border-color: var(--vscode-button-border, transparent);
     --modal-button-color: var(--vscode-button-foreground);
-    --modal-button-font: 400 1.0em 'Inter', sans-serif;
     --modal-button-hover-background: var(--vscode-button-hoverBackground);
-    --modal-button-hover-border: 1px solid var(--vscode-button-border);
+    --modal-button-hover-border-color: var(--vscode-button-border, transparent);
+    --modal-close-background: var(--vscode-button-foreground);
+    --modal-close-color: var(--vscode-button-background);
+    --modal-close-hover-color: var(--vscode-button-hoverBackground);
+    --modal-color: var(--vscode-foreground);
+    --modal-focus-outline-color: var(--vscode-focusBorder);
+    --modal-font-family: var(--vscode-font-family);
+    --modal-header-background: var(--vscode-sideBar-background);
+    --modal-shadow: 0 8px 24px var(--vscode-widget-shadow);
+    /* Expand Editor */
+    --expand-editor-background: var(--vscode-input-background);
+    --expand-editor-color: var(--vscode-input-foreground);
+    --expand-editor-error-color: var(--vscode-errorForeground);
+    --expand-editor-font-family: var(--vscode-editor-font-family, monospace);
+    /* Line Numbers */
+    --line-numbers-background: var(--vscode-editorGutter-background, var(--vscode-editor-background));
+    --line-numbers-border-color: var(--vscode-sideBar-background);
+    --line-numbers-color: var(--vscode-descriptionForeground);
+    --line-numbers-editor-border-color: var(--vscode-panel-border);
+    /* Markdown Reference */
+    --markdown-reference-code-background: var(--vscode-input-background);
+    --markdown-reference-code-border-color: var(--vscode-panel-border);
+    --markdown-reference-muted-color: var(--vscode-descriptionForeground);
+    --markdown-reference-rule-color: var(--vscode-panel-border);
+    /* Text Box */
+    --text-box-tool-background: var(--vscode-input-background);
+    --text-box-tool-border-color: var(--vscode-panel-border);
+    --text-box-tool-color: var(--vscode-foreground);
+    --text-box-tool-hover-background: var(--vscode-list-hoverBackground);
+    --text-box-tool-hover-border-color: var(--vscode-focusBorder);
     /* Smart Editor */
+    --run-state-failed-fill: color-mix(in srgb, var(--vscode-terminal-ansiRed) 20%, transparent);
+    --run-state-failed-stroke: var(--red);
+    --run-state-passed-fill: color-mix(in srgb, var(--vscode-terminal-ansiGreen) 20%, transparent);
+    --run-state-passed-stroke: var(--green);
+    --run-state-running-fill: color-mix(in srgb, var(--vscode-focusBorder) 20%, transparent);
+    --run-state-running-stroke: var(--vscode-focusBorder);
+    --run-state-stroke-width: 1;
     --smart-editor-background: var(--vscode-sideBar-background);
     --smart-editor-box-shadow: 0 0 0px rgba(var(--black-rgb), 0.15);
     --smart-editor-button-background: var(--vscode-button-background);
@@ -89,8 +129,10 @@
     --smart-editor-group-font: 400 1.2em/1.2em 'Inter', sans-serif;
     --smart-editor-error-background: #FDECEA;
     --smart-editor-error-border: 1px solid #E74C3C;
+    --smart-editor-error-color: var(--black);
     --smart-editor-error-description-color: var(--black);
     --smart-editor-error-description-font: var(--smart-editor-font);
+    --smart-editor-error-font: 400 1.0em 'Inter', sans-serif;
     --smart-editor-error-title-color: #C0392B;
     --smart-editor-error-title-font: var(--smart-editor-label-font);
     --smart-editor-font: 400 1.0em 'Inter', sans-serif;
@@ -143,6 +185,7 @@
     --toolbox-filter-focus-border-color: var(--vscode-inputOption-activeBorder);
     --toolbox-filter-focus-color: var(--vscode-inputOption-activeForeground);
     --toolbox-filter-hover-border-color: var(--vscode-inputOption-activeBorder);
+    --toolbox-filter-input-background: var(--vscode-input-background);
     --toolbox-filter-input-border: 1px solid var(--vscode-input-background);
     --toolbox-filter-input-border-focus: 1px solid var(--vscode-inputOption-activeBorder);
     --toolbox-filter-input-border-hover: 1px solid var(--vscode-inputOption-activeBorder);
@@ -192,7 +235,8 @@
     --step-task-rect-filter: drop-shadow(0 1.5px 1.5px rgba(var(--black-rgb), 0.15));
     --step-task-rect-stroke: var(--vscode-inputOption-activeBorder);
     --step-task-rect-stroke-width: 1;
-    --step-task-selected-rect-stroke: var(--red);
+    --step-task-selected-rect-fill: color-mix(in srgb, var(--vscode-focusBorder) 20%, transparent);
+    --step-task-selected-rect-stroke: var(--vscode-focusBorder);
     --step-task-selected-rect-stroke-width: 1;
     --step-task-text-fill: var(--vscode-input-foreground);
     --step-task-text-font: 400 1.0em 'Inter', sans-serif;
@@ -215,7 +259,7 @@
     --workflow-placeholder-rect-stroke: var(--vscode-inputOption-activeBorder);
     --workflow-placeholder-rect-stroke-dasharray: 0;
     --workflow-placeholder-rect-stroke-width: 0;
-    --workflow-region-selected-stroke: var(--red);
+    --workflow-region-selected-stroke: var(--vscode-focusBorder);
     --workflow-region-selected-stroke-dasharray: 0;
     --workflow-region-selected-stroke-width: 1;
     --workflow-region-stroke: var(--vscode-editor-foreground);
@@ -229,4 +273,14 @@
     --listbox-option-hover-color: var(--vscode-button-foreground);
     --listbox-tip-color: var(--vscode-foreground);
     --listbox-tip-font: var(--text-tiny);
+}
+
+/*
+ * Light VS Code themes paint the editor gutter white, like the text box, so the line-number column
+ * takes a blend of the text box and side bar instead. VS Code marks the webview body with the theme
+ * kind; the value is set on :root because the components read it from there.
+ */
+:root:has(> body.vscode-light),
+:root:has(> body.vscode-high-contrast-light) {
+    --line-numbers-background: color-mix(in srgb, var(--vscode-input-background) 50%, var(--vscode-sideBar-background));
 }

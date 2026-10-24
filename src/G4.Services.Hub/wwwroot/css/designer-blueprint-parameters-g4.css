@@ -55,6 +55,7 @@
 	--designer-background: var(--primary-color);
 	--designer-header-background: var(--secondary-color);
 	--designer-header-border: 2px solid var(--electric-blue-dim);
+	--designer-header-border-color: var(--electric-blue-dim);
 	--designer-header-color: var(--light-gray);
 	--designer-header-title-color: var(--electric-blue);
 	--designer-header-title-font: 700 2.5vmin 'Space Grotesk', 'Inter', sans-serif;
@@ -75,15 +76,53 @@
 	--control-bar-button-stop-icon-path: var(--red);
 	/* Line Grid */
 	--line-grid-path-stroke: rgba(var(--electric-blue-rgb), 0.12);
-	--line-grid-path-stroke-witdh: 1;
+	--line-grid-path-stroke-width: 1;
 	/* Modal */
+	--modal-backdrop-background: rgba(var(--black-rgb), 0.6);
+	--modal-background: var(--primary-color);
+	--modal-border-color: var(--electric-blue-dim);
 	--modal-button-background: var(--surface-color);
-	--modal-button-border: 1px solid var(--electric-blue-dim);
+	--modal-button-border-color: var(--electric-blue-dim);
 	--modal-button-color: var(--light-gray);
-	--modal-button-font: 400 1.0em 'Inter', sans-serif;
 	--modal-button-hover-background: var(--surface-color);
-	--modal-button-hover-border: 1px solid var(--electric-blue);
+	--modal-button-hover-border-color: var(--electric-blue);
+	--modal-close-background: var(--white);
+	--modal-close-color: var(--electric-blue-dim);
+	--modal-close-hover-color: var(--electric-blue);
+	--modal-color: var(--light-gray);
+	--modal-focus-outline-color: var(--electric-blue);
+	--modal-font-family: 'Inter', sans-serif;
+	--modal-header-background: var(--secondary-color);
+	--modal-shadow: 0 0 16px rgba(var(--electric-blue-rgb), 0.2);
+	/* Expand Editor */
+	--expand-editor-background: var(--surface-color);
+	--expand-editor-color: var(--light-gray);
+	--expand-editor-error-color: var(--red);
+	--expand-editor-font-family: Consolas, 'Courier New', monospace;
+	/* Line Numbers */
+	--line-numbers-background: var(--secondary-color);
+	--line-numbers-border-color: var(--electric-blue-dim);
+	--line-numbers-color: var(--gray);
+	--line-numbers-editor-border-color: var(--electric-blue-dim);
+	/* Markdown Reference */
+	--markdown-reference-code-background: var(--surface-color);
+	--markdown-reference-code-border-color: var(--electric-blue-dim);
+	--markdown-reference-muted-color: var(--gray);
+	--markdown-reference-rule-color: rgba(var(--electric-blue-rgb), 0.25);
+	/* Text Box */
+	--text-box-tool-background: var(--surface-color);
+	--text-box-tool-border-color: var(--electric-blue-dim);
+	--text-box-tool-color: var(--light-gray);
+	--text-box-tool-hover-background: var(--surface-color);
+	--text-box-tool-hover-border-color: var(--electric-blue);
 	/* Smart Editor */
+	--run-state-failed-fill: rgba(255, 61, 61, 0.2);
+	--run-state-failed-stroke: var(--red);
+	--run-state-passed-fill: rgba(0, 230, 118, 0.2);
+	--run-state-passed-stroke: var(--green);
+	--run-state-running-fill: rgba(0, 180, 255, 0.2);
+	--run-state-running-stroke: var(--electric-blue);
+	--run-state-stroke-width: 2;
 	--smart-editor-background: var(--secondary-color);
 	--smart-editor-box-shadow: 0 0 12px rgba(var(--electric-blue-rgb), 0.08);
 	--smart-editor-button-background: var(--surface-color);
@@ -98,8 +137,10 @@
 	--smart-editor-details-hover-color: var(--electric-blue);
 	--smart-editor-error-background: #1A0A0A;
 	--smart-editor-error-border: 1px solid var(--red);
+	--smart-editor-error-color: var(--light-gray);
 	--smart-editor-error-description-color: var(--light-gray);
 	--smart-editor-error-description-font: var(--smart-editor-font);
+	--smart-editor-error-font: 400 1.0em 'Inter', sans-serif;
 	--smart-editor-error-title-color: var(--red);
 	--smart-editor-error-title-font: var(--smart-editor-label-font);
 	--smart-editor-group-background: transparent;
@@ -206,6 +247,7 @@
 	--step-task-rect-filter: drop-shadow(0 0 4px rgba(var(--electric-blue-rgb), 0.3));
 	--step-task-rect-stroke: var(--electric-blue-dim);
 	--step-task-rect-stroke-width: 2;
+	--step-task-selected-rect-fill: rgba(0, 180, 255, 0.2);
 	--step-task-selected-rect-stroke: var(--electric-blue);
 	--step-task-selected-rect-stroke-width: 2;
 	--step-task-text-fill: var(--light-gray);

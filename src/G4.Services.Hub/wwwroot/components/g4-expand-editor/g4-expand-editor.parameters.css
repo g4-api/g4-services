@@ -1,0 +1,15 @@
+/*
+ * G4 expand editor parameters, mapped to the canvas theme. Every theme file
+ * (designer-blueprint-parameters*.css) defines the Expand Editor and Markdown Reference values below.
+ */
+:root {
+    --g4-expand-editor-background: var(--expand-editor-background);
+    --g4-expand-editor-error-foreground: var(--expand-editor-error-color);
+    --g4-expand-editor-font-family: var(--expand-editor-font-family);
+    --g4-expand-editor-foreground: var(--expand-editor-color);
+    --g4-expand-editor-reference-code-background: var(--markdown-reference-code-background);
+    --g4-expand-editor-reference-code-border-color: var(--markdown-reference-code-border-color);
+    --g4-expand-editor-reference-muted-foreground: var(--markdown-reference-muted-color);
+    --g4-expand-editor-reference-radius: var(--border-radius);
+    --g4-expand-editor-reference-rule-color: var(--markdown-reference-rule-color);
+}

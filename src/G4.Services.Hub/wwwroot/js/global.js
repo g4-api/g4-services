@@ -13,14 +13,23 @@ let _dataCollectors = {};
 let _designer;
 let _editorObserver;
 let _extractionScopes = {};
+let _lastStartedStepId = null;
 let _manifests = {};
 let _manifestsGroups = [];
+let _runStates = new Map();
 let _stateMachine = {};
 let _svgsCache = {};
 let _timer;
 
 const _auditableTypes = ["ACTION", "CONTENT", "TRANSFORMER"];
 const _flowableTypes = ["ACTION", "CONTENT", "EXPORT", "JOB", "STAGE", "TRANSFORMER"];
+
+// Maps each run state to the CSS class that colors the step's frame on the canvas.
+const _runStateClasses = {
+	failed: "g4-run--failed",
+	passed: "g4-run--passed",
+	running: "g4-run--running"
+};
 
 // Initialize SignalR connection for notifications
 const _connection = new signalR

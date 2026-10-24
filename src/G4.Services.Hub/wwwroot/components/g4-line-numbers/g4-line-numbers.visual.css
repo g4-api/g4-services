@@ -1,0 +1,14 @@
+/*
+ * G4 line numbers visual language: a muted column joined to the left edge of its text box.
+ */
+g4-line-numbers {
+    color: var(--g4-line-numbers-foreground);
+    background-color: var(--g4-line-numbers-background);
+    border-color: var(--g4-line-numbers-border-color);
+    border-radius: var(--g4-line-numbers-radius) 0 0 var(--g4-line-numbers-radius);
+}
+
+g4-line-numbers[variant="editor"] {
+    border-color: var(--g4-line-numbers-editor-border-color);
+    border-radius: 0;
+}

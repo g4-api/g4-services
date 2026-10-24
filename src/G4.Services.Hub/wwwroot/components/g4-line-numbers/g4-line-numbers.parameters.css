@@ -1,0 +1,11 @@
+/*
+ * G4 line numbers parameters, mapped to the canvas theme. Every theme file
+ * (designer-blueprint-parameters*.css) defines the Line Numbers values below.
+ */
+:root {
+    --g4-line-numbers-background: var(--line-numbers-background);
+    --g4-line-numbers-border-color: var(--line-numbers-border-color);
+    --g4-line-numbers-editor-border-color: var(--line-numbers-editor-border-color);
+    --g4-line-numbers-foreground: var(--line-numbers-color);
+    --g4-line-numbers-radius: var(--border-radius);
+}

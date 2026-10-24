@@ -1,0 +1,15 @@
+/*
+ * G4 text box parameters, mapped to the canvas theme. Every theme file
+ * (designer-blueprint-parameters*.css) defines the Text Box values below.
+ */
+:root {
+    --g4-text-box-radius: var(--border-radius);
+    --g4-text-box-tool-background: var(--text-box-tool-background);
+    --g4-text-box-tool-border-color: var(--text-box-tool-border-color);
+    --g4-text-box-tool-focus-outline: 1px solid var(--text-box-tool-hover-border-color);
+    --g4-text-box-tool-focus-outline-offset: 1px;
+    --g4-text-box-tool-foreground: var(--text-box-tool-color);
+    --g4-text-box-tool-hover-background: var(--text-box-tool-hover-background);
+    --g4-text-box-tool-hover-border-color: var(--text-box-tool-hover-border-color);
+    --g4-text-box-tools-transition: opacity .15s;
+}

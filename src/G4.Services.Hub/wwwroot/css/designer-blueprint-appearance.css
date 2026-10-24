@@ -71,7 +71,7 @@ html, body {
 .sqd-theme-light #designer--header {
 	background: var(--designer-header-background);
 	border-bottom: 1px solid transparent;
-	border-image: linear-gradient(90deg, transparent, var(--electric-blue-dim), transparent) 1;
+	border-image: linear-gradient(90deg, transparent, var(--designer-header-border-color), transparent) 1;
 }
 
 	.sqd-theme-light .sqd-header__avatar {
@@ -304,18 +304,6 @@ html, body {
 		fill: var(--control-bar-button-delete-icon-path);
 	}
 
-.sqd-theme-light .sqd-modal button {
-	background: var(--modal-button-background) !important;
-	border: var(--modal-button-border) !important;
-	color: var(--modal-button-color) !important;
-	font: var(--modal-button-font) !important;
-}
-
-	.sqd-theme-light .sqd-modal button:hover {
-		border: var(--modal-button-hover-border) !important;
-		background: var(--modal-button-hover-background) !important;
-	}
-
 .sqd-theme-light .sqd-smart-editor {
 	background: var(--smart-editor-background);
 	border-radius: 0 var(--border-radius) var(--border-radius) var(--border-radius);
@@ -396,32 +384,33 @@ html, body {
 			background: var(--smart-editor-label-help-icon-container-hover-background);
 		}
 
-	.sqd-theme-light .sqd-smart-editor .sqd-editor .sqd-base64-toggle {
+	/* The Base64 switch shows in a field header and in the expanded editor's header. */
+	.sqd-theme-light .sqd-base64-toggle {
 		cursor: pointer;
 	}
 
-	.sqd-theme-light .sqd-smart-editor .sqd-editor .sqd-base64-toggle__input {
+	.sqd-theme-light .sqd-base64-toggle__input {
 		opacity: 0;
 	}
 
-	.sqd-theme-light .sqd-smart-editor .sqd-editor .sqd-base64-toggle__switch {
+	.sqd-theme-light .sqd-base64-toggle__switch {
 		background: var(--smart-editor-base64-toggle-track-background);
 		border-radius: 9px;
 		transition: var(--smart-editor-base64-toggle-transition);
 	}
 
-		.sqd-theme-light .sqd-smart-editor .sqd-editor .sqd-base64-toggle__switch::after {
+		.sqd-theme-light .sqd-base64-toggle__switch::after {
 			background: var(--smart-editor-base64-toggle-thumb-background);
 			border-radius: 50%;
 			content: '';
 			transition: var(--smart-editor-base64-toggle-transition);
 		}
 
-		.sqd-theme-light .sqd-smart-editor .sqd-editor .sqd-base64-toggle__input:checked + .sqd-base64-toggle__switch {
+		.sqd-theme-light .sqd-base64-toggle__input:checked + .sqd-base64-toggle__switch {
 			background: var(--smart-editor-base64-toggle-active-background);
 		}
 
-		.sqd-theme-light .sqd-smart-editor .sqd-editor .sqd-base64-toggle__input:focus-visible + .sqd-base64-toggle__switch {
+		.sqd-theme-light .sqd-base64-toggle__input:focus-visible + .sqd-base64-toggle__switch {
 			outline: var(--smart-editor-base64-toggle-focus-outline);
 			outline-offset: var(--smart-editor-base64-toggle-focus-outline-offset);
 		}
@@ -537,9 +526,34 @@ html, body {
 	stroke-width: var(--step-task-rect-stroke-width);
 }
 
-	.sqd-theme-light .sqd-step-task .sqd-step-task-rect.sqd-selected {
+	/* The selector is more specific than the run-state rules, so a step that passed or failed in the
+	   last run still shows as selected when clicked. */
+	.sqd-theme-light g.sqd-step-task > rect.sqd-step-task-rect.sqd-selected {
+		fill: var(--step-task-selected-rect-fill);
 		stroke: var(--step-task-selected-rect-stroke);
 		stroke-width: var(--step-task-selected-rect-stroke-width);
+	}
+
+	/* Run-state frames: the frame width shared by the running, passed, and failed steps. */
+	.sqd-theme-light g.sqd-step-task.g4-run--running > .sqd-step-task-rect,
+	.sqd-theme-light g.sqd-step-task.g4-run--passed > .sqd-step-task-rect,
+	.sqd-theme-light g.sqd-step-task.g4-run--failed > .sqd-step-task-rect {
+		stroke-width: var(--run-state-stroke-width);
+	}
+
+	.sqd-theme-light g.sqd-step-task.g4-run--running > .sqd-step-task-rect {
+		fill: var(--run-state-running-fill);
+		stroke: var(--run-state-running-stroke);
+	}
+
+	.sqd-theme-light g.sqd-step-task.g4-run--passed > .sqd-step-task-rect {
+		fill: var(--run-state-passed-fill);
+		stroke: var(--run-state-passed-stroke);
+	}
+
+	.sqd-theme-light g.sqd-step-task.g4-run--failed > .sqd-step-task-rect {
+		fill: var(--run-state-failed-fill);
+		stroke: var(--run-state-failed-stroke);
 	}
 
 .sqd-theme-light .sqd-step-task .sqd-step-task-text {

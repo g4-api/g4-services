@@ -18,6 +18,8 @@ The **G4 Hub API** provides a comprehensive interface for managing templates, en
     - [Option 2: Run Standalone](#option-2-run-standalone)
 - [Usage](#usage)
   - [Invoking Automation Workflows](#invoking-automation-workflows)
+  - [Recording Automations](#recording-automations)
+  - [Model Context Protocol (MCP)](#model-context-protocol-mcp)
 - [API Documentation](#api-documentation)
 - [Configuration](#configuration)
 - [Contributing](#contributing)
@@ -47,6 +49,8 @@ TGTKEkAHLH9u0BExRv6FzBbfulB0Cgh+A0EWcyfMUHy/g1Vvj1zQQ0L5akafPhtHIjHS6BAqowoshCvJ
 - **Environment Operations**: Create, modify, and remove environments and their associated parameters.
 - **Automation Invocation**: Invoke and initialize automation workflows seamlessly.
 - **Integration Metadata Access**: Retrieve plugin manifests, caches, and synchronize integration data.
+- **Recording**: Record UIA and Chromium interactions into one native G4 automation flow.
+- **Model Context Protocol (MCP)**: Expose the G4 tool router, the recording tools, and flow management to MCP clients.
 
 ---
 
@@ -216,6 +220,74 @@ curl -X POST http://localhost:9944/api/v4/g4/automation/invoke \
      -H "Content-Type: application/json" \
      -d @request-body.json
 ```
+
+### Recording Automations
+
+The Hub connects to running G4 recorder services and turns their events into one native G4 automation flow.
+The usual recorder endpoints are UIA on port `9955` and Chromium on port `9956`.
+Recording sessions live in memory until the Hub stops; they are not persisted.
+
+| Route | Result |
+| --- | --- |
+| `POST /api/v4/g4/recordings` | Starts the enabled recorders and returns the session ID and recorder diagnostics. |
+| `GET /api/v4/g4/recordings/{id}` | Returns the lifecycle state and each recorder's connection, event count, suspension, and errors. After stop, `jobs` maps each job to its recorder. |
+| `POST /api/v4/g4/recordings/{id}/suspend` | Drops one recorder's events until resumed; the body is `{ "baseUrl": "..." }`. |
+| `POST /api/v4/g4/recordings/{id}/resume` | Resumes buffering for a suspended recorder; the body is `{ "baseUrl": "..." }`. |
+| `POST /api/v4/g4/recordings/{id}/stop` | Stops the session and returns the automation; a repeated stop returns the same result. |
+| `GET /api/v4/g4/recordings/{id}/flow` | Returns the completed automation without a metadata wrapper. |
+
+The start body can also carry `excludedProcessIds` and `excludedWindowTitles`.
+UIA events from those processes, or from windows whose title contains one of those fragments, are left out of the
+automation.
+A client that records from inside its own window, such as the VS Code recorder panel, uses them to skip its own
+clicks.
+
+An empty recording returns `204 No Content` from stop and flow retrieval.
+Retrieval before stop returns `409 Conflict`, and an unknown ID returns `404 Not Found`.
+Invalid settings, and suspending a recorder that is not part of the session, return `400 Bad Request`.
+Suspending or resuming a session that is not recording returns `409 Conflict`.
+When every recorder fails to start, start returns `502 Bad Gateway`; a partial start returns the session with
+per-recorder errors.
+The [recordings HTTP examples](http/G4.Services.Recordings.http) cover the complete lifecycle.
+
+### Model Context Protocol (MCP)
+
+MCP clients connect over Streamable HTTP at `http://localhost:9944/api/v4/g4/mcp`.
+The endpoint is hosted by the [official MCP C# SDK](https://github.com/modelcontextprotocol/csharp-sdk) in
+stateless mode, so no MCP session ID is required.
+Requests send `Accept: application/json, text/event-stream`.
+
+The `tools/list` method returns three tool families, all declared as typed SDK tools with generated input schemas:
+
+1. The 11 `g4.*` system tools, such as `g4.FindTools`, `g4.StartSession`, and `g4.SendRules`.
+2. The recording tools, which share session IDs with the REST recordings routes.
+3. The flow tools, which share the flows collection with the REST flows routes.
+
+Catalog (plugin) tools are not listed and are not callable by name.
+Find them with `g4.FindTools` or `g4.FindTool`, then run them with `g4.SendRule` or `g4.SendRules`.
+`g4.FindTool` returns the same input schema for a system tool that `tools/list` advertises.
+
+| Tool | Arguments | Result |
+| --- | --- | --- |
+| `g4.StartRecording` | `settings`: the complete REST start body. | Session status with the ID and recorder diagnostics. |
+| `g4.GetRecordingStatus` | `id`: the recording session ID. | Current status and event counts. |
+| `g4.StopRecording` | `id`: the recording session ID. | Native automation; repeated calls return the same result. |
+| `g4.GetAutomation` | `id`: the recording session ID. | Native automation after stop. |
+| `g4.RegisterFlow` | `key`, `automation` (native automation object), optional `namespace` and `parameters`. | The stored namespace and key. |
+| `g4.GetFlow` | `key`, optional `namespace`. | The flow manifest. |
+| `g4.GetFlows` | Optional `namespace`. | The flow count and manifests. |
+| `g4.InvokeFlow` | `key`, optional `parameters`, `argument`, `referenceId`, and overrides. | Automation responses by group ID. |
+| `g4.RemoveFlow` | `key`, optional `namespace`. | The removed namespace and key. |
+| `g4.StopFlowInvocation` | `automationId`: the run's `referenceId`. | The stop status and exit code. |
+
+Every tool result carries JSON text in `result.content[0].text`; object results also appear in
+`result.structuredContent`.
+An empty recording returns the text `null`.
+Expected failures, such as an unknown session or flow, return `result.isError` with a readable message.
+`g4.RegisterFlow` encodes the automation as Base64, so the result of `g4.GetAutomation` can be stored directly.
+Clearing every flow is available only through `DELETE /api/v4/g4/flows`.
+Call `GET /api/v4/g4/mcp/sync` to rebuild the cached tool catalog.
+The [MCP HTTP examples](http/G4.Services.Mcp.http) show each request.
 
 ---
 

@@ -16,18 +16,22 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="G4.Api" Version="2026.8.20.57" />
-		<PackageReference Include="G4.Plugins" Version="2026.8.20.78" />
-		<PackageReference Include="G4.Plugins.Common" Version="2026.8.20.144" />
-		<PackageReference Include="G4.Plugins.Ui" Version="2026.8.20.144" />
-		<PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.11" />
-		<PackageReference Include="Swashbuckle.AspNetCore.Annotations" Version="10.2.3" />
-		<PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="10.2.3" />
+		<PackageReference Include="G4.Api" Version="2026.10.18.60" />
+		<PackageReference Include="G4.Plugins" Version="2026.10.15.82" />
+		<PackageReference Include="G4.Plugins.Common" Version="2026.10.17.147" />
+		<PackageReference Include="G4.Plugins.Ui" Version="2026.10.17.147" />
+		<PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.13" />
+		<PackageReference Include="ModelContextProtocol.AspNetCore" Version="2.2.0" />
+		<PackageReference Include="Swashbuckle.AspNetCore.Annotations" Version="10.3.0" />
+		<PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="10.3.0" />
 	</ItemGroup>
 
 	<ItemGroup>
 		<EmbeddedResource Include="Resources\**\*.*" />
-		<EmbeddedResource Include="Resources.SystemTools\**\*.*" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<InternalsVisibleTo Include="G4.Services.UnitTests" />
 	</ItemGroup>
 
 	<ItemGroup>

@@ -116,6 +116,34 @@ namespace G4.Services.Hub.Api.V4.Controllers
         }
 
         [HttpGet]
+        [Route("cache/flows")]
+        [SwaggerOperation(
+            summary: "Retrieves the current flows cache.",
+            description: "Fetches the in-memory flows cache, keyed by namespace and then by flow key or alias. Aliases reference the same cache model as their canonical key. The response is not cached so flow additions and removals are visible immediately.",
+            Tags = ["Cache"])]
+        [SwaggerResponse(StatusCodes.Status200OK, description: "Successfully retrieved the flows cache.", type: typeof(IDictionary<string, ConcurrentDictionary<string, G4PluginCacheModel>>), contentTypes: MediaTypeNames.Application.Json)]
+        [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+        public IActionResult GetFlowsCache()
+        {
+            // Project every cache model so its manifest serializes by runtime type. G4PluginCacheModel.Manifest is
+            // declared as IG4PluginManifest, which would drop flow-only members such as Automation, Id, and Author.
+            var cache = _domain.Resources.Cache.FlowsCache.ToDictionary(
+                keySelector: bucket => bucket.Key,
+                elementSelector: bucket => bucket.Value.ToDictionary(
+                    keySelector: entry => entry.Key,
+                    elementSelector: entry => new
+                    {
+                        entry.Value.Document,
+                        entry.Value.ExternalRepository,
+                        Manifest = (object)entry.Value.Manifest,
+                        entry.Value.ModelContextServer
+                    }));
+
+            // Return the cache as a JSON response.
+            return Ok(cache);
+        }
+
+        [HttpGet]
         [Route("cache/credentials")]
         [SwaggerOperation(
             summary: "Get all credentials",
@@ -187,7 +215,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
                 {
                     i.Manifest,
                     i.Document,
-                    i.Manifest.Examples
+                    Examples = i.Manifest.GetExamples()
                 }
             });
 

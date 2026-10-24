@@ -5,6 +5,7 @@ using G4.Cache;
 using G4.Extensions;
 using G4.Models;
 using G4.Models.Schema;
+using G4.Services.Domain.V4.Mcp;
 using G4.Services.Domain.V4.Models;
 using G4.Services.Domain.V4.Models.Schema;
 using G4.Settings;
@@ -673,7 +674,7 @@ namespace G4.Services.Domain.V4.Repositories
                 .Select(manifest => manifest.ConvertToTool())
                 .ToList();
 
-            // Retrieve built-in system tools (e.g., start browser)
+            // Retrieve the built-in system and recording tools declared through MCP tool attributes.
             var systemTools = GetSystemTools();
 
             // Create a concurrent dictionary to hold all tools, ensuring thread-safe access.
@@ -689,111 +690,27 @@ namespace G4.Services.Domain.V4.Repositories
             // Return the populated tools collection.
             return toolsCollection;
 
-            // Reads all embedded resources from the executing assembly and returns their
-            // names together with their text content.
-            static List<(string Name, string Content)> ReadSystemToolResource()
-            {
-                // Get the assembly that contains the currently executing code.
-                var assembly = Assembly.GetExecutingAssembly();
-
-                // Read the full list of embedded resource names available in the assembly.
-                var resourceNames = assembly.GetManifestResourceNames();
-
-                // Create the result collection that will hold the resource name and content pairs.
-                var resources = new List<(string Name, string Content)>();
-
-                // Iterate through all embedded resources exposed by the assembly.
-                for (var i = 0; i < resourceNames.Length; i++)
-                {
-                    // Read the current resource name from the manifest.
-                    var name = resourceNames[i];
-
-                    // Filter the resources to include only those that are
-                    // JSON files and are part of the "Resources.SystemTools" namespace.
-                    var isJson = name.EndsWith(".json", StringComparison.OrdinalIgnoreCase);
-                    var isSystemTool = name.Contains("Resources.SystemTools", StringComparison.OrdinalIgnoreCase);
-
-                    // If the current resource does not meet the criteria, skip to the next iteration.
-                    if (!isJson || !isSystemTool)
-                    {
-                        continue;
-                    }
-
-                    // Try to open the embedded resource stream for the current resource name.
-                    using var stream = assembly.GetManifestResourceStream(name);
-
-                    // If the stream is null, it means the resource could not be found or opened.
-                    if (stream == null)
-                    {
-                        continue;
-                    }
-
-                    // Read the entire resource content as UTF-8 text.
-                    using var reader = new StreamReader(stream, Encoding.UTF8);
-                    var content = reader.ReadToEnd();
-
-                    // Add the resource name and its resolved content to the result list.
-                    resources.Add((name, content));
-                }
-
-                // Return all collected resource name and content pairs.
-                return resources;
-            }
-
-            // Reads the embedded system tool resource files, deserializes them into
-            // McpClientTool instances, wraps them in McpToolModel
+            // Wraps the SDK-generated definitions of the attribute-declared MCP tools in catalog models, so g4.FindTool
+            // and the system-tool listing return the same schemas that tools/list advertises.
             static McpToolModel[] GetSystemTools()
             {
-                // Read all embedded resources that may contain system tool definitions.
-                var resources = ReadSystemToolResource();
-
-                // Create the collection that will hold all successfully loaded system tools.
-                var systemTools = new List<McpToolModel>();
-
-                // Try to deserialize each embedded resource into a client tool and wrap it
-                // in the internal system tool model.
-                foreach (var (name, content) in resources)
-                {
-                    try
+                // Project each definition into the system-tool shape; the model type defaults to "system-tool".
+                return McpToolTypes
+                    .NewDefinitions()
+                    .Select(clientTool => new McpToolModel
                     {
-                        // Deserialize the current resource content into an MCP client tool.
-                        var clientTool = JsonSerializer
-                            .Deserialize<Tool>(content, AppSettings.JsonOptions);
-
-                        // Create the internal tool model that wraps the deserialized client tool
-                        // and exposes the normalized metadata used by the system.
-                        var systemTool = new McpToolModel
+                        ClientTool = clientTool,
+                        QualifiedName = $"system.{clientTool.Name}",
+                        Name = clientTool.Name,
+                        Namespace = "G4.System",
+                        Description = clientTool.Description,
+                        Metadata = new()
                         {
-                            ClientTool = clientTool,
-                            QualifiedName = $"system.{clientTool.Name}",
-                            Name = clientTool.Name,
-                            Namespace = "G4.System",
                             Description = clientTool.Description,
-                            Metadata = new()
-                            {
-                                Description = clientTool.Description,
-                                Name = clientTool.Name
-                            }
-                        };
-
-                        // Add the successfully created system tool to the result collection.
-                        systemTools.Add(systemTool);
-                    }
-                    catch (Exception e)
-                    {
-                        // Log the resource name that failed so the invalid file can be identified.
-                        Console.WriteLine($"Error deserializing system tool from resource '{name}'");
-
-                        // Log the root error message for easier troubleshooting.
-                        Console.WriteLine(e.GetBaseException().Message);
-
-                        // Skip the invalid resource and continue processing the remaining ones.
-                        continue;
-                    }
-                }
-
-                // Return all successfully loaded system tools as an array.
-                return [.. systemTools];
+                            Name = clientTool.Name
+                        }
+                    })
+                    .ToArray();
             }
         }
 

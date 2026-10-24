@@ -329,7 +329,7 @@ class G4Client {
 			// Iterate over each parameter within step.parameters.
 			for (const key in step.parameters) {
 				// Determine the parameter type and transform to uppercase for consistency.
-				const parameterType = step.parameters[key].type.toUpperCase();
+				const parameterType = step.parameters[key].type?.toUpperCase() || 'STRING';
 
 				// Retrieve the value.
 				const value = step.parameters[key].value;

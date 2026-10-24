@@ -1,0 +1,48 @@
+@baseUrl = http://localhost:9944
+@recordingId = REPLACE_WITH_START_RESPONSE_ID
+
+### Start the enabled recorders. The JSON example also supports schema/host/port.
+POST {{baseUrl}}/api/v4/g4/recordings
+Content-Type: application/json
+
+{
+    "authentication": {
+        "token": ""
+    },
+    "excludedProcessIds": [],
+    "excludedWindowTitles": [],
+    "recorders": [
+        {
+            "enabled": true,
+            "baseUrl": "http://localhost:9956",
+            "driverParameters": {
+                "driver": "ChromeDriver"
+            }
+        }
+    ]
+}
+
+### Inspect the session, buffered event counts, and (after stop) the job-to-recorder map.
+GET {{baseUrl}}/api/v4/g4/recordings/{{recordingId}}
+
+### Suspend one recorder; its events are dropped until resumed.
+POST {{baseUrl}}/api/v4/g4/recordings/{{recordingId}}/suspend
+Content-Type: application/json
+
+{
+    "baseUrl": "http://localhost:9956"
+}
+
+### Resume the suspended recorder.
+POST {{baseUrl}}/api/v4/g4/recordings/{{recordingId}}/resume
+Content-Type: application/json
+
+{
+    "baseUrl": "http://localhost:9956"
+}
+
+### Stop and return the native G4 automation JSON.
+POST {{baseUrl}}/api/v4/g4/recordings/{{recordingId}}/stop
+
+### Retrieve the same automation again.
+GET {{baseUrl}}/api/v4/g4/recordings/{{recordingId}}/flow

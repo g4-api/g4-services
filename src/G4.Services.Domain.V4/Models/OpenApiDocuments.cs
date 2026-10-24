@@ -81,6 +81,15 @@ namespace G4.Services.Domain.V4.Models
 
             new()
             {
+                Name = "flows",
+                Url = "flows/docs.json",
+                Description = "API documentation for the G4 platform's flow management features.",
+                Summary = "Comprehensive API documentation for the G4 platform's flow management capabilities.",
+                Tags = ["Flows"]
+            },
+
+            new()
+            {
                 Name = "manifests",
                 Url = "manifests/docs.json",
                 Description = "API documentation for the G4 platform's manifest management features.",
@@ -104,6 +113,15 @@ namespace G4.Services.Domain.V4.Models
                 Description = "API documentation for the G4 platform's OpenAI-compatible proxy features.",
                 Summary = "Comprehensive API documentation for the G4 platform's OpenAI-compatible proxy capabilities.",
                 Tags = ["OpenAi"]
+            },
+
+            new()
+            {
+                Name = "recordings",
+                Url = "recordings/docs.json",
+                Description = "API documentation for the G4 platform's recording features.",
+                Summary = "Comprehensive API documentation for the G4 platform's recording capabilities.",
+                Tags = ["Recordings"]
             },
 
             new()

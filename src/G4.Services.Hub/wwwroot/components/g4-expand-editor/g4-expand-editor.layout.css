@@ -1,0 +1,142 @@
+/*
+ * G4 expand editor layout: the gutter and the text fill the modal; gutter and text share one line
+ * height so they stay aligned.
+ *
+ * The text area rules carry the body class: the canvas styles every text area with element and
+ * theme selectors (designer-blueprint-layout.css and -appearance.css, including :hover and :focus),
+ * and these rules must win.
+ */
+g4-expand-editor {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.g4-expand-editor__body {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+}
+
+.g4-expand-editor__body textarea.g4-expand-editor__textarea,
+.g4-expand-editor__body textarea.g4-expand-editor__textarea:hover,
+.g4-expand-editor__body textarea.g4-expand-editor__textarea:focus {
+    flex: 1;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    padding: 8px 10px;
+    font-size: 13px;
+    line-height: 18px;
+    white-space: pre;
+    overflow-wrap: normal;
+    overflow: auto;
+    resize: none;
+    border-style: none;
+}
+
+.g4-expand-editor__error {
+    min-height: 14px;
+    padding: 6px 16px 8px;
+    font-size: 12px;
+}
+
+/* The error line takes space only while it shows an error. */
+.g4-expand-editor__error:empty {
+    display: none;
+}
+
+/* Markdown reference (shown in its own modal over the editor). */
+.g4-expand-editor__reference-note {
+    margin-bottom: 14px;
+    font-size: 12px;
+}
+
+.g4-expand-editor__reference {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+
+.g4-expand-editor__reference th,
+.g4-expand-editor__reference td {
+    padding: 8px 10px;
+    text-align: left;
+    vertical-align: top;
+    border-bottom-width: 1px;
+    border-bottom-style: solid;
+}
+
+.g4-expand-editor__reference thead th {
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.g4-expand-editor__reference tbody th {
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.g4-expand-editor__syntax {
+    padding: 4px 8px;
+    font-size: 12px;
+    white-space: pre;
+    border-width: 1px;
+    border-style: solid;
+}
+
+.g4-expand-editor__result h3 {
+    font-size: 16px;
+}
+
+.g4-expand-editor__result h4 {
+    font-size: 14px;
+}
+
+.g4-expand-editor__result h5 {
+    font-size: 12px;
+}
+
+.g4-expand-editor__result ul,
+.g4-expand-editor__result ol {
+    padding-left: 20px;
+}
+
+.g4-expand-editor__result blockquote {
+    padding-left: 10px;
+    border-left-width: 3px;
+    border-left-style: solid;
+}
+
+.g4-expand-editor__result pre {
+    padding: 4px 8px;
+    border-width: 1px;
+    border-style: solid;
+}
+
+.g4-expand-editor__result code {
+    padding: 0 4px;
+    font-size: 12px;
+}
+
+.g4-expand-editor__result pre code {
+    padding: 0;
+}
+
+.g4-expand-editor__result hr {
+    margin: 6px 0;
+    border-width: 1px 0 0;
+    border-style: solid;
+}
+
+.g4-expand-editor__result table {
+    border-collapse: collapse;
+}
+
+.g4-expand-editor__result table th,
+.g4-expand-editor__result table td {
+    padding: 2px 8px;
+    border-width: 1px;
+    border-style: solid;
+}

@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ApiExplorer;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.DependencyInjection;
 
 using Swashbuckle.AspNetCore.SwaggerGen;
 using Swashbuckle.AspNetCore.SwaggerUI;
@@ -19,12 +20,15 @@ using Swashbuckle.AspNetCore.SwaggerUI;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Xml.Linq;
+using System.Xml.XPath;
 
 namespace G4.Extensions
 {
@@ -419,6 +423,126 @@ namespace G4.Extensions
             {
                 // Call OpenApiManager to register the documents with the Swagger generator
                 OpenApiManager.AddDocuments(options, documents);
+            }
+
+            /// <summary>
+            /// Includes the XML documentation of every G4 assembly in a directory, resolving <c>inheritdoc</c>
+            /// on types and properties from their base types and interfaces.
+            /// </summary>
+            /// <param name="directory">The directory that holds the G4 assemblies and their XML documentation files.</param>
+            /// <remarks>
+            /// Swashbuckle reads XML comments verbatim and does not follow <c>inheritdoc</c>, so models documented
+            /// through their interfaces (for example <see cref="G4FlowManifestModel"/>) would publish no descriptions.
+            /// Only XML files next to a same-named assembly are treated as documentation; an assembly that cannot be
+            /// loaded still contributes its XML comments, just without <c>inheritdoc</c> resolution.
+            /// </remarks>
+            public void IncludeG4XmlComments(string directory)
+            {
+                // Pair each documentation file with its assembly; other G4*.xml files are not documentation.
+                var documentations = Directory
+                    .GetFiles(directory, "G4*.xml")
+                    .Select(i => (XmlPath: i, AssemblyPath: Path.ChangeExtension(i, ".dll")))
+                    .Where(i => File.Exists(i.AssemblyPath))
+                    .Select(i => (Document: XDocument.Load(i.XmlPath), i.AssemblyPath))
+                    .ToArray();
+
+                // Index every documented member across all files, so interfaces from any G4 assembly can be resolved.
+                var members = documentations
+                    .SelectMany(i => i.Document.Descendants("member"))
+                    .GroupBy(i => (string)i.Attribute("name"))
+                    .ToDictionary(i => i.Key, i => i.First());
+
+                // Resolve inheritdoc per file against its own assembly, then hand the result to Swashbuckle.
+                foreach (var (document, assemblyPath) in documentations)
+                {
+                    var assembly = LoadAssembly(assemblyPath);
+
+                    if (assembly != null)
+                    {
+                        ResolveInheritDoc(document, assembly, members);
+                    }
+
+                    options.IncludeXmlComments(() => new XPathDocument(document.CreateReader()));
+                }
+
+                // Loads an assembly by name so types resolve in the default load context; failures return null.
+                static Assembly LoadAssembly(string assemblyPath)
+                {
+                    try
+                    {
+                        return Assembly.Load(AssemblyName.GetAssemblyName(assemblyPath));
+                    }
+                    catch (Exception)
+                    {
+                        return null;
+                    }
+                }
+
+                // Replaces each summary-less inheritdoc with the summary of the first documented base type or interface.
+                static void ResolveInheritDoc(XDocument document, Assembly assembly, Dictionary<string, XElement> members)
+                {
+                    var inheritingMembers = document
+                        .Descendants("member")
+                        .Where(i => i.Element("inheritdoc") != null && i.Element("summary") == null)
+                        .ToArray();
+
+                    foreach (var member in inheritingMembers)
+                    {
+                        var summary = FindBaseSummary((string)member.Attribute("name"), assembly, members);
+
+                        if (summary != null)
+                        {
+                            member.Element("inheritdoc").ReplaceWith(new XElement(summary));
+                        }
+                    }
+                }
+
+                // Finds the inherited summary of a type (T:) or property (P:) member; other member kinds are not resolved.
+                static XElement FindBaseSummary(string memberName, Assembly assembly, Dictionary<string, XElement> members)
+                {
+                    var kind = memberName[..2];
+                    var isType = kind == "T:";
+                    var isProperty = kind == "P:";
+
+                    if (!isType && !isProperty)
+                    {
+                        return null;
+                    }
+
+                    // Split "P:Namespace.Type.Property" into the declaring type and the ".Property" suffix.
+                    var path = memberName[2..];
+                    var typeName = isType ? path : path[..path.LastIndexOf('.')];
+                    var suffix = isType ? string.Empty : path[path.LastIndexOf('.')..];
+                    var type = assembly.GetType(typeName, throwOnError: false);
+
+                    if (type == null)
+                    {
+                        return null;
+                    }
+
+                    // Search base classes first, then interfaces, mirroring how inheritdoc resolves.
+                    var baseTypes = new List<Type>();
+
+                    for (var baseType = type.BaseType; baseType != null; baseType = baseType.BaseType)
+                    {
+                        baseTypes.Add(baseType);
+                    }
+
+                    baseTypes.AddRange(type.GetInterfaces());
+
+                    foreach (var baseType in baseTypes)
+                    {
+                        var baseMemberName = $"{kind}{baseType.FullName?.Replace('+', '.')}{suffix}";
+                        var isDocumented = members.TryGetValue(baseMemberName, out var baseMember);
+
+                        if (isDocumented && baseMember.Element("summary") is XElement baseSummary)
+                        {
+                            return baseSummary;
+                        }
+                    }
+
+                    return null;
+                }
             }
         }
 
