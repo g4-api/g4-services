@@ -696,7 +696,14 @@
 					return {
 						name: group.name,
 						items: group.items.filter(s => {
-							return s.lowerCaseLabel.includes(lowerCaseFilter);
+							// G4 patch (SVC-03): also match the plugin key and its aliases, the names users see in
+							// bot JSON (for example 'WriteLog' for the 'Write Log' step); the label alone has spaces.
+							const pluginNames = [s.step.pluginName, ...(s.step.aliases || [])]
+								.filter(name => typeof name === 'string')
+								.map(name => name.toLowerCase());
+
+							return s.lowerCaseLabel.includes(lowerCaseFilter)
+								|| pluginNames.some(name => name.includes(lowerCaseFilter));
 						})
 					};
 				})
