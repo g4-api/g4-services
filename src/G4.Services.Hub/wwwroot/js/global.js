@@ -47,44 +47,8 @@ catch (err) {
 }
 
 (async () => {
-	// Create a new G4Client instance.
-	_client = new G4Client(BASE_CLIENT_PATH);
-
-	// Create a new CliFactory instance.
-	_cliFactory = new CliFactory();
-
-	// Fetch manifests and manifest groups from the G4Client.
-	_manifests = await _client.getManifests();
-
-	// Collect all manifests groups from the G4Client.
-	_manifestsGroups = await _client.getGroups();
-
-	// Store the cache in a global variable for later use.
-	_cache = await _client.getCache();
-
-	// Store the cache keys in a global variable for later use.
-	_cacheKeys = Object.keys(_cache).map(key => key.toUpperCase());
-
-	// Store extraction scopes in a global variable for later use.
-	_extractionScopes = {
-		providers: _cache["ExtractionScope"],
-		itemSource: Object.values(_cache["ExtractionScope"]).map(i => ({
-			name: i.manifest.key,
-			description: i.manifest.summary,
-		})),
-	}
-
-	// Store data collectors in a global variable for later use.
-	_dataCollectors = {
-		providers: _cache["DataCollector"],
-		itemSource: Object.values(_cache["DataCollector"]).map(i => ({
-			name: i.manifest.key,
-			description: i.manifest.summary,
-		})),
-	}
-
-	// Get the files listed in the client.
-	_svgsCache = await _client.getSvgs();
+	// Create the run timer and counters before any Hub request, so a failed or partial cache load
+	// cannot leave Start Definition without them (StateMachine.start resets all three).
 
 	/**
 	 * Wait for the timer element to be available in the DOM.
@@ -121,6 +85,65 @@ catch (err) {
 		// Create a new AverageCounter instance with the average counter element.
 		_averageCounter = new AverageCounter(averageElement);
 	});
+
+	// Create a new G4Client instance.
+	_client = new G4Client(BASE_CLIENT_PATH);
+
+	// Create a new CliFactory instance.
+	_cliFactory = new CliFactory();
+
+	// Fetch manifests and manifest groups from the G4Client.
+	_manifests = await _client.getManifests();
+
+	// Collect all manifests groups from the G4Client.
+	_manifestsGroups = await _client.getGroups();
+
+	// Store the cache in a global variable for later use.
+	_cache = await _client.getCache();
+
+	// Store the cache keys in a global variable for later use.
+	_cacheKeys = Object.keys(_cache).map(key => key.toUpperCase());
+
+	/**
+	 * Builds the provider list and picker items for one plugin type from the cache.
+	 *
+	 * A plugin type can be missing from the cache (for example when the Hub rejected every plugin of
+	 * that type), so a missing bucket becomes an empty provider list instead of stopping designer start-up.
+	 *
+	 * @param {string} pluginType - Cache bucket name, such as 'ExtractionScope' or 'DataCollector'.
+	 * @returns {{ providers: object, itemSource: Array<{ name: string, description: string[] }> }}
+	 *     The cache bucket and the picker items built from it.
+	 */
+	const newProviderSource = (pluginType) => {
+		// Fall back to an empty bucket so a missing plugin type cannot break the rest of start-up.
+		const isPluginTypeMissing = !_cache[pluginType];
+		const providers = _cache[pluginType] ?? {};
+
+		// Report the gap so a missing plugin type is visible in the console and the Studio log.
+		if (isPluginTypeMissing) {
+			const missingTypeMessage = `The Hub cache has no '${pluginType}' plugins; `
+				+ 'the matching designer pickers stay empty.';
+
+			console.warn(missingTypeMessage);
+		}
+
+		// Project each cached plugin to the name and summary shown in the designer pickers.
+		const itemSource = Object.values(providers).map(cacheModel => ({
+			name: cacheModel.manifest.key,
+			description: cacheModel.manifest.summary,
+		}));
+
+		return { providers, itemSource };
+	};
+
+	// Store extraction scopes in a global variable for later use.
+	_extractionScopes = newProviderSource("ExtractionScope");
+
+	// Store data collectors in a global variable for later use.
+	_dataCollectors = newProviderSource("DataCollector");
+
+	// Get the files listed in the client.
+	_svgsCache = await _client.getSvgs();
 
 	/**
 	 * Wait for the smart editor element to be available in the DOM.
