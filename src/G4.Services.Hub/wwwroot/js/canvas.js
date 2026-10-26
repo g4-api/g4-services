@@ -1976,7 +1976,7 @@ function stepEditorProvider(step, editorContext) {
 			container: stepEditorContainer,
 			initialValue: step.name,
 			isReadonly: false,
-			label: 'Dispaly Name',
+			label: 'Display Name',
 			title: 'The name displayed for this step. This is for visual purposes only and is not used for identification.',
 			step: step
 		},

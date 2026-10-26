@@ -279,8 +279,12 @@
  * Light VS Code themes paint the editor gutter white, like the text box, so the line-number column
  * takes a blend of the text box and side bar instead. VS Code marks the webview body with the theme
  * kind; the value is set on :root because the components read it from there.
+ *
+ * A toolbox icon that could not be inlined as SVG stays an image in its own light colour, which is
+ * invisible on a light theme; the filter draws it dark instead (inlined icons take the theme colour).
  */
 :root:has(> body.vscode-light),
 :root:has(> body.vscode-high-contrast-light) {
     --line-numbers-background: color-mix(in srgb, var(--vscode-input-background) 50%, var(--vscode-sideBar-background));
+    --toolbox-item-icon-image-filter: brightness(0) saturate(100%);
 }

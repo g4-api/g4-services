@@ -16,14 +16,14 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="G4.Api" Version="2026.10.18.60" />
-		<PackageReference Include="G4.Plugins" Version="2026.10.15.82" />
-		<PackageReference Include="G4.Plugins.Common" Version="2026.10.17.147" />
-		<PackageReference Include="G4.Plugins.Ui" Version="2026.10.17.147" />
-		<PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.13" />
-		<PackageReference Include="ModelContextProtocol.AspNetCore" Version="2.2.0" />
-		<PackageReference Include="Swashbuckle.AspNetCore.Annotations" Version="10.3.0" />
-		<PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="10.3.0" />
+		<PackageReference Include="G4.Api" Version="2026.10.26.61" />
+		<PackageReference Include="G4.Plugins" Version="2026.10.25.86" />
+		<PackageReference Include="G4.Plugins.Common" Version="2026.10.25.152" />
+		<PackageReference Include="G4.Plugins.Ui" Version="2026.10.25.152" />
+		<PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.14" />
+		<PackageReference Include="ModelContextProtocol.AspNetCore" Version="2.3.0" />
+		<PackageReference Include="Swashbuckle.AspNetCore.Annotations" Version="10.3.1" />
+		<PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="10.3.1" />
 	</ItemGroup>
 
 	<ItemGroup>
