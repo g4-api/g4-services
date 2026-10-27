@@ -169,8 +169,15 @@ async function initializeDesigner() {
 		applyRunStates();
 	});
 
-	// Listen for the "StartAutomation" message from the server
-	_connection.on("StartAutomation", (_) => {
+	// Listen for the "StartAutomation" reply from the server. A finished run answers with an empty result;
+	// a failed or stopped run answers with the Hub's error model, whose reasons are shown to the user.
+	_connection.on("StartAutomation", (response) => {
+		// A stop the user asked for also ends with an "Automation stopped" reply, which is not a failure.
+		if (_stateMachine.isStopRequested === true) {
+			return;
+		}
+
+		showAutomationErrors(response?.errors);
 	});
 
 	// Listen for the "StopAutomation" message from the server
@@ -1303,6 +1310,60 @@ async function stopDefinition() {
 
 	// Send an interrupt to the state machine to stop its execution flow
 	_stateMachine.interrupt();
+}
+
+/**
+ * Shows the reasons of a failed automation run in a dialog over the designer.
+ *
+ * The Hub reports a failed run on the "StartAutomation" reply with an error model whose errors map an
+ * area, for example "Automation", to its messages; the state machine uses the same shape for a run that
+ * never reached the Hub. A reply without messages (a finished run) shows nothing. Only one dialog is open
+ * at a time, so a burst of failures does not stack dialogs; closing it returns focus to the control that
+ * was active when it opened.
+ *
+ * @function showAutomationErrors
+ * @param {Object<string, string[]>} [errors] - The error messages keyed by area, as the Hub sends them.
+ */
+function showAutomationErrors(errors) {
+	// Collect the non-empty messages of every area, so the dialog lists every reason the Hub gave.
+	const messages = Object
+		.values(errors ?? {})
+		.flat()
+		.filter((message) => typeof message === 'string' && message.trim() !== '');
+
+	// A reply without messages is a finished run, so there is nothing to report.
+	if (messages.length === 0) {
+		return;
+	}
+
+	// Keep the reasons in the console as well, next to the designer's other run logs.
+	console.error('Automation failed:', messages.join(' '));
+
+	// Keep the dialog that is already open, so repeated failures do not stack dialogs.
+	const modalTestId = 'automation-error';
+	const isDialogOpen = document.querySelector(`g4-modal[test-id="${modalTestId}"]`) !== null;
+
+	if (isDialogOpen) {
+		return;
+	}
+
+	// List each reason as its own item, so long engine messages stay readable.
+	const listElement = document.createElement('ul');
+	listElement.dataset.testId = 'automation-error-message-list';
+
+	for (const message of messages) {
+		const itemElement = document.createElement('li');
+		itemElement.dataset.testId = 'automation-error-message';
+		itemElement.textContent = message;
+		listElement.append(itemElement);
+	}
+
+	// Open the dialog over the designer and give focus back to the active control when it closes.
+	const modalElement = document.createElement('g4-modal');
+	modalElement.setAttribute('modal-title', 'Automation Error');
+	modalElement.setAttribute('test-id', modalTestId);
+	modalElement.append(listElement);
+	modalElement.show(document.activeElement);
 }
 
 /**

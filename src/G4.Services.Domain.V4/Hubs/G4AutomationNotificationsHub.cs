@@ -89,8 +89,9 @@ namespace G4.Services.Domain.V4.Hubs
                 // If stopped event completed first → canceled scenario
                 if (completedTask == taskCompletionSource.Task)
                 {
-                    // Send cancellation response back to client and exit
-                    await Clients.Caller.SendAsync("StartAutomation", new GenericErrorModel()
+                    // Send cancellation response back to client and exit. The SignalR error model keeps the frame
+                    // valid JSON, which the ProblemDetails-based HTTP error model does not on this protocol.
+                    await Clients.Caller.SendAsync("StartAutomation", new AutomationErrorModel()
                     {
                         Errors = new Dictionary<string, string[]>
                         {
@@ -111,8 +112,9 @@ namespace G4.Services.Domain.V4.Hubs
             }
             catch (Exception ex)
             {
-                // Send the error response back to the calling client via the "StartAutomation" method.
-                await Clients.Caller.SendAsync("StartAutomation", new GenericErrorModel()
+                // Send the error response back to the calling client via the "StartAutomation" method, as the SignalR
+                // error model so the client can parse the frame and show the reason.
+                await Clients.Caller.SendAsync("StartAutomation", new AutomationErrorModel()
                 {
                     Errors = new Dictionary<string, string[]>
                     {

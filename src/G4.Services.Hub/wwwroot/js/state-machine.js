@@ -17,6 +17,17 @@ class StateMachine {
 	isRunning = false;
 
 	/**
+	 * Indicates whether the user asked to stop this run.
+	 *
+	 * Stays set until the run ends, unlike isInterrupted, because the Hub answers a stop with an
+	 * "Automation stopped" error reply after interrupt() has already returned; the designer reads this flag
+	 * so a requested stop is not shown as a failure. Every run creates a new state machine, so the flag
+	 * never leaks into the next run.
+	 * @type {boolean}
+	 */
+	isStopRequested = false;
+
+	/**
 	 * Creates an instance of StateMachine.
 	 *
 	 * @param {Object} definition - The definition of the automation sequence.
@@ -71,6 +82,21 @@ class StateMachine {
 		} catch (error) {
 			// Handle any errors that occur during the start process
 			console.error("Failed to start the automation process:", error);
+
+			// Narrow the thrown value to text, so an unexpected object never reaches the dialog as "[object Object]".
+			let reason = 'Unknown error';
+
+			if (error instanceof Error) {
+				reason = error.message;
+			} else if (typeof error === 'string') {
+				reason = error;
+			}
+
+			// Show the failure in the designer too, so a run that never reached the Hub (for example a lost
+			// connection) does not just return to idle without a word.
+			showAutomationErrors({ Automation: [`Failed to start the automation process: ${reason}`] });
+
+			// Rethrow, so the caller keeps seeing the failed start as before.
 			throw error;
 		} finally {
 			// Indicate that the automation is no longer running
@@ -94,6 +120,10 @@ class StateMachine {
 		try {
 			// Set the interruption flag
 			this.isInterrupted = true;
+
+			// Remember the stop request for the rest of this run, so the Hub's "Automation stopped" reply is not
+			// reported as a failure
+			this.isStopRequested = true;
 
 			// Retrieve the automation definition from the current instance
 			const definition = this.definition;
