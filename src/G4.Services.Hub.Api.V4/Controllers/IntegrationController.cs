@@ -269,8 +269,10 @@ namespace G4.Services.Hub.Api.V4.Controllers
             description: "Triggers plugin cache synchronization using the provided external repositories and Model Context Protocol (MCP) servers. This operation refreshes the cache so it reflects the latest plugin metadata available from the supplied sources.",
             Tags = ["Cache"])]
         [SwaggerResponse(
-            StatusCodes.Status204NoContent,
-            description: "Successfully synchronized the plugin cache from the provided external repositories and MCP servers. No content is returned.")]
+            StatusCodes.Status200OK,
+            description: "The plugin cache was synchronized. The body reports the outcome of every MCP server: whether it was synchronized, how many plugins it added, why it failed, and which plugins the engine rejected.",
+            type: typeof(CacheSyncResultModel),
+            contentTypes: MediaTypeNames.Application.Json)]
         public IActionResult SyncCache(
             [SwaggerParameter(
                 description: "The cache synchronization payload containing external repositories and MCP servers.",
@@ -280,11 +282,13 @@ namespace G4.Services.Hub.Api.V4.Controllers
             // Synchronize the plugin cache using the provided external repositories.
             _domain.G4.Client.Integration.SyncCache(_domain.Resources.Cache, syncModel.Repositories);
 
-            // Synchronize the plugin cache using the provided MCP server definitions.
-            _domain.G4.Client.Integration.SyncCache(_domain.Resources.Cache, syncModel.Servers);
+            // Synchronize the plugin cache using the provided MCP server definitions, keeping the per-server outcome
+            // so an unreachable server or a rejected plugin reaches the caller instead of only the Hub log.
+            var serverResults = _domain.G4.Client.Integration.SyncCache(_domain.Resources.Cache, syncModel.Servers);
 
-            // Return 204 No Content to indicate the synchronization completed successfully.
-            return NoContent();
+            // Return the per-server outcome; a server that failed does not fail the request, since the cache keeps
+            // its previous plugins and every other source was synchronized.
+            return Ok(new CacheSyncResultModel { Servers = serverResults });
         }
 
         [HttpGet]
