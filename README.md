@@ -99,7 +99,7 @@ LvIXc25t5HW4P9D8EOzxdHFtck3stiOriCPaKe4bdjKrXzAc9OUHaH3hlGXiCIVPW5gUT0cd64TnSw74
 
 1. **Install .NET SDK**
 
-   - Download and install the [.NET 8.0 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) suitable for your operating system (Windows, Linux, or macOS).
+   - Download and install the [.NET 10.0 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) suitable for your operating system (Windows, Linux, or macOS).
 
 2. **Download the Latest Release**
 
