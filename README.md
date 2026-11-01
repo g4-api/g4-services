@@ -142,11 +142,11 @@ POST /api/v4/g4/automation/invoke
         "token": "CTJEvbiw0QlqBN5GeXI9bOedyPcxUvBlKFFo3pg1VIxyF30Lt/QN1O8P4wxcj7AEhLexYhzo1H+Z9N17gg1IOaV1LwQ7bNyFnlpI6GmY7jwYV0Jc0at2pcIuU9VOIwJs5eVWktfgsSxSIP4/p1cqGec19ngefShnWnorMdewDn62USCYsxFOxl7b/reTEzqSxWHL8iaFOFJhOkviiarnFhMfD0jAVreMyiIlyOL7nar1fAQl1zCR+NQpfGecT7L6Y5WJMB0yg+oXE7xyZvYn54Acr0p03l8wwhSvK+5mw9H3anbrwvwbEDFpu/aRbMfQ6gYrkOf4SHvZhAl1igDtNFXKtvie0NQNtWiPQ0OTnJ0="
     },
     "driverParameters": {
-        "driver": "MicrosoftEdgeDriver",
+        "driver": "ChromeDriver",
         "driverBinaries": "{{DriverBinaries}}",
         "capabilities": {
             "alwaysMatch": {
-                "browserName": "MicrosoftEdge"
+                "browserName": "chrome"
             },
             "firstMatch": [
                 {}
@@ -194,7 +194,7 @@ POST /api/v4/g4/automation/invoke
 
 - **authentication**: Contains credentials for API access. Replace `{{ApiUser}}` with your API username/key/credentials.
 - **driverParameters**: Configures the web driver for the automation session.
-  - **driver**: Specifies the driver to use (e.g., `MicrosoftEdgeDriver`).
+  - **driver**: Specifies the driver to use (e.g., `ChromeDriver`).
   - **driverBinaries**: Can be a physical location of the WebDriver binaries or a Selenium Grid endpoint. Replace `{{DriverBinaries}}` with the appropriate file path or grid URL.
   - **capabilities**: Defines the desired capabilities for the driver session.
 - **stages**: Defines the stages of the automation process.
