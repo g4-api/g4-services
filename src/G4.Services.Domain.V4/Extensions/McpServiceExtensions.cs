@@ -15,10 +15,10 @@ namespace G4.Services.Domain.V4.Extensions
     /// <remarks>
     /// The server exposes only the attribute-declared tool types listed by <see cref="McpToolTypes"/>. G4 catalog
     /// (plugin) tools have no MCP entry of their own: clients reach them only through the router tools, discovering
-    /// them with g4.FindTools or g4.FindTool and running them with g4.SendRule or g4.SendRules, so a tools/call for
-    /// any other name receives the SDK's unknown-tool error. The transport is stateless Streamable HTTP, so every
-    /// POST is self-contained, no MCP session identifier is issued, and server-initiated notifications such as
-    /// tools/list_changed are unavailable; clients re-list tools to observe catalog changes.
+    /// them with g4.ResolveTools, g4.FindTools, or g4.FindTool and running them with g4.SendRule or g4.SendRules,
+    /// so a tools/call for any other name receives the SDK's unknown-tool error. The transport is stateless Streamable
+    /// HTTP, so every POST is self-contained, no MCP session identifier is issued, and server-initiated notifications
+    /// such as tools/list_changed are unavailable; clients re-list tools to observe catalog changes.
     /// </remarks>
     public static class McpServiceExtensions
     {

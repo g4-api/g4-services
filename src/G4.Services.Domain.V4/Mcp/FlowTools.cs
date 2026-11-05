@@ -23,24 +23,14 @@ namespace G4.Services.Domain.V4.Mcp
     /// Flows are stored automations addressed by namespace and key; an omitted namespace selects
     /// <see cref="FlowsRepository.DefaultNamespace"/>. Unknown flows, invalid manifests, and identity conflicts become
     /// MCP tool errors through <see cref="McpResults"/>. Clearing every flow is intentionally available only through
-    /// REST, so an agent cannot wipe the collection with one call. Optional parameters carry default values because
-    /// the MCP schema marks a parameter optional only when it has one.
+    /// REST, so an agent cannot wipe the collection with one call. Every tool name, title, and description is read
+    /// from the nested <c>Catalog</c>, so the methods carry behavior only. Optional parameters carry default values
+    /// because the MCP schema marks a parameter optional only when it has one.
     /// </remarks>
     /// <param name="flows">The singleton flows repository; its lifetime belongs to the application host.</param>
     [McpServerToolType]
     public sealed class FlowTools(IFlowsRepository flows)
     {
-        #region *** Constants    ***
-
-        // Shared description of the flow key argument used by every single-flow tool.
-        private const string KeyDescription = "The flow key. Flow keys are unique within a namespace.";
-
-        // Shared description of the optional namespace argument used by every single-flow tool.
-        private const string NamespaceDescription = "The flow namespace. Defaults to " +
-            FlowsRepository.DefaultNamespace + " when omitted.";
-
-        #endregion
-
         #region *** Fields       ***
 
         // Serializes caller values with the application JSON contract while omitting absent values, so a REST-shaped
@@ -60,11 +50,11 @@ namespace G4.Services.Domain.V4.Mcp
         /// <param name="key">The flow key.</param>
         /// <param name="namespace">The optional flow namespace.</param>
         /// <returns>The manifest as JSON text and structured content, or a tool error for an unknown flow.</returns>
-        [McpServerTool(Name = "g4.GetFlow", Title = "Get G4 Flow", ReadOnly = true, Idempotent = true)]
-        [Description("Gets the stored manifest of one flow, including its parameters and its Base64 automation.")]
+        [McpServerTool(Name = Catalog.GetFlow.Name, Title = Catalog.GetFlow.Title, ReadOnly = true, Idempotent = true)]
+        [Description(Catalog.GetFlow.Description)]
         public async Task<CallToolResult> GetFlowAsync(
-            [Description(KeyDescription)] string key,
-            [Description(NamespaceDescription)] string @namespace = null)
+            [Description(Catalog.GetFlow.Arguments.Key)] string key,
+            [Description(Catalog.GetFlow.Arguments.Namespace)] string @namespace = null)
         {
             // Read through the shared repository so an unknown flow fails exactly as it does over REST.
             return await McpResults
@@ -77,11 +67,11 @@ namespace G4.Services.Domain.V4.Mcp
         /// </summary>
         /// <param name="namespace">The optional namespace filter.</param>
         /// <returns>The flow count and manifests as JSON text and structured content.</returns>
-        [McpServerTool(Name = "g4.GetFlows", Title = "Get G4 Flows", ReadOnly = true, Idempotent = true)]
-        [Description("Lists the stored flows with their manifests. Filter by namespace to narrow the result.")]
+        [McpServerTool(
+            Name = Catalog.GetFlows.Name, Title = Catalog.GetFlows.Title, ReadOnly = true, Idempotent = true)]
+        [Description(Catalog.GetFlows.Description)]
         public async Task<CallToolResult> GetFlowsAsync(
-            [Description("The namespace to filter by. When omitted, flows of every namespace are returned.")]
-            string @namespace = null)
+            [Description(Catalog.GetFlows.Arguments.Namespace)] string @namespace = null)
         {
             // Wrap the manifests with their count, mirroring the REST X-Manifest-Count header in structured content.
             return await McpResults
@@ -107,29 +97,19 @@ namespace G4.Services.Domain.V4.Mcp
         /// <returns>
         /// The automation responses by group identifier, or a tool error for an unknown or invalid flow.
         /// </returns>
-        [McpServerTool(Name = "g4.InvokeFlow", Title = "Invoke G4 Flow", Destructive = false, Idempotent = false)]
-        [Description("Runs a stored flow and waits for it to finish. Parameter values replace the " +
-            "{{$ parameters.Name }} placeholders anywhere in the flow; send them as parameters, as an argument in " +
-            "command-line form ({{$ --Name:value}}), or both, and on a name in both the argument value is used. " +
-            "A declared parameter without a value receives its default. The caller's authentication token always " +
-            "replaces the flow's token; the other authentication, driverParameters, and settings values only fill " +
-            "what the flow leaves out. Set referenceId to a unique value to stop the run with g4.StopFlowInvocation. " +
-            "Returns the automation responses by group ID.")]
+        [McpServerTool(
+            Name = Catalog.InvokeFlow.Name, Title = Catalog.InvokeFlow.Title, Destructive = false, Idempotent = false)]
+        [Description(Catalog.InvokeFlow.Description)]
         public async Task<CallToolResult> InvokeFlowAsync(
-            [Description("The flow key or alias.")] string key,
-            [Description(NamespaceDescription)] string @namespace = null,
-            [Description("Parameter values by name, for example { \"UserName\": \"admin\" }.")]
-            Dictionary<string, object> parameters = null,
-            [Description("Parameter values in command-line form, for example {{$ --Retries:3}}.")]
-            string argument = null,
-            [Description("A unique automation ID for this run, used by g4.StopFlowInvocation.")]
-            string referenceId = null,
-            [Description("The caller's G4 authentication, for example { \"token\": \"...\" }.")]
-            Dictionary<string, object> authentication = null,
-            [Description("Driver parameters, such as driver and driverBinaries, that fill what the flow leaves out.")]
+            [Description(Catalog.InvokeFlow.Arguments.Key)] string key,
+            [Description(Catalog.InvokeFlow.Arguments.Namespace)] string @namespace = null,
+            [Description(Catalog.InvokeFlow.Arguments.Parameters)] Dictionary<string, object> parameters = null,
+            [Description(Catalog.InvokeFlow.Arguments.Argument)] string argument = null,
+            [Description(Catalog.InvokeFlow.Arguments.ReferenceId)] string referenceId = null,
+            [Description(Catalog.InvokeFlow.Arguments.Authentication)] Dictionary<string, object> authentication = null,
+            [Description(Catalog.InvokeFlow.Arguments.DriverParameters)]
             Dictionary<string, object> driverParameters = null,
-            [Description("Automation settings that fill what the flow leaves out.")]
-            Dictionary<string, object> settings = null)
+            [Description(Catalog.InvokeFlow.Arguments.Settings)] Dictionary<string, object> settings = null)
         {
             // Build the REST invoke body from the supplied values only, so absent overrides keep the flow's own values.
             var arguments = new { argument, authentication, driverParameters, parameters, referenceId, settings };
@@ -157,21 +137,21 @@ namespace G4.Services.Domain.V4.Mcp
         /// <param name="categories">The optional discovery categories.</param>
         /// <param name="parameters">The optional parameters callers supply when they run the flow.</param>
         /// <returns>The stored identity, or a tool error for an invalid manifest or an identity conflict.</returns>
-        [McpServerTool(Name = "g4.RegisterFlow", Title = "Register G4 Flow", Destructive = false, Idempotent = true)]
-        [Description("Registers a native G4 automation as a stored flow, or overwrites the flow with the same " +
-            "namespace and key. Pass the automation as a JSON object, for example the result of g4.GetAutomation; " +
-            "the tool encodes it as Base64. Declare parameters to expose {{$ parameters.Name }} placeholders to " +
-            "g4.InvokeFlow callers.")]
+        [McpServerTool(
+            Name = Catalog.RegisterFlow.Name,
+            Title = Catalog.RegisterFlow.Title,
+            Destructive = false,
+            Idempotent = true)]
+        [Description(Catalog.RegisterFlow.Description)]
         public async Task<CallToolResult> RegisterFlowAsync(
-            [Description(KeyDescription)] string key,
-            [Description("The native G4 automation JSON object to store, for example the result of g4.GetAutomation.")]
-            Dictionary<string, object> automation,
-            [Description(NamespaceDescription)] string @namespace = null,
-            [Description("Alternative keys that also identify the flow.")] string[] aliases = null,
-            [Description("A one-line summary shown when the flow is discovered.")] string summary = null,
-            [Description("A longer description of what the flow does.")] string description = null,
-            [Description("Categories used to group the flow.")] string[] categories = null,
-            [Description("Parameters callers can supply to g4.InvokeFlow.")] FlowParameterModel[] parameters = null)
+            [Description(Catalog.RegisterFlow.Arguments.Key)] string key,
+            [Description(Catalog.RegisterFlow.Arguments.Automation)] Dictionary<string, object> automation,
+            [Description(Catalog.RegisterFlow.Arguments.Namespace)] string @namespace = null,
+            [Description(Catalog.RegisterFlow.Arguments.Aliases)] string[] aliases = null,
+            [Description(Catalog.RegisterFlow.Arguments.Summary)] string summary = null,
+            [Description(Catalog.RegisterFlow.Arguments.Description)] string description = null,
+            [Description(Catalog.RegisterFlow.Arguments.Categories)] string[] categories = null,
+            [Description(Catalog.RegisterFlow.Arguments.Parameters)] FlowParameterModel[] parameters = null)
         {
             // Build the REST manifest; only supplied descriptive values replace the manifest defaults.
             var manifest = new G4FlowManifestModel
@@ -202,11 +182,12 @@ namespace G4.Services.Domain.V4.Mcp
         /// <param name="key">The flow key.</param>
         /// <param name="namespace">The optional flow namespace.</param>
         /// <returns>The removed identity, or a tool error for an unknown flow.</returns>
-        [McpServerTool(Name = "g4.RemoveFlow", Title = "Remove G4 Flow", Destructive = true, Idempotent = true)]
-        [Description("Removes one stored flow from the Flows collection and the flows cache.")]
+        [McpServerTool(
+            Name = Catalog.RemoveFlow.Name, Title = Catalog.RemoveFlow.Title, Destructive = true, Idempotent = true)]
+        [Description(Catalog.RemoveFlow.Description)]
         public async Task<CallToolResult> RemoveFlowAsync(
-            [Description(KeyDescription)] string key,
-            [Description(NamespaceDescription)] string @namespace = null)
+            [Description(Catalog.RemoveFlow.Arguments.Key)] string key,
+            [Description(Catalog.RemoveFlow.Arguments.Namespace)] string @namespace = null)
         {
             // Remove through the shared repository so an unknown flow fails exactly as it does over REST.
             return await McpResults
@@ -225,12 +206,13 @@ namespace G4.Services.Domain.V4.Mcp
         /// <param name="automationId">The automation identifier of the running invocation.</param>
         /// <returns>The automation identifier, the stop status, and the exit code of the flows client.</returns>
         [McpServerTool(
-            Name = "g4.StopFlowInvocation", Title = "Stop G4 Flow Invocation", Destructive = true, Idempotent = true)]
-        [Description("Stops a running flow invocation by its automation ID (the referenceId sent to g4.InvokeFlow, " +
-            "or the flow's own reference ID). Its driver sessions are closed, so the flow stops at its next step. " +
-            "Returns status stopped when the stop request completed, or failed with exitCode 1 on an error.")]
+            Name = Catalog.StopFlowInvocation.Name,
+            Title = Catalog.StopFlowInvocation.Title,
+            Destructive = true,
+            Idempotent = true)]
+        [Description(Catalog.StopFlowInvocation.Description)]
         public async Task<CallToolResult> StopFlowInvocationAsync(
-            [Description("The automation ID of the running flow invocation to stop.")] string automationId)
+            [Description(Catalog.StopFlowInvocation.Arguments.AutomationId)] string automationId)
         {
             // Stop through the shared repository; the status names the outcome because the JSON contract omits a zero
             // exit code, which would otherwise leave a successful stop without any outcome field.
@@ -280,6 +262,393 @@ namespace G4.Services.Domain.V4.Mcp
         {
             // Apply the flows client's normalization: an omitted or empty namespace selects the default.
             return string.IsNullOrEmpty(@namespace) ? FlowsRepository.DefaultNamespace : @namespace;
+        }
+
+        #endregion
+
+        #region *** Nested Types ***
+
+        // Holds the published wording of every flow tool, one nested class per tool in method order. Each tool class
+        // exposes Name, Title, and Description, plus a nested Arguments class with one constant per argument named
+        // after the argument in PascalCase; Arguments is nested because the description and summary arguments of
+        // g4.RegisterFlow would otherwise collide with the tool members. The text is wire contract: MCP clients
+        // receive it in tools/list, g4.FindTool, and g4.FindTools, and agents choose and fill tools from it.
+        private static class Catalog
+        {
+            #region *** Nested Types ***
+
+            // Holds argument wording reused by several flow tools. Tool classes alias these constants instead of
+            // copying the text, so one edit changes every tool that shares the argument.
+            private static class Common
+            {
+                #region *** Constants    ***
+
+                /// <summary>
+                /// Describes the flow key argument of every single-flow tool.
+                /// </summary>
+                public const string Key = "The flow key. Flow keys are unique within a namespace.";
+
+                /// <summary>
+                /// Describes the optional namespace argument of every single-flow tool.
+                /// </summary>
+                /// <remarks>
+                /// The text names <see cref="FlowsRepository.DefaultNamespace"/>, so it follows the repository when the
+                /// default namespace changes.
+                /// </remarks>
+                public const string Namespace = "The flow namespace. Defaults to " +
+                    FlowsRepository.DefaultNamespace + " when omitted.";
+
+                #endregion
+            }
+
+            // Wording of the g4.GetFlow tool.
+            public static class GetFlow
+            {
+                #region *** Constants    ***
+
+                /// <summary>
+                /// The published tool name.
+                /// </summary>
+                public const string Name = G4ToolNames.GetFlow;
+
+                /// <summary>
+                /// The human-readable tool title.
+                /// </summary>
+                public const string Title = "Get G4 Flow";
+
+                /// <summary>
+                /// The tool description.
+                /// </summary>
+                public const string Description = "Gets the stored manifest of one flow, including its parameters " +
+                    "and its Base64 automation.";
+
+                #endregion
+
+                #region *** Nested Types ***
+
+                // Argument wording, one constant per tool argument named after the argument in PascalCase.
+                public static class Arguments
+                {
+                    #region *** Constants    ***
+
+                    /// <summary>
+                    /// Describes the flow key argument.
+                    /// </summary>
+                    public const string Key = Common.Key;
+
+                    /// <summary>
+                    /// Describes the optional namespace argument.
+                    /// </summary>
+                    public const string Namespace = Common.Namespace;
+
+                    #endregion
+                }
+
+                #endregion
+            }
+
+            // Wording of the g4.GetFlows tool.
+            public static class GetFlows
+            {
+                #region *** Constants    ***
+
+                /// <summary>
+                /// The published tool name.
+                /// </summary>
+                public const string Name = G4ToolNames.GetFlows;
+
+                /// <summary>
+                /// The human-readable tool title.
+                /// </summary>
+                public const string Title = "Get G4 Flows";
+
+                /// <summary>
+                /// The tool description.
+                /// </summary>
+                public const string Description = "Lists the stored flows with their manifests. Filter by namespace " +
+                    "to narrow the result.";
+
+                #endregion
+
+                #region *** Nested Types ***
+
+                // Argument wording, one constant per tool argument named after the argument in PascalCase.
+                public static class Arguments
+                {
+                    #region *** Constants    ***
+
+                    /// <summary>
+                    /// Describes the optional namespace filter argument.
+                    /// </summary>
+                    public const string Namespace = "The namespace to filter by. When omitted, flows of every " +
+                        "namespace are returned.";
+
+                    #endregion
+                }
+
+                #endregion
+            }
+
+            // Wording of the g4.InvokeFlow tool.
+            public static class InvokeFlow
+            {
+                #region *** Constants    ***
+
+                /// <summary>
+                /// The published tool name.
+                /// </summary>
+                public const string Name = G4ToolNames.InvokeFlow;
+
+                /// <summary>
+                /// The human-readable tool title.
+                /// </summary>
+                public const string Title = "Invoke G4 Flow";
+
+                /// <summary>
+                /// The tool description.
+                /// </summary>
+                public const string Description = "Runs a stored flow and waits for it to finish. Parameter values " +
+                    "replace the {{$ parameters.Name }} placeholders anywhere in the flow; send them as parameters, " +
+                    "as an argument in command-line form ({{$ --Name:value}}), or both, and on a name in both the " +
+                    "argument value is used. A declared parameter without a value receives its default. The caller's " +
+                    "authentication token always replaces the flow's token; the other authentication, " +
+                    "driverParameters, and settings values only fill what the flow leaves out. Set referenceId to a " +
+                    "unique value to stop the run with g4.StopFlowInvocation. Returns the automation responses by " +
+                    "group ID.";
+
+                #endregion
+
+                #region *** Nested Types ***
+
+                // Argument wording, one constant per tool argument named after the argument in PascalCase.
+                public static class Arguments
+                {
+                    #region *** Constants    ***
+
+                    /// <summary>
+                    /// Describes the command-line parameter values argument.
+                    /// </summary>
+                    public const string Argument = "Parameter values in command-line form, for example {{$ " +
+                        "--Retries:3}}.";
+
+                    /// <summary>
+                    /// Describes the caller authentication argument.
+                    /// </summary>
+                    public const string Authentication = "The caller's G4 authentication, for example { \"token\": " +
+                        "\"...\" }.";
+
+                    /// <summary>
+                    /// Describes the driver parameters argument.
+                    /// </summary>
+                    public const string DriverParameters = "Driver parameters, such as driver and driverBinaries, " +
+                        "that fill what the flow leaves out.";
+
+                    /// <summary>
+                    /// Describes the flow key argument.
+                    /// </summary>
+                    /// <remarks>
+                    /// The invoke tool also accepts an alias, so it keeps its own wording instead of the common key
+                    /// text.
+                    /// </remarks>
+                    public const string Key = "The flow key or alias.";
+
+                    /// <summary>
+                    /// Describes the optional namespace argument.
+                    /// </summary>
+                    public const string Namespace = Common.Namespace;
+
+                    /// <summary>
+                    /// Describes the parameter values by name argument.
+                    /// </summary>
+                    public const string Parameters = "Parameter values by name, for example { \"UserName\": " +
+                        "\"admin\" }.";
+
+                    /// <summary>
+                    /// Describes the automation reference identifier argument.
+                    /// </summary>
+                    public const string ReferenceId = "A unique automation ID for this run, used by " +
+                        "g4.StopFlowInvocation.";
+
+                    /// <summary>
+                    /// Describes the automation settings argument.
+                    /// </summary>
+                    public const string Settings = "Automation settings that fill what the flow leaves out.";
+
+                    #endregion
+                }
+
+                #endregion
+            }
+
+            // Wording of the g4.RegisterFlow tool.
+            public static class RegisterFlow
+            {
+                #region *** Constants    ***
+
+                /// <summary>
+                /// The published tool name.
+                /// </summary>
+                public const string Name = G4ToolNames.RegisterFlow;
+
+                /// <summary>
+                /// The human-readable tool title.
+                /// </summary>
+                public const string Title = "Register G4 Flow";
+
+                /// <summary>
+                /// The tool description.
+                /// </summary>
+                public const string Description = "Registers a native G4 automation as a stored flow, or overwrites " +
+                    "the flow with the same namespace and key. Pass the automation as a JSON object, for example the " +
+                    "result of g4.GetAutomation; the tool encodes it as Base64. Declare parameters to expose {{$ " +
+                    "parameters.Name }} placeholders to g4.InvokeFlow callers.";
+
+                #endregion
+
+                #region *** Nested Types ***
+
+                // Argument wording, one constant per tool argument named after the argument in PascalCase.
+                public static class Arguments
+                {
+                    #region *** Constants    ***
+
+                    /// <summary>
+                    /// Describes the alternative keys argument.
+                    /// </summary>
+                    public const string Aliases = "Alternative keys that also identify the flow.";
+
+                    /// <summary>
+                    /// Describes the native automation argument.
+                    /// </summary>
+                    public const string Automation = "The native G4 automation JSON object to store, for example the " +
+                        "result of g4.GetAutomation.";
+
+                    /// <summary>
+                    /// Describes the discovery categories argument.
+                    /// </summary>
+                    public const string Categories = "Categories used to group the flow.";
+
+                    /// <summary>
+                    /// Describes the flow description argument.
+                    /// </summary>
+                    public const string Description = "A longer description of what the flow does.";
+
+                    /// <summary>
+                    /// Describes the flow key argument.
+                    /// </summary>
+                    public const string Key = Common.Key;
+
+                    /// <summary>
+                    /// Describes the optional namespace argument.
+                    /// </summary>
+                    public const string Namespace = Common.Namespace;
+
+                    /// <summary>
+                    /// Describes the declared flow parameters argument.
+                    /// </summary>
+                    public const string Parameters = "Parameters callers can supply to g4.InvokeFlow.";
+
+                    /// <summary>
+                    /// Describes the one-line summary argument.
+                    /// </summary>
+                    public const string Summary = "A one-line summary shown when the flow is discovered.";
+
+                    #endregion
+                }
+
+                #endregion
+            }
+
+            // Wording of the g4.RemoveFlow tool.
+            public static class RemoveFlow
+            {
+                #region *** Constants    ***
+
+                /// <summary>
+                /// The published tool name.
+                /// </summary>
+                public const string Name = G4ToolNames.RemoveFlow;
+
+                /// <summary>
+                /// The human-readable tool title.
+                /// </summary>
+                public const string Title = "Remove G4 Flow";
+
+                /// <summary>
+                /// The tool description.
+                /// </summary>
+                public const string Description = "Removes one stored flow from the Flows collection and the flows " +
+                    "cache.";
+
+                #endregion
+
+                #region *** Nested Types ***
+
+                // Argument wording, one constant per tool argument named after the argument in PascalCase.
+                public static class Arguments
+                {
+                    #region *** Constants    ***
+
+                    /// <summary>
+                    /// Describes the flow key argument.
+                    /// </summary>
+                    public const string Key = Common.Key;
+
+                    /// <summary>
+                    /// Describes the optional namespace argument.
+                    /// </summary>
+                    public const string Namespace = Common.Namespace;
+
+                    #endregion
+                }
+
+                #endregion
+            }
+
+            // Wording of the g4.StopFlowInvocation tool.
+            public static class StopFlowInvocation
+            {
+                #region *** Constants    ***
+
+                /// <summary>
+                /// The published tool name.
+                /// </summary>
+                public const string Name = G4ToolNames.StopFlowInvocation;
+
+                /// <summary>
+                /// The human-readable tool title.
+                /// </summary>
+                public const string Title = "Stop G4 Flow Invocation";
+
+                /// <summary>
+                /// The tool description.
+                /// </summary>
+                public const string Description = "Stops a running flow invocation by its automation ID (the " +
+                    "referenceId sent to g4.InvokeFlow, or the flow's own reference ID). Its driver sessions are " +
+                    "closed, so the flow stops at its next step. Returns status stopped when the stop request " +
+                    "completed, or failed with exitCode 1 on an error.";
+
+                #endregion
+
+                #region *** Nested Types ***
+
+                // Argument wording, one constant per tool argument named after the argument in PascalCase.
+                public static class Arguments
+                {
+                    #region *** Constants    ***
+
+                    /// <summary>
+                    /// Describes the automation identifier argument.
+                    /// </summary>
+                    public const string AutomationId = "The automation ID of the running flow invocation to stop.";
+
+                    #endregion
+                }
+
+                #endregion
+            }
+
+            #endregion
         }
 
         #endregion

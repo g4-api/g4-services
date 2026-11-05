@@ -361,6 +361,113 @@ namespace G4.Services.UnitTests.Repositories
             Assert.IsTrue(actual.Tools.All(tool => tool.Score > 0));
         }
 
+        [TestMethod(DisplayName = "Verify that ResolveTools ranks tools exactly as FindTools and pairs each with the " +
+            "examples FindExamples returns for the same intent.")]
+        public void CallToolResolveToolsMatchesExplicitCallsTest()
+        {
+            // Arrange: create more matching capabilities than the requested limit and capture the explicit ranking.
+            var repository = NewRetrievalRepository(toolCount: 12);
+            var parameters = NewResolveToolsParameters(RetrievalPhrase, take: 10, examplesTake: null);
+            var expected = GetRetrievalManager(repository).FindTools(RetrievalPhrase, take: 10);
+
+            // Act: resolve the tools and their examples through the single MCP boundary.
+            var tools = ResolveTools(repository, parameters);
+
+            // Assert: the tools keep the explicit ranking and carry the complete g4.FindTool model.
+            Assert.AreSequenceEqual(
+                expected: expected.Tools.Select(tool => $"{tool.Name}:{tool.Score}").ToArray(),
+                actual: tools.Select(tool => $"{ReadToolName(tool)}:{tool.GetProperty("score").GetInt32()}").ToArray());
+            Assert.IsTrue(condition: tools.All(tool => tool.GetProperty("tool").TryGetProperty("clientTool", out _)));
+
+            // Assert: every tool's examples are identical to the explicit g4.FindExamples response.
+            foreach (var tool in tools)
+            {
+                // Arrange: build the explicit example query for the same tool, namespace, intent, and default limit.
+                var toolName = ReadToolName(tool);
+                var query = new ExamplesQueryModel
+                {
+                    Intent = new IntentModel { AgentIntent = RetrievalPhrase },
+                    MaxResults = 3,
+                    Namespace = tool
+                        .GetProperty("tool")
+                        .GetProperty("namespace")
+                        .GetString(),
+                    ToolName = toolName
+                };
+
+                // Act: run the explicit lookup and read both example arrays in their serialized wire shape.
+                var explicitResult = repository.FindExamples(query);
+                var explicitExamples = JsonSerializer.SerializeToNode(explicitResult, options: AppSettings.JsonOptions);
+                var resolvedExamples = JsonSerializer.SerializeToNode(tool.GetProperty("examples"));
+
+                // Assert: the single call returns exactly the examples the explicit call returns.
+                Assert.HasCount(expected: 1, collection: explicitExamples["examples"].AsArray());
+                var isEqual = JsonNode.DeepEquals(node1: explicitExamples["examples"], node2: resolvedExamples);
+                Assert.IsTrue(condition: isEqual, message: toolName);
+            }
+        }
+
+        [TestMethod(DisplayName = "Verify that ResolveTools defaults missing, invalid, and non-positive limits to three.")]
+        public void CallToolResolveToolsInvalidLimitsDefaultTest()
+        {
+            // Arrange: create enough tools and examples per tool to expose both default limits.
+            var cacheManager = NewCacheManager();
+            for (var index = 0; index < 5; index++)
+            {
+                cacheManager.SyncCache(NewCacheModel($"UnitTestResolve{index:D2}", RetrievalPhrase, exampleCount: 5));
+            }
+
+            // Arrange: bind the repository to the populated cache so both projections index every tool.
+            var repository = NewRepository(cacheManager);
+
+            // Act: resolve once without limits and once with invalid and non-positive limits.
+            var missing = ResolveTools(repository, NewResolveToolsParameters(RetrievalPhrase, take: null, examplesTake: null));
+            var invalid = ResolveTools(repository, NewResolveToolsParameters(RetrievalPhrase, take: "ten", examplesTake: 0));
+
+            // Assert: both calls keep the established three-tool and three-example defaults.
+            foreach (var tools in new[] { missing, invalid })
+            {
+                Assert.HasCount(expected: 3, collection: tools);
+                Assert.IsTrue(condition: tools.All(tool => tool.GetProperty("examples").GetArrayLength() == 3));
+            }
+        }
+
+        [TestMethod(DisplayName = "Verify that ResolveTools honors the requested number of examples per tool.")]
+        public void CallToolResolveToolsHonorsExamplesTakeTest()
+        {
+            // Arrange: register one tool that owns more matching examples than the requested limit.
+            const string Key = "UnitTestResolveExamples";
+            var (cacheManager, repository) = NewContext();
+            cacheManager.SyncCache(NewCacheModel(Key, RetrievalPhrase, exampleCount: 5));
+            var parameters = NewResolveToolsParameters(RetrievalPhrase, take: null, examplesTake: 2);
+
+            // Act: resolve the tool with a smaller example limit than its example count.
+            var tools = ResolveTools(repository, parameters);
+
+            // Assert: the single tool returns exactly the requested number of positively scored examples.
+            Assert.HasCount(expected: 1, collection: tools);
+            var examples = tools[0]
+                .GetProperty("examples")
+                .EnumerateArray()
+                .ToArray();
+            Assert.HasCount(expected: 2, collection: examples);
+            Assert.IsTrue(condition: examples.All(example => example.GetProperty("score").GetInt32() > 0));
+        }
+
+        [TestMethod(DisplayName = "Verify that ResolveTools returns an empty tools array when nothing matches the intent.")]
+        public void CallToolResolveToolsNoMatchReturnsEmptyTest()
+        {
+            // Arrange: create matching capabilities and an intent that shares no token with them.
+            var repository = NewRetrievalRepository(toolCount: 4);
+            var parameters = NewResolveToolsParameters("unmatchedresolvesentinel", take: null, examplesTake: null);
+
+            // Act: resolve the tools for the unmatched intent.
+            var tools = ResolveTools(repository, parameters);
+
+            // Assert: the response keeps its object shape with an empty array instead of null.
+            Assert.IsEmpty(tools);
+        }
+
         // Reads the private lifecycle dependency so tests can prove SyncTools never replaces it.
         private static LexicalRetrievalManager GetRetrievalManager(ToolsRepository repository)
         {
@@ -407,23 +514,36 @@ namespace G4.Services.UnitTests.Repositories
             return cacheManager;
         }
 
-        // Creates a manifest-backed capability that can populate both domain and lexical projections.
+        // Creates a manifest-backed capability with one example that can populate both domain and lexical projections.
         private static G4PluginCacheModel NewCacheModel(string key, string description)
         {
+            // Delegate to the complete overload with the single example most catalog tests need.
+            return NewCacheModel(key, description, exampleCount: 1);
+        }
+
+        // Creates a manifest-backed capability whose examples all match the description and carry an example rule.
+        private static G4PluginCacheModel NewCacheModel(string key, string description, int exampleCount)
+        {
             // Include deterministic example and summary text used by the respective derived catalogs.
-            var example = new PluginExampleModel
+            var examples = Enumerable.Range(start: 0, count: exampleCount).Select(index => new PluginExampleModel
             {
                 Context = new Dictionary<string, object>
                 {
                     ["labels"] = new[] { description }
                 },
-                Description = [description]
-            };
+                Description = [description],
+                Rule = new RuleExampleModel
+                {
+                    Argument = $"{{{{$ --Index:{index}}}}}",
+                    PluginName = key
+                }
+            });
             return new G4PluginCacheModel
             {
                 Manifest = new G4PluginAttribute
                 {
-                    Examples = [example],
+                    Description = [description],
+                    Examples = [.. examples],
                     Key = key,
                     Namespace = "G4.Services.UnitTests",
                     PluginType = PluginType,
@@ -481,6 +601,64 @@ namespace G4.Services.UnitTests.Repositories
                     }
                 },
                 AppSettings.JsonOptions);
+        }
+
+        // Creates one MCP ResolveTools payload whose optional limits are included only when supplied.
+        private static JsonElement NewResolveToolsParameters(string intent, object take, object examplesTake)
+        {
+            // Build the arguments separately so tests can omit limits or provide invalid JSON-compatible values.
+            var arguments = new Dictionary<string, object>
+            {
+                ["intent"] = new IntentModel
+                {
+                    AgentIntent = intent,
+                    UserIntent = intent
+                }
+            };
+
+            // Include each optional limit only when the test supplies a value.
+            if (take != null)
+            {
+                arguments["take"] = take;
+            }
+
+            if (examplesTake != null)
+            {
+                arguments["examplesTake"] = examplesTake;
+            }
+
+            // Serialize through application options so the test uses the production JSON naming contract.
+            return JsonSerializer.SerializeToElement(
+                new Dictionary<string, object>
+                {
+                    ["name"] = "g4.ResolveTools",
+                    ["arguments"] = arguments
+                },
+                AppSettings.JsonOptions);
+        }
+
+        // Reads the catalog tool name of one resolved tool entry from its embedded g4.FindTool model.
+        private static string ReadToolName(JsonElement resolvedTool)
+        {
+            // Read the authoritative name from the tool model rather than from any derived ranking field.
+            return resolvedTool
+                .GetProperty("tool")
+                .GetProperty("name")
+                .GetString();
+        }
+
+        // Invokes g4.ResolveTools and returns its resolved tool entries in the serialized wire shape.
+        private static JsonElement[] ResolveTools(ToolsRepository repository, JsonElement parameters)
+        {
+            // Serialize the result with the application options so the assertions read the MCP response contract.
+            var result = repository.CallTool(parameters);
+            var json = JsonSerializer.SerializeToElement(result, options: AppSettings.JsonOptions);
+
+            // Return the resolved tool entries; a missing "tools" member fails the calling test immediately.
+            return json
+                .GetProperty("tools")
+                .EnumerateArray()
+                .ToArray();
         }
 
         // Creates a repository whose Action catalog contains the requested number of positive lexical matches.

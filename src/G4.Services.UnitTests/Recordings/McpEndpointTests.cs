@@ -141,7 +141,7 @@ namespace G4.Services.UnitTests.Recordings
             var definitions = McpToolTypes.NewDefinitions();
             var expected = definitions.Select(selector: tool => tool.Name).ToArray();
             Assert.AreSequenceEqual(expected, actual: names, order: SequenceOrder.InAnyOrder);
-            Assert.HasCount(expected: 21, collection: names);
+            Assert.HasCount(expected: 22, collection: names);
 
             // Assert: catalog tools are never advertised; the router tools are their only entry point.
             Assert.DoesNotContain(notExpected: FakeToolsRepository.ToolName, collection: names);
