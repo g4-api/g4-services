@@ -18,7 +18,7 @@
     'use strict';
 
     // Components whose template files are loaded, in the order they are added to the page.
-    const COMPONENT_NAMES = ['g4-modal', 'g4-line-numbers', 'g4-expand-editor', 'g4-text-box'];
+    const COMPONENT_NAMES = ['g4-modal', 'g4-line-numbers', 'g4-expand-editor', 'g4-text-box', 'g4-number-input'];
 
     // This script's address; every template file sits in a folder next to it.
     const BASE_URL = document.currentScript.src;

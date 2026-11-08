@@ -36,6 +36,22 @@ namespace G4.Services.Domain.V4.Mcp
             }
         }
 
+        // Runs one domain operation that builds its own tool result, such as a not-found result for a missing
+        // resource, and maps expected failures to MCP tool errors exactly as InvokeAsync does.
+        internal static CallToolResult InvokeResult(Func<CallToolResult> operation)
+        {
+            try
+            {
+                // Return the operation's own result, whether it encodes a value or reports a normal miss.
+                return operation();
+            }
+            catch (Exception exception) when (TestExpectedFailure(exception))
+            {
+                // Tool execution failures belong in MCP content rather than in a JSON-RPC protocol error.
+                return NewErrorResult(message: exception.Message);
+            }
+        }
+
         // Builds a tool error whose message is visible to the model so it can correct the call and retry.
         internal static CallToolResult NewErrorResult(string message) => new()
         {

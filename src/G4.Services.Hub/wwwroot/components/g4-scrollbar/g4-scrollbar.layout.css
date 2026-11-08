@@ -1,0 +1,170 @@
+/*
+ * G4 scroll bar layout: an overlay lies over the scrolling element's padding box (the script places it)
+ * and lets clicks through to the text, except on the bars. The vertical bar is a stepper column along
+ * the right edge, the horizontal bar a stepper row along the bottom edge, and a square fills the corner
+ * where both meet. The element keeps native scrolling with the browser's own scroll bars hidden.
+ */
+.g4-scrollbar-target {
+    scrollbar-width: none;
+}
+
+.g4-scrollbar-target::-webkit-scrollbar {
+    display: none;
+}
+
+.g4-scrollbars {
+    position: absolute;
+    z-index: var(--g4-scrollbar-z-index);
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.g4-scrollbar,
+.g4-scrollbar__corner {
+    position: absolute;
+    pointer-events: auto;
+}
+
+.g4-scrollbar[hidden],
+.g4-scrollbar__corner[hidden] {
+    display: none;
+}
+
+.g4-scrollbar {
+    display: flex;
+}
+
+.g4-scrollbar--vertical {
+    top: 0;
+    right: 0;
+    bottom: 0;
+    flex-direction: column;
+    width: var(--g4-scrollbar-vertical-size);
+    border-left-width: 1px;
+    border-left-style: solid;
+}
+
+.g4-scrollbar--horizontal {
+    right: 0;
+    bottom: 0;
+    left: 0;
+    flex-direction: row;
+    height: var(--g4-scrollbar-horizontal-size);
+    border-top-width: 1px;
+    border-top-style: solid;
+}
+
+/* With both bars, each stops at the corner square. */
+.g4-scrollbars.has-horizontal .g4-scrollbar--vertical {
+    bottom: var(--g4-scrollbar-horizontal-size);
+}
+
+.g4-scrollbars.has-vertical .g4-scrollbar--horizontal {
+    right: var(--g4-scrollbar-vertical-size);
+}
+
+.g4-scrollbar__corner {
+    right: 0;
+    bottom: 0;
+    width: var(--g4-scrollbar-vertical-size);
+    height: var(--g4-scrollbar-horizontal-size);
+    border-top-width: 1px;
+    border-top-style: solid;
+    border-left-width: 1px;
+    border-left-style: solid;
+}
+
+/* The track inset keeps the thumb clear of the button lines; the track length is what the thumb travels. */
+.g4-scrollbar__track {
+    position: relative;
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
+}
+
+.g4-scrollbar--vertical .g4-scrollbar__track {
+    margin: var(--g4-scrollbar-track-inset) 0;
+}
+
+.g4-scrollbar--horizontal .g4-scrollbar__track {
+    margin: 0 var(--g4-scrollbar-track-inset);
+}
+
+/* The script sets the thumb length and moves it with a transform, so dragging never reflows the content. */
+.g4-scrollbar__thumb {
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+.g4-scrollbar--vertical .g4-scrollbar__thumb {
+    left: calc(50% - var(--g4-scrollbar-thumb-thickness) / 2);
+    width: var(--g4-scrollbar-thumb-thickness);
+}
+
+.g4-scrollbar--horizontal .g4-scrollbar__thumb {
+    top: calc(50% - var(--g4-scrollbar-thumb-thickness) / 2);
+    height: var(--g4-scrollbar-thumb-thickness);
+}
+
+/*
+ * The canvas sizes and pads every button, also with editor selectors as specific as three classes and
+ * an element; these selectors carry three elements more, so the compact step buttons always win.
+ */
+div.g4-scrollbars div.g4-scrollbar button.g4-scrollbar__button {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    line-height: 1;
+    border-style: none;
+}
+
+div.g4-scrollbars div.g4-scrollbar--vertical button.g4-scrollbar__button {
+    width: 100%;
+    height: var(--g4-scrollbar-button-length);
+}
+
+div.g4-scrollbars div.g4-scrollbar--horizontal button.g4-scrollbar__button {
+    width: var(--g4-scrollbar-horizontal-button-length);
+    height: 100%;
+}
+
+div.g4-scrollbars div.g4-scrollbar button.g4-scrollbar__button--up {
+    border-bottom-width: 1px;
+    border-bottom-style: solid;
+}
+
+div.g4-scrollbars div.g4-scrollbar button.g4-scrollbar__button--down {
+    border-top-width: 1px;
+    border-top-style: solid;
+}
+
+div.g4-scrollbars div.g4-scrollbar button.g4-scrollbar__button--left {
+    border-right-width: 1px;
+    border-right-style: solid;
+}
+
+div.g4-scrollbars div.g4-scrollbar button.g4-scrollbar__button--right {
+    border-left-width: 1px;
+    border-left-style: solid;
+}
+
+div.g4-scrollbars div.g4-scrollbar button.g4-scrollbar__button svg {
+    display: block;
+    width: var(--g4-scrollbar-icon-size);
+    height: var(--g4-scrollbar-icon-size);
+}
+
+/* The horizontal bar turns the up caret toward its side. */
+div.g4-scrollbars div.g4-scrollbar button.g4-scrollbar__button--left svg {
+    transform: rotate(-90deg);
+}
+
+div.g4-scrollbars div.g4-scrollbar button.g4-scrollbar__button--right svg {
+    transform: rotate(90deg);
+}

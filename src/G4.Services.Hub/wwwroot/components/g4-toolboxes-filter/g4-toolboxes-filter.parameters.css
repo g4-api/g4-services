@@ -1,0 +1,41 @@
+/*
+ * G4 toolboxes filter parameters, mapped to the canvas theme. Every theme file
+ * (designer-blueprint-parameters*.css) defines the toolbox values below. The button takes the
+ * search box values, so the two read as one control; the panel takes the values of the toolbox part
+ * it mirrors (title, group titles, items, icons); the switches are the editor switches, scaled down for
+ * the dense list. The shared scroll bar component has its own parameters.
+ */
+:root {
+    --g4-toolboxes-filter-arrow-foreground: var(--toolbox-icon-path);
+    --g4-toolboxes-filter-arrow-hover-foreground: var(--toolbox-icon-hover-path);
+    --g4-toolboxes-filter-arrow-size: 12px;
+    --g4-toolboxes-filter-background: var(--toolbox-background);
+    --g4-toolboxes-filter-button-active-background: var(--toolbox-filter-focus-background);
+    --g4-toolboxes-filter-button-active-border: var(--toolbox-filter-input-border-hover);
+    --g4-toolboxes-filter-button-active-foreground: var(--toolbox-filter-focus-color);
+    --g4-toolboxes-filter-button-background: var(--toolbox-filter-input-background);
+    --g4-toolboxes-filter-button-border: var(--toolbox-filter-input-border);
+    --g4-toolboxes-filter-button-foreground: var(--toolbox-item-color);
+    --g4-toolboxes-filter-button-size: 28px;
+    --g4-toolboxes-filter-divider-border: var(--toolbox-filter-input-border);
+    --g4-toolboxes-filter-font-size: 13px;
+    --g4-toolboxes-filter-foreground: var(--toolbox-item-color);
+    --g4-toolboxes-filter-line-height: 20px;
+    --g4-toolboxes-filter-mixed-opacity: .75;
+    --g4-toolboxes-filter-muted-opacity: .6;
+    --g4-toolboxes-filter-open-duration: .12s;
+    --g4-toolboxes-filter-open-offset: -4px;
+    --g4-toolboxes-filter-panel-border: var(--toolbox-item-border);
+    --g4-toolboxes-filter-panel-maximum-height: 60vh;
+    --g4-toolboxes-filter-panel-shadow: var(--toolbox-box-shadow);
+    --g4-toolboxes-filter-panel-width: 300px;
+    --g4-toolboxes-filter-radius: var(--border-radius);
+    --g4-toolboxes-filter-row-hover-background: var(--toolbox-item-hover-background);
+    --g4-toolboxes-filter-status-foreground: var(--toolbox-item-hover-border-color);
+    --g4-toolboxes-filter-switch-height: 14px;
+    --g4-toolboxes-filter-switch-thumb-size: 10px;
+    --g4-toolboxes-filter-switch-width: 26px;
+    --g4-toolboxes-filter-title-foreground: var(--toolbox-header-title-color);
+    --g4-toolboxes-filter-toolbox-name-foreground: var(--toolbox-group-title-color);
+    --g4-toolboxes-filter-z-index: 20;
+}

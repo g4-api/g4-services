@@ -46,6 +46,9 @@ namespace G4.Services.Domain.V4.Repositories
         // Identifies the plugin-cache bucket that contributes executable tools to the derived domain catalogs.
         private const string ActionPluginType = "Action";
 
+        // Identifies the catalog type of tools formatted from plugin manifests, as opposed to built-in system tools.
+        private const string PluginToolType = "g4-tool";
+
         // Serializes rebuilds so concurrent cache notifications publish derived catalogs in cache-observation order.
         private static readonly Lock ToolsSyncLock = new();
         #endregion
@@ -119,9 +122,9 @@ namespace G4.Services.Domain.V4.Repositories
             // Extract and convert the "arguments" to an executable rule format.
             options.Rule = ConvertToRule(options.Arguments, options.Intent, _tools);
 
-            // Look up the tool definition in the registered tools dictionary.
-            // If the tool is not found, 'tool' will be null and handled in the default branch below.
-            var tool = _tools.GetValueOrDefault(options.ToolName);
+            // Resolve the tool definition by its qualified or bare name in the registered tools dictionary.
+            // If the tool is not found or is ambiguous, 'tool' will be null and handled in the default branch below.
+            var tool = ResolveTool(_tools, reference: options.ToolName);
 
             // Read the friendly intent text used to retrieve relevant tools.
             // Default to an empty string when the argument is missing.
@@ -211,8 +214,8 @@ namespace G4.Services.Domain.V4.Repositories
         /// <inheritdoc />
         public McpToolModel FindTool(string intent, string toolName)
         {
-            // Look up the tool by name in the internal registry.
-            return _tools.GetValueOrDefault(toolName);
+            // Resolve the tool by its qualified or bare name in the internal registry.
+            return ResolveTool(_tools, reference: toolName);
         }
 
         /// <inheritdoc />
@@ -246,9 +249,11 @@ namespace G4.Services.Domain.V4.Repositories
                 return _retrievalManager
                     .FindTools(prompt: options.Intent?.AgentIntent ?? string.Empty, take: take)
                     .Tools
-                    .Select(result => _tools.GetValueOrDefault(result.Name))
+                    .Select(result => _tools.GetValueOrDefault(
+                        PluginReference.GetQualifiedName(result.NameSpace, result.Name)))
                     .Where(tool => tool != null)
-                    .ToDictionary(tool => tool.Name, tool => tool, comparer);
+                    .Distinct()
+                    .ToDictionary(GetToolKey, tool => tool, comparer);
             }
 
             // Otherwise, return all tools whose type matches one of the requested types.
@@ -300,12 +305,14 @@ namespace G4.Services.Domain.V4.Repositories
                 .Tools
                 .Where(i => i.Score >= threshold);
 
-            // Map the tool names to their corresponding McpToolModel instances
+            // Map the qualified tool names to their corresponding McpToolModel instances, keyed by catalog key
+            // so tools sharing a name across namespaces remain distinct entries.
             return results
-                .Select(i => _tools.GetValueOrDefault(i.Name))
+                .Select(i => _tools.GetValueOrDefault(PluginReference.GetQualifiedName(i.NameSpace, i.Name)))
                 .Where(i => i != null)
+                .Distinct()
                 .ToDictionary(
-                    i => i.Name,
+                    GetToolKey,
                     i => i,
                     StringComparer.OrdinalIgnoreCase);
         }
@@ -573,8 +580,9 @@ namespace G4.Services.Domain.V4.Repositories
                     .FirstOrDefault(v => !string.IsNullOrWhiteSpace(v))
                 ?? string.Empty;
 
-            // Retrieve the plugin name associated with the provided tool name from the internal tool registry (_tools)
-            var pluginName = tools.GetValueOrDefault(key: toolName)?.QualifiedName ?? string.Empty;
+            // Resolve the qualified plugin name from the internal tool registry. An unknown or ambiguous name is
+            // passed through unchanged, so the engine rejects it with its own message and candidate list.
+            var pluginName = ResolveTool(tools, reference: toolName)?.QualifiedName ?? toolName;
 
             // Get the parameters from the ruleData, defaulting to an empty JSON object if not provided.
             var parameters = ruleData.TryGetProperty("toolParameters", out var parametersOut)
@@ -652,7 +660,7 @@ namespace G4.Services.Domain.V4.Repositories
                 .SelectMany(i => i.Values)
                 .Where(i => i.Manifest.PluginType == "Action" && i.Manifest.Key != "NoAction")
                 .Select(i => i.Manifest)
-                .DistinctBy(manifest => manifest.Key);
+                .DistinctBy(manifest => PluginReference.GetQualifiedName(manifest.Namespace, manifest.Key));
 
             // Convert each action manifest into an MCP tool model
             var tools = actions
@@ -668,8 +676,8 @@ namespace G4.Services.Domain.V4.Repositories
             // Combine plugin-based tools with system tools and populate the registry
             foreach (var tool in tools.Concat(systemTools).ToList())
             {
-                // Add or overwrite entry by tool name
-                toolsCollection[tool.Name] = tool;
+                // Add or overwrite the entry by its catalog key, so plugin tools sharing a name stay distinct.
+                toolsCollection[GetToolKey(tool)] = tool;
             }
 
             // Return the populated tools collection.
@@ -712,19 +720,66 @@ namespace G4.Services.Domain.V4.Repositories
                 ? options.Arguments.GetOrDefault("toolName", () => string.Empty)
                 : toolName;
 
-            // Try to resolve the tool directly from the available tools dictionary.
-            var isName = options.Tools.TryGetValue(key: toolName, out var tool);
-
-            // If the direct lookup failed, try matching by the tool's G4 name instead.
-            tool = isName
-                ? tool
-                : options.Tools.Values.FirstOrDefault(i => i.QualifiedName.Equals(toolName, StringComparison.OrdinalIgnoreCase));
+            // Resolve the tool by its qualified name, bare name, or internal qualified name.
+            var tool = ResolveTool(options.Tools, reference: toolName);
 
             // Return the complete authoritative tool model when it was found.
             // Return null when the caller did not supply a valid tool name.
             return !string.IsNullOrEmpty(toolName) && tool != null
                 ? new { Tool = tool }
                 : null;
+        }
+
+        // Gets the catalog key of a tool: the qualified Namespace:Key name of a plugin tool, so plugins sharing a
+        // name across namespaces stay distinct, and the plain name of a system tool, which MCP clients call by name.
+        private static string GetToolKey(McpToolModel tool)
+        {
+            // Plugin tools carry their qualified name; system tools keep their MCP tool name.
+            return string.Equals(tool.Type, PluginToolType, StringComparison.OrdinalIgnoreCase)
+                ? tool.QualifiedName
+                : tool.Name;
+        }
+
+        // Resolves a tool by catalog key or bare name, following the engine's plugin reference rules: an exact key
+        // wins, a bare name prefers the G4.System tool and otherwise needs exactly one provider, and the internal
+        // qualified name is the last fallback. An unknown or ambiguous reference yields null.
+        private static McpToolModel ResolveTool(ConcurrentDictionary<string, McpToolModel> tools, string reference)
+        {
+            // Reject an empty reference.
+            if (string.IsNullOrWhiteSpace(reference))
+            {
+                return null;
+            }
+
+            // Accept an exact catalog key, such as a qualified plugin name or a system tool name.
+            if (tools.TryGetValue(reference, out var tool))
+            {
+                return tool;
+            }
+
+            // Collect every tool whose bare name matches, across all namespaces.
+            var candidates = tools
+                .Values
+                .Where(i => string.Equals(i.Name, reference, StringComparison.OrdinalIgnoreCase))
+                .ToArray();
+
+            // Prefer the G4.System provider of the bare name.
+            var systemTool = candidates.FirstOrDefault(i =>
+                string.Equals(i.Namespace, PluginReference.SystemNamespace, StringComparison.OrdinalIgnoreCase));
+            if (systemTool != null)
+            {
+                return systemTool;
+            }
+
+            // Accept a single provider, and treat several providers as ambiguous.
+            if (candidates.Length > 0)
+            {
+                return candidates.Length == 1 ? candidates[0] : null;
+            }
+
+            // Fall back to the internal qualified name, such as the "system." prefix of system tools.
+            return tools.Values.FirstOrDefault(i =>
+                string.Equals(i.QualifiedName, reference, StringComparison.OrdinalIgnoreCase));
         }
 
         // Reads the optional lexical tool limit from the "take" argument while preserving the established default.
@@ -1008,7 +1063,9 @@ namespace G4.Services.Domain.V4.Repositories
             var hits = retrievalManager
                 .FindTools(prompt: intent, take)
                 .Tools
-                .Select(hit => (Hit: hit, Tool: options.Tools.GetValueOrDefault(hit.Name)))
+                .Select(hit => (
+                    Hit: hit,
+                    Tool: options.Tools.GetValueOrDefault(PluginReference.GetQualifiedName(hit.NameSpace, hit.Name))))
                 .Where(item => item.Tool != null);
 
             // Pair each tool model with its examples so the response carries everything a rule requires.

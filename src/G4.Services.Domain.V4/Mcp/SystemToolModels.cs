@@ -82,7 +82,8 @@ namespace G4.Services.Domain.V4.Mcp
         /// Gets or sets the tool (plugin) name that defines the rule.
         /// </summary>
         [Required]
-        [Description("The unique identifier of the tool (plugin) that defines the rule to be executed.")]
+        [Description("The name of the tool (plugin) that defines the rule to be executed: its bare name, or its " +
+            "qualified Namespace:Name when several namespaces provide the same name.")]
         public string ToolName { get; set; }
 
         /// <summary>

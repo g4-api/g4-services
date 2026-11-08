@@ -121,7 +121,7 @@ namespace G4.Services.UnitTests.Repositories
                 Assert.AreSame(cacheManager.PluginsCache[PluginType][Key], cacheManager.PluginsCache[PluginType][Alias]);
                 Assert.IsNotNull(tool);
                 Assert.AreEqual(Phrase, tool.Description);
-                Assert.IsTrue(lexicalTools.ContainsKey(Key));
+                Assert.IsTrue(lexicalTools.ContainsKey($"{PluginNamespace}:{Key}"));
                 Assert.HasCount(1, lexicalExamples.Examples);
 
                 // Assert: the completed mutation emits one addition after every cache lookup path is visible.
@@ -293,7 +293,7 @@ namespace G4.Services.UnitTests.Repositories
                 Assert.IsTrue(cacheManager.PluginsCache[PluginType].ContainsKey(CurrentAlias));
                 Assert.AreEqual(CurrentPhrase, repository.FindTool(string.Empty, Key).Description);
                 Assert.IsEmpty(retiredTools);
-                Assert.IsTrue(currentTools.ContainsKey(Key));
+                Assert.IsTrue(currentTools.ContainsKey($"{PluginNamespace}:{Key}"));
                 Assert.IsEmpty(retiredExamples.Examples);
                 Assert.HasCount(1, currentExamples.Examples);
 
@@ -310,35 +310,37 @@ namespace G4.Services.UnitTests.Repositories
             }
         }
 
-        [TestMethod(DisplayName = "Verify that a client namespace collision is rejected before any supply-chain state changes.")]
-        public void NamespaceCollisionLeavesSupplyChainUnchangedTest()
+        [TestMethod(DisplayName = "Verify that a client template may share its key with a plugin in another " +
+            "namespace, and each is resolved by its qualified name.")]
+        public void SameKeyAcrossNamespacesCoexistsTest()
         {
-            // Arrange: reserve the physical key under another logical namespace before attempting client persistence.
-            const string Key = "UnitTestDomainNamespaceConflict";
+            // Arrange: register the same key under another namespace before adding the client template.
+            const string Key = "UnitTestDomainNamespaceShared";
+            const string OwnerNamespace = "G4.Services.UnitTests.Existing";
             var (cacheManager, client, repository) = NewContext();
             CleanupTemplates(client, Key);
             var ownerModel = NewCacheModel(Key, "amber glacier");
-            ownerModel.Manifest.Namespace = "G4.Services.UnitTests.Existing";
+            ownerModel.Manifest.Namespace = OwnerNamespace;
             cacheManager.SyncCache(ownerModel);
-            var notifications = new List<CacheManager.CacheChangedEventArgs>();
-            cacheManager.CacheChanged += (_, eventArgs) => notifications.Add(eventArgs);
 
             try
             {
-                // Act: attempt to register the same physical key under the template test namespace.
-                _ = Assert.ThrowsExactly<InvalidOperationException>(() =>
-                    client.Templates.AddTemplate(NewManifest(Key, "violet harbor")));
+                // Act: register the same key under the template test namespace.
+                var statusCode = client.Templates.AddTemplate(NewManifest(Key, "violet harbor"));
+                var ownerTool = repository.FindTool(string.Empty, toolName: $"{OwnerNamespace}:{Key}");
+                var templateTool = repository.FindTool(string.Empty, toolName: $"{PluginNamespace}:{Key}");
+                var bareTool = repository.FindTool(string.Empty, toolName: Key);
 
-                // Assert: preflight rejection leaves persistence, cache, lexical search, and domain metadata unchanged.
-                Assert.AreEqual(404, client.Templates.GetTemplate(Key).StatusCode);
-                Assert.AreSame(ownerModel, cacheManager.PluginsCache[PluginType][Key]);
-                Assert.AreEqual("amber glacier", repository.FindTool(string.Empty, Key).Description);
-                Assert.IsEmpty(repository.FindTools("violet harbor", maxResults: 3, threshold: 0));
-                Assert.IsEmpty(notifications);
+                // Assert: both plugins stay registered, each qualified name selects its own, and the bare name
+                // selects neither.
+                Assert.AreEqual(204, statusCode);
+                Assert.AreEqual("amber glacier", ownerTool?.Description);
+                Assert.AreEqual("violet harbor", templateTool?.Description);
+                Assert.IsNull(bareTool);
             }
             finally
             {
-                // Cleanup: remove any test document left by an unexpected partial persistence failure.
+                // Cleanup: remove the template document and its cache lookups.
                 CleanupTemplates(client, Key);
             }
         }

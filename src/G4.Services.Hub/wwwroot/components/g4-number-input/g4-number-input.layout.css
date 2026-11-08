@@ -1,0 +1,71 @@
+/*
+ * G4 number input layout: the owner's number box with two stacked steppers inside its right edge.
+ *
+ * The selectors are deliberately specific: the canvas styles every input and every editor button
+ * with element, theme, and editor selectors (designer-blueprint-layout.css and -appearance.css),
+ * and these rules must win.
+ */
+g4-number-input {
+    display: block;
+    width: 100%;
+}
+
+.g4-number-input__wrap {
+    position: relative;
+    display: flex;
+}
+
+/* The native spinners are hidden; the themed steppers take their place, so the text keeps clear of them. */
+g4-number-input .g4-number-input__wrap input.g4-number-input__input {
+    flex: 1 1 auto;
+    min-width: 0;
+    width: 100%;
+    margin: 0;
+    padding-right: 28px;
+    appearance: textfield;
+}
+
+g4-number-input .g4-number-input__wrap input.g4-number-input__input::-webkit-inner-spin-button,
+g4-number-input .g4-number-input__wrap input.g4-number-input__input::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.g4-number-input__steppers {
+    position: absolute;
+    top: 1px;
+    right: 1px;
+    bottom: 1px;
+    display: flex;
+    flex-direction: column;
+    width: 22px;
+    overflow: hidden;
+    border-left-width: 1px;
+    border-left-style: solid;
+}
+
+g4-number-input .g4-number-input__wrap .g4-number-input__steppers button.g4-number-input__step {
+    display: flex;
+    flex: 1 1 0;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-width: 0;
+    height: auto;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    line-height: 1;
+    border-style: none;
+}
+
+g4-number-input .g4-number-input__wrap .g4-number-input__steppers button.g4-number-input__step:first-child {
+    border-bottom-width: 1px;
+    border-bottom-style: solid;
+}
+
+g4-number-input .g4-number-input__wrap .g4-number-input__steppers button.g4-number-input__step svg {
+    display: block;
+    width: 10px;
+    height: 10px;
+}

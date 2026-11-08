@@ -18,6 +18,7 @@ using Swashbuckle.AspNetCore.SwaggerGen;
 using Swashbuckle.AspNetCore.SwaggerUI;
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.IO;
@@ -567,6 +568,129 @@ namespace G4.Extensions
                         url: document.Url,
                         name: document.OpenApi.Title
                     );
+                }
+            }
+        }
+
+        extension(ToolboxesFilterModel filter)
+        {
+            /// <summary>
+            /// Selects the cached plugins this filter shows, keeping the cache shape of the integration endpoint.
+            /// </summary>
+            /// <param name="cache">The plugin cache by plugin type, then by lookup name.</param>
+            /// <returns>
+            /// A new cache with every lookup name of each shown plugin, so qualified names, bare names, and aliases
+            /// keep resolving; the cache itself when the filter is missing.
+            /// </returns>
+            public IDictionary<string, ConcurrentDictionary<string, G4PluginCacheModel>> SelectCache(
+                IDictionary<string, ConcurrentDictionary<string, G4PluginCacheModel>> cache)
+            {
+                // Return the cache unchanged when there is no filter, so a missing body behaves like the GET route.
+                if (filter is null || cache is null)
+                {
+                    return cache;
+                }
+
+                // Keep each bucket's lookup names whose plugin the filter shows; a model without a manifest stays.
+                var filteredCache = new Dictionary<string, ConcurrentDictionary<string, G4PluginCacheModel>>(
+                    StringComparer.OrdinalIgnoreCase);
+                foreach (var (pluginType, bucket) in cache)
+                {
+                    var entries = bucket.Where(entry =>
+                        entry.Value?.Manifest is null || filter.TestEnabled(entry.Value.Manifest));
+                    filteredCache[pluginType] = new ConcurrentDictionary<string, G4PluginCacheModel>(
+                        entries,
+                        StringComparer.OrdinalIgnoreCase);
+                }
+
+                return filteredCache;
+            }
+
+            /// <summary>
+            /// Selects the plugin manifests this filter shows.
+            /// </summary>
+            /// <param name="manifests">The plugin manifests to filter.</param>
+            /// <returns>The shown manifests; the manifests themselves when the filter is missing.</returns>
+            public IEnumerable<IG4PluginManifest> SelectManifests(IEnumerable<IG4PluginManifest> manifests)
+            {
+                // Return the manifests unchanged when there is no filter, so a missing body behaves like the GET route.
+                if (filter is null || manifests is null)
+                {
+                    return manifests;
+                }
+
+                return manifests.Where(manifest => manifest is null || filter.TestEnabled(manifest));
+            }
+
+            /// <summary>
+            /// Determines whether this filter shows the plugin of a manifest.
+            /// </summary>
+            /// <param name="manifest">The plugin manifest to test.</param>
+            /// <returns><see langword="true"/> when the plugin is shown; otherwise, <see langword="false"/>.</returns>
+            /// <remarks>
+            /// The first matching rule decides: the tool entry with the plugin's qualified name, the tool entry with
+            /// its bare key, then its toolboxes, where the plugin is shown when any of its categories is shown. A
+            /// plugin without categories, or without matching entries, is shown.
+            /// </remarks>
+            public bool TestEnabled(IG4PluginManifest manifest)
+            {
+                // Show everything without a filter or a manifest, because only an explicit entry hides a plugin.
+                if (filter is null || manifest is null)
+                {
+                    return true;
+                }
+
+                // Apply the tool entries first: the qualified name names this plugin only, so it beats the bare key.
+                var qualifiedName = PluginReference.GetQualifiedName(manifest.Namespace, manifest.Key);
+                var qualifiedEntry = FindLastEntry(filter.Tools, name => TestToolName(name, qualifiedName));
+                if (qualifiedEntry is not null)
+                {
+                    return qualifiedEntry.Enabled.Value;
+                }
+
+                var isBareKey = !string.IsNullOrEmpty(manifest.Key);
+                var bareEntry = isBareKey
+                    ? FindLastEntry(filter.Tools, name => TestToolName(name, manifest.Key))
+                    : null;
+                if (bareEntry is not null)
+                {
+                    return bareEntry.Enabled.Value;
+                }
+
+                // Apply the toolbox entries: the plugin is shown when any of its categories is shown.
+                var categories = manifest.Categories?
+                    .Where(category => !string.IsNullOrWhiteSpace(category))
+                    .ToArray() ?? [];
+                if (categories.Length == 0)
+                {
+                    return true;
+                }
+
+                return categories.Any(category =>
+                    FindLastEntry(filter.Toolboxes, name => TestToolboxName(name, category))?.Enabled ?? true);
+
+                // Finds the last complete entry whose name matches, so a later source overrides an earlier one.
+                static ToolboxesFilterModel.FilterEntryModel FindLastEntry(
+                    IEnumerable<ToolboxesFilterModel.FilterEntryModel> entries,
+                    Func<string, bool> testName)
+                {
+                    return entries?.LastOrDefault(entry =>
+                        entry?.Enabled is not null && !string.IsNullOrWhiteSpace(entry.Name) && testName(entry.Name));
+                }
+
+                // Compares toolbox names ignoring case and white space, so "UiControls" matches "Ui Controls".
+                static bool TestToolboxName(string name, string category)
+                {
+                    var normalizedName = string.Concat(name.Where(character => !char.IsWhiteSpace(character)));
+                    var normalizedCategory = string.Concat(category.Where(character => !char.IsWhiteSpace(character)));
+
+                    return string.Equals(normalizedName, normalizedCategory, StringComparison.OrdinalIgnoreCase);
+                }
+
+                // Compares tool names ignoring case and surrounding white space.
+                static bool TestToolName(string name, string toolName)
+                {
+                    return string.Equals(name.Trim(), toolName, StringComparison.OrdinalIgnoreCase);
                 }
             }
         }

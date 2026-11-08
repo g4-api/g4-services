@@ -12,7 +12,8 @@ namespace G4.Services.Domain.V4.Repositories
     /// <see cref="IFlowsRepository"/>.
     /// </summary>
     /// <remarks>
-    /// The flows client owns persistence and the flows cache; this repository adds no state. Exceptions are raised as
+    /// The flows client owns persistence and the flows cache; this repository adds no state. An unknown flow is a
+    /// normal outcome reported by a <see langword="false"/> result, never an exception. Real failures are raised as
     /// root exceptions without inner exceptions, because the REST error middleware maps the base exception type.
     /// </remarks>
     /// <param name="flows">The flows client of the application-scoped G4 client.</param>
@@ -62,19 +63,6 @@ namespace G4.Services.Domain.V4.Repositories
         }
 
         /// <inheritdoc />
-        public G4FlowManifestModel GetFlow(string @namespace, string key)
-        {
-            // Read the stored manifest and report an unknown identity with the namespace the client searched.
-            var (statusCode, manifest) = flows.GetFlow(@namespace, key);
-            if (statusCode == OkStatus)
-            {
-                return manifest;
-            }
-
-            throw NewFlowNotFoundException(@namespace, key);
-        }
-
-        /// <inheritdoc />
         public G4FlowManifestModel[] GetFlows()
         {
             // Materialize every manifest so callers can count and serialize the result without re-enumerating.
@@ -88,25 +76,55 @@ namespace G4.Services.Domain.V4.Repositories
             return string.IsNullOrEmpty(@namespace) ? GetFlows() : [.. flows.GetFlows(@namespace)];
         }
 
+        /// <summary>
+        /// Builds the message that reports an unknown flow, naming the identity the flows client searched.
+        /// </summary>
+        /// <param name="namespace">The flow namespace; null or empty is reported as G4.System.</param>
+        /// <param name="key">The flow key.</param>
+        /// <returns>The not-found message shared by the REST and MCP transports.</returns>
+        public static string NewFlowNotFoundMessage(string @namespace, string key)
+        {
+            // Resolve the namespace exactly as the flows client normalizes it.
+            var flowNamespace = string.IsNullOrEmpty(@namespace) ? DefaultNamespace : @namespace;
+
+            return $"The flow '{flowNamespace}.{key}' was not found. Please try re-adding the flow or reload the " +
+                "service.";
+        }
+
         /// <inheritdoc />
-        public IDictionary<string, G4AutomationResponseModel> InvokeFlow(
+        public int StopInvocation(string automationId)
+        {
+            // Cancel the invocation and close its sessions; the client reports the outcome as an exit code.
+            return flows.StopAutomation(automationId);
+        }
+
+        /// <inheritdoc />
+        public bool TryGetFlow(string @namespace, string key, out G4FlowManifestModel manifest)
+        {
+            // Read the stored manifest; an unknown identity is a normal miss, so nothing is thrown.
+            var (statusCode, storedManifest) = flows.GetFlow(@namespace, key);
+            manifest = statusCode == OkStatus ? storedManifest : null;
+
+            return statusCode == OkStatus;
+        }
+
+        /// <inheritdoc />
+        public bool TryInvokeFlow(
             string @namespace,
             string key,
-            G4FlowInvokeModel invokeModel)
+            G4FlowInvokeModel invokeModel,
+            out IDictionary<string, G4AutomationResponseModel> responses)
         {
             try
             {
                 // Run the flow and wait for it; an omitted invoke model runs the flow as stored.
-                var (statusCode, responses) = flows.Invoke(@namespace, key, invokeModel ?? new G4FlowInvokeModel());
+                var (statusCode, flowResponses) = flows.Invoke(@namespace, key, invokeModel ?? new G4FlowInvokeModel());
+                responses = statusCode == OkStatus ? flowResponses : null;
 
-                // Map the client's status codes: success, unknown identity, or a flow that could not be built.
-                if (statusCode == OkStatus)
+                // Report success and an unknown identity as results; only a flow that could not be built fails.
+                if (statusCode == OkStatus || statusCode == NotFoundStatus)
                 {
-                    return responses;
-                }
-                if (statusCode == NotFoundStatus)
-                {
-                    throw NewFlowNotFoundException(@namespace, key);
+                    return statusCode == OkStatus;
                 }
 
                 var message = "The flow could not be decoded into an automation, or it is not valid JSON after its " +
@@ -123,23 +141,10 @@ namespace G4.Services.Domain.V4.Repositories
         }
 
         /// <inheritdoc />
-        public void RemoveFlow(string @namespace, string key)
+        public bool TryRemoveFlow(string @namespace, string key)
         {
-            // Remove the flow and report an unknown identity with the namespace the client searched.
-            var statusCode = flows.RemoveFlow(@namespace, key);
-            if (statusCode == NoContentStatus)
-            {
-                return;
-            }
-
-            throw NewFlowNotFoundException(@namespace, key);
-        }
-
-        /// <inheritdoc />
-        public int StopInvocation(string automationId)
-        {
-            // Cancel the invocation and close its sessions; the client reports the outcome as an exit code.
-            return flows.StopAutomation(automationId);
+            // Remove the flow; any status other than success means the identity is unknown, which is not a failure.
+            return flows.RemoveFlow(@namespace, key) == NoContentStatus;
         }
 
         // Runs one flows-client operation and unwraps a cache identity conflict into its root exception, so both
@@ -157,17 +162,6 @@ namespace G4.Services.Domain.V4.Repositories
                 // Rethrow the root conflict without its wrappers so MCP and REST map it to the same error.
                 throw new InvalidOperationException(conflict.Message);
             }
-        }
-
-        // Creates the unknown-flow failure, naming the namespace the flows client actually searched.
-        private static KeyNotFoundException NewFlowNotFoundException(string @namespace, string key)
-        {
-            // Resolve the namespace exactly as the flows client normalizes it.
-            var flowNamespace = string.IsNullOrEmpty(@namespace) ? DefaultNamespace : @namespace;
-            var message = $"The flow '{flowNamespace}.{key}' was not found. Please try re-adding the flow or reload " +
-                "the service.";
-
-            return new KeyNotFoundException(message);
         }
 
         #endregion

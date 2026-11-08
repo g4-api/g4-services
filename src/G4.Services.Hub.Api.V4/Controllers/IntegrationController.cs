@@ -115,6 +115,24 @@ namespace G4.Services.Hub.Api.V4.Controllers
             return Ok(cache);
         }
 
+        [HttpPost]
+        [Route("cache/filter")]
+        [SwaggerOperation(
+            summary: "Retrieves the plugin cache filtered by toolboxes and tools.",
+            description: "Returns the current plugin cache in the same shape as GET cache, without the plugins the `toolboxesFilter` hides. A toolbox is a plugin category; a tool is named by its qualified `Namespace:Key` name (that plugin only) or its bare key (every namespace). The first matching rule decides: the qualified tool entry, the bare tool entry, the toolbox entries (a plugin is shown when any of its categories is shown), otherwise the plugin is shown. When several entries name the same toolbox or tool, the last one wins. Every lookup name of a shown plugin is kept. A missing filter returns the whole cache.",
+            Tags = ["Cache"])]
+        [SwaggerResponse(StatusCodes.Status200OK, description: "Successfully retrieved the filtered plugin cache.", type: typeof(IDictionary<string, ConcurrentDictionary<string, G4PluginCacheModel>>), contentTypes: MediaTypeNames.Application.Json)]
+        public IActionResult GetFilteredCache(
+            [SwaggerRequestBody(description: "The toolboxes and tools filter, for example { \"toolboxesFilter\": { \"toolboxes\": [{ \"name\": \"UiControls\", \"enabled\": false }], \"tools\": [{ \"name\": \"G4.Plugins.Ui:SendKeys\", \"enabled\": true }] } }.", Required = true)][FromBody] ToolboxesFilterRequestModel request)
+        {
+            // Read the current cache, then keep only the plugins the filter shows.
+            var cache = _domain.G4.Client.Integration.GetCache();
+            var filteredCache = request?.ToolboxesFilter.SelectCache(cache) ?? cache;
+
+            // Return the filtered cache as a JSON response.
+            return Ok(filteredCache);
+        }
+
         [HttpGet]
         [Route("cache/flows")]
         [SwaggerOperation(
@@ -207,8 +225,9 @@ namespace G4.Services.Hub.Api.V4.Controllers
             // Retrieve all plugin collections from the cache
             var plugins = _domain.Resources.Cache.PluginsCache.Values;
 
-            // Flatten plugin dictionaries into a list of JSON objects
-            var jsonFiles = plugins.SelectMany(i => i.Values).Select(i => new
+            // Flatten plugin dictionaries into a list of JSON objects, once per plugin, because the cache
+            // stores each plugin under its qualified name, its bare name, and its aliases.
+            var jsonFiles = plugins.SelectMany(i => i.Values).Distinct().Select(i => new
             {
                 i.Manifest.Key,
                 Details = new
@@ -227,8 +246,10 @@ namespace G4.Services.Hub.Api.V4.Controllers
             {
                 foreach (var jsonFile in jsonFiles)
                 {
-                    // Create an entry for each plugin JSON file
-                    var entry = archive.CreateEntry($"{jsonFile.Key}.json", CompressionLevel.Fastest);
+                    // Create an entry for each plugin JSON file, prefixed with its namespace so plugins sharing
+                    // a key across namespaces do not collide.
+                    var entryName = $"{jsonFile.Details.Manifest.Namespace}.{jsonFile.Key}.json";
+                    var entry = archive.CreateEntry(entryName, CompressionLevel.Fastest);
 
                     using var entryStream = entry.Open();
                     using var streamWriter = new StreamWriter(entryStream);
@@ -616,6 +637,30 @@ namespace G4.Services.Hub.Api.V4.Controllers
 
             // Return the list of manifests in JSON format.
             return Ok(manifests);
+        }
+
+        [HttpPost]
+        [Route("manifests/filter")]
+        [SwaggerOperation(
+            summary: "Retrieves the plugin manifests filtered by toolboxes and tools.",
+            description: "Returns the plugin manifests as GET manifests does, without the plugins the `toolboxesFilter` hides, using the same rules as POST cache/filter. Optionally includes specific fields in the response based on the `expandFields` query parameter. A missing filter returns every manifest.",
+            Tags = ["Manifests"])]
+        [SwaggerResponse(StatusCodes.Status200OK, description: "Successfully retrieved the filtered plugin manifests.", type: typeof(IG4PluginManifest[]), contentTypes: MediaTypeNames.Application.Json)]
+        public IActionResult GetFilteredManifests(
+            [SwaggerParameter(description: "Comma-separated list of fields to include in the response.", Required = false)] string expandFields,
+            [SwaggerRequestBody(description: "The toolboxes and tools filter, as POST cache/filter takes it.", Required = true)][FromBody] ToolboxesFilterRequestModel request)
+        {
+            // Read every manifest, keep the ones the filter shows, then extract the requested fields.
+            var manifests = _domain.G4.Client.Integration.GetManifests<IG4PluginManifest>();
+            var filteredManifests = (request?.ToolboxesFilter.SelectManifests(manifests) ?? manifests)
+                .Select(i => i.ExtractFields(expandFields))
+                .ToArray();
+
+            // Add the number of manifests returned to the response headers.
+            Response.Headers.Append("X-Manifest-Count", $"{filteredManifests.Length}");
+
+            // Return the filtered manifests in JSON format.
+            return Ok(filteredManifests);
         }
 
         [HttpGet]

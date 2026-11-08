@@ -12,7 +12,7 @@
 	/* Smart Editor */
 	--smart-editor-width: 350px;
 	/* Toolbox */
-	--toolbox-width: 150px;
+	--toolbox-width: 182px;
 }
 
 * {
@@ -294,23 +294,23 @@ textarea {
 	width: 0;
 }
 
+/*
+ * The switch is painted as one element: the thumb is a circle in the track's own background (see the
+ * appearance file), placed here as a background tile. A separate thumb element is rounded to screen
+ * pixels apart from its track, which leaves it a pixel off center at zoom levels such as 125%.
+ */
 .sqd-base64-toggle__switch {
+	background-position: left 2px center;
+	background-repeat: no-repeat;
+	background-size: 14px 14px;
 	flex-shrink: 0;
 	height: 18px;
 	position: relative;
 	width: 34px;
 }
 
-	.sqd-base64-toggle__switch::after {
-		height: 14px;
-		left: 2px;
-		position: absolute;
-		top: 2px;
-		width: 14px;
-	}
-
-	.sqd-base64-toggle__input:checked + .sqd-base64-toggle__switch::after {
-		transform: translateX(16px);
+	.sqd-base64-toggle__input:checked + .sqd-base64-toggle__switch {
+		background-position: right 2px center;
 	}
 
 /* The switch shows in a field header and in the expanded editor's header. */

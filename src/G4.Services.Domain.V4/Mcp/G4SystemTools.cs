@@ -59,7 +59,7 @@ namespace G4.Services.Domain.V4.Mcp
         public Task<CallToolResult> FindToolAsync([Description(Catalog.FindTool.Arguments.ToolName)] string toolName)
         {
             // Forward the name;
-            // the repository matches it against tool names first and qualified names second.
+            // the repository resolves a qualified Namespace:Name or a bare name, as the engine does.
             return G4ToolsInvoker.InvokeAsync(tools, name: Catalog.FindTool.Name, arguments: new { toolName });
         }
 
@@ -375,8 +375,8 @@ namespace G4.Services.Domain.V4.Mcp
                 /// <summary>
                 /// The tool description.
                 /// </summary>
-                public const string Description = "Retrieves the complete G4 tool model for an exact tool name, " +
-                    "including its authoritative namespace and client tool schema.";
+                public const string Description = "Retrieves the complete G4 tool model for an exact tool name or " +
+                    "its qualified Namespace:Name, including its authoritative namespace and client tool schema.";
 
                 #endregion
 
@@ -390,7 +390,8 @@ namespace G4.Services.Domain.V4.Mcp
                     /// <summary>
                     /// Describes the tool name argument.
                     /// </summary>
-                    public const string ToolName = "The unique identifier of the tool to find.";
+                    public const string ToolName = "The name of the tool to find: its bare name, or its qualified " +
+                        "Namespace:Name when several namespaces provide the same name.";
 
                     #endregion
                 }

@@ -33,6 +33,8 @@ namespace G4.Services.UnitTests.Mcp
             var invalidFlow = await InvokeFlowAsync(client, key: FakeFlowsClient.InvalidFlowKey);
             var invalidDataSource = await InvokeFlowAsync(client, key: FakeFlowsClient.InvalidDataSourceKey);
             var missing = await TestMcpServer.InvokeToolAsync(client, name: "g4.RemoveFlow", missingArguments);
+            var missingGet = await TestMcpServer.InvokeToolAsync(client, name: "g4.GetFlow", missingArguments);
+            var missingInvoke = await InvokeFlowAsync(client, key: "Missing");
 
             // Assert: each failure is a tool error whose message tells the caller what to correct.
             Assert.Contains(substring: FakeFlowsClient.ConflictKey, value: ReadError(response: conflict));
@@ -40,6 +42,8 @@ namespace G4.Services.UnitTests.Mcp
             Assert.Contains(substring: "not valid JSON after its parameters", value: ReadError(response: invalidFlow));
             Assert.Contains(substring: "fixture.csv", value: ReadError(response: invalidDataSource));
             Assert.Contains(substring: missingIdentity, value: ReadError(response: missing));
+            Assert.Contains(substring: missingIdentity, value: ReadError(response: missingGet));
+            Assert.Contains(substring: missingIdentity, value: ReadError(response: missingInvoke));
             Assert.IsEmpty(collection: server.Flows.Manifests);
         }
 

@@ -104,6 +104,12 @@
     --text-box-tool-color: var(--vscode-foreground);
     --text-box-tool-hover-background: var(--vscode-list-hoverBackground);
     --text-box-tool-hover-border-color: var(--vscode-focusBorder);
+    /* Number Input */
+    --number-input-step-background: var(--vscode-input-background);
+    --number-input-step-border-color: var(--vscode-sideBar-background);
+    --number-input-step-color: var(--vscode-foreground);
+    --number-input-step-hover-background: var(--vscode-list-hoverBackground);
+    --number-input-step-hover-color: var(--vscode-foreground);
     /* Smart Editor */
     --run-state-failed-fill: color-mix(in srgb, var(--vscode-terminal-ansiRed) 20%, transparent);
     --run-state-failed-stroke: var(--red);

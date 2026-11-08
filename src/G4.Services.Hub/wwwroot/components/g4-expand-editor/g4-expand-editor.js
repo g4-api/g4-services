@@ -97,6 +97,9 @@
         // The modal that holds the editor while it is open.
         #modal = null;
 
+        // Controller of the designer scroll bars over the text area; null until the editor renders.
+        #scrollbars = null;
+
         /**
          * Formats the text from the header button.
          */
@@ -160,6 +163,13 @@
             // Build the editor and report every edit to the owner.
             this.replaceChildren(this.#newContent());
             this.#getPart('textarea').addEventListener('input', this.#onTextareaInput);
+
+            // Lay the designer scroll bars over the text area, inside the body that also holds the gutter.
+            this.#scrollbars = globalThis.G4Scrollbars?.attach({
+                host: this.querySelector('.g4-expand-editor__body'),
+                scrollElement: this.#getPart('textarea'),
+                testId: this.getAttribute('test-id') || DEFAULT_TEST_ID
+            }) ?? null;
         }
 
         /**
@@ -217,6 +227,7 @@
             textarea.value = text;
             this.setJsonMode(isJson);
             this.querySelector('g4-line-numbers').refresh();
+            this.#scrollbars?.refresh();
             textarea.focus();
             textarea.setSelectionRange(selectionStart, selectionEnd);
         }
@@ -272,6 +283,7 @@
             // Show the new text with its line numbers and its JSON check.
             textarea.value = text;
             this.querySelector('g4-line-numbers').refresh();
+            this.#scrollbars?.refresh();
             this.#updateError(EDIT_GUIDANCE);
         }
 

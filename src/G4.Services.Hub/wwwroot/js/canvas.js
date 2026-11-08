@@ -76,6 +76,9 @@ async function initializeDesigner() {
 	// Initialize an array to hold all groups.
 	const groups = [];
 
+	// Collect each toolbox's tools with their manifests, so the toolboxes filter can list and name them.
+	const filterToolboxes = [];
+
 	// Process each manifest group to create the groups for the designer.
 	for (const [groupName, manifestsGroup] of Object.entries(_manifestsGroups)) {
 		// Retrieve the manifests from the group, or default to an empty array.
@@ -88,13 +91,20 @@ async function initializeDesigner() {
 		};
 
 		// Convert each manifest into a step and add it to the group.
+		const filterTools = [];
+
 		for (const manifest of manifests) {
 			const step = StateMachineSteps.newG4Step(manifest);
 			group.steps.push(step);
+
+			// Link the step to its manifest, so the toolboxes filter can resolve the plugin's namespace.
+			G4ToolboxesFilter.registerToolboxesFilterStep(step, manifest);
+			filterTools.push({ label: step.name, manifest });
 		}
 
 		// Add the group to the array of groups.
 		groups.push(group);
+		filterToolboxes.push({ name: groupName, tools: filterTools });
 	}
 
 	// Retrieve or create the "Containers" group in the configuration toolbox.
@@ -129,6 +139,22 @@ async function initializeDesigner() {
 
 	// Create the workflow designer using the configuration and start definition.
 	_designer = sequentialWorkflowDesigner.Designer.create(designerHtmlElement, startDefinition, configuration);
+
+	// Add the toolboxes filter next to the toolbox search box; Containers is always shown, so it is not listed.
+	const toolboxFilterElement = designerHtmlElement.querySelector('.sqd-toolbox-filter');
+
+	if (toolboxFilterElement) {
+		const toolboxesFilter = document.createElement('g4-toolboxes-filter');
+
+		toolboxesFilter.toolboxes = filterToolboxes
+			.filter((toolbox) => toolbox.name !== G4ToolboxesFilter.containersGroupName)
+			.toSorted((left, right) => left.name.localeCompare(right.name))
+			.map((toolbox) => ({
+				name: toolbox.name,
+				tools: toolbox.tools.toSorted((left, right) => left.label.localeCompare(right.label))
+			}));
+		toolboxFilterElement.append(toolboxesFilter);
+	}
 
 	// Subscribe to definition changes in the designer.
 	// This event fires whenever a step is added, removed, or updated.

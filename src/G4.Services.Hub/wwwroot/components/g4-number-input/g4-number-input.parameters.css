@@ -1,0 +1,14 @@
+/*
+ * G4 number input parameters, mapped to the canvas theme. Every theme file
+ * (designer-blueprint-parameters*.css) defines the Number Input values below.
+ */
+:root {
+    --g4-number-input-step-background: var(--number-input-step-background);
+    --g4-number-input-step-border-color: var(--number-input-step-border-color);
+    --g4-number-input-step-disabled-opacity: .4;
+    --g4-number-input-step-foreground: var(--number-input-step-color);
+    --g4-number-input-step-hover-background: var(--number-input-step-hover-background);
+    --g4-number-input-step-hover-foreground: var(--number-input-step-hover-color);
+    /* The steppers sit 1px inside the box border, so their corners follow the box radius less than 1px. */
+    --g4-number-input-step-radius: max(0px, calc(var(--border-radius) - 1px));
+}

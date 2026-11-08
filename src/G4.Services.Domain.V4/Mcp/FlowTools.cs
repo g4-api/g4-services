@@ -52,14 +52,16 @@ namespace G4.Services.Domain.V4.Mcp
         /// <returns>The manifest as JSON text and structured content, or a tool error for an unknown flow.</returns>
         [McpServerTool(Name = Catalog.GetFlow.Name, Title = Catalog.GetFlow.Title, ReadOnly = true, Idempotent = true)]
         [Description(Catalog.GetFlow.Description)]
-        public async Task<CallToolResult> GetFlowAsync(
+        public Task<CallToolResult> GetFlowAsync(
             [Description(Catalog.GetFlow.Arguments.Key)] string key,
             [Description(Catalog.GetFlow.Arguments.Namespace)] string @namespace = null)
         {
-            // Read through the shared repository so an unknown flow fails exactly as it does over REST.
-            return await McpResults
-                .InvokeAsync(operation: () => Task.FromResult<object>(result: flows.GetFlow(@namespace, key)))
-                .ConfigureAwait(false);
+            // Read through the shared repository; an unknown flow is a normal not-found result, as REST answers 404.
+            var result = McpResults.InvokeResult(operation: () => flows.TryGetFlow(@namespace, key, out var manifest)
+                ? McpResults.NewResult(manifest)
+                : NewFlowNotFoundResult(@namespace, key));
+
+            return Task.FromResult(result);
         }
 
         /// <summary>
@@ -100,7 +102,7 @@ namespace G4.Services.Domain.V4.Mcp
         [McpServerTool(
             Name = Catalog.InvokeFlow.Name, Title = Catalog.InvokeFlow.Title, Destructive = false, Idempotent = false)]
         [Description(Catalog.InvokeFlow.Description)]
-        public async Task<CallToolResult> InvokeFlowAsync(
+        public Task<CallToolResult> InvokeFlowAsync(
             [Description(Catalog.InvokeFlow.Arguments.Key)] string key,
             [Description(Catalog.InvokeFlow.Arguments.Namespace)] string @namespace = null,
             [Description(Catalog.InvokeFlow.Arguments.Parameters)] Dictionary<string, object> parameters = null,
@@ -115,14 +117,14 @@ namespace G4.Services.Domain.V4.Mcp
             var arguments = new { argument, authentication, driverParameters, parameters, referenceId, settings };
             var invokeModel = ConvertToInvokeModel(arguments);
 
-            // Run through the shared repository; the call blocks until the flow finishes, as REST invoke does.
-            return await McpResults
-                .InvokeAsync(operation: () =>
-                {
-                    var responses = flows.InvokeFlow(@namespace, key, invokeModel);
-                    return Task.FromResult<object>(result: responses);
-                })
-                .ConfigureAwait(false);
+            // Run through the shared repository; the call blocks until the flow finishes, as REST invoke does, and an
+            // unknown flow is a normal not-found result.
+            var result = McpResults.InvokeResult(operation: () =>
+                flows.TryInvokeFlow(@namespace, key, invokeModel, out var responses)
+                    ? McpResults.NewResult(responses)
+                    : NewFlowNotFoundResult(@namespace, key));
+
+            return Task.FromResult(result);
         }
 
         /// <summary>
@@ -185,19 +187,16 @@ namespace G4.Services.Domain.V4.Mcp
         [McpServerTool(
             Name = Catalog.RemoveFlow.Name, Title = Catalog.RemoveFlow.Title, Destructive = true, Idempotent = true)]
         [Description(Catalog.RemoveFlow.Description)]
-        public async Task<CallToolResult> RemoveFlowAsync(
+        public Task<CallToolResult> RemoveFlowAsync(
             [Description(Catalog.RemoveFlow.Arguments.Key)] string key,
             [Description(Catalog.RemoveFlow.Arguments.Namespace)] string @namespace = null)
         {
-            // Remove through the shared repository so an unknown flow fails exactly as it does over REST.
-            return await McpResults
-                .InvokeAsync(operation: () =>
-                {
-                    flows.RemoveFlow(@namespace, key);
-                    var removed = new { Namespace = NewNamespace(@namespace), Key = key, Removed = true };
-                    return Task.FromResult<object>(result: removed);
-                })
-                .ConfigureAwait(false);
+            // Remove through the shared repository; an unknown flow is a normal not-found result, as REST answers 404.
+            var result = McpResults.InvokeResult(operation: () => flows.TryRemoveFlow(@namespace, key)
+                ? McpResults.NewResult(new { Namespace = NewNamespace(@namespace), Key = key, Removed = true })
+                : NewFlowNotFoundResult(@namespace, key));
+
+            return Task.FromResult(result);
         }
 
         /// <summary>
@@ -255,6 +254,14 @@ namespace G4.Services.Domain.V4.Mcp
             // Serialize with the application contract so the stored automation matches a REST-supplied flow.
             var json = JsonSerializer.Serialize(automation, options: s_bodyOptions);
             return json.ConvertToBase64();
+        }
+
+        // Builds the tool result of an unknown flow. A missing flow is a normal outcome, reported with the same message
+        // the REST 404 body carries, so the model can correct the identity and retry.
+        private static CallToolResult NewFlowNotFoundResult(string @namespace, string key)
+        {
+            // Name the identity the flows client searched, with an omitted namespace reported as the default.
+            return McpResults.NewErrorResult(message: FlowsRepository.NewFlowNotFoundMessage(@namespace, key));
         }
 
         // Resolves the namespace the flows client assigns, so results name the identity that was actually stored.

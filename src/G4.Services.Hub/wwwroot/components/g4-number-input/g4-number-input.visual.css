@@ -1,0 +1,31 @@
+/*
+ * G4 number input visual language: the number box keeps the canvas input look; the steppers follow
+ * the theme's Number Input values and light up on hover.
+ */
+.g4-number-input__steppers,
+g4-number-input .g4-number-input__wrap .g4-number-input__steppers button.g4-number-input__step:first-child {
+    border-color: var(--g4-number-input-step-border-color);
+}
+
+/* The steppers round their outer corners with the box, so a rounded theme keeps its rounded box. */
+.g4-number-input__steppers {
+    border-top-right-radius: var(--g4-number-input-step-radius);
+    border-bottom-right-radius: var(--g4-number-input-step-radius);
+}
+
+g4-number-input .g4-number-input__wrap .g4-number-input__steppers button.g4-number-input__step {
+    cursor: pointer;
+    color: var(--g4-number-input-step-foreground);
+    background-color: var(--g4-number-input-step-background);
+    border-radius: 0;
+}
+
+g4-number-input .g4-number-input__wrap .g4-number-input__steppers button.g4-number-input__step:hover:not(:disabled) {
+    color: var(--g4-number-input-step-hover-foreground);
+    background-color: var(--g4-number-input-step-hover-background);
+}
+
+g4-number-input .g4-number-input__wrap .g4-number-input__steppers button.g4-number-input__step:disabled {
+    cursor: default;
+    opacity: var(--g4-number-input-step-disabled-opacity);
+}

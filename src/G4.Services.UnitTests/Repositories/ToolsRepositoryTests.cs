@@ -27,6 +27,12 @@ namespace G4.Services.UnitTests.Repositories
     [TestCategory("UnitTest")]
     public class ToolsRepositoryTests
     {
+        // Provides a second namespace that shares plugin keys with the default test namespace.
+        private const string OtherNamespace = "G4.Services.UnitTests.Other";
+
+        // Provides the default namespace of the manifest-backed test capabilities.
+        private const string PluginNamespace = "G4.Services.UnitTests";
+
         // Identifies the cache bucket that contributes capabilities to the domain tool catalog.
         private const string PluginType = "Action";
 
@@ -140,6 +146,69 @@ namespace G4.Services.UnitTests.Repositories
             Assert.AreEqual("G4.Services.UnitTests", tool.GetProperty("namespace").GetString());
             Assert.AreEqual(Key, tool.GetProperty("clientTool").GetProperty("name").GetString());
             Assert.IsTrue(tool.GetProperty("clientTool").TryGetProperty("inputSchema", out _));
+        }
+
+        [TestMethod(DisplayName = "Verify that FindTool keeps tools sharing a name across namespaces and " +
+            "resolves each by its qualified name.")]
+        public void FindToolResolvesQualifiedNamesAcrossNamespacesTest()
+        {
+            // Arrange: register the same key in two namespaces.
+            const string Key = "UnitTestSharedTool";
+            var (cacheManager, repository) = NewContext();
+            cacheManager.SyncCache(NewCacheModel(Key, "shared tool phrase", exampleCount: 1, PluginNamespace));
+            cacheManager.SyncCache(NewCacheModel(Key, "shared tool phrase", exampleCount: 1, OtherNamespace));
+
+            // Act: resolve both qualified names and the ambiguous bare name.
+            var tool = repository.FindTool(intent: string.Empty, toolName: $"{PluginNamespace}:{Key}");
+            var otherTool = repository.FindTool(intent: string.Empty, toolName: $"{OtherNamespace}:{Key}");
+            var bareTool = repository.FindTool(intent: string.Empty, toolName: Key);
+
+            // Assert: each qualified name selects its own namespace, and the bare name selects neither.
+            Assert.AreEqual(PluginNamespace, tool?.Namespace);
+            Assert.AreEqual(OtherNamespace, otherTool?.Namespace);
+            Assert.IsNull(bareTool);
+        }
+
+        [TestMethod(DisplayName = "Verify that lexical tool discovery returns tools sharing a name across " +
+            "namespaces as separate qualified entries.")]
+        public void FindToolsKeepsToolsSharingNameTest()
+        {
+            // Arrange: register the same key in two namespaces with one matching phrase.
+            const string Key = "UnitTestSharedLexicalTool";
+            var (cacheManager, repository) = NewContext();
+            cacheManager.SyncCache(NewCacheModel(Key, RetrievalPhrase, exampleCount: 1, PluginNamespace));
+            cacheManager.SyncCache(NewCacheModel(Key, RetrievalPhrase, exampleCount: 1, OtherNamespace));
+
+            // Act: discover the tools through the lexical overload.
+            var tools = repository.FindTools(RetrievalPhrase, maxResults: 10);
+
+            // Assert: both providers are returned, keyed by their qualified names.
+            Assert.HasCount(2, tools);
+            Assert.IsTrue(tools.ContainsKey($"{PluginNamespace}:{Key}"));
+            Assert.IsTrue(tools.ContainsKey($"{OtherNamespace}:{Key}"));
+        }
+
+        #region *** Data Set ***
+        [DataRow("UnitTestUniqueRule", "G4.Services.UnitTests:UnitTestUniqueRule")]
+        [DataRow("G4.Services.UnitTests.Other:UnitTestSharedRule", "G4.Services.UnitTests.Other:UnitTestSharedRule")]
+        [DataRow("UnitTestSharedRule", "UnitTestSharedRule")]
+        #endregion
+        [TestMethod(DisplayName = "Verify that rule conversion sends the qualified plugin name and passes an " +
+            "ambiguous name through for the engine to reject.")]
+        public void ConvertToRuleUsesQualifiedPluginNameTest(string toolName, string expected)
+        {
+            // Arrange: register one unique key and one key shared by two namespaces.
+            var (cacheManager, _) = NewContext();
+            cacheManager.SyncCache(NewCacheModel("UnitTestUniqueRule", "unique rule phrase"));
+            cacheManager.SyncCache(NewCacheModel("UnitTestSharedRule", "shared rule phrase", 1, PluginNamespace));
+            cacheManager.SyncCache(NewCacheModel("UnitTestSharedRule", "shared rule phrase", 1, OtherNamespace));
+            var ruleData = JsonSerializer.SerializeToElement(new { toolName });
+
+            // Act: convert the rule through the shared path used by SendRule and SendRules, over the live catalog.
+            var rule = ConvertRuleData(ruleData, tools: GetTools());
+
+            // Assert: the rule carries the resolved qualified name, or the unresolved name unchanged.
+            Assert.AreEqual(expected, rule.PluginName);
         }
 
         [TestMethod(DisplayName = "Verify that the FindTool system definition uses the G4.System namespace and requires only a tool name.")]
@@ -483,16 +552,32 @@ namespace G4.Services.UnitTests.Repositories
         // Invokes the shared private conversion boundary without involving a live automation session.
         private static ActionRuleModel ConvertRuleData(JsonElement ruleData)
         {
+            // Delegate to the complete overload with an empty tool catalog.
+            return ConvertRuleData(
+                ruleData,
+                tools: new ConcurrentDictionary<string, McpToolModel>(StringComparer.OrdinalIgnoreCase));
+        }
+
+        // Invokes the shared private conversion boundary over the supplied tool catalog.
+        private static ActionRuleModel ConvertRuleData(
+            JsonElement ruleData,
+            ConcurrentDictionary<string, McpToolModel> tools)
+        {
             const BindingFlags Flags = BindingFlags.Static | BindingFlags.NonPublic;
             var method = typeof(ToolsRepository).GetMethod("ConvertRuleData", Flags);
 
             Assert.IsNotNull(method);
-            return (ActionRuleModel)method.Invoke(null,
-            [
-                ruleData,
-                new IntentModel(),
-                new ConcurrentDictionary<string, McpToolModel>(StringComparer.OrdinalIgnoreCase)
-            ]);
+            return (ActionRuleModel)method.Invoke(null, [ruleData, new IntentModel(), tools]);
+        }
+
+        // Reads the repository's current formatted tool catalog, which the latest cache synchronization published.
+        private static ConcurrentDictionary<string, McpToolModel> GetTools()
+        {
+            const BindingFlags Flags = BindingFlags.Static | BindingFlags.NonPublic;
+            var field = typeof(ToolsRepository).GetField("_tools", Flags);
+
+            Assert.IsNotNull(field);
+            return (ConcurrentDictionary<string, McpToolModel>)field.GetValue(null);
         }
 
         // Creates an isolated cache and its repository so direct-event tests share one assigned application instance.
@@ -521,8 +606,19 @@ namespace G4.Services.UnitTests.Repositories
             return NewCacheModel(key, description, exampleCount: 1);
         }
 
-        // Creates a manifest-backed capability whose examples all match the description and carry an example rule.
+        // Creates a capability in the default test namespace with the requested number of examples.
         private static G4PluginCacheModel NewCacheModel(string key, string description, int exampleCount)
+        {
+            // Delegate to the complete overload with the default test namespace.
+            return NewCacheModel(key, description, exampleCount, PluginNamespace);
+        }
+
+        // Creates a manifest-backed capability whose examples all match the description and carry an example rule.
+        private static G4PluginCacheModel NewCacheModel(
+            string key,
+            string description,
+            int exampleCount,
+            string @namespace)
         {
             // Include deterministic example and summary text used by the respective derived catalogs.
             var examples = Enumerable.Range(start: 0, count: exampleCount).Select(index => new PluginExampleModel
@@ -545,7 +641,7 @@ namespace G4.Services.UnitTests.Repositories
                     Description = [description],
                     Examples = [.. examples],
                     Key = key,
-                    Namespace = "G4.Services.UnitTests",
+                    Namespace = @namespace,
                     PluginType = PluginType,
                     Summary = [description]
                 }
