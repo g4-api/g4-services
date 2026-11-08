@@ -2461,15 +2461,13 @@ class CustomFields {
                 items = (itemSource in _cache) ? _cache[itemSource] : {};
 
                 /**
-                 * Transform each item into a standardized format.
-                 * - manifestKey: Extracted from item?.manifest?.key or defaults to 'No key available'.
-                 * - summary    : Extracted from item?.manifest?.summary or defaults to ['No summary available'].
+                 * Transform each plugin, listed once, into a standardized format.
+                 * - name   : The bare key, or the qualified Namespace:Key name when namespaces share the key.
+                 * - summary: Extracted from item?.manifest?.summary or defaults to ['No summary available'].
                  */
-                items = Object.keys(items).reduce((obj, key) => {
-                    const item = items[key];
-                    const manifestKey = item?.manifest?.key || 'No key available';
-                    obj[manifestKey] = { manifest: { summary: item?.manifest?.summary || ['No summary available'] } };
-                    return obj;
+                items = getCacheEntries(items).reduce((itemsByName, { name, model: item }) => {
+                    itemsByName[name] = { manifest: { summary: item?.manifest?.summary || ['No summary available'] } };
+                    return itemsByName;
                 }, {});
             }
             // Check if itemSource is an array
@@ -3296,24 +3294,19 @@ class CustomFields {
                 items = (itemsSource in _cache) ? _cache[itemsSource] : {};
 
                 /**
-                 * Transform the cached items into a structured object.
-                 * - Each key is derived from the item's manifest key or defaults to 'No key available'.
+                 * Transform the cached plugins, listed once each, into a structured object.
+                 * - Each key is the bare key, or the qualified Namespace:Key name when namespaces share the key.
                  * - Each value contains the item's manifest with a summary.
                  */
-                items = Object.keys(items).reduce((obj, key) => {
-                    const item = items[key];
-
-                    // Safely access the manifest key; default if unavailable
-                    const manifestKey = item?.manifest?.key || 'No key available';
-
+                items = getCacheEntries(items).reduce((itemsByName, { name, model: item }) => {
                     // Safely access the manifest summary; default if unavailable
-                    obj[manifestKey] = {
+                    itemsByName[name] = {
                         manifest: {
                             summary: item?.manifest?.summary || ['No summary available']
                         }
                     };
 
-                    return obj;
+                    return itemsByName;
                 }, {});
             }
             // Check if itemsSource is an array
@@ -3591,23 +3584,35 @@ class CustomFields {
             ? ''
             : options.initialValue;
 
+        // The field label as a test id prefix ("Load Timeout" becomes "load-timeout"). Linear: one negated class, one quantifier.
+        const testIdSeparatorPattern = /[^a-z0-9]+/;
+        const testId = `${options.label ?? ''}`
+            .toLowerCase()
+            .split(testIdSeparatorPattern)
+            .filter((word) => word !== '')
+            .join('-');
+
         /**
          * Construct the HTML string for the input element with the necessary attributes.
+         * The input is dressed by <g4-number-input>, which adds the themed up/down steppers in place of
+         * the browser's native spinners; the input keeps its id, value, and listeners.
          * - `id`               : Unique identifier for the input.
          * - `data-g4-attribute`: Custom data attribute for identifying the field.
          * - `title`            : Tooltip text showing the current value.
          * - `type`             : Specifies the input type as number.
-         * - `step`             : Defines the legal number intervals for the input.
+         * - `step`             : Defines the legal number intervals for the input (and for the steppers).
          * - `value`            : Sets the initial value of the input field.
          */
         const html = `
-        <input 
-            id="${inputId}"
-            data-g4-attribute="${options.label}" 
-            title="${options.initialValue}" 
-            type="number" 
-            step="${options.step || 1}"
-            value="${options.initialValue}" />`;
+        <g4-number-input test-id="${testId || 'number-input'}">
+            <input
+                id="${inputId}"
+                data-g4-attribute="${options.label}"
+                title="${options.initialValue}"
+                type="number"
+                step="${options.step || 1}"
+                value="${options.initialValue}" />
+        </g4-number-input>`;
 
         // Create a container for the field using a helper function, passing the unique ID, display label, and title.
         const fieldContainer = newFieldContainer(inputId, labelDisplayName, options.title);
@@ -3714,6 +3719,10 @@ class CustomFields {
          * @param {HTMLTextAreaElement} textarea - The textarea element to resize and process.
          */
         const updateTextareaLayout = (textarea) => {
+            // Update the text box first: a horizontal scroll bar adds room under the text, which the height
+            // measured below must include, so the last line never sits under the bar.
+            textarea.closest('g4-text-box')?.refresh();
+
             // Reset the height to 'auto' to recalculate the required height based on content.
             textarea.style.height = 'auto';
 

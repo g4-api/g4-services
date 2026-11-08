@@ -1,5 +1,6 @@
 ﻿using G4.Models;
 using G4.Services.Domain.V4;
+using G4.Services.Domain.V4.Repositories;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -98,8 +99,10 @@ namespace G4.Services.Hub.Api.V4.Controllers
             [FromRoute][SwaggerParameter(description: "The namespace of the flow, for example G4.System.", Required = true)] string @namespace,
             [FromRoute][SwaggerParameter(description: "The key of the flow to retrieve the manifest for.", Required = true)] string key)
         {
-            // Return the stored manifest; an unknown flow surfaces as 404 through the error middleware.
-            return Ok(_domain.G4.Flows.GetFlow(@namespace, key));
+            // Return the stored manifest, or 404 with the not-found message; a missing flow is not an error.
+            return _domain.G4.Flows.TryGetFlow(@namespace, key, out var manifest)
+                ? Ok(manifest)
+                : NewFlowNotFoundResult(@namespace, key);
         }
 
         [HttpGet]
@@ -172,8 +175,11 @@ namespace G4.Services.Hub.Api.V4.Controllers
             [FromRoute][SwaggerParameter(description: "The key or alias of the flow to invoke.", Required = true)] string key,
             [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)][SwaggerRequestBody(description: "The parameter values and the caller's authentication, driver parameters, and settings.", Required = false)] G4FlowInvokeModel invokeModel)
         {
-            // Run the flow and return its responses; unknown and invalid flows surface through the error middleware.
-            return Ok(_domain.G4.Flows.InvokeFlow(@namespace, key, invokeModel));
+            // Run the flow and return its responses, or 404 for a missing flow; an invalid flow surfaces as 400
+            // through the error middleware.
+            return _domain.G4.Flows.TryInvokeFlow(@namespace, key, invokeModel, out var responses)
+                ? Ok(responses)
+                : NewFlowNotFoundResult(@namespace, key);
         }
 
         [HttpDelete]
@@ -207,11 +213,10 @@ namespace G4.Services.Hub.Api.V4.Controllers
             [FromRoute][SwaggerParameter(description: "The namespace of the flow, for example G4.System.", Required = true)] string @namespace,
             [FromRoute][SwaggerParameter(description: "The key of the flow to be removed.", Required = true)] string key)
         {
-            // Remove the flow; an unknown flow surfaces as 404 through the error middleware.
-            _domain.G4.Flows.RemoveFlow(@namespace, key);
-
-            // Return 204 No Content once the flow is removed from the collection and the flows cache.
-            return NoContent();
+            // Return 204 No Content once the flow is removed, or 404 with the not-found message for a missing flow.
+            return _domain.G4.Flows.TryRemoveFlow(@namespace, key)
+                ? NoContent()
+                : NewFlowNotFoundResult(@namespace, key);
         }
 
         [HttpDelete]
@@ -232,6 +237,22 @@ namespace G4.Services.Hub.Api.V4.Controllers
 
             // Return a 200 OK response with the stop result.
             return Ok(response);
+        }
+
+        // Builds the 404 response of an unknown flow. A missing flow is a normal outcome, so the body carries the same
+        // message the MCP flow tools return, without the exception details of the error middleware.
+        private NotFoundObjectResult NewFlowNotFoundResult(string @namespace, string key)
+        {
+            // Describe the missing identity in the problem detail and in the FlowNotFound error entry.
+            var message = FlowsRepository.NewFlowNotFoundMessage(@namespace, key);
+            var error = new GenericErrorModel(HttpContext)
+            {
+                Detail = message,
+                Status = StatusCodes.Status404NotFound,
+                Title = "Resource not found."
+            };
+
+            return NotFound(error.AddError(name: "FlowNotFound", value: message));
         }
         #endregion
     }

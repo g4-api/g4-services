@@ -1,0 +1,54 @@
+/*
+ * G4 scroll bar visual language: the number input steppers' colors and effects. Bars and corner take the
+ * stepper background and line color, buttons light up on hover and dim at the ends of the content, and
+ * the thumb takes the stepper icon color and the hover color while hovered or dragged. The outer
+ * corners follow the element's radius, as the steppers follow the number box; a framed bar rounds all
+ * of its corners, because it stands on its own.
+ */
+.g4-scrollbars {
+    border-top-right-radius: var(--g4-scrollbar-radius);
+    border-bottom-right-radius: var(--g4-scrollbar-radius);
+    border-bottom-left-radius: var(--g4-scrollbar-radius);
+}
+
+.g4-scrollbar,
+.g4-scrollbar__corner {
+    background-color: var(--g4-scrollbar-background);
+    border-color: var(--g4-scrollbar-border-color);
+}
+
+/* The theme defines the section frame as a border shorthand, so the frame is drawn here whole. */
+.g4-scrollbars--framed .g4-scrollbar,
+.g4-scrollbars--framed .g4-scrollbar__corner {
+    border: var(--g4-scrollbar-framed-border);
+    border-radius: var(--g4-scrollbar-radius);
+}
+
+div.g4-scrollbars div.g4-scrollbar button.g4-scrollbar__button {
+    cursor: pointer;
+    color: var(--g4-scrollbar-button-foreground);
+    background-color: var(--g4-scrollbar-background);
+    border-color: var(--g4-scrollbar-border-color);
+    border-radius: 0;
+}
+
+div.g4-scrollbars div.g4-scrollbar button.g4-scrollbar__button:hover:not(.is-disabled) {
+    color: var(--g4-scrollbar-button-hover-foreground);
+    background-color: var(--g4-scrollbar-button-hover-background);
+}
+
+div.g4-scrollbars div.g4-scrollbar button.g4-scrollbar__button.is-disabled {
+    cursor: default;
+    opacity: var(--g4-scrollbar-button-disabled-opacity);
+}
+
+.g4-scrollbar__thumb {
+    cursor: pointer;
+    background-color: var(--g4-scrollbar-thumb-background);
+    border-radius: var(--g4-scrollbar-radius);
+}
+
+.g4-scrollbar__thumb:hover,
+.g4-scrollbar__thumb.is-dragging {
+    background-color: var(--g4-scrollbar-thumb-active-background);
+}

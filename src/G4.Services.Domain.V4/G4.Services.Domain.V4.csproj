@@ -16,12 +16,12 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="G4.Api" Version="2026.10.31.63" />
-		<PackageReference Include="G4.Plugins" Version="2026.10.30.89" />
-		<PackageReference Include="G4.Plugins.Common" Version="2026.10.31.153" />
-		<PackageReference Include="G4.Plugins.Ui" Version="2026.10.31.153" />
+		<PackageReference Include="G4.Api" Version="2026.11.6.65" />
+		<PackageReference Include="G4.Plugins" Version="2026.11.5.94" />
+		<PackageReference Include="G4.Plugins.Common" Version="2026.11.5.159" />
+		<PackageReference Include="G4.Plugins.Ui" Version="2026.11.5.159" />
 		<PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.14" />
-		<PackageReference Include="ModelContextProtocol.AspNetCore" Version="2.3.0" />
+		<PackageReference Include="ModelContextProtocol.AspNetCore" Version="2.4.0" />
 		<PackageReference Include="Swashbuckle.AspNetCore.Annotations" Version="10.3.1" />
 		<PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="10.3.1" />
 	</ItemGroup>

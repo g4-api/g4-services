@@ -9,8 +9,9 @@ using System.Threading.Tasks;
 namespace G4.Services.Domain.V4.Mcp
 {
     // Executes one G4 system tool through IToolsRepository.CallTool on behalf of the attribute-declared tools.
-    // Catalog (plugin) tools have no MCP entry point of their own: clients discover them through g4.FindTools and
-    // g4.FindTool and run them through g4.SendRule or g4.SendRules, so this helper is the only path into CallTool.
+    // Catalog (plugin) tools have no MCP entry point of their own: clients discover them through g4.ResolveTools,
+    // g4.FindTools, and g4.FindTool and run them through g4.SendRule or g4.SendRules, so this helper is the only path
+    // into CallTool.
     internal static class G4ToolsInvoker
     {
         #region *** Fields       ***

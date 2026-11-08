@@ -2,7 +2,8 @@
  * G4(TM) text box component: <g4-text-box>.
  *
  * Dresses a canvas text field like the G4 Engine Client text boxes: a line-number gutter on the
- * left and an Expand button in the top-right corner, shown while the box is hovered or focused.
+ * left, an Expand button in the top-right corner, shown while the box is hovered or focused, and the
+ * designer's scroll bars (components/g4-scrollbar) over the text area's edges.
  * The owner keeps creating and wiring its own <textarea>; this element only arranges it, so the
  * field keeps working even before (or without) the component's template.
  *
@@ -10,7 +11,8 @@
  * - Children: one <textarea>, created by the owner (its id, value, and listeners stay as they are).
  * - Attributes: test-id (prefix of every part's data-test-id; default 'text-box').
  * - Properties: textarea (the owner's text area).
- * - Methods: refresh() renumbers after the owner sets the text area value in code.
+ * - Methods: refresh() renumbers and updates the scroll bars after the owner sets the text area value
+ *   in code.
  * - Events: g4-expand when the Expand button is clicked; the owner opens its editor.
  */
 (() => {
@@ -28,6 +30,9 @@
     class G4TextBox extends HTMLElement {
         // Whether the template has been rendered into this element.
         #isRendered = false;
+
+        // Controller of the designer scroll bars over the text area; null until the box renders.
+        #scrollbars = null;
 
         /**
          * Asks the owner to open its editor.
@@ -72,10 +77,11 @@
         }
 
         /**
-         * Renumbers the gutter after the owner set the text area value in code.
+         * Renumbers the gutter and updates the scroll bars after the owner set the text area value in code.
          */
         refresh() {
             this.querySelector('g4-line-numbers')?.refresh();
+            this.#scrollbars?.refresh();
         }
 
         /**
@@ -121,6 +127,13 @@
             // The corner button asks the owner to open its editor.
             content.querySelector('[data-part="expand"]').addEventListener('click', this.#onExpandClick);
             this.replaceChildren(content);
+
+            // Lay the designer scroll bars over the text area, inside the box that also holds the gutter.
+            this.#scrollbars = globalThis.G4Scrollbars?.attach({
+                host: this.querySelector('.g4-text-box__box'),
+                scrollElement: textarea,
+                testId: prefix
+            }) ?? null;
         }
     }
 

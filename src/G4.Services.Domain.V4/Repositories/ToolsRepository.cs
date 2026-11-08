@@ -46,6 +46,9 @@ namespace G4.Services.Domain.V4.Repositories
         // Identifies the plugin-cache bucket that contributes executable tools to the derived domain catalogs.
         private const string ActionPluginType = "Action";
 
+        // Identifies the catalog type of tools formatted from plugin manifests, as opposed to built-in system tools.
+        private const string PluginToolType = "g4-tool";
+
         // Serializes rebuilds so concurrent cache notifications publish derived catalogs in cache-observation order.
         private static readonly Lock ToolsSyncLock = new();
         #endregion
@@ -119,9 +122,9 @@ namespace G4.Services.Domain.V4.Repositories
             // Extract and convert the "arguments" to an executable rule format.
             options.Rule = ConvertToRule(options.Arguments, options.Intent, _tools);
 
-            // Look up the tool definition in the registered tools dictionary.
-            // If the tool is not found, 'tool' will be null and handled in the default branch below.
-            var tool = _tools.GetValueOrDefault(options.ToolName);
+            // Resolve the tool definition by its qualified or bare name in the registered tools dictionary.
+            // If the tool is not found or is ambiguous, 'tool' will be null and handled in the default branch below.
+            var tool = ResolveTool(_tools, reference: options.ToolName);
 
             // Read the friendly intent text used to retrieve relevant tools.
             // Default to an empty string when the argument is missing.
@@ -132,42 +135,45 @@ namespace G4.Services.Domain.V4.Repositories
             return tool switch
             {
                 // Built-in: Converts input parameters into executable rules.
-                { Name: "g4.ConvertToRule" } => new { options.Rule },
+                { Name: G4ToolNames.ConvertToRule } => new { options.Rule },
 
                 // Built-in: Finds and returns relevant examples based on the provided intent and tool filters.
-                { Name: "g4.FindExamples" } => FindExamples(options.Arguments),
+                { Name: G4ToolNames.FindExamples } => FindExamples(options.Arguments),
 
                 // Built-in: Finds and returns metadata about a tool by its name.
-                { Name: "g4.FindTool" } => FindTool(options),
+                { Name: G4ToolNames.FindTool } => FindTool(options),
 
                 // Built-in: Lists all available tools.
-                { Name: "g4.FindTools" } => _retrievalManager.FindTools(
+                { Name: G4ToolNames.FindTools } => _retrievalManager.FindTools(
                     prompt: intent,
-                    take: GetFindToolsTake(options.Arguments)),
+                    take: GetTake(options.Arguments)),
 
                 // Built-in: Partitions the current application's DOM into semantic segments.
-                { Name: "g4.GetDomSegments" } => GetDomSegments(options),
+                { Name: G4ToolNames.GetDomSegments } => GetDomSegments(options),
 
                 // Built-in: Retrieves the current set of rules stored in the buffer for a given key.
-                { Name: "g4.GetBuffer" } => GetBuffer(options),
+                { Name: G4ToolNames.GetBuffer } => GetBuffer(options),
 
                 // Built-in: Registers a new flow-template capability from a submitted plugin manifest.
-                { Name: "g4.RegisterCapability" } => RegisterCapability(options),
+                { Name: G4ToolNames.RegisterCapability } => RegisterCapability(options),
 
                 // Built-in: Clears the rules stored in the buffer for a given key.
-                { Name: "g4.RemoveBuffer" } => RemoveBuffer(options),
+                { Name: G4ToolNames.RemoveBuffer } => RemoveBuffer(options),
 
                 // Built-in: Removes an active session from the sessions registry.
-                { Name: "g4.RemoveSession" } => RemoveSession(options),
+                { Name: G4ToolNames.RemoveSession } => RemoveSession(options),
 
                 // Built-in: Retrieves the locator for a specific element on the page.
-                { Name: "g4.ResolveLocator" } => ResolveLocator(options),
+                { Name: G4ToolNames.ResolveLocator } => ResolveLocator(options),
+
+                // Built-in: Resolves the most relevant tools together with their intent-ranked examples.
+                { Name: G4ToolNames.ResolveTools } => ResolveTools(options, retrievalManager: _retrievalManager),
 
                 // Built-in: Executes an ordered collection of rules as a single job in one driver session.
-                { Name: "g4.SendRules" } => SendRules(options),
+                { Name: G4ToolNames.SendRules } => SendRules(options),
 
                 // Built-in: Starts a new G4 browser automation session.
-                { Name: "g4.StartSession" } => StartSession(options),
+                { Name: G4ToolNames.StartSession } => StartSession(options),
 
                 // Default: Assumes this is a plugin-based tool and converts parameters into an executable rule.
                 _ => SendRule(options)
@@ -196,38 +202,20 @@ namespace G4.Services.Domain.V4.Repositories
             // Search the retrieval manager for examples that match the requested tool filters and intent.
             var examples = _retrievalManager
                 .FindExamples(query.ToolName, query.Namespace, query.Intent.AgentIntent, take: query.MaxResults)
-                .Examples
-                .Select(i => (i.Example.Example, i.Score));
+                .Examples;
 
-            // Exclude the plugin name because it is already implied by the example rule itself.
-            var exclude = new[] { nameof(G4RuleModelBase.PluginName) };
-
-            // Project each matched example into the response model with exported properties,
-            // parsed CLI parameters, the original rule, and the calculated score.
-            var result = examples.Select(i => new ExamplesResultModel()
-            {
-                ToolProperties = i.Example.Rule.ExportProperties(exclude),
-                ToolParameters = _cliFactory
-                    .ConvertToDictionary(
-                        cli: i.Example?.Rule?.Argument ?? string.Empty,
-                        normalize: false)
-                    .ToDictionary(StringComparer.OrdinalIgnoreCase),
-                Rule = i.Example.Rule,
-                Score = i.Score
-            });
-
-            // Return the projected results to the caller.
+            // Return the matched examples in the response shape shared with g4.ResolveTools.
             return new
             {
-                Examples = result
+                Examples = NewExamplesResults(examples)
             };
         }
 
         /// <inheritdoc />
         public McpToolModel FindTool(string intent, string toolName)
         {
-            // Look up the tool by name in the internal registry.
-            return _tools.GetValueOrDefault(toolName);
+            // Resolve the tool by its qualified or bare name in the internal registry.
+            return ResolveTool(_tools, reference: toolName);
         }
 
         /// <inheritdoc />
@@ -252,7 +240,7 @@ namespace G4.Services.Domain.V4.Repositories
                 : [];
 
             // Read one validated result limit shared with the MCP invocation path.
-            var take = GetFindToolsTake(options.Arguments);
+            var take = GetTake(options.Arguments);
 
             // When the caller is not explicitly asking for system tools, use lexical retrieval
             // to find the most relevant tools for the provided intent.
@@ -261,9 +249,11 @@ namespace G4.Services.Domain.V4.Repositories
                 return _retrievalManager
                     .FindTools(prompt: options.Intent?.AgentIntent ?? string.Empty, take: take)
                     .Tools
-                    .Select(result => _tools.GetValueOrDefault(result.Name))
+                    .Select(result => _tools.GetValueOrDefault(
+                        PluginReference.GetQualifiedName(result.NameSpace, result.Name)))
                     .Where(tool => tool != null)
-                    .ToDictionary(tool => tool.Name, tool => tool, comparer);
+                    .Distinct()
+                    .ToDictionary(GetToolKey, tool => tool, comparer);
             }
 
             // Otherwise, return all tools whose type matches one of the requested types.
@@ -315,12 +305,14 @@ namespace G4.Services.Domain.V4.Repositories
                 .Tools
                 .Where(i => i.Score >= threshold);
 
-            // Map the tool names to their corresponding McpToolModel instances
+            // Map the qualified tool names to their corresponding McpToolModel instances, keyed by catalog key
+            // so tools sharing a name across namespaces remain distinct entries.
             return results
-                .Select(i => _tools.GetValueOrDefault(i.Name))
+                .Select(i => _tools.GetValueOrDefault(PluginReference.GetQualifiedName(i.NameSpace, i.Name)))
                 .Where(i => i != null)
+                .Distinct()
                 .ToDictionary(
-                    i => i.Name,
+                    GetToolKey,
                     i => i,
                     StringComparer.OrdinalIgnoreCase);
         }
@@ -588,8 +580,9 @@ namespace G4.Services.Domain.V4.Repositories
                     .FirstOrDefault(v => !string.IsNullOrWhiteSpace(v))
                 ?? string.Empty;
 
-            // Retrieve the plugin name associated with the provided tool name from the internal tool registry (_tools)
-            var pluginName = tools.GetValueOrDefault(key: toolName)?.QualifiedName ?? string.Empty;
+            // Resolve the qualified plugin name from the internal tool registry. An unknown or ambiguous name is
+            // passed through unchanged, so the engine rejects it with its own message and candidate list.
+            var pluginName = ResolveTool(tools, reference: toolName)?.QualifiedName ?? toolName;
 
             // Get the parameters from the ruleData, defaulting to an empty JSON object if not provided.
             var parameters = ruleData.TryGetProperty("toolParameters", out var parametersOut)
@@ -667,7 +660,7 @@ namespace G4.Services.Domain.V4.Repositories
                 .SelectMany(i => i.Values)
                 .Where(i => i.Manifest.PluginType == "Action" && i.Manifest.Key != "NoAction")
                 .Select(i => i.Manifest)
-                .DistinctBy(manifest => manifest.Key);
+                .DistinctBy(manifest => PluginReference.GetQualifiedName(manifest.Namespace, manifest.Key));
 
             // Convert each action manifest into an MCP tool model
             var tools = actions
@@ -683,8 +676,8 @@ namespace G4.Services.Domain.V4.Repositories
             // Combine plugin-based tools with system tools and populate the registry
             foreach (var tool in tools.Concat(systemTools).ToList())
             {
-                // Add or overwrite entry by tool name
-                toolsCollection[tool.Name] = tool;
+                // Add or overwrite the entry by its catalog key, so plugin tools sharing a name stay distinct.
+                toolsCollection[GetToolKey(tool)] = tool;
             }
 
             // Return the populated tools collection.
@@ -727,13 +720,8 @@ namespace G4.Services.Domain.V4.Repositories
                 ? options.Arguments.GetOrDefault("toolName", () => string.Empty)
                 : toolName;
 
-            // Try to resolve the tool directly from the available tools dictionary.
-            var isName = options.Tools.TryGetValue(key: toolName, out var tool);
-
-            // If the direct lookup failed, try matching by the tool's G4 name instead.
-            tool = isName
-                ? tool
-                : options.Tools.Values.FirstOrDefault(i => i.QualifiedName.Equals(toolName, StringComparison.OrdinalIgnoreCase));
+            // Resolve the tool by its qualified name, bare name, or internal qualified name.
+            var tool = ResolveTool(options.Tools, reference: toolName);
 
             // Return the complete authoritative tool model when it was found.
             // Return null when the caller did not supply a valid tool name.
@@ -742,11 +730,70 @@ namespace G4.Services.Domain.V4.Repositories
                 : null;
         }
 
-        // Reads the optional lexical result limit while preserving the established default.
-        private static int GetFindToolsTake(JsonElement arguments)
+        // Gets the catalog key of a tool: the qualified Namespace:Key name of a plugin tool, so plugins sharing a
+        // name across namespaces stay distinct, and the plain name of a system tool, which MCP clients call by name.
+        private static string GetToolKey(McpToolModel tool)
+        {
+            // Plugin tools carry their qualified name; system tools keep their MCP tool name.
+            return string.Equals(tool.Type, PluginToolType, StringComparison.OrdinalIgnoreCase)
+                ? tool.QualifiedName
+                : tool.Name;
+        }
+
+        // Resolves a tool by catalog key or bare name, following the engine's plugin reference rules: an exact key
+        // wins, a bare name prefers the G4.System tool and otherwise needs exactly one provider, and the internal
+        // qualified name is the last fallback. An unknown or ambiguous reference yields null.
+        private static McpToolModel ResolveTool(ConcurrentDictionary<string, McpToolModel> tools, string reference)
+        {
+            // Reject an empty reference.
+            if (string.IsNullOrWhiteSpace(reference))
+            {
+                return null;
+            }
+
+            // Accept an exact catalog key, such as a qualified plugin name or a system tool name.
+            if (tools.TryGetValue(reference, out var tool))
+            {
+                return tool;
+            }
+
+            // Collect every tool whose bare name matches, across all namespaces.
+            var candidates = tools
+                .Values
+                .Where(i => string.Equals(i.Name, reference, StringComparison.OrdinalIgnoreCase))
+                .ToArray();
+
+            // Prefer the G4.System provider of the bare name.
+            var systemTool = candidates.FirstOrDefault(i =>
+                string.Equals(i.Namespace, PluginReference.SystemNamespace, StringComparison.OrdinalIgnoreCase));
+            if (systemTool != null)
+            {
+                return systemTool;
+            }
+
+            // Accept a single provider, and treat several providers as ambiguous.
+            if (candidates.Length > 0)
+            {
+                return candidates.Length == 1 ? candidates[0] : null;
+            }
+
+            // Fall back to the internal qualified name, such as the "system." prefix of system tools.
+            return tools.Values.FirstOrDefault(i =>
+                string.Equals(i.QualifiedName, reference, StringComparison.OrdinalIgnoreCase));
+        }
+
+        // Reads the optional lexical tool limit from the "take" argument while preserving the established default.
+        private static int GetTake(JsonElement arguments)
+        {
+            // Delegate to the complete overload with the published tool-limit argument name.
+            return GetTake(arguments, propertyName: "take");
+        }
+
+        // Reads one optional lexical result limit while preserving the established default of three.
+        private static int GetTake(JsonElement arguments, string propertyName)
         {
             // Accept only a positive integer so invalid limits cannot suppress or destabilize retrieval.
-            var hasTake = arguments.TryGetProperty("take", out var takeProperty);
+            var hasTake = arguments.TryGetProperty(propertyName, out var takeProperty);
             if (!hasTake ||
                 takeProperty.ValueKind != JsonValueKind.Number ||
                 !takeProperty.TryGetInt32(out var take) ||
@@ -895,6 +942,32 @@ namespace G4.Services.Domain.V4.Repositories
             };
         }
 
+        // Projects scored cache examples into the example response shape shared by g4.FindExamples and
+        // g4.ResolveTools, so both tools return identical example entries.
+        private static ExamplesResultModel[] NewExamplesResults(
+            IEnumerable<LexicalRetrievalManager.ExampleScoreResultModel> examples)
+        {
+            // Exclude the plugin name because it is already implied by the example rule itself.
+            var exclude = new[] { nameof(G4RuleModelBase.PluginName) };
+
+            // Project each matched example into the response model with exported properties,
+            // parsed CLI parameters, the original rule, and the calculated score.
+            return examples
+                .Select(i => (i.Example.Example, i.Score))
+                .Select(i => new ExamplesResultModel
+                {
+                    ToolProperties = i.Example.Rule.ExportProperties(exclude),
+                    ToolParameters = _cliFactory
+                        .ConvertToDictionary(
+                            cli: i.Example?.Rule?.Argument ?? string.Empty,
+                            normalize: false)
+                        .ToDictionary(StringComparer.OrdinalIgnoreCase),
+                    Rule = i.Example.Rule,
+                    Score = i.Score
+                })
+                .ToArray();
+        }
+
         // TODO: Decouple from GetDomSegments and make it a standalone tool.
         // Retrieves a locator for a specific element on the page by sending the DOM and intent
         // to the OpenAI completion API.
@@ -973,6 +1046,55 @@ namespace G4.Services.Domain.V4.Repositories
             // The model is expected to return JSON in message.content.
             // Deserialize that JSON into a JsonElement and return it.
             return JsonSerializer.Deserialize<JsonElement>(content, AppSettings.JsonOptions);
+        }
+
+        // Resolves the tools most relevant to the agent intent together with the examples that the same intent ranks
+        // highest for each tool, so a client receives every tool model and usage sample in one call. The retrieval
+        // manager is passed explicitly because it is the repository's application-scoped lexical index; the helper
+        // only reads it and the tool catalog, and an intent without matches yields an empty tools array.
+        private static object ResolveTools(InvokeOptions options, LexicalRetrievalManager retrievalManager)
+        {
+            // Read the intent and both validated limits once so tool and example ranking share the same inputs.
+            var intent = options.Intent?.AgentIntent ?? string.Empty;
+            var take = GetTake(options.Arguments);
+            var examplesTake = GetTake(options.Arguments, propertyName: "examplesTake");
+
+            // Rank the tools exactly as g4.FindTools does, keeping only hits that still have a catalog model.
+            var hits = retrievalManager
+                .FindTools(prompt: intent, take)
+                .Tools
+                .Select(hit => (
+                    Hit: hit,
+                    Tool: options.Tools.GetValueOrDefault(PluginReference.GetQualifiedName(hit.NameSpace, hit.Name))))
+                .Where(item => item.Tool != null);
+
+            // Pair each tool model with its examples so the response carries everything a rule requires.
+            var tools = new List<ResolvedToolModel>();
+            foreach (var (hit, tool) in hits)
+            {
+                // Score the examples in the hit's own namespace and plugin type, so the examples always belong to
+                // the exact tool the ranking returned.
+                var examples = retrievalManager.FindExamples(
+                    toolName: hit.Name,
+                    @namespace: hit.NameSpace,
+                    prompt: intent,
+                    take: examplesTake,
+                    pluginType: hit.Type);
+
+                // Project the examples into the shape shared with g4.FindExamples and keep the tool's ranking score.
+                tools.Add(new ResolvedToolModel
+                {
+                    Examples = NewExamplesResults(examples.Examples),
+                    Score = hit.Score,
+                    Tool = tool
+                });
+            }
+
+            // Return an object even when nothing matches, so clients always read the same response shape.
+            return new
+            {
+                Tools = tools
+            };
         }
 
         // Registers a new flow-template capability by converting the supplied manifest into a
@@ -1266,6 +1388,31 @@ namespace G4.Services.Domain.V4.Repositories
             /// Gets or sets the exported tool properties extracted from the example rule.
             /// </summary>
             public Dictionary<string, object> ToolProperties { get; set; }
+        }
+
+        /// <summary>
+        /// Represents one tool resolved by the g4.ResolveTools operation together with its intent-ranked examples.
+        /// </summary>
+        /// <remarks>
+        /// The tool model matches the g4.FindTool response and every example matches the g4.FindExamples response,
+        /// so a client can switch between the single call and the explicit calls without changing its parsing.
+        /// </remarks>
+        public sealed class ResolvedToolModel
+        {
+            /// <summary>
+            /// Gets or sets the examples of the tool, ranked by the same intent that ranked the tool.
+            /// </summary>
+            public ExamplesResultModel[] Examples { get; set; }
+
+            /// <summary>
+            /// Gets or sets the lexical relevance score of the tool for the supplied intent.
+            /// </summary>
+            public int Score { get; set; }
+
+            /// <summary>
+            /// Gets or sets the complete catalog model of the tool, including its client input schema.
+            /// </summary>
+            public McpToolModel Tool { get; set; }
         }
 
         /// <summary>

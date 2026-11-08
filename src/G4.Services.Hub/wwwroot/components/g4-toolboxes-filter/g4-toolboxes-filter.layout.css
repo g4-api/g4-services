@@ -1,0 +1,155 @@
+/*
+ * G4 toolboxes filter layout: the funnel button sits right of the toolbox search box, and the
+ * panel opens below it, from the button toward the canvas, because the toolbox sits at the left
+ * edge of the designer. The panel is a column: a fixed header, then a body that holds the scrolling
+ * list under the designer's shared scroll bar (components/g4-scrollbar), which keeps the list's native
+ * scrolling for the wheel, the keyboard, and assistive technology.
+ */
+.sqd-toolbox-filter:has(> g4-toolboxes-filter) {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* The search box stretches to the button height, so both underlines share one bottom edge. */
+.sqd-toolbox-filter:has(> g4-toolboxes-filter) > input {
+    flex: 1 1 auto;
+    align-self: stretch;
+    min-width: 0;
+}
+
+/* The button stretches to the search box height, so the two read as one control. */
+g4-toolboxes-filter {
+    position: relative;
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-self: stretch;
+}
+
+/* Only the bottom edge shows, as on the search box; the theme draws it in the visual file. The
+   designer gives every button a minimum height, which these compact buttons reset. */
+g4-toolboxes-filter button.g4-toolboxes-filter__button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--g4-toolboxes-filter-button-size);
+    height: 100%;
+    min-height: 0;
+    padding: 6px;
+    border-width: 0;
+}
+
+g4-toolboxes-filter button.g4-toolboxes-filter__button svg {
+    width: 100%;
+    height: 100%;
+}
+
+/* The theme defines the panel and divider lines as border shorthands, so the visual file draws them. */
+.g4-toolboxes-filter__panel {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    z-index: var(--g4-toolboxes-filter-z-index);
+    display: flex;
+    flex-direction: column;
+    width: var(--g4-toolboxes-filter-panel-width);
+    max-height: var(--g4-toolboxes-filter-panel-maximum-height);
+    overflow: hidden;
+    font-size: var(--g4-toolboxes-filter-font-size);
+    line-height: var(--g4-toolboxes-filter-line-height);
+}
+
+.g4-toolboxes-filter__panel[hidden] {
+    display: none;
+}
+
+.g4-toolboxes-filter__header {
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: column;
+    gap: 2px;
+    padding: 8px 10px;
+}
+
+.g4-toolboxes-filter__title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.g4-toolboxes-filter__status:empty {
+    display: none;
+}
+
+.g4-toolboxes-filter__body {
+    position: relative;
+    display: flex;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.g4-toolboxes-filter__list {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: 6px 30px 8px 6px;
+}
+
+.g4-toolboxes-filter__toolbox {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 4px;
+}
+
+.g4-toolboxes-filter__expand {
+    display: inline-flex;
+    flex: 1 1 auto;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+    height: var(--g4-toolboxes-filter-line-height);
+    min-height: 0;
+    padding: 0;
+    border-width: 0;
+    text-align: left;
+}
+
+.g4-toolboxes-filter__arrow {
+    flex: 0 0 auto;
+    width: var(--g4-toolboxes-filter-arrow-size);
+    height: var(--g4-toolboxes-filter-arrow-size);
+    transition: transform .15s;
+}
+
+.g4-toolboxes-filter__expand[aria-expanded="true"] .g4-toolboxes-filter__arrow {
+    transform: rotate(90deg);
+}
+
+.g4-toolboxes-filter__count {
+    flex: 0 0 auto;
+}
+
+.g4-toolboxes-filter__tools {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 2px 0 6px 22px;
+}
+
+.g4-toolboxes-filter__tools > .g4-toolboxes-filter__switch {
+    padding: 1px 4px;
+}
+
+/* The editor switch, scaled down for the dense list; the mixed state stops the thumb halfway. */
+.g4-toolboxes-filter__panel .sqd-base64-toggle__switch {
+    width: var(--g4-toolboxes-filter-switch-width);
+    height: var(--g4-toolboxes-filter-switch-height);
+    background-size: var(--g4-toolboxes-filter-switch-thumb-size) var(--g4-toolboxes-filter-switch-thumb-size);
+}
+
+.g4-toolboxes-filter__switch.is-mixed .sqd-base64-toggle__input + .sqd-base64-toggle__switch {
+    background-position: center center;
+}

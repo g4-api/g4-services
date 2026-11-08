@@ -1,6 +1,7 @@
 /*
  * G4 text box layout: the line-number gutter on the left, the text area, and the corner button on
- * the right, far enough from the edge to clear the vertical scrollbar.
+ * the right. The designer scroll bars lie over the text area's edges; while one shows, the text is
+ * padded clear of it and the corner button moves left of the vertical bar.
  *
  * The selectors are deliberately specific: the canvas styles every text area and every editor
  * button with element, theme, and editor selectors (designer-blueprint-layout.css and
@@ -29,9 +30,23 @@ g4-text-box .g4-text-box__box textarea.g4-text-box__input {
 .g4-text-box__tools {
     position: absolute;
     top: 4px;
-    right: 18px;
+    right: 6px;
+    z-index: 3;
     display: flex;
     gap: 4px;
+}
+
+.g4-text-box__box.g4-scrollbar-host--vertical .g4-text-box__tools {
+    right: calc(var(--g4-text-box-scrollbar-vertical-size) + 6px);
+}
+
+/* Room for the scroll bars, so no text line or character ever sits under a bar. */
+g4-text-box .g4-text-box__box.g4-scrollbar-host--vertical textarea.g4-text-box__input {
+    padding-right: calc(40px + var(--g4-text-box-scrollbar-vertical-size));
+}
+
+g4-text-box .g4-text-box__box.g4-scrollbar-host--horizontal textarea.g4-text-box__input {
+    padding-bottom: calc(6px + var(--g4-text-box-scrollbar-horizontal-size));
 }
 
 g4-text-box .g4-text-box__box .g4-text-box__tools button.g4-text-box__tool {

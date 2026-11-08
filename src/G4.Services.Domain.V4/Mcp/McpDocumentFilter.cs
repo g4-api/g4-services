@@ -62,8 +62,9 @@ namespace G4.Services.Domain.V4.Mcp
                 "recordings start body), g4.GetRecordingStatus, g4.StopRecording, and g4.GetAutomation " +
                 "(arguments.id). Flow tools: g4.RegisterFlow (arguments.automation is the native automation object), " +
                 "g4.GetFlow, g4.GetFlows, g4.InvokeFlow, g4.RemoveFlow, and g4.StopFlowInvocation. tools/list " +
-                "advertises every g4.* tool; catalog (plugin) tools are not callable by name: find them with " +
-                "g4.FindTools or g4.FindTool and run them with g4.SendRule or g4.SendRules. Set Accept to " +
+                "advertises every g4.* tool; catalog (plugin) tools are not callable by name: resolve them " +
+                "with their examples in one call through g4.ResolveTools, or find them with g4.FindTools, " +
+                "g4.FindTool, and g4.FindExamples, and run them with g4.SendRule or g4.SendRules. Set Accept to " +
                 "application/json, text/event-stream and MCP-Protocol-Version to your negotiated version. No MCP " +
                 "session ID is required. Recording IDs and flows are shared with REST.";
 

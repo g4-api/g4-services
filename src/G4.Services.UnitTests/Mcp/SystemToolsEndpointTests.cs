@@ -35,6 +35,7 @@ namespace G4.Services.UnitTests.Mcp
         [DataRow("g4.ResolveLocator", "constraints,constraints.forbid,constraints.mustBeEnabled," +
             "constraints.mustBeVisible,constraints.prefer,driverSession!,intent!,intent.agentIntent!," +
             "intent.userIntent!,openaiApiKey!,openaiModel!,openaiUri!,token!")]
+        [DataRow("g4.ResolveTools", "examplesTake,intent!,intent.agentIntent!,intent.userIntent!,take")]
         [DataRow("g4.SendRule", "driverSession!,intent!,intent.agentIntent!,intent.userIntent!,rule!,rule.toolName!," +
             "rule.toolParameters,rule.toolProperties,token!")]
         [DataRow("g4.SendRules", "driverSession!,intent!,intent.agentIntent!,intent.userIntent!,rules!," +

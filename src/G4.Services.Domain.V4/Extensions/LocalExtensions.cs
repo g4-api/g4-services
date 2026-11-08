@@ -221,7 +221,7 @@ namespace G4.Extensions
                 return new McpToolModel
                 {
                     Description = description,
-                    QualifiedName = manifest.Key,
+                    QualifiedName = PluginReference.GetQualifiedName(manifest.Namespace, manifest.Key),
                     Name = name,
                     Namespace = manifest.Namespace,
                     Metadata = new McpToolModel.ToolMetadataModel

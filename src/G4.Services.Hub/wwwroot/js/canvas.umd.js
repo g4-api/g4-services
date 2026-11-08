@@ -687,11 +687,15 @@
 			});
 		}
 		applyFilter(allGroups, filter) {
+			// G4 patch (toolboxes filter): hide the toolboxes and tools the G4 toolboxes filter disables, before
+			// the search text applies; toolboxes-filter.js decides each item, and Containers always stays.
+			const g4ToolboxesFilter = globalThis.G4ToolboxesFilter;
+			const visibleGroups = g4ToolboxesFilter ? g4ToolboxesFilter.selectToolboxesFilterGroups(allGroups) : allGroups;
 			if (!filter) {
-				return allGroups;
+				return visibleGroups;
 			}
 			const lowerCaseFilter = filter.toLowerCase();
-			return allGroups
+			return visibleGroups
 				.map(group => {
 					return {
 						name: group.name,
@@ -5073,6 +5077,13 @@
 			view.bindToggleClick(() => toolbox.onToggleClicked());
 			view.bindFilterInputChange(v => toolbox.onFilterInputChanged(v));
 			api.subscribeIsCollapsed(() => toolbox.onIsCollapsedChanged());
+			// G4 patch (toolboxes filter): redraw when the G4 toolboxes filter changes, as typing in the search
+			// box does, so the designer and the open step editor stay as they are.
+			const g4ToolboxesFilter = globalThis.G4ToolboxesFilter;
+			if (g4ToolboxesFilter) {
+				toolbox.onToolboxesFilterChanged = () => toolbox.render();
+				document.addEventListener(g4ToolboxesFilter.changedEventName, toolbox.onToolboxesFilterChanged);
+			}
 			return toolbox;
 		}
 		constructor(view, api, allGroups) {
@@ -5084,6 +5095,10 @@
 			this.view.updateLayout();
 		}
 		destroy() {
+			// G4 patch (toolboxes filter): stop listening for filter changes once the toolbox is gone.
+			if (this.onToolboxesFilterChanged) {
+				document.removeEventListener(globalThis.G4ToolboxesFilter.changedEventName, this.onToolboxesFilterChanged);
+			}
 			this.view.destroy();
 		}
 		render() {

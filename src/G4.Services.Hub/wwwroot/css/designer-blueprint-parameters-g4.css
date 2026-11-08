@@ -115,6 +115,12 @@
 	--text-box-tool-color: var(--light-gray);
 	--text-box-tool-hover-background: var(--surface-color);
 	--text-box-tool-hover-border-color: var(--electric-blue);
+	/* Number Input */
+	--number-input-step-background: var(--surface-color);
+	--number-input-step-border-color: var(--electric-blue-dim);
+	--number-input-step-color: var(--light-gray);
+	--number-input-step-hover-background: rgba(var(--electric-blue-rgb), 0.15);
+	--number-input-step-hover-color: var(--electric-blue);
 	/* Smart Editor */
 	--run-state-failed-fill: rgba(255, 61, 61, 0.2);
 	--run-state-failed-stroke: var(--red);

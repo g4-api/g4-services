@@ -36,6 +36,19 @@ g4-expand-editor {
     border-style: none;
 }
 
+/* Room for the designer scroll bars, so no text line or character ever sits under a bar. */
+.g4-expand-editor__body.g4-scrollbar-host--vertical textarea.g4-expand-editor__textarea,
+.g4-expand-editor__body.g4-scrollbar-host--vertical textarea.g4-expand-editor__textarea:hover,
+.g4-expand-editor__body.g4-scrollbar-host--vertical textarea.g4-expand-editor__textarea:focus {
+    padding-right: calc(10px + var(--g4-expand-editor-scrollbar-vertical-size));
+}
+
+.g4-expand-editor__body.g4-scrollbar-host--horizontal textarea.g4-expand-editor__textarea,
+.g4-expand-editor__body.g4-scrollbar-host--horizontal textarea.g4-expand-editor__textarea:hover,
+.g4-expand-editor__body.g4-scrollbar-host--horizontal textarea.g4-expand-editor__textarea:focus {
+    padding-bottom: calc(8px + var(--g4-expand-editor-scrollbar-horizontal-size));
+}
+
 .g4-expand-editor__error {
     min-height: 14px;
     padding: 6px 16px 8px;

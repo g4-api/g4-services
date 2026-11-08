@@ -76,6 +76,9 @@ async function initializeDesigner() {
 	// Initialize an array to hold all groups.
 	const groups = [];
 
+	// Collect each toolbox's tools with their manifests, so the toolboxes filter can list and name them.
+	const filterToolboxes = [];
+
 	// Process each manifest group to create the groups for the designer.
 	for (const [groupName, manifestsGroup] of Object.entries(_manifestsGroups)) {
 		// Retrieve the manifests from the group, or default to an empty array.
@@ -88,13 +91,20 @@ async function initializeDesigner() {
 		};
 
 		// Convert each manifest into a step and add it to the group.
+		const filterTools = [];
+
 		for (const manifest of manifests) {
 			const step = StateMachineSteps.newG4Step(manifest);
 			group.steps.push(step);
+
+			// Link the step to its manifest, so the toolboxes filter can resolve the plugin's namespace.
+			G4ToolboxesFilter.registerToolboxesFilterStep(step, manifest);
+			filterTools.push({ label: step.name, manifest });
 		}
 
 		// Add the group to the array of groups.
 		groups.push(group);
+		filterToolboxes.push({ name: groupName, tools: filterTools });
 	}
 
 	// Retrieve or create the "Containers" group in the configuration toolbox.
@@ -129,6 +139,35 @@ async function initializeDesigner() {
 
 	// Create the workflow designer using the configuration and start definition.
 	_designer = sequentialWorkflowDesigner.Designer.create(designerHtmlElement, startDefinition, configuration);
+
+	// Lay the designer scroll bars over the right panel (step settings and plugin information). The panel
+	// element persists while the designer swaps the editor inside it, and the bars follow those swaps.
+	const smartEditorElement = designerHtmlElement.querySelector('.sqd-smart-editor');
+
+	if (smartEditorElement) {
+		G4Scrollbars.attach({
+			host: smartEditorElement.parentElement,
+			isFramed: true,
+			scrollElement: smartEditorElement,
+			testId: 'smart-editor'
+		});
+	}
+
+	// Add the toolboxes filter next to the toolbox search box; Containers is always shown, so it is not listed.
+	const toolboxFilterElement = designerHtmlElement.querySelector('.sqd-toolbox-filter');
+
+	if (toolboxFilterElement) {
+		const toolboxesFilter = document.createElement('g4-toolboxes-filter');
+
+		toolboxesFilter.toolboxes = filterToolboxes
+			.filter((toolbox) => toolbox.name !== G4ToolboxesFilter.containersGroupName)
+			.toSorted((left, right) => left.name.localeCompare(right.name))
+			.map((toolbox) => ({
+				name: toolbox.name,
+				tools: toolbox.tools.toSorted((left, right) => left.label.localeCompare(right.label))
+			}));
+		toolboxFilterElement.append(toolboxesFilter);
+	}
 
 	// Subscribe to definition changes in the designer.
 	// This event fires whenever a step is added, removed, or updated.
@@ -1774,17 +1813,77 @@ function stepEditorProvider(step, editorContext) {
 	/**
 	 * Initializes the “containerable” toggle on a step editor.
 	 * This adds a switch that lets you convert a step between a task and a container.
+	 *
+	 * @remarks
+	 * Only turning the switch off is guarded: a container that still holds child rules cannot go back to a
+	 * task, so its children are never dropped. Turning it on always converts, because a task has no sequence
+	 * yet. The step is mutated in place and the designer is told through the editor context, which redraws
+	 * the step as a task or a container.
+	 *
+	 * @param {HTMLElement} container - The step editor element that receives the switch field.
+	 * @param {Object}      step      - The selected designer step; its componentType, sequence, and context change.
 	 */
 	const initializeContainerableEditorProvider = (container, step) => {
-		// Ensure we have a context object to store our “containerable” flag
+		// The label also finds the switch's checkbox again, so both uses must stay the same text.
+		const switchLabel = 'Convert to Container';
+
+		/**
+		 * Applies a user change of the container switch to the step.
+		 *
+		 * @param {string} value - The switch state, 'true' or 'false'.
+		 */
+		const onContainerSwitchChange = (value) => {
+			// Read the requested mode and the current children before deciding, so the guard sees the step as it is now.
+			const isContainerRequested = typeof value === 'string' && value.toUpperCase() === 'TRUE';
+			const isChildRulesPresent = Array.isArray(step.sequence) && step.sequence.length > 0;
+			const isTaskRevertBlocked = !isContainerRequested && isChildRulesPresent;
+
+			// Refuse to turn a container with child rules back into a task so those rules are never lost.
+			if (isTaskRevertBlocked) {
+				step.context.convertToContainer = true;
+
+				// The editor is not redrawn for the same step, so put the checkbox back on directly.
+				const switchInput = container.querySelector(`input[data-g4-attribute="${switchLabel}"]`);
+
+				if (switchInput) {
+					switchInput.checked = true;
+				}
+
+				// Report a property change only, so the designer re-validates without redrawing the step shape.
+				editorContext.notifyPropertiesChanged();
+				return;
+			}
+
+			// Store the accepted mode so the switch opens in the same state the next time the step is selected.
+			step.context.convertToContainer = isContainerRequested;
+
+			// An empty container switched off becomes a plain task again, without a sequence.
+			if (!isContainerRequested) {
+				step.componentType = 'task';
+				delete step.sequence;
+
+				// A name change makes the designer rebuild the canvas, so the step is drawn as a task again.
+				editorContext.notifyNameChanged();
+				return;
+			}
+
+			// Turn the step into a container, keeping any sequence it already has, so the designer redraws it with a drop area.
+			step.componentType = 'container';
+			step.sequence = step.sequence || [];
+
+			// A name change makes the designer rebuild the canvas, so the step is drawn as a container.
+			editorContext.notifyNameChanged();
+		};
+
+		// Make sure the step has a context so the switch state can be stored on it and survive reselection.
 		step.context = step.context || {};
 
-        // Create a switch field for toggling container mode
+		// Add the switch to the editor, opening in the stored state so it matches how the step is drawn.
 		CustomFields.newSwitchField(
 			{
 				container: container,
 				initialValue: step.context.convertToContainer || false,
-				label: 'Convert to Container',
+				label: switchLabel,
 				// Tooltip explaining container mode behavior and revert conditions
 				title: 'Toggle Container Mode:\n' +
 					'- When enabled, you can add child rules to this step.\n' +
@@ -1792,36 +1891,7 @@ function stepEditorProvider(step, editorContext) {
 				step: step,
 				sequence: step.sequence || []
 			},
-			(value) => {
-				// Normalize the switch value to a boolean
-				step.context.convertToContainer = String(value).toUpperCase() === 'TRUE';
-
-                // If the switch is turned off, we need to check the current state of the step
-				const isSequenceEmpty = Array.isArray(step.sequence) && step.sequence.length === 0;
-
-				// Prevent disabling container mode if there are existing child steps
-				if (!isSequenceEmpty) {
-					step.context.convertToContainer = true;
-					editorContext.notifyPropertiesChanged();
-					return;
-				}
-
-				// If there are no child steps and container mode is turned off,
-				// convert this step into a standalone task
-				if (isSequenceEmpty && !step.context.convertToContainer) {
-					step.componentType = 'task';
-					delete step.sequence;
-					editorContext.notifyNameChanged();
-					return;
-				}
-
-				// Otherwise, ensure we are in container mode:
-				// clear any existing sequence and set the component type
-				step.componentType = 'container';
-				step.sequence = [];
-
-				editorContext.notifyNameChanged();
-			}
+			onContainerSwitchChange
 		);
 	};
 

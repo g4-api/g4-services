@@ -1,0 +1,110 @@
+/*
+ * G4 toolboxes filter visual language: the button looks and reacts like the toolbox search box
+ * (its background, its bottom line, and its hover and focus colors, which also mark an open
+ * panel). The panel mirrors the toolbox: its border is the item border, its title the toolbox title
+ * color, toolbox names the group title color, tool names the item color, hints the faded item
+ * color, and the expand arrows the toolbox icon colors. Rows highlight like toolbox items, and the
+ * panel drops in when it opens; the shared scroll bar component draws the list's scroll bar. A mixed
+ * group switch (All or a toolbox) is dimmed with its thumb centered, and a switch the project
+ * manifest locks is dimmed. The switches are the editor switches, which paint their own thumb.
+ */
+
+/*
+ * The theme defines the search box line as a border shorthand, so the bottom line is drawn here whole.
+ * The corners stay square in every theme, so the underline runs straight on with the search box's; the
+ * selectors carry an element more than the theme's button rule, which would otherwise round them.
+ */
+g4-toolboxes-filter button.g4-toolboxes-filter__button {
+    cursor: pointer;
+    color: var(--g4-toolboxes-filter-button-foreground);
+    background: var(--g4-toolboxes-filter-button-background);
+    border-bottom: var(--g4-toolboxes-filter-button-border);
+    border-radius: 0;
+}
+
+g4-toolboxes-filter button.g4-toolboxes-filter__button:hover {
+    border-bottom: var(--g4-toolboxes-filter-button-active-border);
+}
+
+g4-toolboxes-filter button.g4-toolboxes-filter__button:focus-visible,
+g4-toolboxes-filter button.g4-toolboxes-filter__button[aria-expanded="true"] {
+    color: var(--g4-toolboxes-filter-button-active-foreground);
+    background: var(--g4-toolboxes-filter-button-active-background);
+    border-bottom: var(--g4-toolboxes-filter-button-active-border);
+    outline: none;
+}
+
+.g4-toolboxes-filter__panel {
+    color: var(--g4-toolboxes-filter-foreground);
+    background-color: var(--g4-toolboxes-filter-background);
+    border: var(--g4-toolboxes-filter-panel-border);
+    border-radius: var(--g4-toolboxes-filter-radius);
+    box-shadow: var(--g4-toolboxes-filter-panel-shadow);
+    animation: g4-toolboxes-filter-open var(--g4-toolboxes-filter-open-duration) ease-out;
+}
+
+@keyframes g4-toolboxes-filter-open {
+    from {
+        opacity: 0;
+        transform: translateY(var(--g4-toolboxes-filter-open-offset));
+    }
+}
+
+.g4-toolboxes-filter__header {
+    border-bottom: var(--g4-toolboxes-filter-divider-border);
+}
+
+.g4-toolboxes-filter__title {
+    color: var(--g4-toolboxes-filter-title-foreground);
+    font-weight: 700;
+}
+
+/* Hints are the item text, faded: some themes' search hint color is too dark to read on the panel. */
+.g4-toolboxes-filter__summary,
+.g4-toolboxes-filter__count {
+    font-size: .85em;
+    opacity: var(--g4-toolboxes-filter-muted-opacity);
+}
+
+.g4-toolboxes-filter__status {
+    color: var(--g4-toolboxes-filter-status-foreground);
+}
+
+.g4-toolboxes-filter__toolbox,
+.g4-toolboxes-filter__tools > .g4-toolboxes-filter__switch {
+    border-radius: var(--g4-toolboxes-filter-radius);
+}
+
+.g4-toolboxes-filter__toolbox:hover,
+.g4-toolboxes-filter__tools > .g4-toolboxes-filter__switch:hover {
+    background-color: var(--g4-toolboxes-filter-row-hover-background);
+}
+
+.g4-toolboxes-filter__expand {
+    cursor: pointer;
+    color: var(--g4-toolboxes-filter-toolbox-name-foreground);
+    font: inherit;
+    font-weight: 600;
+    background: none;
+}
+
+.g4-toolboxes-filter__arrow {
+    color: var(--g4-toolboxes-filter-arrow-foreground);
+}
+
+.g4-toolboxes-filter__expand:hover .g4-toolboxes-filter__arrow {
+    color: var(--g4-toolboxes-filter-arrow-hover-foreground);
+}
+
+.g4-toolboxes-filter__switch {
+    cursor: pointer;
+}
+
+.g4-toolboxes-filter__switch.is-mixed .sqd-base64-toggle__switch {
+    opacity: var(--g4-toolboxes-filter-mixed-opacity);
+}
+
+.g4-toolboxes-filter__switch:has(> input:disabled) {
+    cursor: not-allowed;
+    opacity: var(--g4-toolboxes-filter-muted-opacity);
+}

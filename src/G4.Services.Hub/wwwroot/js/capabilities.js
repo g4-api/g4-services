@@ -218,11 +218,8 @@ class CachePage {
         let total = 0, mcp = 0, ext = 0, internal = 0, template = 0;
         if (this._cache) {
             for (const plugins of Object.values(this._cache)) {
-                const aliasNames = new Set(
-                    Object.values(plugins).flatMap(m => (m.manifest?.aliases || []).map(a => a.toLowerCase()))
-                );
-                for (const [name, model] of Object.entries(plugins)) {
-                    if (aliasNames.has(name.toLowerCase())) continue;
+                // Count each plugin once: the cache also stores it under its qualified name and aliases.
+                for (const { model } of getCacheEntries(plugins)) {
                     total++;
                     const src = pluginSource(model);
                     if (src === 'mcp')           mcp++;
@@ -310,24 +307,21 @@ class CachePage {
 
         types.forEach((typeName, idx) => {
             const plugins  = this._cache[typeName];
-            // Build a set of all alias names in this type group so aliases are never
-            // rendered as first-class entries (they exist for backward compatibility only).
-            const aliasNames = new Set(
-                Object.values(plugins).flatMap(m => (m.manifest?.aliases || []).map(a => a.toLowerCase()))
-            );
-
-            const entries  = Object.entries(plugins).filter(([name, model]) => {
-                if (aliasNames.has(name.toLowerCase())) return false;
-                if (filter && pluginSource(model) !== filter) return false;
-                if (!term) return true;
-                const manifest = model.manifest || {};
-                return (
-                    name.toLowerCase().includes(term) ||
-                    joinArr(manifest.summary).toLowerCase().includes(term) ||
-                    joinArr(manifest.description).toLowerCase().includes(term) ||
-                    (manifest.namespace || '').toLowerCase().includes(term)
-                );
-            });
+            // List each plugin once: the cache also stores it under its qualified Namespace:Key name and
+            // its aliases. The entry name is the bare key, or the qualified name when namespaces share the key.
+            const entries  = getCacheEntries(plugins)
+                .map(({ name, model }) => [name, model])
+                .filter(([name, model]) => {
+                    if (filter && pluginSource(model) !== filter) return false;
+                    if (!term) return true;
+                    const manifest = model.manifest || {};
+                    return (
+                        name.toLowerCase().includes(term) ||
+                        joinArr(manifest.summary).toLowerCase().includes(term) ||
+                        joinArr(manifest.description).toLowerCase().includes(term) ||
+                        (manifest.namespace || '').toLowerCase().includes(term)
+                    );
+                });
 
             if (!entries.length) return;
 

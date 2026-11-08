@@ -1,9 +1,12 @@
 /*
  * G4 text box parameters, mapped to the canvas theme. Every theme file
- * (designer-blueprint-parameters*.css) defines the Text Box values below.
+ * (designer-blueprint-parameters*.css) defines the Text Box values below; the scroll bar sizes come
+ * from the shared scroll bar component, so the text clears its bars exactly.
  */
 :root {
     --g4-text-box-radius: var(--border-radius);
+    --g4-text-box-scrollbar-horizontal-size: var(--g4-scrollbar-horizontal-size);
+    --g4-text-box-scrollbar-vertical-size: var(--g4-scrollbar-vertical-size);
     --g4-text-box-tool-background: var(--text-box-tool-background);
     --g4-text-box-tool-border-color: var(--text-box-tool-border-color);
     --g4-text-box-tool-focus-outline: 1px solid var(--text-box-tool-hover-border-color);

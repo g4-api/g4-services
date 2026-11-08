@@ -127,10 +127,11 @@ catch (err) {
 			console.warn(missingTypeMessage);
 		}
 
-		// Project each cached plugin to the name and summary shown in the designer pickers.
-		const itemSource = Object.values(providers).map(cacheModel => ({
-			name: cacheModel.manifest.key,
-			description: cacheModel.manifest.summary,
+		// Project each cached plugin once to the name and summary shown in the designer pickers; the cache
+		// also stores a plugin under its qualified name and aliases, which must not appear as extra items.
+		const itemSource = getCacheEntries(providers).map(({ name, model }) => ({
+			name,
+			description: model.manifest.summary,
 		}));
 
 		return { providers, itemSource };

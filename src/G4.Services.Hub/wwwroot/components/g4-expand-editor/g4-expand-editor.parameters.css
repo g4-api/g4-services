@@ -1,6 +1,7 @@
 /*
  * G4 expand editor parameters, mapped to the canvas theme. Every theme file
- * (designer-blueprint-parameters*.css) defines the Expand Editor and Markdown Reference values below.
+ * (designer-blueprint-parameters*.css) defines the Expand Editor and Markdown Reference values below;
+ * the scroll bar sizes come from the shared scroll bar component, so the text clears its bars exactly.
  */
 :root {
     --g4-expand-editor-background: var(--expand-editor-background);
@@ -12,4 +13,6 @@
     --g4-expand-editor-reference-muted-foreground: var(--markdown-reference-muted-color);
     --g4-expand-editor-reference-radius: var(--border-radius);
     --g4-expand-editor-reference-rule-color: var(--markdown-reference-rule-color);
+    --g4-expand-editor-scrollbar-horizontal-size: var(--g4-scrollbar-horizontal-size);
+    --g4-expand-editor-scrollbar-vertical-size: var(--g4-scrollbar-vertical-size);
 }

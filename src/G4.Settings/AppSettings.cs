@@ -18,6 +18,9 @@ namespace G4.Settings
     public static class AppSettings
     {
         #region *** Constants ***
+        // The name of the application settings file.
+        private const string AppSettingsFileName = "appsettings.json";
+
         /// <summary>
         /// The version of the API.
         /// </summary>
@@ -56,7 +59,7 @@ namespace G4.Settings
         /// </summary>
         public static readonly StateManagerModel StateManager = new ConfigurationBuilder()
             .SetBasePath(Directory.GetCurrentDirectory())
-            .AddJsonFile(path: "appsettings.json", optional: true, reloadOnChange: false)
+            .AddJsonFile(path: AppSettingsFileName, optional: true, reloadOnChange: false)
             .AddEnvironmentVariables()
             .Build()
             .GetSection("G4:StateManager")
@@ -73,7 +76,7 @@ namespace G4.Settings
                 // Retrieve the URI string from configuration section "G4:LoginManager"
                 var uriString = new ConfigurationBuilder()
                     .SetBasePath(Directory.GetCurrentDirectory())
-                    .AddJsonFile(path: "appsettings.json", optional: true, reloadOnChange: false)
+                    .AddJsonFile(path: AppSettingsFileName, optional: true, reloadOnChange: false)
                     .AddEnvironmentVariables()
                     .Build()
                     .GetSection("G4:LoginManagerUri")
@@ -95,7 +98,7 @@ namespace G4.Settings
             // Create a new ConfigurationBuilder instance
             new ConfigurationBuilder()
                 .SetBasePath(Directory.GetCurrentDirectory())
-                .AddJsonFile(path: "appsettings.json", optional: true, reloadOnChange: false)
+                .AddJsonFile(path: AppSettingsFileName, optional: true, reloadOnChange: false)
                 .AddEnvironmentVariables()
                 .Build();
 
@@ -106,7 +109,7 @@ namespace G4.Settings
             configurationBuilder.SetBasePath(Directory.GetCurrentDirectory());
 
             // Add the appsettings.json file as a configuration source, if it exists (optional), without reloading it on change
-            configurationBuilder.AddJsonFile(path: "appsettings.json", optional: true, reloadOnChange: false);
+            configurationBuilder.AddJsonFile(path: AppSettingsFileName, optional: true, reloadOnChange: false);
 
             // Add environment variables as a configuration source
             configurationBuilder.AddEnvironmentVariables();
@@ -155,7 +158,7 @@ namespace G4.Settings
                 // Build a configuration provider from appsettings.json and environment variables
                 var openAiSettingsSection = new ConfigurationBuilder()
                     .SetBasePath(Directory.GetCurrentDirectory())
-                    .AddJsonFile(path: "appsettings.json", optional: true, reloadOnChange: false)
+                    .AddJsonFile(path: AppSettingsFileName, optional: true, reloadOnChange: false)
                     .AddEnvironmentVariables()
                     .Build()
                     .GetSection("OpenAi");

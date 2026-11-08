@@ -393,21 +393,20 @@ html, body {
 		opacity: 0;
 	}
 
+	/*
+	 * The thumb is a circle centered in its background tile, with a 1px soft edge that keeps it smooth
+	 * at any zoom. Only background longhands are set, so the checked color never resets the thumb, and
+	 * the slide animates the tile position.
+	 */
 	.sqd-theme-light .sqd-base64-toggle__switch {
-		background: var(--smart-editor-base64-toggle-track-background);
+		background-color: var(--smart-editor-base64-toggle-track-background);
+		background-image: radial-gradient(circle closest-side, var(--smart-editor-base64-toggle-thumb-background) calc(100% - 1px), transparent 100%);
 		border-radius: 9px;
-		transition: var(--smart-editor-base64-toggle-transition);
+		transition: var(--smart-editor-base64-toggle-transition), background-position 0.15s;
 	}
 
-		.sqd-theme-light .sqd-base64-toggle__switch::after {
-			background: var(--smart-editor-base64-toggle-thumb-background);
-			border-radius: 50%;
-			content: '';
-			transition: var(--smart-editor-base64-toggle-transition);
-		}
-
 		.sqd-theme-light .sqd-base64-toggle__input:checked + .sqd-base64-toggle__switch {
-			background: var(--smart-editor-base64-toggle-active-background);
+			background-color: var(--smart-editor-base64-toggle-active-background);
 		}
 
 		.sqd-theme-light .sqd-base64-toggle__input:focus-visible + .sqd-base64-toggle__switch {
