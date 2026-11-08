@@ -1,5 +1,5 @@
 /*
- * G4(TM) scroll bars: G4Scrollbars.attach({ host, scrollElement, testId }).
+ * G4(TM) scroll bars: G4Scrollbars.attach({ host, scrollElement, testId, isFramed }).
  *
  * Draws the designer's own vertical and horizontal scroll bars over the edges of a scrolling element,
  * in the look of the number input steppers: a column (or row) with step buttons at its ends, a track,
@@ -12,10 +12,13 @@
  *   bars are added to it and laid over the element's padding box.
  * - scrollElement: the element that scrolls (a text area or a list).
  * - testId: prefix of every part's data-test-id.
+ * - isFramed: optional; borders each bar on every side, for an element without a border of its own
+ *   (a panel), where a bar drawn against the page edge would otherwise look sunk in.
  * - Host classes: g4-scrollbar-host--vertical and g4-scrollbar-host--horizontal while a bar shows, so
  *   the owner can pad its content clear of the bars.
  * - Returns a controller: refresh() after the owner changes the content in code; detach() removes the
- *   bars and every listener.
+ *   bars and every listener. Content added, removed, or restyled inside the element (for example a
+ *   panel that swaps its editor) is followed by itself, once per frame.
  * - A bar shows only when its direction overflows and the element's overflow style for it is not hidden.
  */
 (() => {
@@ -455,6 +458,12 @@
         // The positioned wrapper that holds the overlay.
         #host = null;
 
+        // Pending once-per-frame refresh after content changes; 0 while none is pending.
+        #frameRequest = 0;
+
+        // Watches the element's content, so swapped or restyled content updates the bars.
+        #mutationObserver = null;
+
         // Overlay laid over the scroll element's padding box; it holds the bars and the corner.
         #overlay = null;
 
@@ -472,13 +481,36 @@
         };
 
         /**
+         * Updates the bars once per frame after the element's content changes.
+         *
+         * @remarks
+         * Content can change many times in one frame (an editor rebuilt node by node), and the bars'
+         * own updates inside nested scrolling content also count as changes, so one refresh per frame
+         * is enough and keeps the work bounded.
+         */
+        #onContentChange = () => {
+            if (this.#frameRequest !== 0) {
+                return;
+            }
+
+            // Refresh after the browser lays out the changed content.
+            const onFrame = () => {
+                this.#frameRequest = 0;
+                this.refresh();
+            };
+
+            this.#frameRequest = requestAnimationFrame(onFrame);
+        };
+
+        /**
          * Adds the bars to a host and starts following its scrolling element.
          *
-         * @param {{ host: HTMLElement, scrollElement: HTMLElement, testId: string }} options - The positioned
-         *     wrapper, the element that scrolls, and the test id prefix.
+         * @param {{ host: HTMLElement, scrollElement: HTMLElement, testId: string, isFramed?: boolean }} options -
+         *     The positioned wrapper, the element that scrolls, the test id prefix, and whether each bar is
+         *     bordered on every side.
          */
         constructor(options) {
-            const { host, scrollElement, testId } = options;
+            const { host, isFramed, scrollElement, testId } = options;
 
             this.#host = host;
             this.#scrollElement = scrollElement;
@@ -504,6 +536,7 @@
 
             this.#overlay = document.createElement('div');
             this.#overlay.className = `${COMPONENT_NAME}s`;
+            this.#overlay.classList.toggle(`${COMPONENT_NAME}s--framed`, Boolean(isFramed));
             this.#overlay.setAttribute('aria-hidden', 'true');
             this.#overlay.dataset.testId = `${testId}-scrollbars`;
             this.#overlay.append(this.#vertical.element, this.#horizontal.element, this.#corner);
@@ -517,6 +550,10 @@
             this.#resizeObserver.observe(scrollElement, { box: 'border-box' });
             this.#resizeObserver.observe(host, { box: 'border-box' });
 
+            // Follow content swapped, added, or restyled inside the element, which changes what overflows.
+            this.#mutationObserver = new MutationObserver(this.#onContentChange);
+            this.#mutationObserver.observe(scrollElement, { attributes: true, childList: true, subtree: true });
+
             this.refresh();
         }
 
@@ -528,6 +565,8 @@
             this.#scrollElement.removeEventListener('scroll', this.#onChange);
             this.#scrollElement.removeEventListener('input', this.#onChange);
             this.#resizeObserver.disconnect();
+            this.#mutationObserver.disconnect();
+            cancelAnimationFrame(this.#frameRequest);
             this.#vertical.dispose();
             this.#horizontal.dispose();
 
@@ -572,6 +611,12 @@
             this.#overlay.style.width = `${element.clientWidth}px`;
             this.#overlay.style.height = `${element.clientHeight}px`;
 
+            // Stack the overlay just above an element that sits on its own layer (the designer's right panel
+            // does); otherwise the stylesheet's layer applies.
+            const elementZIndex = Number.parseInt(getComputedStyle(element).zIndex, 10);
+
+            this.#overlay.style.zIndex = Number.isFinite(elementZIndex) ? `${elementZIndex + 1}` : '';
+
             // Size and place each shown thumb.
             this.#vertical.update();
             this.#horizontal.update();
@@ -583,8 +628,9 @@
         /**
          * Adds the designer's scroll bars to a scrolling element.
          *
-         * @param {{ host: HTMLElement, scrollElement: HTMLElement, testId: string }} options - The positioned
-         *     wrapper, the element that scrolls, and the test id prefix.
+         * @param {{ host: HTMLElement, scrollElement: HTMLElement, testId: string, isFramed?: boolean }} options -
+         *     The positioned wrapper, the element that scrolls, the test id prefix, and whether each bar is
+         *     bordered on every side.
          * @returns {{ detach: Function, refresh: Function }} The controller of the bars.
          */
         attach(options) {

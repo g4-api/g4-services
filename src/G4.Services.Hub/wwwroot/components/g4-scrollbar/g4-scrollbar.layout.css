@@ -74,6 +74,13 @@
     border-left-style: solid;
 }
 
+/* A framed bar is bordered on every side, so it stands out from an element without its own border. */
+.g4-scrollbars--framed .g4-scrollbar,
+.g4-scrollbars--framed .g4-scrollbar__corner {
+    border-width: 1px;
+    border-style: solid;
+}
+
 /* The track inset keeps the thumb clear of the button lines; the track length is what the thumb travels. */
 .g4-scrollbar__track {
     position: relative;

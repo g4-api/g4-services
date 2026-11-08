@@ -350,6 +350,23 @@ textarea {
 		padding: 10px;
 	}
 
+	/*
+	 * While the right panel shows its scroll bar, the panel grows by the bar's width (toward the canvas,
+	 * since it is anchored right) and its content keeps clear of the bar, so the content keeps its width.
+	 */
+	.sqd-layout-desktop.g4-scrollbar-host--vertical .sqd-smart-editor {
+		width: calc(var(--smart-editor-width) + var(--g4-scrollbar-vertical-size, 22px));
+	}
+
+	/* The toggle button sits just left of the open panel, so it moves with the panel's added width. */
+	.sqd-layout-desktop.g4-scrollbar-host--vertical .sqd-smart-editor-toggle:not(.sqd-collapsed) {
+		right: calc(var(--smart-editor-width) + var(--g4-scrollbar-vertical-size, 22px) + 10px);
+	}
+
+	.sqd-layout-desktop.g4-scrollbar-host--vertical .sqd-smart-editor .sqd-editor {
+		padding-right: calc(10px + var(--g4-scrollbar-vertical-size, 22px));
+	}
+
 		.sqd-layout-desktop .sqd-smart-editor .sqd-editor button {
 			box-sizing: border-box;
 			line-height: 1;

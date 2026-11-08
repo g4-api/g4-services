@@ -140,6 +140,19 @@ async function initializeDesigner() {
 	// Create the workflow designer using the configuration and start definition.
 	_designer = sequentialWorkflowDesigner.Designer.create(designerHtmlElement, startDefinition, configuration);
 
+	// Lay the designer scroll bars over the right panel (step settings and plugin information). The panel
+	// element persists while the designer swaps the editor inside it, and the bars follow those swaps.
+	const smartEditorElement = designerHtmlElement.querySelector('.sqd-smart-editor');
+
+	if (smartEditorElement) {
+		G4Scrollbars.attach({
+			host: smartEditorElement.parentElement,
+			isFramed: true,
+			scrollElement: smartEditorElement,
+			testId: 'smart-editor'
+		});
+	}
+
 	// Add the toolboxes filter next to the toolbox search box; Containers is always shown, so it is not listed.
 	const toolboxFilterElement = designerHtmlElement.querySelector('.sqd-toolbox-filter');
 

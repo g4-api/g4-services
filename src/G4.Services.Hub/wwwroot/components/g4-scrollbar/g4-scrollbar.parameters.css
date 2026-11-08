@@ -2,7 +2,8 @@
  * G4 scroll bar parameters, mapped to the canvas theme. The bars take the number input stepper values
  * (every theme file, designer-blueprint-parameters*.css, defines them), so the two controls look and
  * react the same. The vertical bar is the stepper column's width; the horizontal bar is one stepper
- * tall, so it does not take a whole text line from a small text box.
+ * tall, so it does not take a whole text line from a small text box. A framed bar (a panel's) takes the
+ * frame of the panel's own sections, which every theme keeps visible against the panel.
  */
 :root {
     --g4-scrollbar-background: var(--number-input-step-background);
@@ -12,6 +13,7 @@
     --g4-scrollbar-button-hover-background: var(--number-input-step-hover-background);
     --g4-scrollbar-button-hover-foreground: var(--number-input-step-hover-color);
     --g4-scrollbar-button-length: 16px;
+    --g4-scrollbar-framed-border: var(--smart-editor-details-border);
     --g4-scrollbar-horizontal-button-length: 22px;
     --g4-scrollbar-horizontal-size: 16px;
     --g4-scrollbar-icon-size: 10px;
