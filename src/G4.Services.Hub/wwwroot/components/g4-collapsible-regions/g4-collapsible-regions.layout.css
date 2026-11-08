@@ -1,0 +1,9 @@
+/*
+ * G4 collapsible regions layout. The plugin places every part with SVG attributes (the arrow's square
+ * and icon, the collapsed box's labels and frame), so the layout only routes the pointer: a click on
+ * the icon or its tooltip lands on the arrow's square, which the plugin tests a click against.
+ */
+.g4-collapsible-regions__toggle-icon,
+.g4-collapsible-regions__toggle title {
+    pointer-events: none;
+}

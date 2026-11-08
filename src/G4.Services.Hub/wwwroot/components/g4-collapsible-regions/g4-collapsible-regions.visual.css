@@ -1,0 +1,38 @@
+/*
+ * G4 collapsible regions visual language: the arrow's square looks like the region's input and turns
+ * to the toolbox hover color under the pointer. The summary under a collapsed container's name looks
+ * like a switch's branch name; the designer's container rule paints every label of a container as its
+ * name, so the selector carries the element names to win over it.
+ */
+.g4-collapsible-regions__toggle {
+    cursor: pointer;
+}
+
+.g4-collapsible-regions__toggle-area {
+    fill: var(--g4-collapsible-regions-toggle-background);
+    stroke: var(--g4-collapsible-regions-toggle-border-color);
+    stroke-width: var(--g4-collapsible-regions-toggle-border-width);
+}
+
+.g4-collapsible-regions__toggle-icon path {
+    fill: var(--g4-collapsible-regions-toggle-foreground);
+}
+
+.g4-collapsible-regions__toggle:hover .g4-collapsible-regions__toggle-area {
+    stroke: var(--g4-collapsible-regions-toggle-hover-border-color);
+}
+
+.g4-collapsible-regions__toggle:hover .g4-collapsible-regions__toggle-icon path {
+    fill: var(--g4-collapsible-regions-toggle-hover-foreground);
+}
+
+g.sqd-step-container.g4-collapsible-regions--collapsed > g.sqd-label-secondary > rect.sqd-label-rect {
+    fill: var(--g4-collapsible-regions-summary-rect-fill);
+    stroke: var(--g4-collapsible-regions-summary-rect-stroke);
+    stroke-width: var(--g4-collapsible-regions-summary-rect-stroke-width);
+}
+
+g.sqd-step-container.g4-collapsible-regions--collapsed > g.sqd-label-secondary > text.sqd-label-text {
+    fill: var(--g4-collapsible-regions-summary-text-fill);
+    font: var(--g4-collapsible-regions-summary-text-font);
+}
