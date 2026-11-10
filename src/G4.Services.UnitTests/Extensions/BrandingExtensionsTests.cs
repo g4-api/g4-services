@@ -33,10 +33,14 @@ namespace G4.Services.UnitTests.Extensions
             Assert.AreEqual("G4™ Engine", branding.Tokens["engineTm"]);
             Assert.AreEqual("G4™ Test Wright", branding.Tokens["testWrightTm"]);
             Assert.AreEqual("G4™", branding.Tokens["productTm"]);
-            Assert.AreEqual("G4", branding.Tokens["mark"]);
+            Assert.IsFalse(branding.Tokens.ContainsKey("mark"));
 
-            // Assert: the images, the support contact, and the banner mode take their defaults.
-            Assert.AreEqual("/images/g4-avatar.png", branding.Assets.Logo);
+            // Assert: the images, the support contact, and the banner mode take their defaults; the extension icons stay
+            // empty, so each extension keeps its built-in icon.
+            Assert.AreEqual("/images/avatar.png", branding.Assets.Logo);
+            Assert.AreEqual("/images/favicon.ico", branding.Assets.Favicon);
+            Assert.AreEqual(string.Empty, branding.Assets.ActivityBarIcon);
+            Assert.AreEqual(string.Empty, branding.Assets.TestWrightIcon);
             Assert.AreEqual("G4 Support", branding.Support.Name);
             Assert.AreEqual(BrandingBannerModes.Default, branding.ConsoleBanner.Mode);
         }
@@ -44,9 +48,11 @@ namespace G4.Services.UnitTests.Extensions
         [TestMethod(DisplayName = "Verify the product name alone renames every product, and a configured name wins.")]
         public void NewBrandingProductNameTest()
         {
-            // Arrange: a product name and one explicit name that does not contain the product name.
+            // Arrange: a product name, one explicit name that does not contain the product name, and padded icon paths.
             var configuration = NewConfiguration(new Dictionary<string, string>
             {
+                ["Branding:Assets:ActivityBarIcon"] = " /images/acme-activity.svg ",
+                ["Branding:Assets:TestWrightIcon"] = "https://cdn.acme.example/test-wright.svg",
                 ["Branding:Names:Hub"] = "Control Center",
                 ["Branding:ProductName"] = "Acme"
             });
@@ -58,7 +64,10 @@ namespace G4.Services.UnitTests.Extensions
             Assert.AreEqual("Acme Engine", branding.Names.Engine);
             Assert.AreEqual("Acme™ Engine", branding.Tokens["engineTm"]);
             Assert.AreEqual("Acme Studio", branding.Tokens["studio"]);
-            Assert.AreEqual("Acme", branding.Assets.MarkText);
+
+            // Assert: the extension icons are kept as configured, without surrounding spaces.
+            Assert.AreEqual("/images/acme-activity.svg", branding.Assets.ActivityBarIcon);
+            Assert.AreEqual("https://cdn.acme.example/test-wright.svg", branding.Assets.TestWrightIcon);
 
             // Assert: the configured name is kept, and its symbol is appended because it holds no product name.
             Assert.AreEqual("Control Center", branding.Tokens["hub"]);

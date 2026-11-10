@@ -29,7 +29,7 @@
     // The placeholder values the Hub publishes when it has no Branding section, so the page keeps the G4 text
     // even when the branding script is not available.
     const DEFAULT_SETTINGS = {
-        assets: { favicon: '/images/favicon.ico', logo: '/images/g4-avatar.png', markText: 'G4' },
+        assets: { activityBarIcon: '', favicon: '/images/favicon.ico', logo: '/images/avatar.png', testWrightIcon: '' },
         tokens: {
             engine: 'G4 Engine',
             engineClient: 'G4 Engine Client',
@@ -37,7 +37,6 @@
             engineTm: 'G4™ Engine',
             hub: 'G4 Hub',
             hubTm: 'G4™ Hub',
-            mark: 'G4',
             product: 'G4',
             productTm: 'G4™',
             studio: 'G4 Studio',
