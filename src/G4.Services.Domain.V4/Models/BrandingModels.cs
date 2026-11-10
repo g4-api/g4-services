@@ -82,11 +82,20 @@ namespace G4.Models
     }
 
     /// <summary>
-    /// Represents the images and the short mark text that represent the product in the user interface.
+    /// Represents the images that represent the product in the user interface.
     /// </summary>
     public class BrandingAssetsModel
     {
         #region *** Properties   ***
+
+        /// <summary>
+        /// Gets or sets the address of the SVG icon that the G4 VS Code extension shows on the activity bar.
+        /// </summary>
+        /// <remarks>
+        /// The value is either a path served by the Hub, such as a file under <c>wwwroot</c>, or an absolute URL. An empty
+        /// value keeps the built-in icon. A local VS Code setting on the user's machine takes precedence.
+        /// </remarks>
+        public string ActivityBarIcon { get; set; }
 
         /// <summary>
         /// Gets or sets the address of the favicon shown in browser tabs.
@@ -105,12 +114,14 @@ namespace G4.Models
         public string Logo { get; set; }
 
         /// <summary>
-        /// Gets or sets the short text drawn in badges and icons, for example "G4".
+        /// Gets or sets the address of the SVG icon that the Test Wright VS Code extension shows on the activity bar,
+        /// its panel tab, and its page header.
         /// </summary>
         /// <remarks>
-        /// Defaults to the product name when empty.
+        /// The value is either a path served by the Hub, such as a file under <c>wwwroot</c>, or an absolute URL. An empty
+        /// value keeps the built-in icon. A local VS Code setting on the user's machine takes precedence.
         /// </remarks>
-        public string MarkText { get; set; }
+        public string TestWrightIcon { get; set; }
 
         #endregion
     }

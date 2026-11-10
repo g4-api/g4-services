@@ -117,15 +117,16 @@ The `Branding` section replaces the product labels and visible text of the Hub, 
 | `Branding:Support:Email` | `g4.platforms@gmail.com` | `Branding__Support__Email` | The Swagger contact email. |
 | `Branding:Support:Url` | `https://github.com/g4-api/g4-docs` | `Branding__Support__Url` | The Swagger contact address. |
 | `Branding:TermsUrl` | the G4 usage policy | `Branding__TermsUrl` | The Swagger terms of service. |
-| `Branding:Assets:Logo` | `/images/g4-avatar.png` | `Branding__Assets__Logo` | The page header logo: a path under `wwwroot` or an absolute URL. |
+| `Branding:Assets:Logo` | `/images/avatar.png` | `Branding__Assets__Logo` | The page header logo: a path under `wwwroot` or an absolute URL. |
 | `Branding:Assets:Favicon` | `/images/favicon.ico` | `Branding__Assets__Favicon` | The browser tab icon: a path under `wwwroot` or an absolute URL. |
-| `Branding:Assets:MarkText` | `<ProductName>` | `Branding__Assets__MarkText` | The short text drawn in badges and icons. Keep it to two or three characters, for example `AC`. |
+| `Branding:Assets:ActivityBarIcon` | empty | `Branding__Assets__ActivityBarIcon` | The SVG icon of the G4 VS Code extension on the activity bar: a path under `wwwroot` or an absolute URL. Empty keeps the built-in double orbit. |
+| `Branding:Assets:TestWrightIcon` | empty | `Branding__Assets__TestWrightIcon` | The SVG icon of Test Wright on the activity bar, its panel tab, and its page header: a path under `wwwroot` or an absolute URL. Empty keeps the built-in icon. |
 | `Branding:ConsoleBanner:Mode` | `Default` | `Branding__ConsoleBanner__Mode` | `Default` writes the G4 Hub art, `Text` writes the Hub name as plain text, `File` writes the art from `File`. |
 | `Branding:ConsoleBanner:File` | `null` | `Branding__ConsoleBanner__File` | The art file of the `File` mode. A missing file falls back to `Text`. |
 
 The "Powered by G4™ Engine" credit on the designer and in the console banner, and the "G4™ Engine" footer links, always stay: the license requires the credit. Documentation, screenshots, and READMEs keep their G4 text.
 
-**Placeholders.** The Hub resolves the settings into a `tokens` map: `product`, `productTm`, `hub`, `hubTm`, `engine`, `engineTm`, `engineClient`, `engineClientTm`, `studio`, `studioTm`, `testWright`, `testWrightTm`, `tm`, and `mark`. Text written for the Hub, the pages, and the extensions names a product through a placeholder such as `{engineTm}`. Only these placeholders are replaced, so other braces, such as route templates, stay as written. A `Tm` placeholder places the trademark symbol right after the product name, or after the name when it does not contain the product name.
+**Placeholders.** The Hub resolves the settings into a `tokens` map: `product`, `productTm`, `hub`, `hubTm`, `engine`, `engineTm`, `engineClient`, `engineClientTm`, `studio`, `studioTm`, `testWright`, `testWrightTm`, and `tm`. Text written for the Hub, the pages, and the extensions names a product through a placeholder such as `{engineTm}`. Only these placeholders are replaced, so other braces, such as route templates, stay as written. A `Tm` placeholder places the trademark symbol right after the product name, or after the name when it does not contain the product name.
 
 **Where the branding is published.**
 
@@ -146,6 +147,8 @@ node scripts/rebrand.mjs --branding http://localhost:9944 --out C:\vsix
 cd g4-test-wright-vscode-extension
 node scripts/rebrand.mjs --branding <Hub folder>\wwwroot\branding.json --out C:\vsix
 ```
+
+**Extension icons.** Each extension picks its activity bar icon in this order: the local VS Code setting (`g4.sidePanelIcon` or `g4TestWright.sidePanelIcon`, a path to an `.svg` file on that machine), then `ActivityBarIcon` or `TestWrightIcon` from the Hub, then its built-in icon. The extension copies the chosen icon over its installed icon file; VS Code reads that file only at startup, so the new icon shows from the next start. The icon must be an SVG file of at most 256 KB; an invalid icon is skipped with a warning in the output channel. Draw it on a 24 by 24 grid in one color (`currentColor`), because VS Code tints the activity bar icon to the theme. An extension update restores the built-in file; the next start applies the chosen icon again. `rebrand.mjs` also packages the Hub icon into the branded copy.
 
 The VSIX keeps the extension identity (`g4-api.g4-engine-client`, `g4-api.g4-test-wright`), so it replaces the standard extension when installed. It needs `vsce` on the PATH (`npm install -g @vscode/vsce`) or downloads it with `npx`. `--no-package` stops after the staging copy, for inspection.
 

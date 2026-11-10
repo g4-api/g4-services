@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+    <!-- The G4 double orbit: master of favicon.ico. -->
+    <rect fill="#1f2329" height="24" rx="5" width="24"/>
+    <g transform="translate(12 12) scale(0.86) translate(-12 -12)">
+    <path d="M20.69 9.67A9 9 0 1 1 14.33 3.31" fill="none" stroke="#2aa8ef" stroke-linecap="round" stroke-width="2.4"/>
+    <circle cx="18.36" cy="5.64" fill="#22e5ff" r="1.8"/>
+    <path d="M7.56 13.19A4.6 4.6 0 1 1 10.81 16.44" fill="none" stroke="#2aa8ef" stroke-linecap="round" stroke-width="2.4"/>
+    </g>
+</svg>

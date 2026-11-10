@@ -38,7 +38,7 @@ namespace G4.Services.Domain.V4.Extensions
         private const string DefaultFavicon = "/images/favicon.ico";
 
         // The logo served when the settings name none.
-        private const string DefaultLogo = "/images/g4-avatar.png";
+        private const string DefaultLogo = "/images/avatar.png";
 
         // The product name used when the settings name none, which keeps every label as it was before branding.
         private const string DefaultProductName = "G4";
@@ -238,10 +238,9 @@ namespace G4.Services.Domain.V4.Extensions
                 ["testWright"] = branding.Names.TestWright
             };
 
-            // Start the map with the values that have no marked form.
+            // Start the map with the trademark symbol, which has no marked form.
             var tokens = new Dictionary<string, string>
             {
-                ["mark"] = branding.Assets.MarkText,
                 ["tm"] = branding.TrademarkSymbol
             };
 
@@ -277,10 +276,11 @@ namespace G4.Services.Domain.V4.Extensions
             branding.Names.Studio = GetValueOrDefault(branding.Names.Studio, $"{productName} Studio");
             branding.Names.TestWright = GetValueOrDefault(branding.Names.TestWright, $"{productName} Test Wright");
 
-            // Resolve the images and the mark text shown in badges.
+            // Resolve the images; an empty extension icon keeps the icon built into each extension.
+            branding.Assets.ActivityBarIcon = branding.Assets.ActivityBarIcon?.Trim() ?? string.Empty;
             branding.Assets.Favicon = GetValueOrDefault(branding.Assets.Favicon, DefaultFavicon);
             branding.Assets.Logo = GetValueOrDefault(branding.Assets.Logo, DefaultLogo);
-            branding.Assets.MarkText = GetValueOrDefault(branding.Assets.MarkText, productName);
+            branding.Assets.TestWrightIcon = branding.Assets.TestWrightIcon?.Trim() ?? string.Empty;
 
             // Resolve the banner mode, so an empty or unknown mode writes the built-in banner.
             branding.ConsoleBanner.Mode = GetValueOrDefault(branding.ConsoleBanner.Mode, BrandingBannerModes.Default);
