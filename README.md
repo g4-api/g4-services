@@ -25,14 +25,13 @@ The **G4 Hub API** provides a comprehensive interface for managing templates, en
 - [Contributing](#contributing)
 - [License](#license)
 - [Support](#support)
-- [Acknowledgements](#acknowledgements)
 
 ---
 
 ## Development License
 
 > :warning: Important
->  
+>
 > This token expires 180 days after the latest release date. Please return here to update your token when it expires.
 
 The unlimited version of the G4™ Hub API is available for personal or an open source non-profit use, provided it is not deployed in enterprise, governmental, or military environments. To enable full functionality, use the license token provided below. When invoking automation workflows, include this token in the `token` field under the `authentication` property.
@@ -58,7 +57,7 @@ Not Available at this time. Please contact the G4™ API team for access.
 
 ### Prerequisites
 
-- **.NET 8.0 SDK or higher**: Required if running the service standalone.
+- **.NET 10 SDK or higher**: Required if running the service standalone.
 - **Docker**: Required if running the service using Docker (version 20.10 or higher).
 - **API Client**: Use tools like `curl`, Postman, or any HTTP client library to interact with the API.
 
@@ -67,16 +66,16 @@ Not Available at this time. Please contact the G4™ API team for access.
 #### Option 1: Run with Docker
 
 > :information_source: Important
->  
+>
 > You can run the service using Docker directly from docker hub by running the following command:
->  
+>
 > `docker run -d -p 9944:9944 g4api/g4-hub:latest`
 
 1. **Clone the Repository**
 
    ```bash
    git clone https://github.com/g4-api/g4-services.git
-   cd g4-services-hub
+   cd g4-services
    ```
 
 2. **Build the Docker Image**
@@ -139,7 +138,7 @@ POST /api/v4/g4/automation/invoke
 ```json
 {
     "authentication": {
-        "token": "CTJEvbiw0QlqBN5GeXI9bOedyPcxUvBlKFFo3pg1VIxyF30Lt/QN1O8P4wxcj7AEhLexYhzo1H+Z9N17gg1IOaV1LwQ7bNyFnlpI6GmY7jwYV0Jc0at2pcIuU9VOIwJs5eVWktfgsSxSIP4/p1cqGec19ngefShnWnorMdewDn62USCYsxFOxl7b/reTEzqSxWHL8iaFOFJhOkviiarnFhMfD0jAVreMyiIlyOL7nar1fAQl1zCR+NQpfGecT7L6Y5WJMB0yg+oXE7xyZvYn54Acr0p03l8wwhSvK+5mw9H3anbrwvwbEDFpu/aRbMfQ6gYrkOf4SHvZhAl1igDtNFXKtvie0NQNtWiPQ0OTnJ0="
+        "token": "<your-g4-token>"
     },
     "driverParameters": {
         "driver": "ChromeDriver",
@@ -223,32 +222,8 @@ curl -X POST http://localhost:9944/api/v4/g4/automation/invoke \
 
 ### Recording Automations
 
-The Hub connects to running G4 recorder services and turns their events into one native G4 automation flow.
-The usual recorder endpoints are UIA on port `9955` and Chromium on port `9956`.
-Recording sessions live in memory until the Hub stops; they are not persisted.
-
-| Route | Result |
-| --- | --- |
-| `POST /api/v4/g4/recordings` | Starts the enabled recorders and returns the session ID and recorder diagnostics. |
-| `GET /api/v4/g4/recordings/{id}` | Returns the lifecycle state and each recorder's connection, event count, suspension, and errors. After stop, `jobs` maps each job to its recorder. |
-| `POST /api/v4/g4/recordings/{id}/suspend` | Drops one recorder's events until resumed; the body is `{ "baseUrl": "..." }`. |
-| `POST /api/v4/g4/recordings/{id}/resume` | Resumes buffering for a suspended recorder; the body is `{ "baseUrl": "..." }`. |
-| `POST /api/v4/g4/recordings/{id}/stop` | Stops the session and returns the automation; a repeated stop returns the same result. |
-| `GET /api/v4/g4/recordings/{id}/flow` | Returns the completed automation without a metadata wrapper. |
-
-The start body can also carry `excludedProcessIds` and `excludedWindowTitles`.
-UIA events from those processes, or from windows whose title contains one of those fragments, are left out of the
-automation.
-A client that records from inside its own window, such as the VS Code recorder panel, uses them to skip its own
-clicks.
-
-An empty recording returns `204 No Content` from stop and flow retrieval.
-Retrieval before stop returns `409 Conflict`, and an unknown ID returns `404 Not Found`.
-Invalid settings, and suspending a recorder that is not part of the session, return `400 Bad Request`.
-Suspending or resuming a session that is not recording returns `409 Conflict`.
-When every recorder fails to start, start returns `502 Bad Gateway`; a partial start returns the session with
-per-recorder errors.
-The [recordings HTTP examples](http/G4.Services.Recordings.http) cover the complete lifecycle.
+The Hub connects to running G4 recorder services and turns their events into one native G4 automation flow through the `/api/v4/g4/recordings` routes.
+See [Recording Automations](docs/recordings-api.md) for the routes, status codes and request bodies.
 
 ### Model Context Protocol (MCP)
 
@@ -259,7 +234,7 @@ Requests send `Accept: application/json, text/event-stream`.
 
 The `tools/list` method returns three tool families, all declared as typed SDK tools with generated input schemas:
 
-1. The 11 `g4.*` system tools, such as `g4.FindTools`, `g4.StartSession`, and `g4.SendRules`.
+1. The 12 `g4.*` system tools, such as `g4.FindTools`, `g4.StartSession`, and `g4.SendRules`.
 2. The recording tools, which share session IDs with the REST recordings routes.
 3. The flow tools, which share the flows collection with the REST flows routes.
 
@@ -295,9 +270,13 @@ The [MCP HTTP examples](http/G4.Services.Mcp.http) show each request.
 
 Detailed API documentation is available via Swagger UI when the service is running. Access it at:
 
-```
+```text
 http://localhost:9944/swagger/index.html
 ```
+
+## Configuration
+
+Settings, environment variables, and ports are described in [docs/configuration.md](docs/configuration.md).
 
 ## Contributing
 
@@ -336,3 +315,7 @@ This project is licensed under the [Apache v2.0](LICENSE).
 ## Support
 
 If you encounter any issues or have questions, please open an issue in the repository or contact the maintainers.
+
+## Contributing and builds
+
+Build tools, test commands, version numbers, Docker images and development ports are in the [build, test and release guide](../g4-github-actions/docs/build-test-release.md).
