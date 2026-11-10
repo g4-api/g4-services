@@ -1,0 +1,20 @@
+/*
+ * G4 collapsible regions parameters, mapped to the canvas theme (every theme file,
+ * designer-blueprint-parameters*.css, defines them). The arrow's square takes the container input's
+ * colors, so it reads as part of the region it sits on; the arrow itself takes the toolbox icon colors,
+ * as the toolboxes filter's arrows do. The summary under a collapsed container's name takes the
+ * secondary label colors, which switches already use for their branch names.
+ */
+:root {
+    --g4-collapsible-regions-summary-rect-fill: var(--step-label-secondary-rect-fill);
+    --g4-collapsible-regions-summary-rect-stroke: var(--step-label-secondary-rect-stroke);
+    --g4-collapsible-regions-summary-rect-stroke-width: var(--step-label-secondary-rect-stroke-width);
+    --g4-collapsible-regions-summary-text-fill: var(--step-label-secondary-text-fill);
+    --g4-collapsible-regions-summary-text-font: var(--step-label-secondary-text-font);
+    --g4-collapsible-regions-toggle-background: var(--container-step-input-fill);
+    --g4-collapsible-regions-toggle-border-color: var(--container-step-input-stroke);
+    --g4-collapsible-regions-toggle-border-width: var(--container-step-input-stroke-width);
+    --g4-collapsible-regions-toggle-foreground: var(--toolbox-icon-path);
+    --g4-collapsible-regions-toggle-hover-border-color: var(--toolbox-icon-hover-path);
+    --g4-collapsible-regions-toggle-hover-foreground: var(--toolbox-icon-hover-path);
+}

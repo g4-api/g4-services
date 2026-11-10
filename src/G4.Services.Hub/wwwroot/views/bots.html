@@ -3,8 +3,10 @@
 <head>
 	<meta charset="UTF-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-	<title>G4™ Bots</title>
-	<link rel="icon" href="../images/favicon.ico" />
+	<title data-branding-text="{productTm} Bots">G4™ Bots</title>
+	<link data-branding-asset="favicon" href="../images/favicon.ico" rel="icon" />
+	<script src="/api/v4/g4/integration/branding.js"></script>
+	<script src="../components/g4-branding/g4-branding.js"></script>
 	<link rel="stylesheet" href="../css/fonts.css" />
 	<link rel="stylesheet" href="../css/site.css" />
 	<link rel="stylesheet" href="../css/bots.css" />
@@ -24,7 +26,11 @@
 					</svg>
 				</a>
 
-				<img class="bots-header__avatar" src="../images/g4-avatar.png" alt="G4 Logo" />
+				<img class="bots-header__avatar"
+				     data-branding-alt="{product} Logo"
+				     data-branding-asset="logo"
+				     alt="G4 Logo"
+				     src="../images/g4-avatar.png" />
 
 				<div class="bots-header__brand">
 					<h1 class="bots-header__title">Bots</h1>
@@ -141,7 +147,10 @@
 					<path d="M320 576C461.4 576 576 461.4 576 320C576 178.6 461.4 64 320 64C178.6 64 64 178.6 64 320C64 461.4 178.6 576 320 576zM231 231C240.4 221.6 255.6 221.6 264.9 231L319.9 286L374.9 231C384.3 221.6 399.5 221.6 408.8 231C418.1 240.4 418.2 255.6 408.8 264.9L353.8 319.9L408.8 374.9C418.2 384.3 418.2 399.5 408.8 408.8C399.4 418.1 384.2 418.2 374.9 408.8L319.9 353.8L264.9 408.8C255.5 418.2 240.3 418.2 231 408.8C221.7 399.4 221.6 384.2 231 374.9L286 319.9L231 264.9C221.6 255.5 221.6 240.3 231 231z"/>
 				</svg>
 				<p class="bots-state__title">Failed to load bots</p>
-				<p class="bots-state__desc" id="stateErrorMsg">
+				<p id="stateErrorMsg"
+				   class="bots-state__desc"
+				   data-branding-text="Could not reach the server. Check that the {productTm} service is running and try refreshing."
+				   data-test-id="bots-load-error-message">
 					Could not reach the server. Check that the G4™ service is running and try refreshing.
 				</p>
 				<button class="bots-btn" id="btnRetry" style="margin-top:0.5rem">
@@ -559,7 +568,7 @@
             console.error('[Bots] Fetch error:', err);
             if (state.bots.size === 0) {
                 dom.stateErrorMsg.textContent =
-                    err.message || 'Could not reach the server. Check that G4™ is running.';
+                    err.message || G4Branding.getText('Could not reach the server. Check that {productTm} is running.');
                 _showState('error');
             }
         } finally {

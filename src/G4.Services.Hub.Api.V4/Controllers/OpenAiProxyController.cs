@@ -14,7 +14,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
     [ApiController]
     [Route("/api/v4/g4/[controller]")]
     [SwaggerTag(description: "Provides endpoints for interacting with the OpenAI-compatible backend, including model listing, " +
-        "chat completions, health status, and embeddings. All responses are standardized for G4 internal use.")]
+        "chat completions, health status, and embeddings. All responses are standardized for {product} internal use.")]
     [ApiExplorerSettings(GroupName = "G4 Hub")]
     public class OpenAiProxyController(IDomain domain) : ControllerBase
     {

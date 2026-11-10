@@ -120,9 +120,13 @@ namespace G4.Services.Domain.V4
     /// management of cached data and SVG resources for the G4 platform.
     /// </summary>
     internal class ResourcesAdapter(
+        BrandingSettingsModel branding,
         CacheManager cache,
         SvgCacheModel svgCache) : IResourcesAdapter
     {
+        /// <inheritdoc />
+        public BrandingSettingsModel Branding { get; set; } = branding;
+
         /// <inheritdoc />
         public CacheManager Cache { get; set; } = cache;
 

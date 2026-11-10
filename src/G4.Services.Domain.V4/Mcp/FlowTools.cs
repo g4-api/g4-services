@@ -321,7 +321,7 @@ namespace G4.Services.Domain.V4.Mcp
                 /// <summary>
                 /// The human-readable tool title.
                 /// </summary>
-                public const string Title = "Get G4 Flow";
+                public const string Title = "Get {product} Flow";
 
                 /// <summary>
                 /// The tool description.
@@ -367,7 +367,7 @@ namespace G4.Services.Domain.V4.Mcp
                 /// <summary>
                 /// The human-readable tool title.
                 /// </summary>
-                public const string Title = "Get G4 Flows";
+                public const string Title = "Get {product} Flows";
 
                 /// <summary>
                 /// The tool description.
@@ -409,7 +409,7 @@ namespace G4.Services.Domain.V4.Mcp
                 /// <summary>
                 /// The human-readable tool title.
                 /// </summary>
-                public const string Title = "Invoke G4 Flow";
+                public const string Title = "Invoke {product} Flow";
 
                 /// <summary>
                 /// The tool description.
@@ -441,7 +441,7 @@ namespace G4.Services.Domain.V4.Mcp
                     /// <summary>
                     /// Describes the caller authentication argument.
                     /// </summary>
-                    public const string Authentication = "The caller's G4 authentication, for example { \"token\": " +
+                    public const string Authentication = "The caller's {product} authentication, for example { \"token\": " +
                         "\"...\" }.";
 
                     /// <summary>
@@ -500,12 +500,12 @@ namespace G4.Services.Domain.V4.Mcp
                 /// <summary>
                 /// The human-readable tool title.
                 /// </summary>
-                public const string Title = "Register G4 Flow";
+                public const string Title = "Register {product} Flow";
 
                 /// <summary>
                 /// The tool description.
                 /// </summary>
-                public const string Description = "Registers a native G4 automation as a stored flow, or overwrites " +
+                public const string Description = "Registers a native {product} automation as a stored flow, or overwrites " +
                     "the flow with the same namespace and key. Pass the automation as a JSON object, for example the " +
                     "result of g4.GetAutomation; the tool encodes it as Base64. Declare parameters to expose {{$ " +
                     "parameters.Name }} placeholders to g4.InvokeFlow callers.";
@@ -527,7 +527,7 @@ namespace G4.Services.Domain.V4.Mcp
                     /// <summary>
                     /// Describes the native automation argument.
                     /// </summary>
-                    public const string Automation = "The native G4 automation JSON object to store, for example the " +
+                    public const string Automation = "The native {product} automation JSON object to store, for example the " +
                         "result of g4.GetAutomation.";
 
                     /// <summary>
@@ -579,7 +579,7 @@ namespace G4.Services.Domain.V4.Mcp
                 /// <summary>
                 /// The human-readable tool title.
                 /// </summary>
-                public const string Title = "Remove G4 Flow";
+                public const string Title = "Remove {product} Flow";
 
                 /// <summary>
                 /// The tool description.
@@ -625,7 +625,7 @@ namespace G4.Services.Domain.V4.Mcp
                 /// <summary>
                 /// The human-readable tool title.
                 /// </summary>
-                public const string Title = "Stop G4 Flow Invocation";
+                public const string Title = "Stop {product} Flow Invocation";
 
                 /// <summary>
                 /// The tool description.

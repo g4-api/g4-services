@@ -11,7 +11,7 @@ namespace G4.Models.Schema
     /// Encapsulates the driver session identifier, intent, and authorization token
     /// required to determine a locator for UI elements or DOM nodes.
     /// </summary>
-    [SwaggerSchema(description: "Schema for resolving a locator expression using the G4 engine.")]
+    [SwaggerSchema(description: "Schema for resolving a locator expression using the {product} engine.")]
     public class ResolveLocatorInputSchema
     {
         /// <summary>
@@ -68,7 +68,7 @@ namespace G4.Models.Schema
         /// Gets or sets the authorization token required by the G4 engine
         /// to authorize and process the locator resolution request.
         /// </summary>
-        [SwaggerSchema(description: "The authorization token used by the G4 engine to " +
+        [SwaggerSchema(description: "The authorization token used by the {product} engine to " +
             "process the locator resolution request.")]
         public string Token { get; set; }
     }

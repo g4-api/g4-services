@@ -152,7 +152,7 @@ namespace G4.Services.Domain.V4.Mcp
                 /// <summary>
                 /// The tool description.
                 /// </summary>
-                public const string Description = "Get the native G4 automation after stopping a recording. Empty " +
+                public const string Description = "Get the native {product} automation after stopping a recording. Empty " +
                     "recordings return JSON null.";
 
                 #endregion
@@ -277,7 +277,7 @@ namespace G4.Services.Domain.V4.Mcp
                 /// The tool description.
                 /// </summary>
                 public const string Description = "Stop recording, close owned Chromium browsers, and return the " +
-                    "native G4 automation. Repeated stop returns the same flow; empty recordings return JSON null.";
+                    "native {product} automation. Repeated stop returns the same flow; empty recordings return JSON null.";
 
                 #endregion
 

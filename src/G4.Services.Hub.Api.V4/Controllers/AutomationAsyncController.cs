@@ -15,7 +15,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
 {
     [ApiController]
     [Route("/api/v4/g4/automation/async")]
-    [SwaggerTag(description: "Provides endpoints to manage asynchronous automation tasks within the G4 platform.")]
+    [SwaggerTag(description: "Provides endpoints to manage asynchronous automation tasks within the {product} platform.")]
     [ApiExplorerSettings(GroupName = "G4 Hub")]
     public class AutomationAsyncController(IDomain domain) : ControllerBase
     {
@@ -77,7 +77,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         [Route("file/start")]
         [SwaggerOperation(
             Summary = "Enqueue a new automation task from a file.",
-            Description = "Reads a G4 automation model from the provided file path, deserializes the file content into a G4AutomationModel, and enqueues it into the pending queue. The automation task will be picked up by any available automation worker for asynchronous processing.",
+            Description = "Reads a {product} automation model from the provided file path, deserializes the file content into a G4AutomationModel, and enqueues it into the pending queue. The automation task will be picked up by any available automation worker for asynchronous processing.",
             Tags = ["Automation", "AutomationAsync"])]
         [SwaggerResponse(StatusCodes.Status202Accepted,
             Description = "The automation task has been accepted and enqueued. The response is empty as processing is performed asynchronously.",

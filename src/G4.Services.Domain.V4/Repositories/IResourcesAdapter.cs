@@ -10,6 +10,12 @@ namespace G4.Services.Domain.V4.Repositories
     public interface IResourcesAdapter
     {
         /// <summary>
+        /// The resolved white-label settings that replace the user-facing product labels.
+        /// The Hub resolves them once at startup and publishes them through the branding endpoints.
+        /// </summary>
+        BrandingSettingsModel Branding { get; set; }
+
+        /// <summary>
         /// The CacheManager instance that handles caching operations within the application.
         /// This is used to store and retrieve data that needs to be cached for quick access.
         /// </summary>

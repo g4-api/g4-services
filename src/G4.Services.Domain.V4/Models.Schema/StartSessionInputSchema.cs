@@ -8,7 +8,7 @@ namespace G4.Services.Domain.V4.Models.Schema
     /// Input schema for starting a new driver session using the G4 engine.
     /// Defines required driver settings and optional session configuration.
     /// </summary>
-    [SwaggerSchema(description: "Schema for starting a new driver session using the G4 engine.")]
+    [SwaggerSchema(description: "Schema for starting a new driver session using the {product} engine.")]
     public class StartSessionInputSchema
     {
         /// <summary>
@@ -50,7 +50,7 @@ namespace G4.Services.Domain.V4.Models.Schema
         /// to start a new session. This field is required.
         /// </summary>
         [JsonPropertyName("token")]
-        [SwaggerSchema(description: "Required: The authorization token used by the G4 engine to " +
+        [SwaggerSchema(description: "Required: The authorization token used by the {product} engine to " +
             "start a new session.")]
         public string Token { get; set; }
     }

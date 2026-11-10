@@ -17,7 +17,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
 {
     [ApiController]
     [Route("/api/v4/g4/[controller]")]
-    [SwaggerTag(description: "Provides endpoints to manage automation tasks within the G4 platform.")]
+    [SwaggerTag(description: "Provides endpoints to manage automation tasks within the {product} platform.")]
     [ApiExplorerSettings(GroupName = "G4 Hub")]
     public class AutomationController(IDomain domain) : ControllerBase
     {
@@ -28,7 +28,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         [Route("file/invoke")]
         [SwaggerOperation(
             summary: "Invokes an automation session from a file.",
-            description: "Reads a G4 automation model from the provided file path, deserializes the file content into a `G4AutomationModel`, and invokes the automation session. The result includes detailed information about the automation run, returned in JSON format.",
+            description: "Reads a {product} automation model from the provided file path, deserializes the file content into a `G4AutomationModel`, and invokes the automation session. The result includes detailed information about the automation run, returned in JSON format.",
             Tags = ["Automation"])]
         [SwaggerResponse(StatusCodes.Status200OK,
             description: "Successfully invoked the automation session from the provided file. Returns a dictionary containing detailed information about the automation run.",

@@ -486,7 +486,7 @@ class CustomG4Fields {
         const fieldContainer = newMultipleFieldsContainer(inputId, {
             labelDisplayName: options.label,
             role: 'container',
-            hintText: "Authentication credentials used to verify your identity for accessing G4™ services."
+            hintText: G4Branding.getText("Authentication credentials used to verify your identity for accessing {productTm} services.")
         });
 
         // Select the controller sub-container within the field container using the unique ID.
@@ -500,7 +500,7 @@ class CustomG4Fields {
                 isBase64Enabled: false,
                 isReadonly: false,
                 label: 'Username',
-                title: 'A valid G4™ username required for authentication.'
+                title: G4Branding.getText('A valid {productTm} username required for authentication.')
             },
             (value) => {
                 // Build an authentication object containing the updated username
@@ -520,7 +520,7 @@ class CustomG4Fields {
                 isBase64Enabled: false,
                 isReadonly: false,
                 label: 'Password',
-                title: 'A valid G4™ password required for authentication.'
+                title: G4Branding.getText('A valid {productTm} password required for authentication.')
             },
             (value) => {
                 // Build an authentication object containing the updated password
@@ -540,7 +540,7 @@ class CustomG4Fields {
                 isBase64Enabled: false,
                 isReadonly: false,
                 label: 'Token',
-                title: 'A valid G4™ license token. This optional token replaces username/password authentication for streamlined access.'
+                title: G4Branding.getText('A valid {productTm} license token. This optional token replaces username/password authentication for streamlined access.')
             },
             (value) => {
                 // Build an authentication object containing the updated password
