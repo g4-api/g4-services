@@ -98,6 +98,57 @@ The OpenAI settings feed the OpenAI proxy and the `ResolveLocator` MCP tool. Eac
 | `OpenAi:ClientOptions:RetryPolicy:MaxRetries` | `3` | `OPENAI_MAX_RETRIES` | `AppSettings.cs:177` | Retries for transient failures. The env value is used only when the file has no `RetryPolicy`. |
 | `OpenAi:ClientOptions:UserAgentApplicationId` | `null` | `OPENAI_USER_AGENT_APPLICATION_ID` | `AppSettings.cs:213` | Application id added to the user agent. |
 
+## Branding (white label)
+
+The `Branding` section replaces the product labels and visible text of the Hub, the G4 VS Code extension, and the Test Wright extension. Only labels and text change. Routes, assembly, package, and extension names, IDs, settings keys, MCP tool and server names, and data values such as the `G4.System` namespace never change. Every value defaults to the current G4 text, so a Hub without the section looks the same as before. Source: `src\G4.Services.Domain.V4\Extensions\BrandingExtensions.cs` (`NewBranding`), model in `src\G4.Services.Domain.V4\Models\BrandingModels.cs`.
+
+| Key | Default | Env override | Effect |
+| --- | --- | --- | --- |
+| `Branding:ProductName` | `G4` | `Branding__ProductName` | The base name that replaces "G4". Every empty name below is derived from it. |
+| `Branding:TrademarkSymbol` | `™` | `Branding__TrademarkSymbol` | Placed after the product name in marked names, for example "G4™ Engine". An empty string removes it. |
+| `Branding:Names:Engine` | `<ProductName> Engine` | `Branding__Names__Engine` | The engine name. |
+| `Branding:Names:EngineClient` | `<ProductName> Engine Client` | `Branding__Names__EngineClient` | The name of the VS Code extension that hosts the designer. |
+| `Branding:Names:Hub` | `<ProductName> Hub` | `Branding__Names__Hub` | The Hub name. |
+| `Branding:Names:Studio` | `<ProductName> Studio` | `Branding__Names__Studio` | The studio name. |
+| `Branding:Names:TestWright` | `<ProductName> Test Wright` | `Branding__Names__TestWright` | The test workbench name. |
+| `Branding:Tagline` | `Automation as a Service` | `Branding__Tagline` | The console banner tagline. |
+| `Branding:ProjectUrl` | `https://github.com/g4-api` | `Branding__ProjectUrl` | The project page in the console banner. |
+| `Branding:Support:Name` | `<ProductName> Support` | `Branding__Support__Name` | The Swagger contact name. |
+| `Branding:Support:Email` | `g4.platforms@gmail.com` | `Branding__Support__Email` | The Swagger contact email. |
+| `Branding:Support:Url` | `https://github.com/g4-api/g4-docs` | `Branding__Support__Url` | The Swagger contact address. |
+| `Branding:TermsUrl` | the G4 usage policy | `Branding__TermsUrl` | The Swagger terms of service. |
+| `Branding:Assets:Logo` | `/images/g4-avatar.png` | `Branding__Assets__Logo` | The page header logo: a path under `wwwroot` or an absolute URL. |
+| `Branding:Assets:Favicon` | `/images/favicon.ico` | `Branding__Assets__Favicon` | The browser tab icon: a path under `wwwroot` or an absolute URL. |
+| `Branding:Assets:MarkText` | `<ProductName>` | `Branding__Assets__MarkText` | The short text drawn in badges and icons. Keep it to two or three characters, for example `AC`. |
+| `Branding:ConsoleBanner:Mode` | `Default` | `Branding__ConsoleBanner__Mode` | `Default` writes the G4 Hub art, `Text` writes the Hub name as plain text, `File` writes the art from `File`. |
+| `Branding:ConsoleBanner:File` | `null` | `Branding__ConsoleBanner__File` | The art file of the `File` mode. A missing file falls back to `Text`. |
+
+The "Powered by G4™ Engine" credit on the designer and in the console banner, and the "G4™ Engine" footer links, always stay: the license requires the credit. Documentation, screenshots, and READMEs keep their G4 text.
+
+**Placeholders.** The Hub resolves the settings into a `tokens` map: `product`, `productTm`, `hub`, `hubTm`, `engine`, `engineTm`, `engineClient`, `engineClientTm`, `studio`, `studioTm`, `testWright`, `testWrightTm`, `tm`, and `mark`. Text written for the Hub, the pages, and the extensions names a product through a placeholder such as `{engineTm}`. Only these placeholders are replaced, so other braces, such as route templates, stay as written. A `Tm` placeholder places the trademark symbol right after the product name, or after the name when it does not contain the product name.
+
+**Where the branding is published.**
+
+| Channel | Who reads it |
+| --- | --- |
+| `GET /api/v4/g4/integration/branding` | The G4 VS Code extension and Test Wright, when they connect. They keep a copy for the next start. |
+| `GET /api/v4/g4/integration/branding.js` | The Hub pages, before any other script (`components/g4-branding/g4-branding.js` applies it). |
+| `wwwroot/branding.json` | Written at startup. Clients that download the web root receive it with the other files. A read-only web root skips the file and logs a warning; the endpoints still work. |
+
+**What follows the branding.** Swagger titles, descriptions, contact, and terms; MCP tool titles and descriptions and the server title (the server name `g4-engine-mcp` stays); the console banner; the Hub pages and the designer; and the runtime text of both extensions. Output channel names in VS Code change on the next start after a new branding.
+
+**Static extension labels.** VS Code reads the display name, command categories and titles, view and editor names, and icons from `package.json` once, so they cannot follow the Hub at runtime. Package a branded copy of each extension instead; the script rewrites a staging copy and never changes the repository:
+
+```text
+cd g4-vscode-extension
+node scripts/rebrand.mjs --branding http://localhost:9944 --out C:\vsix
+
+cd g4-test-wright-vscode-extension
+node scripts/rebrand.mjs --branding <Hub folder>\wwwroot\branding.json --out C:\vsix
+```
+
+The VSIX keeps the extension identity (`g4-api.g4-engine-client`, `g4-api.g4-test-wright`), so it replaces the standard extension when installed. It needs `vsce` on the PATH (`npm install -g @vscode/vsce`) or downloads it with `npx`. `--no-package` stops after the staging copy, for inspection.
+
 ## SignalR tuning
 
 These values are fixed in code, not read from `appsettings.json`. Source: `src\G4.Settings\Models\HubOptionsSettings.cs`.

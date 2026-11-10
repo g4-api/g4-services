@@ -1,6 +1,7 @@
 ﻿using G4.Extensions;
 using G4.Models;
 using G4.Services.Domain.V4;
+using G4.Services.Domain.V4.Extensions;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -20,7 +21,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
 {
     [ApiController]
     [Route("/api/v4/g4/[controller]")]
-    [SwaggerTag(description: "Provides endpoints to retrieve G4™ engine metadata, " +
+    [SwaggerTag(description: "Provides endpoints to retrieve {productTm} engine metadata, " +
         "enabling seamless integration with external client applications.")]
     [ApiExplorerSettings(GroupName = "G4 Hub")]
     public class IntegrationController(IDomain domain) : ControllerBase
@@ -271,7 +272,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         [Route("cache/sync")]
         [SwaggerOperation(
             summary: "Synchronizes the internal plugin cache.",
-            description: "Triggers the synchronization of the internal plugin cache, updating cached data from internal resources and connected libraries within the G4™ engine integration. This operation ensures that the internal cache is aligned with the latest data from internal sources, excluding external repositories.",
+            description: "Triggers the synchronization of the internal plugin cache, updating cached data from internal resources and connected libraries within the {productTm} engine integration. This operation ensures that the internal cache is aligned with the latest data from internal sources, excluding external repositories.",
             Tags = ["Cache"])]
         [SwaggerResponse(StatusCodes.Status204NoContent, description: "Successfully synchronized the internal plugin cache. No content is returned.")]
         public IActionResult SyncCache()
@@ -664,6 +665,36 @@ namespace G4.Services.Hub.Api.V4.Controllers
         }
 
         [HttpGet]
+        [Route("branding")]
+        [SwaggerOperation(
+            Summary = Catalog.GetBranding.Summary,
+            Description = Catalog.GetBranding.Description,
+            Tags = ["Files"])]
+        [SwaggerResponse(StatusCodes.Status200OK, Description = Catalog.GetBranding.Responses.Ok, Type = typeof(BrandingSettingsModel), ContentTypes = [MediaTypeNames.Application.Json])]
+        public IActionResult GetBranding()
+        {
+            // Return the branding the Hub resolved at startup, the same settings it wrote to wwwroot/branding.json.
+            return Ok(_domain.Resources.Branding);
+        }
+
+        [HttpGet]
+        [Route("branding.js")]
+        [SwaggerOperation(
+            Summary = Catalog.GetBrandingScript.Summary,
+            Description = Catalog.GetBrandingScript.Description,
+            Tags = ["Files"])]
+        [SwaggerResponse(StatusCodes.Status200OK, Description = Catalog.GetBrandingScript.Responses.Ok, ContentTypes = [MediaTypeNames.Text.JavaScript])]
+        public IActionResult GetBrandingScript()
+        {
+            // Wrap the resolved branding in a script that the Hub pages load before any other script, so every label
+            // is branded before it is first drawn.
+            var script = _domain.Resources.Branding.ConvertToBrandingScript(jsonOptions: _domain.Asp.JsonOptions);
+
+            // Serve the script as UTF-8 JavaScript, so names with symbols such as the trademark sign stay intact.
+            return Content(script, contentType: $"{MediaTypeNames.Text.JavaScript}; charset=utf-8");
+        }
+
+        [HttpGet]
         [Route("files")]
         [SwaggerOperation(
             summary: "Lists all static files in wwwroot.",
@@ -704,5 +735,43 @@ namespace G4.Services.Hub.Api.V4.Controllers
             // Return a dictionary where the key is the formatted SVG name and the value is its content.
             return Ok(_domain.Resources.SvgCache.Svgs);
         }
+
+        #region *** Nested Types ***
+
+        // Holds the published wording of the branding actions, one entry per action. The text is wire contract:
+        // clients read it in the API documentation.
+        private static class Catalog
+        {
+            // Wording of the GetBranding action.
+            public static class GetBranding
+            {
+                public const string Summary = "Gets the white-label branding.";
+                public const string Description = "Returns the resolved white-label settings that replace the user-facing product labels, " +
+                    "the same settings the Hub writes to wwwroot/branding.json at startup. The tokens map holds the value of every " +
+                    "placeholder, such as engineTm written in braces, that clients replace in their own text.";
+
+                // Response wording, one constant per status.
+                public static class Responses
+                {
+                    public const string Ok = "The resolved white-label settings.";
+                }
+            }
+
+            // Wording of the GetBrandingScript action.
+            public static class GetBrandingScript
+            {
+                public const string Summary = "Gets the white-label branding as a script.";
+                public const string Description = "Returns a script that sets globalThis.G4BrandingSettings to the resolved white-label " +
+                    "settings. The Hub pages load it before any other script, so every label is branded before it is first drawn.";
+
+                // Response wording, one constant per status.
+                public static class Responses
+                {
+                    public const string Ok = "A script that sets globalThis.G4BrandingSettings.";
+                }
+            }
+        }
+
+        #endregion
     }
 }

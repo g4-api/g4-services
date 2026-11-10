@@ -1,5 +1,9 @@
 ﻿using G4.Extensions;
+using G4.Models;
+using G4.Services.Domain.V4.Extensions;
 using G4.Services.Domain.V4.Repositories;
+
+using Microsoft.OpenApi;
 
 using System;
 using System.Collections.Generic;
@@ -19,9 +23,10 @@ namespace G4.Services.Domain.V4.Models
             new()
             {
                 Name = "g4-api",
+                Title = "{productTm} Api",
                 Url = "g4-api/docs.json",
-                Description = "API documentation for the G4 platform, including endpoints for automation, bots, and tools management.",
-                Summary = "Comprehensive API documentation for the G4 platform.",
+                Description = "API documentation for the {product} platform, including endpoints for automation, bots, and tools management.",
+                Summary = "Comprehensive API documentation for the {product} platform.",
                 Tags = []
             },
 
@@ -29,8 +34,8 @@ namespace G4.Services.Domain.V4.Models
             {
                 Name = "automation",
                 Url = "automation/docs.json",
-                Description = "API documentation for the G4 platform's automation features.",
-                Summary = "Comprehensive API documentation for the G4 platform's automation capabilities.",
+                Description = "API documentation for the {product} platform's automation features.",
+                Summary = "Comprehensive API documentation for the {product} platform's automation capabilities.",
                 Tags = ["Automation"]
             },
 
@@ -38,8 +43,8 @@ namespace G4.Services.Domain.V4.Models
             {
                 Name = "bots",
                 Url = "bots/docs.json",
-                Description = "API documentation for the G4 platform's bot management features.",
-                Summary = "Comprehensive API documentation for the G4 platform's bot management capabilities.",
+                Description = "API documentation for the {product} platform's bot management features.",
+                Summary = "Comprehensive API documentation for the {product} platform's bot management capabilities.",
                 Tags = ["Bots"]
             },
 
@@ -47,8 +52,8 @@ namespace G4.Services.Domain.V4.Models
             {
                 Name = "cache",
                 Url = "cache/docs.json",
-                Description = "API documentation for the G4 platform's cache management features.",
-                Summary = "Comprehensive API documentation for the G4 platform's cache management capabilities.",
+                Description = "API documentation for the {product} platform's cache management features.",
+                Summary = "Comprehensive API documentation for the {product} platform's cache management capabilities.",
                 Tags = ["Cache"]
             },
 
@@ -56,8 +61,8 @@ namespace G4.Services.Domain.V4.Models
             {
                 Name = "documents",
                 Url = "documents/docs.json",
-                Description = "API documentation for the G4 platform's document management features.",
-                Summary = "Comprehensive API documentation for the G4 platform's document management capabilities.",
+                Description = "API documentation for the {product} platform's document management features.",
+                Summary = "Comprehensive API documentation for the {product} platform's document management capabilities.",
                 Tags = ["Documents"]
             },
 
@@ -65,8 +70,8 @@ namespace G4.Services.Domain.V4.Models
             {
                 Name = "environments",
                 Url = "environments/docs.json",
-                Description = "API documentation for the G4 platform's environment management features.",
-                Summary = "Comprehensive API documentation for the G4 platform's environment management capabilities.",
+                Description = "API documentation for the {product} platform's environment management features.",
+                Summary = "Comprehensive API documentation for the {product} platform's environment management capabilities.",
                 Tags = ["Environments"]
             },
 
@@ -74,8 +79,8 @@ namespace G4.Services.Domain.V4.Models
             {
                 Name = "files",
                 Url = "files/docs.json",
-                Description = "API documentation for the G4 platform's file management features.",
-                Summary = "Comprehensive API documentation for the G4 platform's file management capabilities.",
+                Description = "API documentation for the {product} platform's file management features.",
+                Summary = "Comprehensive API documentation for the {product} platform's file management capabilities.",
                 Tags = ["Files"]
             },
 
@@ -83,8 +88,8 @@ namespace G4.Services.Domain.V4.Models
             {
                 Name = "flows",
                 Url = "flows/docs.json",
-                Description = "API documentation for the G4 platform's flow management features.",
-                Summary = "Comprehensive API documentation for the G4 platform's flow management capabilities.",
+                Description = "API documentation for the {product} platform's flow management features.",
+                Summary = "Comprehensive API documentation for the {product} platform's flow management capabilities.",
                 Tags = ["Flows"]
             },
 
@@ -92,8 +97,8 @@ namespace G4.Services.Domain.V4.Models
             {
                 Name = "manifests",
                 Url = "manifests/docs.json",
-                Description = "API documentation for the G4 platform's manifest management features.",
-                Summary = "Comprehensive API documentation for the G4 platform's manifest management capabilities.",
+                Description = "API documentation for the {product} platform's manifest management features.",
+                Summary = "Comprehensive API documentation for the {product} platform's manifest management capabilities.",
                 Tags = ["Manifests"]
             },
 
@@ -101,8 +106,8 @@ namespace G4.Services.Domain.V4.Models
             {
                 Name = "mcp",
                 Url = "mcp/docs.json",
-                Description = "API documentation for the G4 platform's MCP management features.",
-                Summary = "Comprehensive API documentation for the G4 platform's MCP management capabilities.",
+                Description = "API documentation for the {product} platform's MCP management features.",
+                Summary = "Comprehensive API documentation for the {product} platform's MCP management capabilities.",
                 Tags = ["Mcp"]
             },
 
@@ -110,8 +115,8 @@ namespace G4.Services.Domain.V4.Models
             {
                 Name = "openai",
                 Url = "openai/docs.json",
-                Description = "API documentation for the G4 platform's OpenAI-compatible proxy features.",
-                Summary = "Comprehensive API documentation for the G4 platform's OpenAI-compatible proxy capabilities.",
+                Description = "API documentation for the {product} platform's OpenAI-compatible proxy features.",
+                Summary = "Comprehensive API documentation for the {product} platform's OpenAI-compatible proxy capabilities.",
                 Tags = ["OpenAi"]
             },
 
@@ -119,8 +124,8 @@ namespace G4.Services.Domain.V4.Models
             {
                 Name = "recordings",
                 Url = "recordings/docs.json",
-                Description = "API documentation for the G4 platform's recording features.",
-                Summary = "Comprehensive API documentation for the G4 platform's recording capabilities.",
+                Description = "API documentation for the {product} platform's recording features.",
+                Summary = "Comprehensive API documentation for the {product} platform's recording capabilities.",
                 Tags = ["Recordings"]
             },
 
@@ -128,8 +133,8 @@ namespace G4.Services.Domain.V4.Models
             {
                 Name = "templates",
                 Url = "templates/docs.json",
-                Description = "API documentation for the G4 platform's template management features.",
-                Summary = "Comprehensive API documentation for the G4 platform's template management capabilities.",
+                Description = "API documentation for the {product} platform's template management features.",
+                Summary = "Comprehensive API documentation for the {product} platform's template management capabilities.",
                 Tags = ["Templates"]
             }
         ];
@@ -141,6 +146,39 @@ namespace G4.Services.Domain.V4.Models
         #endregion
 
         #region *** Methods      ***
+        /// <summary>
+        /// Applies the white-label branding to the title, description, summary, contact, and terms of every document.
+        /// </summary>
+        /// <param name="branding">The resolved branding settings.</param>
+        /// <remarks>
+        /// The Hub calls this once at startup, before the Swagger UI reads the document titles for its document
+        /// list. The documents are shared static state, so applying the branding again resolves no further
+        /// placeholders and only rewrites the contact and the terms with the same values.
+        /// </remarks>
+        public static void SetBranding(BrandingSettingsModel branding)
+        {
+            // Require the branding, so a wiring mistake fails at startup instead of publishing raw placeholders.
+            ArgumentNullException.ThrowIfNull(argument: branding);
+
+            foreach (var document in Documents.Values)
+            {
+                // Resolve the placeholders in the text the Swagger UI shows for the document.
+                var info = document.OpenApi;
+                info.Description = branding.ResolveText(info.Description);
+                info.Summary = branding.ResolveText(info.Summary);
+                info.Title = branding.ResolveText(info.Title);
+
+                // Publish the configured support contact and terms instead of the G4 defaults.
+                info.Contact = new OpenApiContact
+                {
+                    Email = branding.Support.Email,
+                    Name = branding.Support.Name,
+                    Url = new Uri(branding.Support.Url)
+                };
+                info.TermsOfService = new Uri(branding.TermsUrl);
+            }
+        }
+
         /// <summary>
         /// Initializes all document data models and enriches them with G4 metadata.
         /// </summary>
@@ -163,13 +201,20 @@ namespace G4.Services.Domain.V4.Models
                 // Assign tags from the setup model to the DocumentDataModel
                 documentDataModel.Tags = document.Tags;
 
-                // Add G4-specific OpenAPI metadata (contact, license, terms, trademark)
+                // Replace the name-derived title when the setup names the product, so the title carries a branding
+                // placeholder that SetBranding resolves.
+                if (!string.IsNullOrEmpty(document.Title))
+                {
+                    documentDataModel.OpenApi.Title = document.Title;
+                }
+
+                // Add G4-specific OpenAPI metadata (contact, license, terms); SetBranding replaces the contact and
+                // the terms with the configured branding.
                 documentDataModel
                     .OpenApi
                     .AddG4Contact()
                     .AddG4License()
-                    .AddG4TermsOfService()
-                    .AddG4Trademark();
+                    .AddG4TermsOfService();
 
                 // Add to the result list
                 documents.Add(documentDataModel);
@@ -208,6 +253,15 @@ namespace G4.Services.Domain.V4.Models
             /// The tags associated with the API document, used for categorization in Swagger UI.
             /// </summary>
             public string[] Tags { get; set; }
+
+            /// <summary>
+            /// The document title, which may hold branding placeholders.
+            /// </summary>
+            /// <remarks>
+            /// Null keeps the title derived from <see cref="Name"/>; a value replaces it, for example when the title
+            /// names the product.
+            /// </remarks>
+            public string Title { get; set; }
 
             /// <summary>
             /// URL path to the Swagger/OpenAPI JSON file.

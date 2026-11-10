@@ -286,7 +286,7 @@ namespace G4.Services.Domain.V4.Mcp
                 /// <summary>
                 /// Describes the G4 authentication token argument of the session-bound tools.
                 /// </summary>
-                public const string Token = "The G4 Authentication token used to authenticate the session initiation " +
+                public const string Token = "The {product} Authentication token used to authenticate the session initiation " +
                     "process. This is required to authorize the session creation.";
 
                 #endregion
@@ -305,7 +305,7 @@ namespace G4.Services.Domain.V4.Mcp
                 /// <summary>
                 /// The human-readable tool title.
                 /// </summary>
-                public const string Title = "Find G4 Examples";
+                public const string Title = "Find {product} Examples";
 
                 /// <summary>
                 /// The tool description.
@@ -370,12 +370,12 @@ namespace G4.Services.Domain.V4.Mcp
                 /// <summary>
                 /// The human-readable tool title.
                 /// </summary>
-                public const string Title = "Find G4 Tool";
+                public const string Title = "Find {product} Tool";
 
                 /// <summary>
                 /// The tool description.
                 /// </summary>
-                public const string Description = "Retrieves the complete G4 tool model for an exact tool name or " +
+                public const string Description = "Retrieves the complete {product} tool model for an exact tool name or " +
                     "its qualified Namespace:Name, including its authoritative namespace and client tool schema.";
 
                 #endregion
@@ -412,7 +412,7 @@ namespace G4.Services.Domain.V4.Mcp
                 /// <summary>
                 /// The human-readable tool title.
                 /// </summary>
-                public const string Title = "Find G4 Tools";
+                public const string Title = "Find {product} Tools";
 
                 /// <summary>
                 /// The tool description.
@@ -459,12 +459,12 @@ namespace G4.Services.Domain.V4.Mcp
                 /// <summary>
                 /// The human-readable tool title.
                 /// </summary>
-                public const string Title = "Get G4 Rules Buffer";
+                public const string Title = "Get {product} Rules Buffer";
 
                 /// <summary>
                 /// The tool description.
                 /// </summary>
-                public const string Description = "Retrieves the buffered rule execution entries for an active G4 " +
+                public const string Description = "Retrieves the buffered rule execution entries for an active {product} " +
                     "session.";
 
                 #endregion
@@ -479,7 +479,7 @@ namespace G4.Services.Domain.V4.Mcp
                     /// <summary>
                     /// Describes the session identifier argument.
                     /// </summary>
-                    public const string SessionId = "The unique identifier of the active G4 session whose buffered " +
+                    public const string SessionId = "The unique identifier of the active {product} session whose buffered " +
                         "rules should be retrieved.";
 
                     #endregion
@@ -501,14 +501,14 @@ namespace G4.Services.Domain.V4.Mcp
                 /// <summary>
                 /// The human-readable tool title.
                 /// </summary>
-                public const string Title = "Register G4 Capability";
+                public const string Title = "Register {product} Capability";
 
                 /// <summary>
                 /// The tool description.
                 /// </summary>
-                public const string Description = "Registers a promoted G4 flow-template capability as a " +
-                    "discoverable, callable tool. Accepts a full G4 plugin manifest (the same shape produced by the " +
-                    "flow-to-template promotion pipeline) and persists it through the G4 engine's Templates store.";
+                public const string Description = "Registers a promoted {product} flow-template capability as a " +
+                    "discoverable, callable tool. Accepts a full {product} plugin manifest (the same shape produced by the " +
+                    "flow-to-template promotion pipeline) and persists it through the {product} engine's Templates store.";
 
                 #endregion
 
@@ -522,7 +522,7 @@ namespace G4.Services.Domain.V4.Mcp
                     /// <summary>
                     /// Describes the plugin manifest argument.
                     /// </summary>
-                    public const string Manifest = "The full G4 plugin manifest describing the capability to " +
+                    public const string Manifest = "The full {product} plugin manifest describing the capability to " +
                         "register, matching the G4PluginAttribute JSON shape (key, pluginType, source, summary, " +
                         "description, parameters, properties, rules, context, etc.), the same manifest shape " +
                         "accepted by PUT /api/v4/g4/templates.";
@@ -546,12 +546,12 @@ namespace G4.Services.Domain.V4.Mcp
                 /// <summary>
                 /// The human-readable tool title.
                 /// </summary>
-                public const string Title = "Remove G4 Rules Buffer";
+                public const string Title = "Remove {product} Rules Buffer";
 
                 /// <summary>
                 /// The tool description.
                 /// </summary>
-                public const string Description = "Removes the rule execution buffer associated with a G4 session, " +
+                public const string Description = "Removes the rule execution buffer associated with a {product} session, " +
                     "releasing its resources.";
 
                 #endregion
@@ -566,7 +566,7 @@ namespace G4.Services.Domain.V4.Mcp
                     /// <summary>
                     /// Describes the session identifier argument.
                     /// </summary>
-                    public const string SessionId = "The unique identifier of the G4 session whose buffer should be " +
+                    public const string SessionId = "The unique identifier of the {product} session whose buffer should be " +
                         "removed.";
 
                     #endregion
@@ -588,12 +588,12 @@ namespace G4.Services.Domain.V4.Mcp
                 /// <summary>
                 /// The human-readable tool title.
                 /// </summary>
-                public const string Title = "Remove G4 Session";
+                public const string Title = "Remove {product} Session";
 
                 /// <summary>
                 /// The tool description.
                 /// </summary>
-                public const string Description = "Removes an active G4 session from the sessions registry, " +
+                public const string Description = "Removes an active {product} session from the sessions registry, " +
                     "releasing its resources.";
 
                 #endregion
@@ -608,7 +608,7 @@ namespace G4.Services.Domain.V4.Mcp
                     /// <summary>
                     /// Describes the session identifier argument.
                     /// </summary>
-                    public const string SessionId = "The unique identifier of the G4 session to remove.";
+                    public const string SessionId = "The unique identifier of the {product} session to remove.";
 
                     #endregion
                 }
@@ -685,7 +685,7 @@ namespace G4.Services.Domain.V4.Mcp
                     /// <summary>
                     /// Describes the G4 authentication token argument.
                     /// </summary>
-                    public const string Token = "G4 authentication token for verifying and authorizing the locator " +
+                    public const string Token = "{product} authentication token for verifying and authorizing the locator " +
                         "retrieval request.";
 
                     #endregion
@@ -707,7 +707,7 @@ namespace G4.Services.Domain.V4.Mcp
                 /// <summary>
                 /// The human-readable tool title.
                 /// </summary>
-                public const string Title = "Resolve G4 Tools";
+                public const string Title = "Resolve {product} Tools";
 
                 /// <summary>
                 /// The tool description.
@@ -760,12 +760,12 @@ namespace G4.Services.Domain.V4.Mcp
                 /// <summary>
                 /// The human-readable tool title.
                 /// </summary>
-                public const string Title = "Send G4 Rule";
+                public const string Title = "Send {product} Rule";
 
                 /// <summary>
                 /// The tool description.
                 /// </summary>
-                public const string Description = "Sends a G4 rule for execution with the provided parameters.";
+                public const string Description = "Sends a {product} rule for execution with the provided parameters.";
 
                 #endregion
 
@@ -790,7 +790,7 @@ namespace G4.Services.Domain.V4.Mcp
                     /// <summary>
                     /// Describes the rule argument.
                     /// </summary>
-                    public const string Rule = "The G4 rule to be executed, including its parameters and " +
+                    public const string Rule = "The {product} rule to be executed, including its parameters and " +
                         "configuration.";
 
                     /// <summary>
@@ -817,12 +817,12 @@ namespace G4.Services.Domain.V4.Mcp
                 /// <summary>
                 /// The human-readable tool title.
                 /// </summary>
-                public const string Title = "Send G4 Rules";
+                public const string Title = "Send {product} Rules";
 
                 /// <summary>
                 /// The tool description.
                 /// </summary>
-                public const string Description = "Sends a collection of G4 rules for sequential execution within a " +
+                public const string Description = "Sends a collection of {product} rules for sequential execution within a " +
                     "single driver session.";
 
                 #endregion
@@ -848,7 +848,7 @@ namespace G4.Services.Domain.V4.Mcp
                     /// <summary>
                     /// Describes the rules argument.
                     /// </summary>
-                    public const string Rules = "The ordered collection of G4 rules to be executed as one job, " +
+                    public const string Rules = "The ordered collection of {product} rules to be executed as one job, " +
                         "including their parameters and configuration.";
 
                     /// <summary>
@@ -875,12 +875,12 @@ namespace G4.Services.Domain.V4.Mcp
                 /// <summary>
                 /// The human-readable tool title.
                 /// </summary>
-                public const string Title = "Start G4 Session";
+                public const string Title = "Start {product} Session";
 
                 /// <summary>
                 /// The tool description.
                 /// </summary>
-                public const string Description = "Starts a new G4 session using specified driver binaries, browser " +
+                public const string Description = "Starts a new {product} session using specified driver binaries, browser " +
                     "(platform) name, and headless option.";
 
                 #endregion

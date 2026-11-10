@@ -18,11 +18,11 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Linq;
 
-// Write the ASCII logo for the Hub Controller with the specified version.
-ControllerUtilities.WriteHubAsciiLogo(version: "0000.00.00.0000");
-
 // Create a new instance of the WebApplicationBuilder with the provided command-line arguments.
 var builder = WebApplication.CreateBuilder(args);
+
+// Write the Hub banner with the specified version, branded from the configuration the builder loaded.
+ControllerUtilities.WriteHubAsciiLogo(version: "0000.00.00.0000", branding: builder.Configuration.NewBranding());
 
 #region *** Url & Kestrel ***
 // Configure the URLs that the Kestrel web server should listen on.
@@ -73,6 +73,9 @@ builder.Services.AddSwaggerGen(i =>
     // Add a custom document filter to remove any controllers that do not have any
     // actions defined, keeping the Swagger documentation clean and relevant.
     i.DocumentFilter<RemoveEmptyControllersDocumentMiddleware>();
+
+    // Replace the branding placeholders in every visible text of the generated documents.
+    i.DocumentFilter<BrandingDocumentFilter>();
 });
 
 // Configure cookie policy options to manage user consent and cookie behavior.

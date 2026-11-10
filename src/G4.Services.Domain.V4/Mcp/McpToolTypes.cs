@@ -1,4 +1,7 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using G4.Models;
+using G4.Services.Domain.V4.Extensions;
+
+using Microsoft.Extensions.DependencyInjection;
 
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
@@ -7,6 +10,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace G4.Services.Domain.V4.Mcp
 {
@@ -39,7 +44,27 @@ namespace G4.Services.Domain.V4.Mcp
         /// invokes a tool, which the catalog never does.
         /// </remarks>
         /// <returns>The MCP tool definitions, ordered by tool name.</returns>
+        /// <remarks>
+        /// Uses the default G4 branding; the server and the tool catalog call the overload with the configured
+        /// branding.
+        /// </remarks>
         public static Tool[] NewDefinitions()
+        {
+            // Brand the definitions with the default branding, which keeps the current G4 wording.
+            return NewDefinitions(branding: BrandingExtensions.NewDefaultBranding());
+        }
+
+        /// <summary>
+        /// Builds the client-facing definition of every attribute tool declared by <see cref="Types"/>, branded with
+        /// the specified branding.
+        /// </summary>
+        /// <param name="branding">The resolved branding that replaces the placeholders in the tool text.</param>
+        /// <returns>The MCP tool definitions, ordered by tool name.</returns>
+        /// <remarks>
+        /// Building a definition never instantiates its tool type; the target factory runs only when the SDK
+        /// invokes a tool, which the catalog never does.
+        /// </remarks>
+        public static Tool[] NewDefinitions(BrandingSettingsModel branding)
         {
             // Select the public instance methods the SDK discovers through the tool attribute.
             var methods = Types
@@ -47,11 +72,19 @@ namespace G4.Services.Domain.V4.Mcp
                 .Where(method => method.GetCustomAttribute<McpServerToolAttribute>() is not null);
 
             // Generate each definition with the SDK defaults that the server registration also applies.
-            return methods
+            var definitions = methods
                 .Select(method => McpServerTool.Create(method, createTargetFunc: NewTarget(method), options: null))
                 .Select(tool => tool.ProtocolTool)
                 .OrderBy(tool => tool.Name, StringComparer.Ordinal)
                 .ToArray();
+
+            // Brand every definition, so the catalog publishes the same text that tools/list advertises.
+            foreach (var definition in definitions)
+            {
+                SetBranding(definition, branding);
+            }
+
+            return definitions;
 
             // Creates the declaring tool instance from request services, exactly as the SDK registration does.
             static Func<RequestContext<CallToolRequestParams>, object> NewTarget(MethodInfo method)
@@ -61,6 +94,73 @@ namespace G4.Services.Domain.V4.Mcp
             }
         }
 
+
+        /// <summary>
+        /// Replaces the branding placeholders in the title, the description, and the argument descriptions of a tool.
+        /// </summary>
+        /// <param name="tool">The protocol tool to brand in place.</param>
+        /// <param name="branding">The resolved branding that holds the placeholder values.</param>
+        /// <remarks>
+        /// Tool names and argument names are identifiers and never change; only the text agents read to choose and
+        /// fill a tool is branded. Applying the branding again changes nothing, because no placeholder remains.
+        /// </remarks>
+        public static void SetBranding(Tool tool, BrandingSettingsModel branding)
+        {
+            // Require both values, so a wiring mistake fails at startup instead of publishing raw placeholders.
+            ArgumentNullException.ThrowIfNull(argument: tool);
+            ArgumentNullException.ThrowIfNull(argument: branding);
+
+            // Resolve the tool title, its annotation title, and its description shown in the tool listing.
+            tool.Description = branding.ResolveText(tool.Description);
+            tool.Title = branding.ResolveText(tool.Title);
+
+            if (tool.Annotations is not null)
+            {
+                tool.Annotations.Title = branding.ResolveText(tool.Annotations.Title);
+            }
+
+            // Resolve the argument descriptions inside the input schema, which agents read to fill each argument.
+            var inputSchema = JsonNode.Parse(tool.InputSchema.GetRawText());
+            ResolveSchemaDescriptions(inputSchema, branding);
+            tool.InputSchema = JsonSerializer.SerializeToElement(inputSchema);
+        }
+
+        // Resolves the branding placeholders in a JSON schema: every "description" string, at any depth, is replaced
+        // with its branded text. Other values, such as property names and enum values, are identifiers and stay.
+        private static void ResolveSchemaDescriptions(JsonNode node, BrandingSettingsModel branding)
+        {
+            // Walk array items, since composed schemas and enum lists are arrays.
+            if (node is JsonArray array)
+            {
+                foreach (var item in array)
+                {
+                    ResolveSchemaDescriptions(item, branding);
+                }
+
+                return;
+            }
+
+            // Leave values that are neither arrays nor objects, since only object members carry descriptions.
+            if (node is not JsonObject schema)
+            {
+                return;
+            }
+
+            // Replace a string description, then walk every member for nested schemas. The members are copied first,
+            // because replacing a description changes the object during the walk.
+            foreach (var (key, value) in schema.ToArray())
+            {
+                var isDescription = key == "description" && value is JsonValue && value.GetValueKind() == JsonValueKind.String;
+
+                if (isDescription)
+                {
+                    schema[key] = branding.ResolveText(value.GetValue<string>());
+                    continue;
+                }
+
+                ResolveSchemaDescriptions(value, branding);
+            }
+        }
         #endregion
     }
 }

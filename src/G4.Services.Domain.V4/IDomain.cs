@@ -7,7 +7,9 @@ using G4.Models.Events;
 using G4.Services.Domain.V4.Clients;
 using G4.Services.Domain.V4.Extensions;
 using G4.Services.Domain.V4.Hubs;
+using G4.Services.Domain.V4.Models;
 using G4.Services.Domain.V4.Repositories;
+using G4.Settings;
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Mvc;
@@ -61,6 +63,24 @@ namespace G4.Services.Domain.V4
             var cache = CacheManager.Instance;
             var connectedBots = IBotsRepository.InitializeConnectedBots(CacheManager.LiteDatabase, G4Logger.Instance);
             var wwwrootPath = Path.Combine(builder.Environment.ContentRootPath, "wwwroot");
+            var branding = builder.Configuration.NewBranding();
+
+            // Publish the resolved branding as wwwroot/branding.json, so clients that download the web root, such as
+            // the VS Code designer, receive it with the other static files. A failed write is logged and ignored,
+            // because the branding endpoints publish the same settings.
+            var brandingFilePath = branding.WriteBrandingFile(wwwrootPath, jsonOptions: AppSettings.JsonOptions);
+
+            if (brandingFilePath is null)
+            {
+                G4Logger.Instance.LogWarning("The branding file could not be written under '{Path}'.", wwwrootPath);
+            }
+
+            // Register the resolved branding as a singleton, so endpoints, documentation filters, and MCP filters
+            // read one set of labels.
+            builder.Services.AddSingleton(implementationInstance: branding);
+
+            // Brand the API documents before the Swagger UI reads their titles for its document list.
+            OpenApiDocuments.SetBranding(branding);
 
             // Register the cache manager as a singleton service
             builder.Services.AddSingleton(implementationInstance: cache);

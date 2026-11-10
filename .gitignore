@@ -407,3 +407,6 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+
+# Generated at startup by the Hub from the Branding settings
+src/G4.Services.Hub/wwwroot/branding.json

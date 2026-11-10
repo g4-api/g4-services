@@ -424,19 +424,6 @@ namespace G4.Extensions
                 // Return the modified OpenApiInfo instance for chaining.
                 return info;
             }
-
-            /// <summary>
-            /// Adds the ™ symbol to "G4" in the OpenAPI info title.
-            /// </summary>
-            /// <returns>The <see cref="OpenApiInfo"/> instance for chaining.</returns>
-            public OpenApiInfo AddG4Trademark()
-            {
-                // Replace "G4" in the title with "G4™" to add the trademark symbol
-                info.Title = info.Title.Replace("G4", "G4™");
-
-                // Return the modified OpenApiInfo instance for chaining.
-                return info;
-            }
         }
     }
 }

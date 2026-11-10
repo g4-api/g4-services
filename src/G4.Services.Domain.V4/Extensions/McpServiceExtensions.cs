@@ -1,4 +1,5 @@
-﻿using G4.Services.Domain.V4.Mcp;
+﻿using G4.Models;
+using G4.Services.Domain.V4.Mcp;
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
@@ -6,6 +7,9 @@ using Microsoft.Extensions.DependencyInjection;
 
 using ModelContextProtocol.AspNetCore;
 using ModelContextProtocol.Protocol;
+using ModelContextProtocol.Server;
+
+using System;
 
 namespace G4.Services.Domain.V4.Extensions
 {
@@ -36,7 +40,14 @@ namespace G4.Services.Domain.V4.Extensions
         /// <summary>
         /// Specifies the server name reported to MCP clients during initialization.
         /// </summary>
+        /// <remarks>
+        /// The name is an identifier clients may match on, so branding never changes it; the branded display name is
+        /// published as the server title instead.
+        /// </remarks>
         public const string ServerName = "g4-engine-mcp";
+
+        // The server title reported to MCP clients, written with branding placeholders that the Hub resolves.
+        private const string ServerTitle = "{engine} MCP";
 
         /// <summary>
         /// Specifies the server version reported to MCP clients during initialization.
@@ -53,7 +64,9 @@ namespace G4.Services.Domain.V4.Extensions
         /// <remarks>
         /// The system tools resolve <see cref="Repositories.IToolsRepository"/> and the recording tools resolve
         /// <see cref="Repositories.IRecordingsRepository"/> from the container, so both must be registered by the
-        /// caller.
+        /// caller. Tool titles, descriptions, and argument descriptions are written with branding placeholders; they
+        /// are resolved once, after the tools are collected, from the registered <see cref="BrandingSettingsModel"/>,
+        /// or from the default branding when none is registered.
         /// </remarks>
         /// <param name="services">The service collection that receives the MCP server registrations.</param>
         /// <returns>The same service collection, for chaining.</returns>
@@ -73,6 +86,16 @@ namespace G4.Services.Domain.V4.Extensions
                 .WithHttpTransport(configureOptions: options => options.SessionMode = HttpServerSessionMode.Stateless)
                 .WithTools(toolTypes: McpToolTypes.Types);
 
+            // Brand the collected tools and the server title once, after the SDK has added every tool, so tools/list
+            // publishes branded text without work per request.
+            services
+                .AddOptions<McpServerOptions>()
+                .PostConfigure<IServiceProvider>((options, provider) =>
+                {
+                    var branding = provider.GetService<BrandingSettingsModel>() ?? BrandingExtensions.NewDefaultBranding();
+                    SetBranding(options, branding);
+                });
+
             return services;
         }
 
@@ -85,6 +108,23 @@ namespace G4.Services.Domain.V4.Extensions
         {
             // Delegate to the SDK so protocol negotiation, framing, and JSON-RPC errors follow the specification.
             return endpoints.MapMcp(pattern: McpRoute);
+        }
+
+        // Applies the branding to the server title and to every collected tool. The protocol tools are shared for the
+        // server lifetime, so this runs once at startup.
+        private static void SetBranding(McpServerOptions options, BrandingSettingsModel branding)
+        {
+            // Publish the branded server title next to the unchanged server name.
+            if (options.ServerInfo is not null)
+            {
+                options.ServerInfo.Title = branding.ResolveText(ServerTitle);
+            }
+
+            // Brand each collected tool with the same rules the G4 tool catalog applies to its definitions.
+            foreach (var tool in options.ToolCollection ?? [])
+            {
+                McpToolTypes.SetBranding(tool.ProtocolTool, branding);
+            }
         }
 
         #endregion

@@ -5,6 +5,7 @@ using G4.Cache;
 using G4.Extensions;
 using G4.Models;
 using G4.Models.Schema;
+using G4.Services.Domain.V4.Extensions;
 using G4.Services.Domain.V4.Mcp;
 using G4.Services.Domain.V4.Models;
 using G4.Services.Domain.V4.Models.Schema;
@@ -69,6 +70,9 @@ namespace G4.Services.Domain.V4.Repositories
         // Provides the live capabilities database used to rebuild every derived tool index.
         private readonly CacheManager _cache;
 
+        // Holds the resolved branding that replaces the placeholders in the system tool definitions.
+        private readonly BrandingSettingsModel _branding;
+
         // Provides engine operations used by tool invocation and capability registration flows.
         private readonly G4Client _client;
 
@@ -86,9 +90,25 @@ namespace G4.Services.Domain.V4.Repositories
         /// <param name="clientFactory">The factory used to resolve the named OpenAI HTTP client.</param>
         /// <param name="cache">The live capabilities database that owns plugin-cache mutations.</param>
         /// <param name="client">The G4 client used to invoke tools and register capabilities.</param>
+        /// <remarks>Brands the system tool definitions with the default G4 branding.</remarks>
         public ToolsRepository(IHttpClientFactory clientFactory, CacheManager cache, G4Client client)
+            : this(clientFactory, cache, client, branding: BrandingExtensions.NewDefaultBranding())
+        {
+            // The complete constructor owns the initialization; this overload only selects the default branding.
+        }
+
+        /// <summary>
+        /// Initializes the singleton tool repository with the configured branding and attaches its derived catalogs
+        /// to cache-change notifications.
+        /// </summary>
+        /// <param name="clientFactory">The factory used to resolve the named OpenAI HTTP client.</param>
+        /// <param name="cache">The live capabilities database that owns plugin-cache mutations.</param>
+        /// <param name="client">The G4 client used to invoke tools and register capabilities.</param>
+        /// <param name="branding">The resolved branding that replaces the placeholders in the system tool text.</param>
+        public ToolsRepository(IHttpClientFactory clientFactory, CacheManager cache, G4Client client, BrandingSettingsModel branding)
         {
             // Capture application-lifetime dependencies before exposing this repository to cache notifications.
+            _branding = branding;
             _cache = cache;
             _client = client;
             _httpClient = clientFactory.CreateClient(name: "openai");
@@ -518,7 +538,7 @@ namespace G4.Services.Domain.V4.Repositories
             lock (ToolsSyncLock)
             {
                 // Rebuild the formatted domain index while the long-lived lexical manager handles its own cache events.
-                var tools = new ConcurrentDictionary<string, McpToolModel>(FormatTools(_cache));
+                var tools = new ConcurrentDictionary<string, McpToolModel>(FormatTools(_cache, _branding));
 
                 // Publish a complete replacement so readers never observe a partially populated derived catalog.
                 Interlocked.Exchange(ref _tools, tools);
@@ -650,8 +670,8 @@ namespace G4.Services.Domain.V4.Repositories
         }
 
         // Formats the tools available in the G4 framework, combining both
-        // plugin-based tools and built-in system tools.
-        private static ConcurrentDictionary<string, McpToolModel> FormatTools(CacheManager cache)
+        // plugin-based tools and built-in system tools; the system tool text is branded with the given branding.
+        private static ConcurrentDictionary<string, McpToolModel> FormatTools(CacheManager cache, BrandingSettingsModel branding)
         {
             // Extract all plugin manifests from the cache
             var actions = cache
@@ -668,7 +688,7 @@ namespace G4.Services.Domain.V4.Repositories
                 .ToList();
 
             // Retrieve the built-in system and recording tools declared through MCP tool attributes.
-            var systemTools = GetSystemTools();
+            var systemTools = GetSystemTools(branding);
 
             // Create a concurrent dictionary to hold all tools, ensuring thread-safe access.
             var toolsCollection = new ConcurrentDictionary<string, McpToolModel>(StringComparer.OrdinalIgnoreCase);
@@ -685,11 +705,11 @@ namespace G4.Services.Domain.V4.Repositories
 
             // Wraps the SDK-generated definitions of the attribute-declared MCP tools in catalog models, so g4.FindTool
             // and the system-tool listing return the same schemas that tools/list advertises.
-            static McpToolModel[] GetSystemTools()
+            static McpToolModel[] GetSystemTools(BrandingSettingsModel branding)
             {
                 // Project each definition into the system-tool shape; the model type defaults to "system-tool".
                 return McpToolTypes
-                    .NewDefinitions()
+                    .NewDefinitions(branding)
                     .Select(clientTool => new McpToolModel
                     {
                         ClientTool = clientTool,

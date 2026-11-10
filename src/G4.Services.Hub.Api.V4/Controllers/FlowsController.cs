@@ -16,7 +16,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
 {
     [ApiController]
     [Route("/api/v4/g4/[controller]")]
-    [SwaggerTag(description: "Endpoints for managing flows within the G4 platform. " +
+    [SwaggerTag(description: "Endpoints for managing flows within the {product} platform. " +
         "This controller allows for adding, retrieving, and removing flows based on their manifests. " +
         "Flows are complete automations, encoded as Base64, persisted in the Flows collection, and cached by namespace and key " +
         "so clients can discover them and send them for execution as one unit.")]

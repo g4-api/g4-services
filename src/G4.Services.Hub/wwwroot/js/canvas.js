@@ -497,12 +497,12 @@ function initializeStartDefinition(manifest) {
 	initialStep.properties["argument"]["value"] = "Foo Bar";
 
 	// Create a job container with the initial step inside.
-	// 'G4™ Default Job' is the name, 'job' is the type, an empty object represents additional properties, and `[initialStep]` is the list of steps.
-	let job = StateMachineSteps.newG4Job('G4™ Default Job', {}, {}, [initialStep]);
+	// The branded default job name is the name (for example 'G4™ Default Job'), 'job' is the type, an empty object represents additional properties, and `[initialStep]` is the list of steps.
+	let job = StateMachineSteps.newG4Job(G4Branding.getText('{productTm} Default Job'), {}, {}, [initialStep]);
 
 	// Create a stage container with the job inside.
-	// 'G4™ Default Stage' is the name, 'stage' is the type, and `[job]` represents the nested structure.
-	let stage = StateMachineSteps.newG4Stage('G4™ Default Stage', {}, {}, [job]);
+	// The branded default stage name is the name (for example 'G4™ Default Stage'), 'stage' is the type, and `[job]` represents the nested structure.
+	let stage = StateMachineSteps.newG4Stage(G4Branding.getText('{productTm} Default Stage'), {}, {}, [job]);
 
 	// Return the stage as an array, as the function expects to return a list of containers.
 	return [stage];
@@ -959,7 +959,6 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 		{
 			container: container,
 			label: "Authentication",
-			title: "Provide G4™ credentials to allow automation requests.",
 			initialValue: definition.properties['authentication']
 		},
 		(value) => {
@@ -981,7 +980,6 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 		{
 			container: container,
 			label: "Data Source",
-			title: "Provide G4™ data source to configure the automation.",
 			initialValue: definition.properties['dataSource']
 		},
 		(value) => {
@@ -1003,7 +1001,6 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 		{
 			container: container,
 			label: "Driver Parameters",
-			title: "Provide G4™ driver parameters to configure the automation.",
 			initialValue: definition.properties['driverParameters']
 		},
 		/**
@@ -1071,8 +1068,7 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 	CustomG4Fields.newAutomationSettingsField(
 		{
 			container: container,
-			label: "G4™ Automation Settings",
-			title: "Provide G4™ automation settings to configure the automation.",
+			label: G4Branding.getText("{productTm} Automation Settings"),
 			initialValue: definition.properties.settings?.automationSettings || {}
 		},
 		(value) => {
@@ -1096,8 +1092,7 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 	CustomG4Fields.newEnvironmentsSettingsField(
 		{
 			container: container,
-			label: "G4™ Environments Settings",
-			title: "Provide G4™ environment settings to configure the automation.",
+			label: G4Branding.getText("{productTm} Environments Settings"),
 			initialValue: definition.properties.settings?.environmentsSettings
 		},
 		(value) => {
@@ -1121,8 +1116,7 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 	CustomG4Fields.newExceptionsSettingsField(
 		{
 			container: container,
-			label: "G4™ Exceptions Settings",
-			title: "Provide G4™ exceptions settings to configure the automation.",
+			label: G4Branding.getText("{productTm} Exceptions Settings"),
 			initialValue: definition.properties.settings?.exceptionsSettings
 		},
 		(value) => {
@@ -1146,8 +1140,7 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 	CustomG4Fields.newQueueManagerSettingsField(
 		{
 			container: container,
-			label: "G4™ Queue Manager Settings",
-			title: "Provide G4™ queue manager settings to configure the automation.",
+			label: G4Branding.getText("{productTm} Queue Manager Settings"),
 			initialValue: definition.properties.settings?.queueManagerSettings
 		},
 		(value) => {
@@ -1171,8 +1164,7 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 	CustomG4Fields.newPerformancePointsSettingsField(
 		{
 			container: container,
-			label: "G4™ Performance Points Settings",
-			title: "Provide G4™ performance points settings to configure the automation.",
+			label: G4Branding.getText("{productTm} Performance Points Settings"),
 			initialValue: definition.properties.settings?.performancePointsSettings
 		},
 		(value) => {
@@ -1196,8 +1188,7 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 	CustomG4Fields.newPluginsSettingsField(
 		{
 			container: container,
-			label: "G4™ Plugins Settings",
-			title: "Provide G4™ plugins settings to configure the automation.",
+			label: G4Branding.getText("{productTm} Plugins Settings"),
 			initialValue: definition.properties.settings?.pluginsSettings
 		},
 		(value) => {
@@ -1260,8 +1251,7 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 	CustomG4Fields.newScreenshotsSettingsField(
 		{
 			container: container,
-			label: "G4™ Screenshots Settings",
-			title: "Provide G4™ screenshots settings to configure the automation.",
+			label: G4Branding.getText("{productTm} Screenshots Settings"),
 			initialValue: definition.properties.settings?.screenshotsSettings
 		},
 		(value) => {
@@ -1718,7 +1708,6 @@ function stepEditorProvider(step, editorContext) {
 			{
 				container: container,
 				label: "Driver Parameters",
-				title: "Provide G4™ driver parameters to configure the automation.",
 				initialValue: step.properties['driverParameters'],
 				isOpen: true
 			},
@@ -1792,7 +1781,6 @@ function stepEditorProvider(step, editorContext) {
 				container: container,
 				itemSource: _dataCollectors.itemSource,
 				label: "Data Collector",
-				title: "Provide G4™ data collector to configure the automation.",
 				initialValue: step.properties['dataCollector'].value || {}
 			},
 			(value) => {

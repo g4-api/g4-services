@@ -17,10 +17,10 @@ namespace G4.Services.Hub.Api.V4.Controllers
 {
     [ApiController]
     [Route("api/v4/g4/[controller]")]
-    [SwaggerTag(description: "Endpoints for managing templates within the G4 platform. " +
+    [SwaggerTag(description: "Endpoints for managing templates within the {product} platform. " +
         "This controller allows for adding, retrieving, and removing templates based on their manifests. " +
         "Templates are flow-based capabilities, defined by G4PluginAttribute, and serve as the manifest definitions that configure " +
-        "various workflows and automation tasks within the G4 engine.")]
+        "various workflows and automation tasks within the {product} engine.")]
     [ApiExplorerSettings(GroupName = "G4 Hub")]
     public class TemplatesController(IDomain domain) : ControllerBase
     {

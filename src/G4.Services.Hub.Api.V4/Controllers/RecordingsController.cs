@@ -18,8 +18,8 @@ namespace G4.Services.Hub.Api.V4.Controllers
 {
     [ApiController]
     [Route("/api/v4/g4/[controller]")]
-    [SwaggerTag(description: "Starts and stops recording sessions against running G4 UIA and Chromium recorder services " +
-        "and returns their native G4 automation flows. Sessions are shared with the MCP recording tools, so a session " +
+    [SwaggerTag(description: "Starts and stops recording sessions against running {product} UIA and Chromium recorder services " +
+        "and returns their native {product} automation flows. Sessions are shared with the MCP recording tools, so a session " +
         "started through one transport can be stopped or retrieved through the other.")]
     [ApiExplorerSettings(GroupName = "G4 Hub")]
     public class RecordingsController(IDomain domain) : ControllerBase
@@ -34,7 +34,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         #region *** Open API Documentation ***
         [SwaggerOperation(
             summary: "Get the recorded automation",
-            description: "Returns the native G4 automation of a stopped recording without a metadata wrapper. Empty recordings return 204 No Content.",
+            description: "Returns the native {product} automation of a stopped recording without a metadata wrapper. Empty recordings return 204 No Content.",
             Tags = ["Recordings"])]
         [SwaggerResponse(StatusCodes.Status200OK, description: "The generated automation.", type: typeof(JsonObject), contentTypes: MediaTypeNames.Application.Json)]
         [SwaggerResponse(StatusCodes.Status204NoContent, description: "The recording contains no events.")]
@@ -98,7 +98,7 @@ namespace G4.Services.Hub.Api.V4.Controllers
         [SwaggerResponse(StatusCodes.Status502BadGateway, description: "No recorder started; the detail lists every endpoint failure.", type: typeof(GenericErrorModel), contentTypes: MediaTypeNames.Application.ProblemJson)]
         #endregion
         public async Task<IActionResult> StartRecordingAsync(
-            [FromBody][Required][SwaggerRequestBody(description: "The G4 authentication and recorder settings.", Required = true)] RecordingSettingsModel settings,
+            [FromBody][Required][SwaggerRequestBody(description: "The {product} authentication and recorder settings.", Required = true)] RecordingSettingsModel settings,
             CancellationToken cancellationToken)
         {
             // Wait for the basic lifecycle so the response reports real connection outcomes rather than a pending operation.

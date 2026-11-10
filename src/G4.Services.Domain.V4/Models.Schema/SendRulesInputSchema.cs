@@ -6,7 +6,7 @@ namespace G4.Services.Domain.V4.Models.Schema
     /// Input schema for starting the execution of a collection of rules within an active G4 driver session.
     /// Requires a driver session identifier, the ordered rule definitions to execute, and an authorization token.
     /// </summary>
-    [SwaggerSchema(description: "Schema for starting the execution of a collection of rules within an active G4 driver session.")]
+    [SwaggerSchema(description: "Schema for starting the execution of a collection of rules within an active {product} driver session.")]
     public class SendRulesInputSchema
     {
         /// <summary>
@@ -29,14 +29,14 @@ namespace G4.Services.Domain.V4.Models.Schema
         /// Gets or sets the ordered collection of rule definitions to execute.
         /// This may be a structured array representing the automation rule logic.
         /// </summary>
-        [SwaggerSchema(description: "The ordered collection of G4 rules to be executed, including their parameters and configuration.")]
+        [SwaggerSchema(description: "The ordered collection of {product} rules to be executed, including their parameters and configuration.")]
         public object Rules { get; set; }
 
         /// <summary>
         /// Gets or sets the authorization token required by the G4 engine
         /// to validate and execute the rule request.
         /// </summary>
-        [SwaggerSchema(description: "The G4 Authentication token used to authenticate the session initiation process. " +
+        [SwaggerSchema(description: "The {product} Authentication token used to authenticate the session initiation process. " +
             "This is required to authorize the session creation.")]
         public string Token { get; set; }
     }
