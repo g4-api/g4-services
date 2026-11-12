@@ -46,6 +46,94 @@ namespace G4.Services.UnitTests.Recordings
             Assert.AreEqual(expected: "{{$ --direction:Down --times:3}}", actual: rules[2]["argument"].GetValue<string>());
         }
 
+        [TestMethod(DisplayName = "Verify Android events convert through the pre-mapped path with locators, arguments and context.")]
+        public void AndroidCaptureTest()
+        {
+            // Arrange: a tap with a view context, typed text, a scroll gesture, a long press, and two page-level events
+            // whose chains carry no locator and no path, as the Android recorder app sends them.
+            var options = new RecorderModel
+            {
+                BaseUrl = "http://localhost:9958",
+                DriverParameters = new Dictionary<string, object> { ["driver"] = "AndroidDriver" }
+            };
+            var click = NewEvent(eventName: "InvokeClick", timestamp: 1, value: new JsonObject());
+            click["chain"]["path"][0]["properties"] = new JsonObject { ["domContext"] = "PGEvPg==", ["domContextLength"] = 4 };
+            var text = NewEvent(eventName: "SendKeys", timestamp: 2, value: new JsonObject { ["text"] = "abc" });
+            var scroll = NewEvent(eventName: "InvokeScroll", timestamp: 3, value: new JsonObject { ["direction"] = "Down", ["notches"] = 3 });
+            var longClick = NewEvent(eventName: "InvokeLongClick", timestamp: 4, value: new JsonObject { ["durationMilliseconds"] = 500 });
+            var activity = NewEvent(eventName: "SwitchActivity", timestamp: 5, value: new JsonObject { ["package"] = "com.app", ["activity"] = "com.app.Home" });
+            activity["chain"] = new JsonObject { ["locator"] = "", ["path"] = new JsonArray() };
+            var hideKeyboard = NewEvent(eventName: "HideSoftKeyboard", timestamp: 6, value: new JsonObject());
+            hideKeyboard["chain"] = new JsonObject { ["locator"] = "", ["path"] = new JsonArray() };
+
+            // Act: convert the capture into a flow.
+            JsonObject[] events = [click, text, scroll, longClick, activity, hideKeyboard];
+            var automation = AutomationBuilder.NewAutomation(
+                authentication: new RecordingAuthenticationModel { Token = "" },
+                captures: [new RecorderCapture(Options: options, Events: events)]);
+            var rules = automation["stages"][0]["jobs"][0]["rules"].AsArray();
+            var plugins = rules.Select(selector: rule => rule["pluginName"].GetValue<string>()).ToArray();
+
+            // Assert: event names pass through as plugins and the endpoint's last job closes the session.
+            string[] expected = ["InvokeClick", "SendKeys", "InvokeScroll", "InvokeLongClick", "SwitchActivity", "HideSoftKeyboard", "CloseBrowser"];
+            Assert.AreSequenceEqual(expected: expected, actual: plugins);
+
+            // Assert: element events keep their locator and arguments; page-level events target nothing.
+            Assert.AreEqual(expected: "//target", actual: rules[0]["onElement"].GetValue<string>());
+            Assert.AreEqual(expected: "PGEvPg==", actual: rules[0]["capabilities"]["domContext"].GetValue<string>());
+            Assert.AreEqual(expected: "{{$ --keys:abc}}", actual: rules[1]["argument"].GetValue<string>());
+            Assert.AreEqual(expected: "{{$ --direction:Down --times:3}}", actual: rules[2]["argument"].GetValue<string>());
+            Assert.AreEqual(expected: "//target", actual: rules[3]["onElement"].GetValue<string>());
+            Assert.IsNull(value: rules[4]["onElement"]);
+            Assert.IsNull(value: rules[5]["onElement"]);
+        }
+
+        [TestMethod(DisplayName = "Verify Chromium element rules carry the trigger node DOM context into their capabilities.")]
+        public void ChromiumDomContextTest()
+        {
+            // Arrange: a named click and an unnamed field carry a context, a third click carries a non-text one, and a
+            // navigation carries one on a rule that targets no element.
+            var options = new RecorderModel
+            {
+                BaseUrl = "http://localhost:9956",
+                DriverParameters = new Dictionary<string, object> { ["driver"] = "ChromeDriver" }
+            };
+            var namedClick = NewEvent(eventName: "InvokeClick", timestamp: 1, value: new JsonObject());
+            namedClick["chain"]["path"][0]["properties"] = new JsonObject { ["domContext"] = "PGEvPg==", ["domContextLength"] = 4 };
+
+            var unnamedText = NewEvent(eventName: "SendKeys", timestamp: 2, value: new JsonObject { ["text"] = "x" });
+            unnamedText["chain"]["path"][0] = new JsonObject
+            {
+                ["name"] = "",
+                ["properties"] = new JsonObject { ["domContext"] = "PGkvPg==" }
+            };
+
+            var numberContextClick = NewEvent(eventName: "InvokeClick", timestamp: 3, value: new JsonObject());
+            numberContextClick["chain"]["path"][0]["properties"] = new JsonObject { ["domContext"] = 5 };
+
+            var navigation = NewEvent(eventName: "OpenUrl", timestamp: 4, value: new JsonObject { ["url"] = "https://example.com" });
+            navigation["chain"]["path"][0]["properties"] = new JsonObject { ["domContext"] = "PGgvPg==" };
+
+            // Act: convert the capture into a flow.
+            JsonObject[] events = [namedClick, unnamedText, numberContextClick, navigation];
+            var automation = AutomationBuilder.NewAutomation(
+                authentication: new RecordingAuthenticationModel { Token = "" },
+                captures: [new RecorderCapture(Options: options, Events: events)]);
+            var rules = automation["stages"][0]["jobs"][0]["rules"].AsArray();
+            var openUrl = rules.First(predicate: rule => rule["pluginName"].GetValue<string>() == "OpenUrl");
+
+            // Assert: the context joins the element name, stands alone without one, and never reaches non-element rules.
+            Assert.AreEqual(expected: "target", actual: rules[0]["capabilities"]["elementName"].GetValue<string>());
+            Assert.AreEqual(expected: "PGEvPg==", actual: rules[0]["capabilities"]["domContext"].GetValue<string>());
+            Assert.AreEqual(expected: 4, actual: rules[0]["capabilities"]["domContextLength"].GetValue<long>());
+            Assert.AreEqual(expected: "PGkvPg==", actual: rules[1]["capabilities"]["domContext"].GetValue<string>());
+            Assert.IsNull(value: rules[1]["capabilities"]["elementName"]);
+            Assert.IsNull(value: rules[1]["capabilities"]["domContextLength"]);
+            Assert.AreEqual(expected: "target", actual: rules[2]["capabilities"]["elementName"].GetValue<string>());
+            Assert.IsNull(value: rules[2]["capabilities"]["domContext"]);
+            Assert.IsNull(value: openUrl["capabilities"]);
+        }
+
         [TestMethod(DisplayName = "Verify UIA coordinate mode emits physical input without element targets.")]
         public void CoordinateMouseTest()
         {

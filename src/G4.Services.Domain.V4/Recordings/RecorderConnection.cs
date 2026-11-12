@@ -97,15 +97,8 @@ namespace G4.Services.Domain.V4.Recordings
 
         #region *** Properties   ***
 
-        // Chromium launches a browser; UIA only subscribes to desktop capture.
-        internal bool IsChromium
-        {
-            get
-            {
-                // Match the driver name case-insensitively so every Chrome driver spelling selects the browser flow.
-                return Options.DriverName.Contains(value: "chrome", comparisonType: StringComparison.OrdinalIgnoreCase);
-            }
-        }
+        // Chromium launches a browser and Android prepares a device; UIA only subscribes to desktop capture.
+        internal bool IsLaunchable => Options.IsLaunchable;
 
         // Configuration is detached from the request before this connection is allocated.
         internal RecorderModel Options { get; }
@@ -262,7 +255,7 @@ namespace G4.Services.Domain.V4.Recordings
             {
                 // Open the hub before any launch so the receive handler is live for the first browser event.
                 await _connection.StartAsync(cancellationToken: timeout.Token).ConfigureAwait(false);
-                if (IsChromium)
+                if (IsLaunchable)
                 {
                     // Keep arbitrary driver parameters intact when invoking the existing browser launcher.
                     var processId = await _connection

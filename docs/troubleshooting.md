@@ -236,13 +236,13 @@ Fix: use a value such as `http://localhost:9956`.
 
 Source: `src\G4.Services.Domain.V4\Repositories\RecordingsRepository.cs:402`.
 
-### `Recorder driver must be ChromeDriver or UiaDriver.` and `Recorder mode must be standard, user32, or coordinate.`
+### `Recorder driver must be AndroidDriver, ChromeDriver or UiaDriver.` and `Recorder mode must be standard, user32, or coordinate.`
 
-Cause: the Hub records only through the Chrome and UIA recorders. A SAP recorder is refused here. Chromium always records in `standard` mode.
+Cause: the Hub records only through the Android, Chrome and UIA recorders. A SAP recorder is refused here. Android and Chromium always record in `standard` mode.
 
-Fix: set `driverParameters.driver` to `ChromeDriver` or `UiaDriver`, and use a supported mode.
+Fix: set `driverParameters.driver` to `AndroidDriver`, `ChromeDriver` or `UiaDriver`, and use a supported mode.
 
-Source: `src\G4.Services.Domain.V4\Repositories\RecordingsRepository.cs:415` and `:426`.
+Source: `src\G4.Services.Domain.V4\Repositories\RecordingsRepository.cs:413` and `:424`.
 
 ### `Pre/post scripts are deferred to a later layer; disable their flags.`
 
@@ -250,7 +250,7 @@ Cause: a recorder has `preScript` or `postScript` enabled. The Hub does not run 
 
 Fix: set both `enabled` flags to `false`.
 
-Source: `src\G4.Services.Domain.V4\Repositories\RecordingsRepository.cs:435`.
+Source: `src\G4.Services.Domain.V4\Repositories\RecordingsRepository.cs:433`.
 
 ### `Enabled recorder endpoints must be unique.` and `A requested recorder endpoint is already recording.`
 
@@ -292,7 +292,7 @@ Cause: you suspended or resumed a session that is not recording. The answer is `
 
 Fix: check the state with `GET /api/v4/g4/recordings/{id}`.
 
-Source: `src\G4.Services.Domain.V4\Repositories\RecordingsRepository.cs:473`.
+Source: `src\G4.Services.Domain.V4\Repositories\RecordingsRepository.cs:471`.
 
 ### `The recorder '<baseUrl>' is not part of this recording session.`
 
@@ -300,7 +300,7 @@ Cause: the `baseUrl` in a suspend or resume body does not match any recorder of 
 
 Fix: send the same URL you used at start.
 
-Source: `src\G4.Services.Domain.V4\Repositories\RecordingsRepository.cs:484`.
+Source: `src\G4.Services.Domain.V4\Repositories\RecordingsRepository.cs:482`.
 
 ## Workers and MCP tools
 

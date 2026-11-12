@@ -292,6 +292,9 @@ namespace G4.Services.Domain.V4.Recordings
 
             // Chromium paths visit the target first; UIA paths use the opposite orientation.
             SetElementName(rule, model, targetFirst: true);
+
+            // Chromium element rules also carry the markup around their target when the recorder captured it.
+            SetDomContext(rule, model);
             return rule;
         }
 
@@ -304,9 +307,10 @@ namespace G4.Services.Domain.V4.Recordings
             var machine = GetText(value: group[0].Model["machineName"]);
             machine = machine.Length == 0 ? "unknown" : machine;
 
-            // Chromium events arrive pre-mapped to plugins, while UIA events need release classification and text runs.
-            var isChromium = options.DriverName.Contains(value: "chrome", comparisonType: StringComparison.OrdinalIgnoreCase);
-            var rules = isChromium
+            // Chromium and Android events arrive pre-mapped to plugins, while UIA events need release classification and
+            // text runs. Android chains run target first like Chromium's, so they share the Chromium rule builder.
+            var isPreMapped = options.IsLaunchable;
+            var rules = isPreMapped
                 ? group
                     .Where(predicate: item => GetText(value: item.Model["event"]).Length > 0)
                     .Select(selector: item => NewChromiumRule(model: item.Model))
@@ -670,6 +674,44 @@ namespace G4.Services.Domain.V4.Recordings
             // A Windows press arms the candidate; any other press, keyboard or mouse, clears it.
             var isWindowsPress = isKeyboard && WindowsKeyNames.ContainsKey(key: virtualKey);
             return isWindowsPress ? virtualKey : 0;
+        }
+
+        // Carries the Chromium trigger node's Base64 DOM context into the rule capabilities, next to the element name,
+        // so a client that reads the flow can heal or optimise the locator. Rules without an element, a recorded path, or
+        // a text context are left untouched; the decoded length travels along only when it is a positive number.
+        private static void SetDomContext(JsonObject rule, JsonObject model)
+        {
+            // Only element-targeted rules with a recorded path describe an element whose surroundings matter.
+            var isElementRule = rule["onElement"] is not null;
+            if (!isElementRule || model["chain"]?["path"] is not JsonArray { Count: > 0 } path)
+            {
+                return;
+            }
+
+            // Read the context from the trigger node; a missing, empty, or non-text value means none was captured.
+            var properties = path[0]?["properties"];
+            var isContextText = properties?["domContext"] is JsonValue contextValue
+                && contextValue.TryGetValue(out string domContext)
+                && domContext.Length > 0;
+            if (!isContextText)
+            {
+                return;
+            }
+
+            // Reuse the element-name capabilities when present, otherwise attach a new capabilities object.
+            if (rule["capabilities"] is not JsonObject capabilities)
+            {
+                capabilities = [];
+                rule["capabilities"] = capabilities;
+            }
+
+            // Copy the context verbatim, and its decoded byte count when the recorder reported a positive number.
+            capabilities["domContext"] = GetText(value: properties["domContext"]);
+            var domContextLength = (long)GetNumber(value: properties["domContextLength"]);
+            if (domContextLength > 0)
+            {
+                capabilities["domContextLength"] = domContextLength;
+            }
         }
 
         // Walks from the target outward and carries the first named element verbatim into designer capabilities.

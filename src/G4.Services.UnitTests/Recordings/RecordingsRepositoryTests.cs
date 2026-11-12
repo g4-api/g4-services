@@ -89,7 +89,7 @@ namespace G4.Services.UnitTests.Recordings
             // Assert: configuration errors are argument failures, distinct from an unknown retained session.
             Assert.Contains(substring: "Authentication is required.", value: missingAuthentication.Message);
             Assert.Contains(substring: "Pre/post scripts are deferred", value: deferredScript.Message);
-            Assert.Contains(substring: "ChromeDriver or UiaDriver", value: unsupportedDriver.Message);
+            Assert.Contains(substring: "AndroidDriver, ChromeDriver or UiaDriver", value: unsupportedDriver.Message);
             Assert.ThrowsExactly<KeyNotFoundException>(action: () => repository.GetStatus(Guid.NewGuid()));
             Assert.ThrowsExactly<KeyNotFoundException>(action: () => repository.GetAutomation(Guid.NewGuid()));
         }
@@ -310,6 +310,35 @@ namespace G4.Services.UnitTests.Recordings
         }
 
         // Supplies the Chromium event model inside the envelope assembled by the controlled recorder host.
+        [TestMethod(DisplayName = "Verify an Android recorder launches through StartRecorder and records plugin events.")]
+        public async Task AndroidRecorderTestAsync()
+        {
+            // Arrange: an Android endpoint that asks for User32 mode, which Android does not have.
+            await using var recorder = await TestRecorderServer.NewAsync();
+            await using var repository = new RecordingsRepository();
+            var android = NewRecorder(baseUrl: recorder.BaseUrl, driver: "AndroidDriver");
+            android["mode"] = "user32";
+            var status = await repository.StartAsync(NewSettings(android), cancellationToken: TestContext.CancellationToken);
+
+            // Act: the app sends a tap and the committed field text, then the recording stops.
+            var text = NewEvent(plugin: "SendKeys", timestamp: 200, locator: "//android.widget.EditText[@resource-id='com.app:id/email']");
+            text["value"] = new JsonObject { ["text"] = "me@example.com" };
+            await recorder.SendAsync(model: NewEvent(plugin: "InvokeClick", timestamp: 100, locator: "//android.widget.Button[@text='Go']"));
+            await recorder.SendAsync(model: text);
+            await WaitForEventsAsync(repository, status.Id, expected: 2);
+            var automation = await repository.StopAsync(status.Id);
+
+            // Assert: the device was prepared and restored once, and the events kept their plugin names and locators.
+            var rules = automation["stages"][0]["jobs"][0]["rules"].AsArray();
+            Assert.AreEqual(expected: 1, actual: recorder.State.StartCount);
+            Assert.AreEqual(expected: 1, actual: recorder.State.StopCount);
+            Assert.AreEqual(expected: "InvokeClick", actual: rules[0]["pluginName"].GetValue<string>());
+            Assert.AreEqual(expected: "//android.widget.Button[@text='Go']", actual: rules[0]["onElement"].GetValue<string>());
+            Assert.AreEqual(expected: "SendKeys", actual: rules[1]["pluginName"].GetValue<string>());
+            Assert.AreEqual(expected: "{{$ --keys:me@example.com}}", actual: rules[1]["argument"].GetValue<string>());
+            Assert.AreEqual(expected: "CloseBrowser", actual: rules[2]["pluginName"].GetValue<string>());
+        }
+
         private static JsonObject NewEvent(string plugin, long timestamp, string locator)
         {
             // Arrange: carry a URL value so the same model serves both navigation and element events.
