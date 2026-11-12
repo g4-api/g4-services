@@ -96,7 +96,7 @@
 	--expand-editor-font-family: Consolas, 'Courier New', monospace;
 	/* Line Numbers */
 	--line-numbers-background: var(--primary-color);
-	--line-numbers-border-color: var(--secondary-color);
+	--line-numbers-border-color: #333333;
 	--line-numbers-color: var(--gray);
 	--line-numbers-editor-border-color: #333333;
 	/* Markdown Reference */
@@ -112,7 +112,7 @@
 	--text-box-tool-hover-border-color: var(--red);
 	/* Number Input */
 	--number-input-step-background: #1F1F1F;
-	--number-input-step-border-color: var(--secondary-color);
+	--number-input-step-border-color: #333333;
 	--number-input-step-color: var(--light-gray);
 	--number-input-step-hover-background: #333333;
 	--number-input-step-hover-color: var(--red);
@@ -152,7 +152,7 @@
 	--smart-editor-help-text-color: var(--base-font-color);
 	--smart-editor-help-text-font: 400 1.0em 'Inter', sans-serif;
 	--smart-editor-input-background: #1F1F1F;
-	--smart-editor-input-border: 1px solid var(--secondary-color);
+	--smart-editor-input-border: 1px solid #333333;
 	--smart-editor-input-color: var(--gray);
 	--smart-editor-input-focus-background: #1F1F1F;
 	--smart-editor-input-focus-border: 1px solid var(--red);
@@ -160,7 +160,7 @@
 	--smart-editor-input-hover-border: 1px solid var(--red);
 	--smart-editor-input-placeholder-color: rgba(var(--base-font-color-rgb), 0.5);
 	--smart-editor-input-readonly-background: #1F1F1F;
-	--smart-editor-input-readonly-border: 1px solid var(--secondary-color);
+	--smart-editor-input-readonly-border: 1px solid #333333;
 	--smart-editor-input-readonly-color: var(--base-font-color);
 	--smart-editor-label-font: 700 1.1em/1.1em 'Inter', sans-serif;
 	--smart-editor-label-help-icon-container-background: #1F1F1F;

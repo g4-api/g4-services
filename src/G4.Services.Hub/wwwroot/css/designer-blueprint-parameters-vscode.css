@@ -90,7 +90,7 @@
     --expand-editor-font-family: var(--vscode-editor-font-family, monospace);
     /* Line Numbers */
     --line-numbers-background: var(--vscode-editorGutter-background, var(--vscode-editor-background));
-    --line-numbers-border-color: var(--vscode-sideBar-background);
+    --line-numbers-border-color: var(--vscode-input-border, transparent);
     --line-numbers-color: var(--vscode-descriptionForeground);
     --line-numbers-editor-border-color: var(--vscode-panel-border);
     /* Markdown Reference */
@@ -106,7 +106,7 @@
     --text-box-tool-hover-border-color: var(--vscode-focusBorder);
     /* Number Input */
     --number-input-step-background: var(--vscode-input-background);
-    --number-input-step-border-color: var(--vscode-sideBar-background);
+    --number-input-step-border-color: var(--vscode-input-border, transparent);
     --number-input-step-color: var(--vscode-foreground);
     --number-input-step-hover-background: var(--vscode-list-hoverBackground);
     --number-input-step-hover-color: var(--vscode-foreground);
@@ -143,11 +143,11 @@
     --smart-editor-error-title-font: var(--smart-editor-label-font);
     --smart-editor-font: 400 1.0em 'Inter', sans-serif;
     --smart-editor-help-text-background: var(--vscode-editor-background);
-    --smart-editor-help-text-border: 1px solid var(--vscode-sideBar-background) !important;
+    --smart-editor-help-text-border: 1px solid var(--vscode-panel-border, transparent) !important;
     --smart-editor-help-text-color: var(--vscode-editor-foreground);
     --smart-editor-help-text-font: 400 1.0em 'Inter', sans-serif;
     --smart-editor-input-background: var(--vscode-input-background);
-    --smart-editor-input-border: 1px solid var(--vscode-sideBar-background);
+    --smart-editor-input-border: 1px solid var(--vscode-input-border, transparent);
     --smart-editor-input-color: var(--vscode-input-foreground);
     --smart-editor-input-focus-background: var(--vscode-input-background);
     --smart-editor-input-focus-border: 1px solid var(--vscode-inputOption-activeBorder);
@@ -155,7 +155,7 @@
     --smart-editor-input-hover-border: 1px solid var(--vscode-inputOption-activeBorder);
     --smart-editor-input-placeholder-color: var(--vscode-input-placeholderForeground);
     --smart-editor-input-readonly-background: var(--vscode-input-background);
-    --smart-editor-input-readonly-border: 1px solid var(--vscode-sideBar-background);
+    --smart-editor-input-readonly-border: 1px solid var(--vscode-input-border, transparent);
     --smart-editor-input-readonly-color: var(--vscode-input-placeholderForeground);
     --smart-editor-label-font: 700 1.1em/1.1em 'Inter', sans-serif;
     --smart-editor-label-help-icon-container-background: var(--vscode-button-background);
