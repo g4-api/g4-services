@@ -16,7 +16,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="G4.Api" Version="2026.11.15.69" />
+		<PackageReference Include="G4.Api" Version="2026.11.15.70" />
 		<PackageReference Include="G4.Plugins" Version="2026.11.13.103" />
 		<PackageReference Include="G4.Plugins.Common" Version="2026.11.13.167" />
 		<PackageReference Include="G4.Plugins.Ui" Version="2026.11.13.167" />

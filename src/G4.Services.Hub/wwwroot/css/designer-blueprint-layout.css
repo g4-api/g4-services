@@ -141,6 +141,20 @@
 	margin: 0;
 }
 
+/*
+ * The automation-error dialog lists every reason the Hub returned. The reset above clears the list
+ * padding the browser gives a <ul>, and markers sit outside the list's content box, so without this
+ * indent they are painted outside the dialog, over the canvas behind it.
+ */
+.automation-error__message-list {
+	padding-inline-start: 20px;
+}
+
+/* Reasons after the first keep a gap, so a multi-reason failure does not read as one paragraph. */
+.automation-error__message + .automation-error__message {
+	margin-top: 8px;
+}
+
 .sqd-footer {
 	height: var(--footer-height);
 }
