@@ -31,10 +31,13 @@ const TOOLBOXES_FILTER_SYSTEM_NAMESPACE = 'G4.System';
  * classic scripts that must read one filter. `manifestFilter` is the project manifest's filter that
  * VS Code sends; it stays empty in the browser. `stepManifests` maps each toolbox step to the manifest
  * it was built from, because a toolbox step carries only the plugin key and not its namespace.
+ * `userStore` keeps the user's own filter: `null` means the browser cookie, and a host that cannot keep
+ * cookies (a VS Code webview) sets its own store with setToolboxesFilterStore.
  */
 const toolboxesFilterState = {
     manifestFilter: { toolboxes: [], tools: [] },
-    stepManifests: new WeakMap()
+    stepManifests: new WeakMap(),
+    userStore: null
 };
 
 /**
@@ -72,23 +75,23 @@ function convertToToolboxesFilter(value) {
 }
 
 /**
- * Gets the filter the designer applies: the cookie entries followed by the manifest entries.
+ * Gets the filter the designer applies: the user's entries followed by the manifest entries.
  *
  * @remarks
  * The last entry for a name wins, so placing the manifest entries last lets the manifest override the
- * cookie entry by entry, while cookie-only entries still apply.
+ * user's choice entry by entry, while user-only entries still apply.
  *
  * @returns {{ toolboxes: Array<{ name: string, enabled: boolean }>, tools: Array<{ name: string, enabled: boolean }> }}
  *     The merged filter.
  */
 function getToolboxesFilter() {
-    // Read both sources; the cookie is the user's choice and the manifest is the project's.
-    const cookieFilter = readToolboxesFilterCookie();
+    // Read both sources; the user's store holds the user's choice and the manifest is the project's.
+    const userFilter = readToolboxesFilterUser();
     const manifestFilter = toolboxesFilterState.manifestFilter;
 
     return {
-        toolboxes: [...cookieFilter.toolboxes, ...manifestFilter.toolboxes],
-        tools: [...cookieFilter.tools, ...manifestFilter.tools]
+        toolboxes: [...userFilter.toolboxes, ...manifestFilter.toolboxes],
+        tools: [...userFilter.tools, ...manifestFilter.tools]
     };
 }
 
@@ -109,7 +112,7 @@ function getToolboxesFilterManifest() {
  * Gets the manifest entry for a toolbox or tool name, when the project manifest sets one.
  *
  * @remarks
- * The dropdown uses it to lock entries the manifest decides, because a cookie entry could not change them.
+ * The dropdown uses it to lock entries the manifest decides, because a user entry could not change them.
  *
  * @param {'toolboxes' | 'tools'} listName - The filter list to search.
  * @param {string} name - The toolbox name or the qualified tool name.
@@ -172,6 +175,26 @@ function readToolboxesFilterCookie() {
 }
 
 /**
+ * Reads the user's own filter from the user store: the browser cookie, or the store the host set.
+ *
+ * @remarks
+ * Whatever the store returns is reduced to complete entries, so a broken store value shows everything.
+ *
+ * @returns {{ toolboxes: Array<{ name: string, enabled: boolean }>, tools: Array<{ name: string, enabled: boolean }> }}
+ *     The user's filter with only its complete entries.
+ */
+function readToolboxesFilterUser() {
+    // Without a host store the browser cookie keeps the filter.
+    const store = toolboxesFilterState.userStore;
+
+    if (!store) {
+        return readToolboxesFilterCookie();
+    }
+
+    return convertToToolboxesFilter(store.read());
+}
+
+/**
  * Registers the manifest a toolbox step was built from, so the filter can resolve its namespace.
  *
  * @param {object} step - The toolbox step object the designer receives.
@@ -205,6 +228,30 @@ function saveToolboxesFilterCookie(filter) {
     const cookieAttributes = `path=/; max-age=${TOOLBOXES_FILTER_COOKIE_MAXIMUM_AGE_SECONDS}; SameSite=Lax`;
     document.cookie = `${TOOLBOXES_FILTER_COOKIE_NAME}=${value}; ${cookieAttributes}`;
 
+    sendToolboxesFilterChanged();
+
+    return true;
+}
+
+/**
+ * Saves the user's own filter in the user store and redraws the toolbox.
+ *
+ * @remarks
+ * The cookie store can refuse a filter that is too large; a host store keeps any size.
+ *
+ * @param {unknown} filter - The filter to save.
+ * @returns {boolean} `true` when the filter was saved; `false` when the cookie refused it as too large.
+ */
+function saveToolboxesFilterUser(filter) {
+    // Without a host store the browser cookie keeps the filter.
+    const store = toolboxesFilterState.userStore;
+
+    if (!store) {
+        return saveToolboxesFilterCookie(filter);
+    }
+
+    // Hand the host only complete entries, then redraw the toolbox with the saved filter.
+    store.save(convertToToolboxesFilter(filter));
     sendToolboxesFilterChanged();
 
     return true;
@@ -250,6 +297,26 @@ function setToolboxesFilterManifest(filter) {
     // Keep only complete entries, then redraw so the manifest applies live.
     toolboxesFilterState.manifestFilter = convertToToolboxesFilter(filter);
 
+    sendToolboxesFilterChanged();
+}
+
+/**
+ * Sets where the user's own filter is kept, for a host page that cannot keep cookies, and redraws the toolbox.
+ *
+ * @remarks
+ * A VS Code webview has no cookies, so its page keeps the filter in the extension instead. The store's
+ * `read` returns the user's filter and `save` receives every change; an invalid store keeps the cookie.
+ *
+ * @param {{ read: () => unknown, save: (filter: object) => void } | null} store - The host store, or
+ *     `null` for the browser cookie.
+ */
+function setToolboxesFilterStore(store) {
+    // Accept only a store with both functions, so a partial store can never lose a change.
+    const isStore = typeof store?.read === 'function' && typeof store?.save === 'function';
+
+    toolboxesFilterState.userStore = isStore ? store : null;
+
+    // Redraw, so the toolbox shows the filter the new store holds.
     sendToolboxesFilterChanged();
 }
 
@@ -367,11 +434,12 @@ globalThis.G4ToolboxesFilter = {
     getToolboxesFilterManifest,
     getToolboxesFilterManifestEntry,
     getToolboxesFilterQualifiedName,
-    readToolboxesFilterCookie,
+    readToolboxesFilterUser,
     registerToolboxesFilterStep,
-    saveToolboxesFilterCookie,
+    saveToolboxesFilterUser,
     selectToolboxesFilterGroups,
     setToolboxesFilterManifest,
+    setToolboxesFilterStore,
     testToolboxesFilterTool,
     testToolboxesFilterToolbox
 };
