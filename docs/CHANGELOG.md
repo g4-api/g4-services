@@ -6,6 +6,8 @@ All notable user-visible changes to the G4 Hub are listed here. The format follo
 
 ### Added
 
+- Recordings accept the Android recorder (`AndroidDriver`, port 9958): the Hub starts and stops it through `StartRecorder` and `StopRecorder`, and converts its events with the Chromium rule builder.
+- Recorded Chromium element rules carry the recorder's Base64 DOM context in `capabilities.domContext` and `capabilities.domContextLength`.
 - Recordings domain and an MCP server built on the official SDK (bc38142).
 - MCP tool resolution (11a8d55).
 - Namespace-aware tools and toolbox filtering (c65ecea).

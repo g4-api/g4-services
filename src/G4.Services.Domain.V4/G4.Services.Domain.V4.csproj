@@ -16,19 +16,18 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="G4.Api" Version="2026.11.10.68" />
-		<PackageReference Include="G4.Cache" Version="2026.11.9.99" />
-		<PackageReference Include="G4.Plugins" Version="2026.11.9.99" />
-		<PackageReference Include="G4.Plugins.Common" Version="2026.11.10.165" />
-		<PackageReference Include="G4.Plugins.Google" Version="2026.11.10.165" />
-		<PackageReference Include="G4.Plugins.Ui" Version="2026.11.10.165" />
-		<PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.14" />
+		<PackageReference Include="G4.Api" Version="2026.11.15.70" />
+		<PackageReference Include="G4.Plugins" Version="2026.11.13.103" />
+		<PackageReference Include="G4.Plugins.Common" Version="2026.11.13.167" />
+		<PackageReference Include="G4.Plugins.Ui" Version="2026.11.13.167" />
+		<PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.15" />
 		<PackageReference Include="ModelContextProtocol.AspNetCore" Version="2.4.0" />
 		<PackageReference Include="Swashbuckle.AspNetCore.Annotations" Version="10.3.1" />
 		<PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="10.3.1" />
 
-		<!-- Pin: G4.Plugins.SqlServer -> Microsoft.Data.SqlClient 7.1.1 floors this at vulnerable 9.0.18 (GHSA-846f-f764-76mx, GHSA-2fmv-rv2c-59x7); remove once G4.Api ships the fixed plugin -->
-		<PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.14" />
+		<!-- Pin: G4.Api -> G4.CredentialsManager floors Microsoft.AspNetCore.WebUtilities at the vulnerable
+			 10.0.14 (GHSA-x33c-w48q-qrgc); remove once G4.CredentialsManager ships a patched floor. -->
+		<PackageReference Include="Microsoft.AspNetCore.WebUtilities" Version="10.0.15" />
 	</ItemGroup>
 
 	<ItemGroup>

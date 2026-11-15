@@ -2,10 +2,11 @@
  * G4(TM) toolboxes filter component: <g4-toolboxes-filter>.
  *
  * A filter button next to the designer toolbox search box. It opens a panel that lists the toolboxes
- * with their tools, each with the designer's slider switch; every change saves the browser cookie and
+ * with their tools, each with the designer's slider switch; every change saves the user's filter and
  * the toolbox redraws at once, the same way it reacts to the search text. A header switch shows or
  * hides everything and reports a mixed state. Entries the project manifest sets (VS Code) are shown
- * locked, because the manifest wins over the cookie for each entry it lists.
+ * locked, because the manifest wins over the user's filter for each entry it lists. The user's filter is
+ * kept in the browser cookie, or in the project when VS Code hosts the page (webviews have no cookies).
  *
  * The markup is built in code rather than from a template file, because every row comes from the
  * toolbox data; this keeps the component independent of the template loader. The switches reuse the
@@ -137,7 +138,7 @@
          * Shows everything from a mixed or off state, or hides every toolbox from the on state.
          *
          * @remarks
-         * Only the user's cookie entries change; manifest entries keep deciding what they list.
+         * Only the user's entries change; manifest entries keep deciding what they list.
          */
         #onMasterChange = () => {
             // Read the state the panel showed before the click, because the input has already flipped.
@@ -150,7 +151,7 @@
                 ? { toolboxes: hiddenToolboxes, tools: [] }
                 : { toolboxes: [], tools: [] };
 
-            this.#saveCookie(filter);
+            this.#saveFilter(filter);
         };
 
         /**
@@ -466,13 +467,13 @@
         }
 
         /**
-         * Saves a filter in the cookie, and shows why when it cannot be saved.
+         * Saves the user's filter, and shows why when the browser cookie cannot hold it.
          *
          * @param {object} filter - The user's filter to save.
          */
-        #saveCookie(filter) {
+        #saveFilter(filter) {
             // Save and redraw; a refused save keeps the old filter and redraws the switches back to it.
-            const isSaved = globalThis.G4ToolboxesFilter.saveToolboxesFilterCookie(filter);
+            const isSaved = globalThis.G4ToolboxesFilter.saveToolboxesFilterUser(filter);
 
             this.#status.textContent = isSaved ? '' : COOKIE_TOO_LARGE_MESSAGE;
 
@@ -482,7 +483,7 @@
         }
 
         /**
-         * Saves one toolbox or tool entry in the cookie, replacing the earlier entry for the same name.
+         * Saves one toolbox or tool entry in the user's filter, replacing the earlier entry for the same name.
          *
          * @param {{ listName: 'toolboxes' | 'tools', name: string, isEnabled: boolean }} options - The list, the
          *     entry name, and its new state.
@@ -490,14 +491,14 @@
         #saveEntry(options) {
             const { isEnabled, listName, name } = options;
 
-            // Replace the earlier entry for the name, so the cookie keeps one entry per toolbox or tool.
-            const filter = globalThis.G4ToolboxesFilter.readToolboxesFilterCookie();
+            // Replace the earlier entry for the name, so the filter keeps one entry per toolbox or tool.
+            const filter = globalThis.G4ToolboxesFilter.readToolboxesFilterUser();
             const lowerCaseName = name.toLowerCase();
             const entries = filter[listName].filter((entry) => entry.name.toLowerCase() !== lowerCaseName);
 
             filter[listName] = [...entries, { name, enabled: isEnabled }];
 
-            this.#saveCookie(filter);
+            this.#saveFilter(filter);
         }
 
         /**
@@ -520,11 +521,11 @@
             const toolboxName = toolbox.name.toLowerCase();
 
             // Replace the toolbox entry and drop the tool entries, then save; the toolbox redraws at once.
-            const filter = filterApi.readToolboxesFilterCookie();
+            const filter = filterApi.readToolboxesFilterUser();
             const toolboxes = filter.toolboxes.filter((entry) => entry.name.toLowerCase() !== toolboxName);
             const tools = filter.tools.filter((entry) => !toolNames.has(entry.name.toLowerCase()));
 
-            this.#saveCookie({ toolboxes: [...toolboxes, { name: toolbox.name, enabled: isEnabled }], tools });
+            this.#saveFilter({ toolboxes: [...toolboxes, { name: toolbox.name, enabled: isEnabled }], tools });
         }
 
         /**

@@ -166,6 +166,16 @@ namespace G4.Services.Domain.V4.Recordings
             }
         }
 
+        // Android recorders relay events the device app already named after plugins, as Chromium does.
+        internal bool IsAndroid => DriverName.Equals(value: "AndroidDriver", comparisonType: StringComparison.OrdinalIgnoreCase);
+
+        // Chromium recorders match every Chrome driver spelling.
+        internal bool IsChromium => DriverName.Contains(value: "chrome", comparisonType: StringComparison.OrdinalIgnoreCase);
+
+        // Chromium and Android recorders launch their target (a browser, a device app) through StartRecorder and send
+        // events that are already plugin names; UIA only subscribes to desktop capture and sends raw input.
+        internal bool IsLaunchable => IsChromium || IsAndroid;
+
         #endregion
     }
 

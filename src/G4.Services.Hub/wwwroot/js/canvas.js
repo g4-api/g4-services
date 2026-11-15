@@ -1376,20 +1376,26 @@ function showAutomationErrors(errors) {
 		return;
 	}
 
-	// List each reason as its own item, so long engine messages stay readable.
+	// List each reason as its own item, so long engine messages stay readable. The class names carry the
+	// list indent and the spacing between reasons, which the page's reset strips from the browser defaults.
 	const listElement = document.createElement('ul');
+	listElement.className = 'automation-error__message-list';
 	listElement.dataset.testId = 'automation-error-message-list';
 
 	for (const message of messages) {
 		const itemElement = document.createElement('li');
+		itemElement.className = 'automation-error__message';
 		itemElement.dataset.testId = 'automation-error-message';
 		itemElement.textContent = message;
 		listElement.append(itemElement);
 	}
 
-	// Open the dialog over the designer and give focus back to the active control when it closes.
+	// Open the dialog over the designer and give focus back to the active control when it closes. The
+	// reference size pads the content and scrolls a long list, so many reasons cannot grow the dialog
+	// past the window.
 	const modalElement = document.createElement('g4-modal');
 	modalElement.setAttribute('modal-title', 'Automation Error');
+	modalElement.setAttribute('size', 'reference');
 	modalElement.setAttribute('test-id', modalTestId);
 	modalElement.append(listElement);
 	modalElement.show(document.activeElement);

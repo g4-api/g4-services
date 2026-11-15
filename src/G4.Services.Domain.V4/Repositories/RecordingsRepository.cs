@@ -406,18 +406,16 @@ namespace G4.Services.Domain.V4.Repositories
             // Store the origin without a trailing slash so reservations and hub URLs compare consistently.
             recorder.BaseUrl = uri.GetLeftPart(part: UriPartial.Authority).TrimEnd(trimChar: '/');
 
-            // Only the two capture families supported by the existing start/stop commands participate in recording.
-            var driver = recorder.DriverName;
-            var isChromium = driver.Contains(value: "chrome", comparisonType: StringComparison.OrdinalIgnoreCase);
-            var isUia = driver.Equals(value: "UiaDriver", comparisonType: StringComparison.OrdinalIgnoreCase);
-            if (!isChromium && !isUia)
+            // Only the capture families supported by the existing start/stop commands participate in recording.
+            var isUia = recorder.DriverName.Equals(value: "UiaDriver", comparisonType: StringComparison.OrdinalIgnoreCase);
+            if (!recorder.IsLaunchable && !isUia)
             {
-                var message = "Recorder driver must be ChromeDriver or UiaDriver.";
+                var message = "Recorder driver must be AndroidDriver, ChromeDriver or UiaDriver.";
                 throw new ArgumentException(message, paramName: nameof(recorder));
             }
 
-            // Chromium has no UIA capture modes, so it always records in Standard mode.
-            recorder.Mode = isChromium ? CaptureModes.Standard : recorder.Mode;
+            // Chromium and Android have no UIA capture modes, so they always record in Standard mode.
+            recorder.Mode = recorder.IsLaunchable ? CaptureModes.Standard : recorder.Mode;
             var isModeSupported = recorder.Mode == CaptureModes.Standard
                 || recorder.Mode == CaptureModes.User32
                 || recorder.Mode == CaptureModes.Coordinate;
