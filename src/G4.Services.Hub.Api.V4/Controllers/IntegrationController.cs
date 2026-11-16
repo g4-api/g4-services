@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Routing;
 
 using Swashbuckle.AspNetCore.Annotations;
 
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
@@ -16,6 +17,8 @@ using System.IO.Compression;
 using System.Linq;
 using System.Net.Mime;
 using System.Text.Json;
+using System.Text.Json.Nodes;
+using System.Threading.Tasks;
 
 namespace G4.Services.Hub.Api.V4.Controllers
 {
@@ -671,10 +674,93 @@ namespace G4.Services.Hub.Api.V4.Controllers
             Description = Catalog.GetBranding.Description,
             Tags = ["Files"])]
         [SwaggerResponse(StatusCodes.Status200OK, Description = Catalog.GetBranding.Responses.Ok, Type = typeof(BrandingSettingsModel), ContentTypes = [MediaTypeNames.Application.Json])]
+        [SwaggerResponse(StatusCodes.Status304NotModified, Description = Catalog.GetBranding.Responses.NotModified)]
         public IActionResult GetBranding()
         {
-            // Return the branding the Hub resolved at startup, the same settings it wrote to wwwroot/branding.json.
-            return Ok(_domain.Resources.Branding);
+            // Read the live branding, the same settings the Hub last wrote to wwwroot/branding.json.
+            var branding = _domain.G4.Branding.GetBranding();
+
+            // Publish the version as the ETag and ask clients to revalidate, so a changed branding is never served
+            // from a stale cache.
+            var entityTag = $"\"{branding.Version}\"";
+            Response.Headers.ETag = entityTag;
+            Response.Headers.CacheControl = "no-cache";
+
+            // Answer a client that already holds this version without a body, so an unchanged branding costs nothing.
+            var requestedTags = Request.Headers.IfNoneMatch;
+            var isUnchanged = requestedTags.Any(value => string.Equals(value, entityTag, StringComparison.Ordinal));
+
+            if (isUnchanged)
+            {
+                return StatusCode(StatusCodes.Status304NotModified);
+            }
+
+            return Ok(branding);
+        }
+
+        [HttpGet]
+        [Route("branding/defaults")]
+        [SwaggerOperation(
+            Summary = Catalog.GetDefaultBranding.Summary,
+            Description = Catalog.GetDefaultBranding.Description,
+            Tags = ["Files"])]
+        [SwaggerResponse(StatusCodes.Status200OK, Description = Catalog.GetDefaultBranding.Responses.Ok, Type = typeof(BrandingSettingsModel), ContentTypes = [MediaTypeNames.Application.Json])]
+        public IActionResult GetDefaultBranding()
+        {
+            // Return the resolved built-in branding, which a client can show as a preview or send back to reset.
+            return Ok(_domain.G4.Branding.GetDefaultBranding());
+        }
+
+        [HttpDelete]
+        [Route("branding")]
+        [SwaggerOperation(
+            Summary = Catalog.ResetBranding.Summary,
+            Description = Catalog.ResetBranding.Description,
+            Tags = ["Files"])]
+        [SwaggerResponse(StatusCodes.Status200OK, Description = Catalog.ResetBranding.Responses.Ok, Type = typeof(BrandingSettingsModel), ContentTypes = [MediaTypeNames.Application.Json])]
+        public async Task<IActionResult> ResetBranding()
+        {
+            // Replace the branding with the defaults; the repository saves, applies, and broadcasts the change.
+            var branding = await _domain.G4.Branding.ResetBrandingAsync().ConfigureAwait(false);
+
+            return Ok(branding);
+        }
+
+        [HttpPut]
+        [Route("branding")]
+        [SwaggerOperation(
+            Summary = Catalog.SetBranding.Summary,
+            Description = Catalog.SetBranding.Description,
+            Tags = ["Files"])]
+        [SwaggerResponse(StatusCodes.Status200OK, Description = Catalog.SetBranding.Responses.Ok, Type = typeof(BrandingSettingsModel), ContentTypes = [MediaTypeNames.Application.Json])]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, Description = Catalog.SetBranding.Responses.BadRequest, Type = typeof(GenericErrorModel), ContentTypes = [MediaTypeNames.Application.Json])]
+        public async Task<IActionResult> SetBranding(
+            [FromBody][SwaggerRequestBody(description: Catalog.SetBranding.Parameters.Settings, Required = true)] BrandingSettingsModel settings)
+        {
+            // Replace the branding; invalid settings surface as a bad request through the error middleware.
+            var branding = await _domain.G4.Branding.SetBrandingAsync(settings).ConfigureAwait(false);
+
+            return Ok(branding);
+        }
+
+        [HttpPatch]
+        [Route("branding")]
+        [SwaggerOperation(
+            Summary = Catalog.UpdateBranding.Summary,
+            Description = Catalog.UpdateBranding.Description,
+            Tags = ["Files"])]
+        [SwaggerResponse(StatusCodes.Status200OK, Description = Catalog.UpdateBranding.Responses.Ok, Type = typeof(BrandingSettingsModel), ContentTypes = [MediaTypeNames.Application.Json])]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, Description = Catalog.UpdateBranding.Responses.BadRequest, Type = typeof(GenericErrorModel), ContentTypes = [MediaTypeNames.Application.Json])]
+        public async Task<IActionResult> UpdateBranding(
+            [FromBody][SwaggerRequestBody(description: Catalog.UpdateBranding.Parameters.Changes, Required = true)] JsonObject changes)
+        {
+            // Merge the changes into the saved settings, so members the request leaves out keep their values.
+            var settings = _domain.G4.Branding.NewBranding(changes);
+
+            // Apply the merged settings; invalid values surface as a bad request through the error middleware.
+            var branding = await _domain.G4.Branding.SetBrandingAsync(settings).ConfigureAwait(false);
+
+            return Ok(branding);
         }
 
         [HttpGet]
@@ -746,14 +832,90 @@ namespace G4.Services.Hub.Api.V4.Controllers
             public static class GetBranding
             {
                 public const string Summary = "Gets the white-label branding.";
-                public const string Description = "Returns the resolved white-label settings that replace the user-facing product labels, " +
-                    "the same settings the Hub writes to wwwroot/branding.json at startup. The tokens map holds the value of every " +
-                    "placeholder, such as engineTm written in braces, that clients replace in their own text.";
+                public const string Description = "Returns the live resolved white-label settings that replace the user-facing product " +
+                    "labels, the same settings the Hub writes to wwwroot/branding.json. The tokens map holds the value of every " +
+                    "placeholder, such as engineTm written in braces, that clients replace in their own text. The version is also sent " +
+                    "as the ETag; a request with a matching If-None-Match header receives 304 Not Modified.";
 
                 // Response wording, one constant per status.
                 public static class Responses
                 {
                     public const string Ok = "The resolved white-label settings.";
+                    public const string NotModified = "The branding still has the version named in the If-None-Match header.";
+                }
+            }
+
+            // Wording of the GetDefaultBranding action.
+            public static class GetDefaultBranding
+            {
+                public const string Summary = "Gets the built-in white-label branding.";
+                public const string Description = "Returns the resolved built-in settings, which keep every label as the G4 text. " +
+                    "The live branding is not changed.";
+
+                // Response wording, one constant per status.
+                public static class Responses
+                {
+                    public const string Ok = "The resolved built-in white-label settings.";
+                }
+            }
+
+            // Wording of the ResetBranding action.
+            public static class ResetBranding
+            {
+                public const string Summary = "Resets the white-label branding to the built-in values.";
+                public const string Description = "Replaces the live branding with the built-in values, saves every value explicitly " +
+                    "in the Branding section of the Hub's appsettings.json, rewrites wwwroot/branding.json, and sends " +
+                    "ReceiveBrandingChangedEvent to the clients of the notifications hub.";
+
+                // Response wording, one constant per status.
+                public static class Responses
+                {
+                    public const string Ok = "The live resolved white-label settings after the reset.";
+                }
+            }
+
+            // Wording of the SetBranding action.
+            public static class SetBranding
+            {
+                public const string Summary = "Replaces the white-label branding.";
+                public const string Description = "Replaces the live branding with the given raw settings, in the shape of the Branding " +
+                    "section. Missing values take their defaults, and each empty name is derived from the product name. The settings are " +
+                    "saved in the Hub's appsettings.json, wwwroot/branding.json is rewritten, and ReceiveBrandingChangedEvent is sent to " +
+                    "the clients of the notifications hub. The Swagger document list, the console banner, and the MCP protocol tools " +
+                    "keep their labels until the Hub restarts.";
+
+                // Parameter wording, one constant per action parameter.
+                public static class Parameters
+                {
+                    public const string Settings = "The raw white-label settings, in the shape of the Branding section of appsettings.json.";
+                }
+
+                // Response wording, one constant per status.
+                public static class Responses
+                {
+                    public const string Ok = "The live resolved white-label settings after the change.";
+                    public const string BadRequest = "The settings are missing, or an address is not an absolute URL.";
+                }
+            }
+
+            // Wording of the UpdateBranding action.
+            public static class UpdateBranding
+            {
+                public const string Summary = "Changes part of the white-label branding.";
+                public const string Description = "Merges the given members into the saved raw settings and applies the result like the " +
+                    "replace action. Nested objects merge member by member, and a member set to null returns to its default.";
+
+                // Parameter wording, one constant per action parameter.
+                public static class Parameters
+                {
+                    public const string Changes = "A JSON object with the members to change, for example { \"productName\": \"Acme\" }.";
+                }
+
+                // Response wording, one constant per status.
+                public static class Responses
+                {
+                    public const string Ok = "The live resolved white-label settings after the change.";
+                    public const string BadRequest = "The changes are missing, do not describe branding settings, or set an address that is not an absolute URL.";
                 }
             }
 

@@ -78,6 +78,16 @@ namespace G4.Models
         /// </remarks>
         public string TrademarkSymbol { get; set; }
 
+        /// <summary>
+        /// Gets or sets the fingerprint of the resolved settings.
+        /// </summary>
+        /// <remarks>
+        /// The Hub computes this value whenever it resolves the settings, so it changes exactly when a published value
+        /// changes. Clients compare it, and the branding endpoint publishes it as the ETag, to skip work when the
+        /// branding is unchanged. A configured or posted value is ignored and replaced.
+        /// </remarks>
+        public string Version { get; set; }
+
         #endregion
     }
 

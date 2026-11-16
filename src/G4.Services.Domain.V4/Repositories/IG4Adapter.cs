@@ -18,6 +18,15 @@ namespace G4.Services.Domain.V4.Repositories
         public IBotsRepository Bots { get; set; }
 
         /// <summary>
+        /// Gets or sets the repository that reads and changes the live white-label branding.
+        /// </summary>
+        /// <remarks>
+        /// The singleton changes the registered branding model in place, so the branding endpoints, the Hub pages, and
+        /// the API documents publish a change without a restart.
+        /// </remarks>
+        IBrandingRepository Branding { get; set; }
+
+        /// <summary>
         /// Gets or sets the factory used to parse values to and from the G4 CLI format.
         /// </summary>
         /// <remarks>

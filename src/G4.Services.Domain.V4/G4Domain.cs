@@ -66,6 +66,7 @@ namespace G4.Services.Domain.V4
     /// </summary>
     internal class G4Adapter(
         IBotsRepository bots,
+        IBrandingRepository branding,
         IFlowsRepository flows,
         G4Client g4,
         IOpenAiClient openAi,
@@ -74,6 +75,9 @@ namespace G4.Services.Domain.V4
     {
         /// <inheritdoc />
         public IBotsRepository Bots { get; set; } = bots;
+
+        /// <inheritdoc />
+        public IBrandingRepository Branding { get; set; } = branding;
 
         /// <inheritdoc />
         public CliFactory CliFactory { get; set; } = new CliFactory();

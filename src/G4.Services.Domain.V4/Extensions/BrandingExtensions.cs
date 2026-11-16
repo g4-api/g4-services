@@ -5,6 +5,7 @@ using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Security.Cryptography;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -113,6 +114,28 @@ namespace G4.Services.Domain.V4.Extensions
 
             // Resolve the values in place, so every consumer reads complete settings from one model.
             return ResolveBranding(branding);
+        }
+
+        /// <summary>
+        /// Resolves a copy of raw white-label settings, such as the settings posted to the branding endpoint.
+        /// </summary>
+        /// <param name="settings">The raw settings; null resolves the defaults.</param>
+        /// <returns>A new resolved model, with every name, address, placeholder value, and the version filled.</returns>
+        /// <remarks>
+        /// The raw settings are copied before resolving, so the caller keeps the values as given, including the empty
+        /// names that stay derived from the product name when the settings are saved and changed again later.
+        /// </remarks>
+        public static BrandingSettingsModel NewBranding(this BrandingSettingsModel settings)
+        {
+            // Start from an empty model when no settings are given, so every value takes its default.
+            var source = settings ?? new BrandingSettingsModel();
+
+            // Copy the settings through JSON, so resolving fills the copy and never changes the caller's raw settings.
+            var sourceJson = JsonSerializer.Serialize(source);
+            var copy = JsonSerializer.Deserialize<BrandingSettingsModel>(sourceJson);
+
+            // Resolve the copy, so the result is complete and carries a fresh version.
+            return ResolveBranding(copy);
         }
 
         /// <summary>
@@ -254,6 +277,19 @@ namespace G4.Services.Domain.V4.Extensions
             return tokens;
         }
 
+        // Computes the fingerprint of resolved settings from their JSON form. The caller clears the previous version
+        // first, so the value depends only on the published labels, addresses, and assets. The hash is shortened to
+        // sixteen hexadecimal characters, which is enough to tell two brandings apart and short enough for an ETag.
+        private static string NewVersion(BrandingSettingsModel branding)
+        {
+            // Serialize the settings with the default options, so the fingerprint never depends on the host's options.
+            var settingsBytes = JsonSerializer.SerializeToUtf8Bytes(branding);
+
+            // Hash the settings and keep the leading characters as a lowercase version text.
+            var hash = SHA256.HashData(settingsBytes);
+            return Convert.ToHexString(hash)[..16].ToLowerInvariant();
+        }
+
         // Fills every missing value of the bound settings in place and rebuilds the placeholder map.
         private static BrandingSettingsModel ResolveBranding(BrandingSettingsModel branding)
         {
@@ -295,6 +331,10 @@ namespace G4.Services.Domain.V4.Extensions
 
             // Rebuild the placeholder map from the resolved names, replacing any configured map.
             branding.Tokens = NewTokens(branding);
+
+            // Fingerprint the resolved values without any previous fingerprint, so equal settings share one version.
+            branding.Version = null;
+            branding.Version = NewVersion(branding);
 
             return branding;
         }
