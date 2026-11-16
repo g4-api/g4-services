@@ -151,22 +151,34 @@ namespace G4.Services.Domain.V4.Models
         /// </summary>
         /// <param name="branding">The resolved branding settings.</param>
         /// <remarks>
-        /// The Hub calls this once at startup, before the Swagger UI reads the document titles for its document
-        /// list. The documents are shared static state, so applying the branding again resolves no further
-        /// placeholders and only rewrites the contact and the terms with the same values.
+        /// The Hub calls this at startup, before the Swagger UI reads the document titles for its document list, and
+        /// again whenever the branding changes at runtime. Each call resolves the original placeholder text of the
+        /// internal setup, never the text a previous call already resolved, so a new branding replaces the old one.
+        /// The document list of the Swagger UI is built once at startup and keeps its titles until the Hub restarts.
         /// </remarks>
         public static void SetBranding(BrandingSettingsModel branding)
         {
             // Require the branding, so a wiring mistake fails at startup instead of publishing raw placeholders.
             ArgumentNullException.ThrowIfNull(argument: branding);
 
-            foreach (var document in Documents.Values)
+            foreach (var setup in _documents)
             {
-                // Resolve the placeholders in the text the Swagger UI shows for the document.
+                // Skip a setup without a published document, which keeps the loop safe if the two lists diverge.
+                if (!Documents.TryGetValue(setup.Name, out var document))
+                {
+                    continue;
+                }
+
+                // Resolve the original placeholder text of the setup, so a repeated call applies the new branding.
                 var info = document.OpenApi;
-                info.Description = branding.ResolveText(info.Description);
-                info.Summary = branding.ResolveText(info.Summary);
-                info.Title = branding.ResolveText(info.Title);
+                info.Description = branding.ResolveText(setup.Description);
+                info.Summary = branding.ResolveText(setup.Summary);
+
+                // Resolve the setup title only when the setup names one; otherwise keep the name-derived title.
+                if (!string.IsNullOrEmpty(setup.Title))
+                {
+                    info.Title = branding.ResolveText(setup.Title);
+                }
 
                 // Publish the configured support contact and terms instead of the G4 defaults.
                 info.Contact = new OpenApiContact

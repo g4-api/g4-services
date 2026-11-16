@@ -79,6 +79,19 @@ namespace G4.Services.Domain.V4
             // read one set of labels.
             builder.Services.AddSingleton(implementationInstance: branding);
 
+            // Register the branding repository, which changes the registered branding in place at runtime, saves it
+            // to the Hub's appsettings.json, rewrites wwwroot/branding.json, and broadcasts the change to the clients.
+            builder.Services.AddSingleton<IBrandingRepository>(implementationFactory: provider => new BrandingRepository(
+                branding,
+                configuration: builder.Configuration,
+                options: new BrandingRepository.RepositoryOptions
+                {
+                    JsonOptions = AppSettings.JsonOptions,
+                    NotificationsHubContext = provider.GetRequiredService<IHubContext<G4AutomationNotificationsHub>>(),
+                    SettingsFolderPath = builder.Environment.ContentRootPath,
+                    WebRootPath = wwwrootPath
+                }));
+
             // Brand the API documents before the Swagger UI reads their titles for its document list.
             OpenApiDocuments.SetBranding(branding);
 
