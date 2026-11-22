@@ -88,9 +88,11 @@ namespace G4.Extensions
                 var session = Regex.Match(automation.DriverParameters.Get("driver", string.Empty), "(?<=Id\\().*(?=\\))").Value;
                 var driverSession = string.IsNullOrEmpty(session) ? "-1" : session;
 
-                // Gather all the rules from the automation model by iterating over its stages and jobs.
-                var rules = automation.Stages
-                    .SelectMany(stage => stage.Jobs)
+                // Gather all the rules from the automation model by iterating over its stages and jobs. The stages
+                // and jobs inside a Parallel container are read in place of the container, which holds no rules of its own.
+                var rules = automation
+                    .GetStages()
+                    .SelectMany(stage => stage.GetJobs())
                     .SelectMany(job => job.Rules);
 
                 // Check if there is an active IWebDriver associated with the session ID; otherwise, use a SimulatorDriver.

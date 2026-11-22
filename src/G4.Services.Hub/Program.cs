@@ -27,7 +27,10 @@ const string CorsPolicyName = "CorsPolicy";
 var builder = WebApplication.CreateBuilder(args);
 
 // Write the Hub banner with the specified version, branded from the configuration the builder loaded.
-ControllerUtilities.WriteHubAsciiLogo(version: "0000.00.00.0000", branding: builder.Configuration.NewBranding());
+ControllerUtilities.WriteHubAsciiLogo(
+    version: "0000.00.00.0000",
+    branding: builder.Configuration.NewBranding()
+);
 
 #region *** Url & Kestrel ***
 // Configure the URLs that the Kestrel web server should listen on.
@@ -210,7 +213,7 @@ app.UseSwaggerUI(i =>
     // Set header content to specify UTF-8 character encoding for the Swagger UI page
     i.HeadContent = "<meta charset='UTF-8'>";
 
-    // Swagger's default JSON-only Accept header does not express the MCP Streamable HTTP response contract.
+    // Swagger's default JSON-only Accept header does not express the MCP Streamable HTTP response contract
     var mcpInterceptor = "(request) => { if (request.url.includes('" + McpServiceExtensions.McpRoute + "')) " +
         "{ request.headers['Accept'] = 'application/json, text/event-stream'; } return request; }";
     i.UseRequestInterceptor(mcpInterceptor);

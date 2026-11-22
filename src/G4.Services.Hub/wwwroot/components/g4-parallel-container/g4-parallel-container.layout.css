@@ -1,0 +1,8 @@
+/*
+ * G4 Parallel container layout. The plugin places every part with SVG attributes (the name, the icon, the
+ * lanes, and the tag of a background lane), so the layout only routes the pointer: the tag's text lets the
+ * pointer through to the tag's box, so the tooltip shows over the whole tag.
+ */
+.g4-parallel-container__lane-tag > text.sqd-label-text {
+    pointer-events: none;
+}

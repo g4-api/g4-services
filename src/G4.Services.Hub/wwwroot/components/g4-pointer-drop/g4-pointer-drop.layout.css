@@ -1,0 +1,39 @@
+/*
+ * G4 pointer drop layout. The designer puts the top-left corner of the drag layer on the pointer; the chip
+ * sits below and to the right of that corner, so the pointer and the gap under it stay in view. The chip
+ * keeps one line, and a long step name is cut with an ellipsis.
+ */
+.g4-pointer-drop {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    box-sizing: border-box;
+    max-width: 240px;
+    padding: 6px 10px;
+    border-width: 1px;
+    border-style: solid;
+    font-size: 13px;
+    line-height: 16px;
+    white-space: nowrap;
+}
+
+.g4-pointer-drop__icon {
+    display: flex;
+    flex: none;
+    width: 16px;
+    height: 16px;
+}
+
+.g4-pointer-drop__icon > img,
+.g4-pointer-drop__icon > svg {
+    width: 100%;
+    height: 100%;
+}
+
+.g4-pointer-drop__name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}

@@ -1,0 +1,38 @@
+<Project>
+
+	<!--
+		TEMPORARY - feature/parallel-execution. Delete this file when the engine and the API client with the Parallel
+		container are released, and set the released versions in the project files instead.
+
+		Points every project under src at two sets of local packages, both in artifacts/local-feed, which git ignores:
+		- the engine, packed from the local, uncommitted g4-engine working tree (branch feature/parallel-execution);
+		- the API client (G4.Api), packed from the local, uncommitted g4-api-client working tree (same branch name),
+		  which is itself built against that engine through its own src/Directory.Build.targets.
+
+		To refresh after an engine change, raise the number in G4EngineLocalVersion here and in
+		g4-api-client/src/Directory.Build.targets, then pack the engine and the API client again with the new
+		versions. Run both from the g4-services folder, so the .NET 10 SDK pinned by global.json is used:
+
+			foreach ($name in 'G4.Attributes','G4.Converters','G4.Exceptions','G4.Extensions','G4.Settings','G4.Models','G4.Cache','G4.Credentials','G4.Plugins') {
+				dotnet pack ..\g4-engine\src\$name\$name.csproj -c Release -p:Version=<engine version> -o artifacts\local-feed
+			}
+
+			dotnet pack ..\g4-api-client\src\G4.Api\G4.Api.csproj -c Release -p:Version=<client version> -o artifacts\local-feed
+
+		To refresh after an API client change only, raise G4ApiLocalVersion here and run the last command.
+	-->
+	<PropertyGroup>
+		<G4EngineLocalVersion>2026.11.21.2-parallel</G4EngineLocalVersion>
+		<G4ApiLocalVersion>2026.11.21.1-parallel</G4ApiLocalVersion>
+		<G4LocalFeed>$(MSBuildThisFileDirectory)..\artifacts\local-feed</G4LocalFeed>
+		<RestoreAdditionalProjectSources>$(RestoreAdditionalProjectSources);$(G4LocalFeed)</RestoreAdditionalProjectSources>
+	</PropertyGroup>
+
+	<!-- Only the packages the projects reference directly; the rest follow as their dependencies. -->
+	<ItemGroup>
+		<PackageReference Update="G4.Api" Version="$(G4ApiLocalVersion)" />
+		<PackageReference Update="G4.Converters" Version="$(G4EngineLocalVersion)" />
+		<PackageReference Update="G4.Plugins" Version="$(G4EngineLocalVersion)" />
+	</ItemGroup>
+
+</Project>

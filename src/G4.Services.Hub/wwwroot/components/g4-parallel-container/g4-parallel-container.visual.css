@@ -1,0 +1,15 @@
+/*
+ * G4 Parallel container visual language: the tag on a background lane looks like a switch's branch name.
+ * The tag sits in the group of the lanes, which no canvas rule paints, so these rules give it all of its
+ * colors and its font.
+ */
+g.g4-parallel-container g.sqd-label-secondary.g4-parallel-container__lane-tag > rect.sqd-label-rect {
+    fill: var(--g4-parallel-container-lane-tag-background);
+    stroke: var(--g4-parallel-container-lane-tag-border-color);
+    stroke-width: var(--g4-parallel-container-lane-tag-border-width);
+}
+
+g.g4-parallel-container g.sqd-label-secondary.g4-parallel-container__lane-tag > text.sqd-label-text {
+    fill: var(--g4-parallel-container-lane-tag-foreground);
+    font: var(--g4-parallel-container-lane-tag-font);
+}
