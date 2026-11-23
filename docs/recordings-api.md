@@ -88,9 +88,31 @@ The Chromium recorder ranks several locators for the target of an element event 
 
 - Only rules that target an element get them. Navigation and other page-level rules never do.
 - Each key is written only when the recorder sent a value: a non-empty array for `locators` and `shadowPath`, a non-empty string for `locatorStrength` and `originalLocator`. A rule whose trigger node has none of them is unchanged.
-- `onElement` stays the recorder's best XPath, and the rule has no `locator` type, so the engine reads it as XPath. A client can replace it with another candidate from `locators`.
+- `onElement` stays the recorder's best XPath, and the rule has no `locator` type, so the engine reads it as XPath. A client can replace it with another candidate from `locators`. The one exception is a target inside a shadow root, described below.
 - The recorder can correct an event it has already sent: after it re-tests the locators against the live page, it broadcasts `ReceiveLocatorAmendment` with the event's `locatorId`. The Hub then updates the buffered event's locator, `locators` and `locatorStrength`, so the stopped flow carries the corrected values. An amendment for an unknown `locatorId`, or one that arrives after stop, is ignored. A suspended recorder still takes amendments for events it buffered before the suspension.
 - Replay does not use them. Unlike the DOM context, they are small, and the VS Code extension keeps them in a saved flow.
+
+For a target inside a shadow root, open or closed, an XPath reaches only the outermost shadow host. The recorder still sends that host XPath as `chain.locator`, and adds one `ShadowPath` candidate to `locators`: a CSS selector that chains one segment for each shadow root with `>>>`. The Hub writes the `value` of that candidate as the rule's `onElement` and sets the rule's `locator` to `CssSelector`, and the engine walks one shadow root per segment:
+
+```json
+{
+    "$type": "Action",
+    "pluginName": "InvokeClick",
+    "onElement": "#lab-shadow-host >>> button[name='save']",
+    "locator": "CssSelector",
+    "capabilities": {
+        "elementName": "Save",
+        "locators": [
+            { "using": "CssSelector", "value": "#lab-shadow-host >>> button[name='save']", "strategy": "ShadowPath", "score": 68, "verdict": "Unique" },
+            { "using": "Xpath", "value": "//*[@id='lab-shadow-host']", "strategy": "Id", "score": 75, "verdict": "Unique" }
+        ]
+    }
+}
+```
+
+- The Hub takes the first candidate in list order whose `strategy` is `ShadowPath`, whose `using` is `CssSelector`, whose `value` is not empty and whose `verdict` is not `Broken`.
+- The host XPath of `chain.locator` is no longer the rule's `onElement`, but it stays in `capabilities.locators`, and the other capabilities are copied as before.
+- A `Broken` shadow path is ignored: the rule falls back to the host XPath and has no `locator` type.
 
 An empty recording returns `204 No Content` from stop and flow retrieval.
 Retrieval before stop returns `409 Conflict`, and an unknown ID returns `404 Not Found`.

@@ -9,6 +9,7 @@ All notable user-visible changes to the G4 Hub are listed here. The format follo
 - Recordings accept the Android recorder (`AndroidDriver`, port 9958): the Hub starts and stops it through `StartRecorder` and `StopRecorder`, and converts its events with the Chromium rule builder.
 - Recorded Chromium element rules carry the recorder's Base64 DOM context in `capabilities.domContext` and `capabilities.domContextLength`.
 - Recorded Chromium element rules carry the recorder's ranked locator candidates in `capabilities.locators`, `capabilities.locatorStrength`, `capabilities.shadowPath` and `capabilities.originalLocator`.
+- Recorded Chromium element rules whose target is inside a shadow root use the recorder's `ShadowPath` candidate as `onElement`, with `locator` set to `CssSelector`; a `Broken` shadow path falls back to the host XPath.
 - The Hub applies the recorder's `ReceiveLocatorAmendment` corrections to events it has already buffered.
 - Recordings domain and an MCP server built on the official SDK (bc38142).
 - MCP tool resolution (11a8d55).

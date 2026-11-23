@@ -316,6 +316,10 @@ namespace G4.Services.Domain.V4.Recordings
                     break;
             }
 
+            // A target inside a shadow root is addressed by its shadow path, because the chain locator of such an
+            // event only reaches the outermost shadow host.
+            SetShadowLocator(rule, model);
+
             // Chromium paths visit the target first; UIA paths use the opposite orientation.
             SetElementName(rule, model, targetFirst: true);
 
@@ -805,9 +809,10 @@ namespace G4.Services.Domain.V4.Recordings
 
         // Carries the Chromium trigger node's locator metadata into the rule capabilities, next to the element name
         // and the DOM context: the ranked candidates, the strength of the chosen locator, the shadow-root path, and
-        // the locator the recorder started from. The rule's onElement stays the chain's best XPath and no locator
-        // type is written, because the engine defaults to XPath. Rules without an element, a trigger node, or any of
-        // these properties are left untouched, so they serialize exactly as before; empty values are never emitted.
+        // the locator the recorder started from. This helper never changes the rule's onElement or its locator type:
+        // the chain's best XPath stays, read by the engine as XPath, unless SetShadowLocator retargeted the rule at
+        // a shadow path. Rules without an element, a trigger node, or any of these properties are left untouched,
+        // so they serialize exactly as before; empty values are never emitted.
         private static void SetLocatorCandidates(JsonObject rule, JsonObject model)
         {
             // Only element-targeted rules describe an element whose alternative locators matter.
@@ -860,6 +865,55 @@ namespace G4.Services.Domain.V4.Recordings
             foreach (var (key, value) in candidates)
             {
                 capabilities[key] = value;
+            }
+        }
+
+        // Retargets a Chromium element rule at a target inside a shadow root, open or closed. For such a target the
+        // chain locator is only the XPath of the outermost shadow host, kept so an older Hub still replays against
+        // the host, while the trigger node's ranked candidates carry one entry that reaches the real target: a
+        // CssSelector whose segments are chained with ">>>", which the engine resolves one shadow root per segment.
+        // Selection rule: the first candidate in list order whose strategy is ShadowPath, whose locator type is
+        // CssSelector, whose value is a non-empty string, and whose verdict is not Broken. That value replaces the
+        // rule's onElement and the rule names the CssSelector locator type. Rules without an element, a trigger
+        // node, or such a candidate are left untouched, so they keep the chain XPath and no locator type. Never
+        // throws: non-object entries and absent or mistyped members are skipped, and the event is never mutated.
+        private static void SetShadowLocator(JsonObject rule, JsonObject model)
+        {
+            // Only element-targeted rules carry a locator to replace, so page-level rules never gain a target here.
+            var isElementRule = rule["onElement"] is not null;
+            if (!isElementRule || GetTriggerNode(model)?["properties"] is not JsonObject properties)
+            {
+                return;
+            }
+
+            // An absent or mistyped candidate list names no shadow path, so the chain locator stays.
+            if (properties["locators"] is not JsonArray locators)
+            {
+                return;
+            }
+
+            // Visit the candidates in the recorder's order; entries that are not objects cannot describe a locator.
+            foreach (var candidate in locators.OfType<JsonObject>())
+            {
+                // Read every member as optional text, so an absent or mistyped member fails its comparison.
+                var isShadowPath = ResolveText(value: candidate["strategy"]) == "ShadowPath";
+                var isCssSelector = ResolveText(value: candidate["using"]) == "CssSelector";
+                var isBroken = ResolveText(value: candidate["verdict"]) == "Broken";
+                var shadowLocator = ResolveText(value: candidate["value"]);
+
+                // Skip candidates of another strategy or locator type, without a value, or that the recorder
+                // re-tested and found broken; a broken shadow path falls back to the host XPath.
+                var isUsable = isShadowPath && isCssSelector && !isBroken && shadowLocator.Length > 0;
+                if (!isUsable)
+                {
+                    continue;
+                }
+
+                // Address the real target and name the locator type, because the engine defaults to XPath; the
+                // first usable candidate wins, so later ones are never read.
+                rule["onElement"] = shadowLocator;
+                rule["locator"] = "CssSelector";
+                return;
             }
         }
 

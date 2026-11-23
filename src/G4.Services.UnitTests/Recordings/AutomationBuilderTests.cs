@@ -14,6 +14,13 @@ namespace G4.Services.UnitTests.Recordings
     [TestCategory("UnitTest")]
     public sealed class AutomationBuilderTests
     {
+        // Provides the chain locator the recorder sends for a target inside a shadow root: the XPath of the
+        // outermost shadow host, which is all an XPath can reach.
+        private const string ShadowHostLocator = "//*[@id='lab-shadow-host']";
+
+        // Provides the shadow-path candidate value that reaches the real target, one CSS segment per shadow root.
+        private const string ShadowPathLocator = "#lab-shadow-host >>> button[name='save']";
+
         [TestMethod(DisplayName = "Verify Chromium arguments, element labels, capped pacing, " +
             "and single driver inheritance.")]
         public void ChromiumArgumentsAndThinkTimeTest()
@@ -249,6 +256,220 @@ namespace G4.Services.UnitTests.Recordings
             Assert.IsNotNull(value: capabilities["originalLocator"]);
             Assert.IsNull(value: capabilities["elementName"]);
             Assert.HasCount(expected: 6, collection: capabilities);
+        }
+
+        [TestMethod(DisplayName = "Verify a Chromium rule without a shadow-path candidate keeps the chain locator " +
+            "and names no locator type.")]
+        public void ChromiumShadowLocatorAbsentTest()
+        {
+            // Arrange: a click whose trigger node ranks only ordinary candidates, although it also carries the
+            // shadow-root steps, so nothing but a ShadowPath candidate can retarget the rule.
+            var click = NewEvent(eventName: "InvokeClick", timestamp: 1, value: new JsonObject());
+            click["chain"]["path"][0]["properties"] = NewLocatorProperties();
+
+            // Act: convert the capture and read the member names of the click rule in serialization order.
+            var rule = NewChromiumRules(events: [click])[0].AsObject();
+            var names = rule.Select(selector: property => property.Key).ToArray();
+
+            // Assert: the rule keeps the chain locator and the member set it had before shadow paths existed.
+            string[] expectedNames = ["$type", "pluginName", "context", "onElement", "capabilities"];
+            Assert.AreEqual(expected: "//target", actual: rule["onElement"].GetValue<string>());
+            Assert.IsFalse(condition: rule.ContainsKey(propertyName: "locator"));
+            Assert.AreSequenceEqual(expected: expectedNames, actual: names);
+        }
+
+        [TestMethod(DisplayName = "Verify a Broken shadow-path candidate is ignored, so the rule falls back to " +
+            "the host locator of the chain.")]
+        public void ChromiumShadowLocatorBrokenTest()
+        {
+            // Arrange: the recorder re-tested the shadow path against the live page and reported it broken.
+            var broken = NewShadowLocator(value: ShadowPathLocator, verdict: "Broken");
+            var click = NewShadowEvent(eventName: "InvokeClick", value: new JsonObject(), locators: [broken]);
+
+            // Act: convert the capture and read the click rule.
+            var rule = NewChromiumRules(events: [click])[0].AsObject();
+            var locators = rule["capabilities"]["locators"].AsArray();
+
+            // Assert: the rule replays against the shadow host as an XPath, with no locator type.
+            Assert.AreEqual(expected: ShadowHostLocator, actual: rule["onElement"].GetValue<string>());
+            Assert.IsFalse(condition: rule.ContainsKey(propertyName: "locator"));
+
+            // Assert: the broken candidate still travels with the rule, so a client can inspect or heal it.
+            Assert.HasCount(expected: 1, collection: locators);
+            Assert.AreEqual(expected: "Broken", actual: locators[0]["verdict"].GetValue<string>());
+        }
+
+        [TestMethod(DisplayName = "Verify the shadow path applies to every Chromium event family that targets " +
+            "an element and never to a page-level rule.")]
+        public void ChromiumShadowLocatorEventFamiliesTest()
+        {
+            // Arrange: typed text, a click, and a scroll inside a shadow root, each with its own shadow-path
+            // candidate because a JSON node has a single parent.
+            var textValue = new JsonObject { ["text"] = "hello" };
+            var scrollValue = new JsonObject { ["direction"] = "Up", ["notches"] = 2 };
+            var text = NewShadowEvent(
+                eventName: "SendKeys",
+                value: textValue,
+                locators: [NewShadowLocator(value: ShadowPathLocator, verdict: "Unique")]);
+            var click = NewShadowEvent(
+                eventName: "InvokeClick",
+                value: new JsonObject(),
+                locators: [NewShadowLocator(value: ShadowPathLocator, verdict: "Unique")]);
+            var scroll = NewShadowEvent(
+                eventName: "InvokeScroll",
+                value: scrollValue,
+                locators: [NewShadowLocator(value: ShadowPathLocator, verdict: "Unique")]);
+
+            // Arrange: a navigation carries the same candidate on a rule that targets no element.
+            var navigation = NewShadowEvent(
+                eventName: "OpenUrl",
+                value: new JsonObject { ["url"] = "https://example.com" },
+                locators: [NewShadowLocator(value: ShadowPathLocator, verdict: "Unique")]);
+
+            // Act: convert the four events in one capture; equal timestamps keep their recorded order.
+            var rules = NewChromiumRules(events: [text, click, scroll, navigation]);
+
+            // Assert: the typed-text rule targets the shadow path and still carries the keys macro.
+            Assert.AreEqual(expected: ShadowPathLocator, actual: rules[0]["onElement"].GetValue<string>());
+            Assert.AreEqual(expected: "CssSelector", actual: rules[0]["locator"].GetValue<string>());
+            Assert.AreEqual(expected: "{{$ --keys:hello}}", actual: rules[0]["argument"].GetValue<string>());
+
+            // Assert: the click rule and the scroll rule target the shadow path the same way.
+            var scrollArgument = rules[2]["argument"].GetValue<string>();
+            Assert.AreEqual(expected: ShadowPathLocator, actual: rules[1]["onElement"].GetValue<string>());
+            Assert.AreEqual(expected: "CssSelector", actual: rules[1]["locator"].GetValue<string>());
+            Assert.AreEqual(expected: ShadowPathLocator, actual: rules[2]["onElement"].GetValue<string>());
+            Assert.AreEqual(expected: "CssSelector", actual: rules[2]["locator"].GetValue<string>());
+            Assert.AreEqual(expected: "{{$ --direction:Up --times:2}}", actual: scrollArgument);
+
+            // Assert: the navigation rule gains neither a target nor a locator type.
+            Assert.IsNull(value: rules[3]["onElement"]);
+            Assert.IsNull(value: rules[3]["locator"]);
+            Assert.AreEqual(expected: "https://example.com", actual: rules[3]["argument"].GetValue<string>());
+        }
+
+        [TestMethod(DisplayName = "Verify the first usable shadow-path candidate in list order becomes the rule " +
+            "locator.")]
+        public void ChromiumShadowLocatorFirstEntryTest()
+        {
+            // Arrange: a broken shadow path leads the list, followed by two usable ones with different values.
+            var broken = NewShadowLocator(value: "#stale-host >>> button", verdict: "Broken");
+            var first = NewShadowLocator(value: ShadowPathLocator, verdict: "Unique");
+            var second = NewShadowLocator(value: "#lab-shadow-host >>> button", verdict: "Ambiguous");
+            var click = NewShadowEvent(
+                eventName: "InvokeClick",
+                value: new JsonObject(),
+                locators: [broken, first, second]);
+
+            // Act: convert the capture and read the click rule.
+            var rule = NewChromiumRules(events: [click])[0];
+
+            // Assert: the broken candidate is skipped and the earlier usable candidate wins over the later one.
+            Assert.AreEqual(expected: ShadowPathLocator, actual: rule["onElement"].GetValue<string>());
+            Assert.AreEqual(expected: "CssSelector", actual: rule["locator"].GetValue<string>());
+        }
+
+        #region *** Data Set ***
+        [DataRow("ShadowPath", "Xpath", "//*[@id='lab-shadow-host']//button")]
+        [DataRow("ShadowPath", "cssselector", "#lab-shadow-host >>> button[name='save']")]
+        [DataRow("ShadowPath", "CssSelector", "")]
+        [DataRow("shadowpath", "CssSelector", "#lab-shadow-host >>> button[name='save']")]
+        [DataRow("TestHook", "CssSelector", "#lab-shadow-host >>> button[name='save']")]
+        #endregion
+        [TestMethod(DisplayName = "Verify a candidate is ignored unless its strategy is ShadowPath, its locator " +
+            "type is CssSelector, and its value is not empty.")]
+        public void ChromiumShadowLocatorIgnoredTest(string strategy, string locatorType, string value)
+        {
+            // Arrange: one unbroken candidate that misses exactly one part of the selection rule.
+            var candidate = new JsonObject
+            {
+                ["using"] = locatorType,
+                ["value"] = value,
+                ["strategy"] = strategy,
+                ["score"] = 68,
+                ["verdict"] = "Unique"
+            };
+            var click = NewShadowEvent(eventName: "InvokeClick", value: new JsonObject(), locators: [candidate]);
+
+            // Act: convert the capture and read the click rule.
+            var rule = NewChromiumRules(events: [click])[0].AsObject();
+
+            // Assert: the rule falls back to the host locator of the chain and names no locator type.
+            Assert.AreEqual(expected: ShadowHostLocator, actual: rule["onElement"].GetValue<string>());
+            Assert.IsFalse(condition: rule.ContainsKey(propertyName: "locator"));
+        }
+
+        [TestMethod(DisplayName = "Verify malformed locator candidates are skipped without failing the " +
+            "conversion.")]
+        public void ChromiumShadowLocatorMalformedTest()
+        {
+            // Arrange: entries that are not objects, an empty object, and shadow-path candidates whose members
+            // are absent or carry another JSON type.
+            var missingValue = new JsonObject { ["using"] = "CssSelector", ["strategy"] = "ShadowPath" };
+            var numberValue = NewShadowLocator(value: ShadowPathLocator, verdict: "Unique");
+            numberValue["value"] = 5;
+            var numberStrategy = NewShadowLocator(value: ShadowPathLocator, verdict: "Unique");
+            numberStrategy["strategy"] = 1;
+            var arrayLocatorType = NewShadowLocator(value: ShadowPathLocator, verdict: "Unique");
+            arrayLocatorType["using"] = new JsonArray();
+            JsonNode[] locators =
+            [
+                ShadowPathLocator,
+                5,
+                null,
+                new JsonArray(),
+                new JsonObject(),
+                missingValue,
+                numberValue,
+                numberStrategy,
+                arrayLocatorType
+            ];
+            var click = NewShadowEvent(eventName: "InvokeClick", value: new JsonObject(), locators);
+
+            // Act: convert the capture and read the click rule.
+            var rule = NewChromiumRules(events: [click])[0].AsObject();
+
+            // Assert: no entry qualifies, so the rule keeps the host locator and names no locator type.
+            Assert.AreEqual(expected: ShadowHostLocator, actual: rule["onElement"].GetValue<string>());
+            Assert.IsFalse(condition: rule.ContainsKey(propertyName: "locator"));
+
+            // Assert: the candidate list is still copied as recorded, malformed entries included.
+            Assert.HasCount(expected: 9, collection: rule["capabilities"]["locators"].AsArray());
+        }
+
+        [TestMethod(DisplayName = "Verify a Chromium rule whose target is inside a shadow root uses the shadow " +
+            "path as a CssSelector locator and keeps its locator capabilities.")]
+        public void ChromiumShadowLocatorTest()
+        {
+            // Arrange: a click inside a shadow root as the recorder sends it: the chain locator reaches only the
+            // host, and the flagged trigger node ranks one shadow-path candidate after its two ordinary ones.
+            var click = NewEvent(eventName: "InvokeClick", timestamp: 1, value: new JsonObject());
+            var properties = NewLocatorProperties();
+            var shadowLocator = NewShadowLocator(value: ShadowPathLocator, verdict: "Unique");
+            properties["locators"].AsArray().Add(item: shadowLocator);
+            click["chain"]["locator"] = ShadowHostLocator;
+            click["chain"]["path"][0]["isTriggerElement"] = true;
+            click["chain"]["path"][0]["properties"] = properties;
+
+            // Act: convert the capture and read the capabilities of the click rule.
+            var rule = NewChromiumRules(events: [click])[0];
+            var capabilities = rule["capabilities"];
+
+            // Assert: the rule addresses the real target through the shadow path and names its locator type.
+            Assert.AreEqual(expected: ShadowPathLocator, actual: rule["onElement"].GetValue<string>());
+            Assert.AreEqual(expected: "CssSelector", actual: rule["locator"].GetValue<string>());
+
+            // Assert: the capabilities are copied as before, with the shadow-path candidate in the full list.
+            var locators = capabilities["locators"];
+            var shadowPath = capabilities["shadowPath"];
+            Assert.AreEqual(expected: "target", actual: capabilities["elementName"].GetValue<string>());
+            Assert.HasCount(expected: 3, collection: locators.AsArray());
+            Assert.IsTrue(condition: JsonNode.DeepEquals(node1: properties["locators"], node2: locators));
+            Assert.IsTrue(condition: JsonNode.DeepEquals(node1: properties["shadowPath"], node2: shadowPath));
+            Assert.AreEqual(expected: "Strong", actual: capabilities["locatorStrength"].GetValue<string>());
+
+            // Assert: the buffered event keeps the host locator, so conversion never rewrites recorder data.
+            Assert.AreEqual(expected: ShadowHostLocator, actual: click["chain"]["locator"].GetValue<string>());
         }
 
         [TestMethod(DisplayName = "Verify UIA coordinate mode emits physical input without element targets.")]
@@ -612,6 +833,33 @@ namespace G4.Services.UnitTests.Recordings
                 ["locators"] = new JsonArray(roleName, testHook),
                 ["originalLocator"] = "/html[1]/body[1]/button[1]",
                 ["shadowPath"] = new JsonArray(shadowHost, shadowTarget)
+            };
+        }
+
+        // Creates one Chromium element event whose target is inside a shadow root: the chain locator reaches only the
+        // outermost shadow host, and the trigger node ranks the given locator candidates in the given order.
+        private static JsonObject NewShadowEvent(string eventName, JsonObject value, JsonNode[] locators)
+        {
+            // Arrange: replace the shared chain locator with the host XPath and attach the candidates to the
+            // first path node, which is the trigger node of a target-first chain.
+            var model = NewEvent(eventName, timestamp: 1, value);
+            model["chain"]["locator"] = ShadowHostLocator;
+            model["chain"]["path"][0]["properties"] = new JsonObject { ["locators"] = new JsonArray(locators) };
+            return model;
+        }
+
+        // Creates the locator candidate the Chromium recorder ranks for a target inside a shadow root: a CSS
+        // selector that chains one segment per shadow root, with the verdict of the recorder's last re-test.
+        private static JsonObject NewShadowLocator(string value, string verdict)
+        {
+            // Arrange: mirror the recorder contract, where only the value and the verdict vary between targets.
+            return new JsonObject
+            {
+                ["using"] = "CssSelector",
+                ["value"] = value,
+                ["strategy"] = "ShadowPath",
+                ["score"] = 68,
+                ["verdict"] = verdict
             };
         }
 
