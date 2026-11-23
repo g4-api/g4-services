@@ -45,6 +45,23 @@ namespace G4.Services.Domain.V4.Recordings
 
         #region *** Methods      ***
 
+        // Resolves the node an element event was triggered on: the path node the recorder flagged with
+        // isTriggerElement, or the first node when none is flagged, which is the target of a target-first chain.
+        // Rule conversion and late locator amendments share this lookup, so both read and patch the same node.
+        // Pure lookup: returns null for an event without a recorded path or with a non-object node, and never throws.
+        internal static JsonObject GetTriggerNode(JsonObject model)
+        {
+            // An event without a non-empty recorded path names no element, so there is no node to resolve.
+            if (model["chain"] is not JsonObject chain || chain["path"] is not JsonArray { Count: > 0 } path)
+            {
+                return null;
+            }
+
+            // Prefer the recorder's explicit flag so the lookup never depends on the chain orientation alone.
+            var flagged = path.OfType<JsonObject>().FirstOrDefault(predicate: TestTriggerNode);
+            return flagged ?? path[0] as JsonObject;
+        }
+
         // Converts captures with no window exclusions and returns only the flow; null for an empty recording.
         internal static JsonObject NewAutomation(RecordingAuthenticationModel authentication, RecorderCapture[] captures)
         {
@@ -152,6 +169,15 @@ namespace G4.Services.Domain.V4.Recordings
             };
 
             return new RecordedAutomation(Automation: automation, Jobs: [.. jobRecorders]);
+        }
+
+        // Reads optional recorder text that conversion cannot trust: locator metadata and locator amendments come
+        // from the browser extension and can be absent or carry another JSON type. Unlike GetText, which fails on a
+        // present non-string node, an absent or non-text value resolves to an empty string, so callers only test
+        // the length.
+        internal static string ResolveText(JsonNode value)
+        {
+            return value is JsonValue textValue && textValue.TryGetValue(out string text) ? text : "";
         }
 
         // Copies playback settings and satisfies the designer's driver-plus-binaries import contract.
@@ -295,6 +321,9 @@ namespace G4.Services.Domain.V4.Recordings
 
             // Chromium element rules also carry the markup around their target when the recorder captured it.
             SetDomContext(rule, model);
+
+            // The ranked locator candidates travel with the rule, so a client can swap or heal the chosen locator.
+            SetLocatorCandidates(rule, model);
             return rule;
         }
 
@@ -774,6 +803,66 @@ namespace G4.Services.Domain.V4.Recordings
             }
         }
 
+        // Carries the Chromium trigger node's locator metadata into the rule capabilities, next to the element name
+        // and the DOM context: the ranked candidates, the strength of the chosen locator, the shadow-root path, and
+        // the locator the recorder started from. The rule's onElement stays the chain's best XPath and no locator
+        // type is written, because the engine defaults to XPath. Rules without an element, a trigger node, or any of
+        // these properties are left untouched, so they serialize exactly as before; empty values are never emitted.
+        private static void SetLocatorCandidates(JsonObject rule, JsonObject model)
+        {
+            // Only element-targeted rules describe an element whose alternative locators matter.
+            var isElementRule = rule["onElement"] is not null;
+            if (!isElementRule || GetTriggerNode(model)?["properties"] is not JsonObject properties)
+            {
+                return;
+            }
+
+            // Collect detached copies first, so an event with no usable metadata never creates an empty capabilities
+            // object and the rule never shares nodes with the buffered event.
+            var candidates = new Dictionary<string, JsonNode>();
+            if (properties["locators"] is JsonArray { Count: > 0 } locators)
+            {
+                candidates["locators"] = locators.DeepClone();
+            }
+
+            if (properties["shadowPath"] is JsonArray { Count: > 0 } shadowPath)
+            {
+                candidates["shadowPath"] = shadowPath.DeepClone();
+            }
+
+            // Text values are copied only when the recorder reported a non-empty string.
+            var locatorStrength = ResolveText(value: properties["locatorStrength"]);
+            if (locatorStrength.Length > 0)
+            {
+                candidates["locatorStrength"] = locatorStrength;
+            }
+
+            var originalLocator = ResolveText(value: properties["originalLocator"]);
+            if (originalLocator.Length > 0)
+            {
+                candidates["originalLocator"] = originalLocator;
+            }
+
+            // Leave the rule as it is when the trigger node carried none of the locator properties.
+            if (candidates.Count == 0)
+            {
+                return;
+            }
+
+            // Reuse the capabilities created for the element name or DOM context, otherwise attach a new object.
+            if (rule["capabilities"] is not JsonObject capabilities)
+            {
+                capabilities = [];
+                rule["capabilities"] = capabilities;
+            }
+
+            // Write the collected values beside the existing capabilities without replacing any of them.
+            foreach (var (key, value) in candidates)
+            {
+                capabilities[key] = value;
+            }
+        }
+
         // Tests whether an event carries a non-empty element chain.
         private static bool TestChain(JsonObject model) => model["chain"]?["path"] is JsonArray { Count: > 0 };
 
@@ -839,6 +928,13 @@ namespace G4.Services.Domain.V4.Recordings
             // Compare the numeric code so localized key names never affect modifier detection.
             var virtualKey = (int)GetNumber(value: model["value"]?["virtualKey"]);
             return ModifierVirtualKeys.Contains(item: virtualKey);
+        }
+
+        // Tests whether a path node carries the recorder's trigger flag as a JSON true.
+        // Pure predicate: a missing flag or a non-boolean value never matches.
+        private static bool TestTriggerNode(JsonObject node)
+        {
+            return node["isTriggerElement"] is JsonValue flag && flag.TryGetValue(out bool isTrigger) && isTrigger;
         }
 
         // Matches the extension's release-only classifier. Mouse releases need an element chain to target, while

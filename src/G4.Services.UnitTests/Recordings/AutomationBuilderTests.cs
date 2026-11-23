@@ -134,6 +134,123 @@ namespace G4.Services.UnitTests.Recordings
             Assert.IsNull(value: openUrl["capabilities"]);
         }
 
+        [TestMethod(DisplayName = "Verify Chromium element rules without usable locator properties " +
+            "serialize exactly as before.")]
+        public void ChromiumLocatorCandidatesAbsentTest()
+        {
+            // Arrange: the baseline click carries no properties, and three variants carry unrelated, empty, and
+            // mistyped locator properties, all on the same timestamp so only the properties can change the rule.
+            var baseline = NewEvent(eventName: "InvokeClick", timestamp: 1, value: new JsonObject());
+            var unrelated = NewEvent(eventName: "InvokeClick", timestamp: 1, value: new JsonObject());
+            unrelated["chain"]["path"][0]["properties"] = new JsonObject
+            {
+                ["tagName"] = "button",
+                ["cssSelector"] = "button.save",
+                ["locatorId"] = "5b0c6f0e-0000-4000-8000-000000000001"
+            };
+            var empty = NewEvent(eventName: "InvokeClick", timestamp: 1, value: new JsonObject());
+            empty["chain"]["path"][0]["properties"] = new JsonObject
+            {
+                ["locators"] = new JsonArray(),
+                ["locatorStrength"] = "",
+                ["shadowPath"] = new JsonArray(),
+                ["originalLocator"] = ""
+            };
+            var mistyped = NewEvent(eventName: "InvokeClick", timestamp: 1, value: new JsonObject());
+            mistyped["chain"]["path"][0]["properties"] = new JsonObject
+            {
+                ["locators"] = "//button",
+                ["locatorStrength"] = 3,
+                ["shadowPath"] = new JsonObject(),
+                ["originalLocator"] = new JsonArray()
+            };
+
+            // Arrange: a navigation carries the complete locator contract on a rule that targets no element.
+            var navigationValue = new JsonObject { ["url"] = "https://example.com" };
+            var navigation = NewEvent(eventName: "OpenUrl", timestamp: 1, value: navigationValue);
+            navigation["chain"]["path"][0]["properties"] = NewLocatorProperties();
+
+            // Act: convert every event on its own so each rule can be compared with the baseline rule.
+            var expected = NewChromiumRules(events: [baseline])[0].ToJsonString();
+            var unrelatedRule = NewChromiumRules(events: [unrelated])[0];
+            var emptyRule = NewChromiumRules(events: [empty])[0];
+            var mistypedRule = NewChromiumRules(events: [mistyped])[0];
+            var navigationRule = NewChromiumRules(events: [navigation])[0];
+
+            // Assert: no variant adds a capability, so each rule keeps the baseline text and its element name.
+            var elementName = unrelatedRule["capabilities"]["elementName"].GetValue<string>();
+            Assert.AreEqual(expected: expected, actual: unrelatedRule.ToJsonString());
+            Assert.AreEqual(expected: expected, actual: emptyRule.ToJsonString());
+            Assert.AreEqual(expected: expected, actual: mistypedRule.ToJsonString());
+            Assert.AreEqual(expected: "target", actual: elementName);
+
+            // Assert: locator properties never reach a rule that targets no element.
+            Assert.IsNull(value: navigationRule["onElement"]);
+            Assert.IsNull(value: navigationRule["capabilities"]);
+        }
+
+        [TestMethod(DisplayName = "Verify Chromium element rules carry the trigger node locator candidates, " +
+            "strength, shadow path, and original locator into their capabilities.")]
+        public void ChromiumLocatorCandidatesTest()
+        {
+            // Arrange: a click whose flagged trigger node carries the complete locator contract of the recorder.
+            var click = NewEvent(eventName: "InvokeClick", timestamp: 1, value: new JsonObject());
+            click["chain"]["path"][0]["isTriggerElement"] = true;
+            click["chain"]["path"][0]["properties"] = NewLocatorProperties();
+            var properties = click["chain"]["path"][0]["properties"];
+
+            // Act: convert the capture and read the capabilities of the click rule.
+            var rule = NewChromiumRules(events: [click])[0];
+            var capabilities = rule["capabilities"];
+
+            // Assert: the rule keeps the chain locator and names no locator type, so the engine defaults to XPath.
+            Assert.AreEqual(expected: "//target", actual: rule["onElement"].GetValue<string>());
+            Assert.IsNull(value: rule["locator"]);
+
+            // Assert: the four locator properties join the element name with their recorded values.
+            var locators = capabilities["locators"];
+            var shadowPath = capabilities["shadowPath"];
+            var originalLocator = capabilities["originalLocator"].GetValue<string>();
+            Assert.AreEqual(expected: "target", actual: capabilities["elementName"].GetValue<string>());
+            Assert.IsTrue(condition: JsonNode.DeepEquals(node1: properties["locators"], node2: locators));
+            Assert.AreEqual(expected: "Strong", actual: capabilities["locatorStrength"].GetValue<string>());
+            Assert.IsTrue(condition: JsonNode.DeepEquals(node1: properties["shadowPath"], node2: shadowPath));
+            Assert.AreEqual(expected: "/html[1]/body[1]/button[1]", actual: originalLocator);
+
+            // Assert: recorder-only properties stay on the event, and the rule owns detached copies of the arrays.
+            Assert.IsNull(value: capabilities["locatorId"]);
+            Assert.IsNull(value: capabilities["cssSelector"]);
+            Assert.IsNull(value: capabilities["tagName"]);
+            Assert.AreNotSame(notExpected: properties["locators"], actual: locators);
+        }
+
+        [TestMethod(DisplayName = "Verify Chromium locator capabilities coexist with the DOM context " +
+            "on a rule whose element has no name.")]
+        public void ChromiumLocatorCandidatesWithDomContextTest()
+        {
+            // Arrange: an unnamed field carries a DOM context beside the locator contract, so neither the element
+            // name nor a previous capability creates the capabilities object for the other.
+            var text = NewEvent(eventName: "SendKeys", timestamp: 1, value: new JsonObject { ["text"] = "x" });
+            var properties = NewLocatorProperties();
+            properties["domContext"] = "PGkvPg==";
+            properties["domContextLength"] = 4;
+            text["chain"]["path"][0] = new JsonObject { ["name"] = "", ["properties"] = properties };
+
+            // Act: convert the capture and read the capabilities of the typed-text rule.
+            var rule = NewChromiumRules(events: [text])[0];
+            var capabilities = rule["capabilities"].AsObject();
+
+            // Assert: the DOM context and the locator properties share one capabilities object, with nothing else.
+            Assert.AreEqual(expected: "PGkvPg==", actual: capabilities["domContext"].GetValue<string>());
+            Assert.AreEqual(expected: 4, actual: capabilities["domContextLength"].GetValue<long>());
+            Assert.HasCount(expected: 2, collection: capabilities["locators"].AsArray());
+            Assert.AreEqual(expected: "Strong", actual: capabilities["locatorStrength"].GetValue<string>());
+            Assert.HasCount(expected: 2, collection: capabilities["shadowPath"].AsArray());
+            Assert.IsNotNull(value: capabilities["originalLocator"]);
+            Assert.IsNull(value: capabilities["elementName"]);
+            Assert.HasCount(expected: 6, collection: capabilities);
+        }
+
         [TestMethod(DisplayName = "Verify UIA coordinate mode emits physical input without element targets.")]
         public void CoordinateMouseTest()
         {
@@ -398,6 +515,24 @@ namespace G4.Services.UnitTests.Recordings
             Assert.AreEqual(expected: "InvokeUser32Click", actual: rules[1]["pluginName"].GetValue<string>());
         }
 
+        // Converts one Chromium capture and returns its rules without the trailing CloseBrowser action.
+        private static List<JsonNode> NewChromiumRules(JsonObject[] events)
+        {
+            // Arrange: use a Chromium endpoint without pacing, so every event converts into exactly one rule.
+            var options = new RecorderModel
+            {
+                BaseUrl = "http://localhost:9956",
+                DriverParameters = new Dictionary<string, object> { ["driver"] = "ChromeDriver" }
+            };
+
+            // Act: convert the capture and drop the endpoint's closing action.
+            var automation = AutomationBuilder.NewAutomation(
+                authentication: new RecordingAuthenticationModel { Token = "" },
+                captures: [new RecorderCapture(Options: options, Events: events)]);
+            var rules = automation["stages"][0]["jobs"][0]["rules"].AsArray();
+            return [.. rules.Where(predicate: rule => rule["pluginName"].GetValue<string>() != "CloseBrowser")];
+        }
+
         // Creates one trusted G4 model; the surrounding transport envelope is tested separately through HTTP.
         private static JsonObject NewEvent(string eventName, long timestamp, JsonObject value)
         {
@@ -439,6 +574,45 @@ namespace G4.Services.UnitTests.Recordings
             var names = modifiers.Select(selector: name => (JsonNode)name).ToArray();
             model["value"]["modifiers"] = new JsonArray(names);
             return model;
+        }
+
+        // Creates the trigger-node properties the Chromium recorder sends with an element event: two ranked locator
+        // candidates, the strength of the chosen locator, the locator it started from, and a shadow-root path.
+        private static JsonObject NewLocatorProperties()
+        {
+            // Arrange: rank a role-and-name XPath above a test-hook CSS selector, both unique on the page.
+            var roleName = new JsonObject
+            {
+                ["using"] = "Xpath",
+                ["value"] = "//button[normalize-space()='Save']",
+                ["strategy"] = "RoleName",
+                ["score"] = 92,
+                ["verdict"] = "Unique"
+            };
+            var testHook = new JsonObject
+            {
+                ["using"] = "CssSelector",
+                ["value"] = "[data-test-id=\"save\"]",
+                ["strategy"] = "TestHook",
+                ["score"] = 78,
+                ["verdict"] = "Unique"
+            };
+
+            // Arrange: describe the shadow host and the target inside its shadow root.
+            var shadowHost = new JsonObject { ["using"] = "Xpath", ["value"] = "//*[@id='host']" };
+            var shadowTarget = new JsonObject { ["using"] = "CssSelector", ["value"] = "button" };
+
+            // Arrange: add the recorder-only members, which conversion keeps out of the rule.
+            return new JsonObject
+            {
+                ["tagName"] = "button",
+                ["cssSelector"] = "button.save",
+                ["locatorId"] = "5b0c6f0e-0000-4000-8000-000000000001",
+                ["locatorStrength"] = "Strong",
+                ["locators"] = new JsonArray(roleName, testHook),
+                ["originalLocator"] = "/html[1]/body[1]/button[1]",
+                ["shadowPath"] = new JsonArray(shadowHost, shadowTarget)
+            };
         }
 
         // Converts one User32 capture and returns its rules without the trailing CloseBrowser action.

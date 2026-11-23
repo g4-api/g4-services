@@ -61,6 +61,37 @@ The Chromium recorder can send a snapshot of the markup around the target of an 
 - The Android recorder sends the same two keys, holding the XML of the accessibility subtree in the UiAutomator2 page-source vocabulary. The target carries `g4-target="true"`, and the Hub copies it the same way.
 - Replay does not use them: the engine and the plugins copy `capabilities` along with the rule but read neither key. A client that does not want them in a saved flow removes them; the VS Code extension does so by default.
 
+## Locator candidates on Chromium element rules
+
+The Chromium recorder ranks several locators for the target of an element event and sends them on the trigger node's `properties`. The Hub copies four of them into the rule's `capabilities`, next to `elementName` and the DOM context: `locators` (the ranked candidates), `locatorStrength` (`Strong`, `Fair` or `Weak`, for the chosen locator), `shadowPath` (the locator steps that lead through shadow roots to the target, when it is inside one) and `originalLocator` (the absolute XPath of the node the pointer landed on, when the recorder recorded the click against the surrounding control instead):
+
+```json
+{
+    "$type": "Action",
+    "pluginName": "InvokeClick",
+    "onElement": "//button[normalize-space()='Save']",
+    "capabilities": {
+        "elementName": "Save",
+        "locators": [
+            { "using": "Xpath", "value": "//button[normalize-space()='Save']", "strategy": "RoleName", "score": 92, "verdict": "Unique" },
+            { "using": "CssSelector", "value": "[data-test-id=\"save\"]", "strategy": "TestHook", "score": 78, "verdict": "Unique" }
+        ],
+        "locatorStrength": "Strong",
+        "shadowPath": [
+            { "using": "Xpath", "value": "//*[@id='host']" },
+            { "using": "CssSelector", "value": "button" }
+        ],
+        "originalLocator": "/html[1]/body[1]/form[1]/div[3]/button[1]"
+    }
+}
+```
+
+- Only rules that target an element get them. Navigation and other page-level rules never do.
+- Each key is written only when the recorder sent a value: a non-empty array for `locators` and `shadowPath`, a non-empty string for `locatorStrength` and `originalLocator`. A rule whose trigger node has none of them is unchanged.
+- `onElement` stays the recorder's best XPath, and the rule has no `locator` type, so the engine reads it as XPath. A client can replace it with another candidate from `locators`.
+- The recorder can correct an event it has already sent: after it re-tests the locators against the live page, it broadcasts `ReceiveLocatorAmendment` with the event's `locatorId`. The Hub then updates the buffered event's locator, `locators` and `locatorStrength`, so the stopped flow carries the corrected values. An amendment for an unknown `locatorId`, or one that arrives after stop, is ignored. A suspended recorder still takes amendments for events it buffered before the suspension.
+- Replay does not use them. Unlike the DOM context, they are small, and the VS Code extension keeps them in a saved flow.
+
 An empty recording returns `204 No Content` from stop and flow retrieval.
 Retrieval before stop returns `409 Conflict`, and an unknown ID returns `404 Not Found`.
 Invalid settings, and suspending a recorder that is not part of the session, return `400 Bad Request`.
