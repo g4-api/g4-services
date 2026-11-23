@@ -398,6 +398,33 @@ class G4Client {
 		}
 
 		/**
+		 * Gets the data collector to save for a step, or null when the step uses none.
+		 *
+		 * @param {*} dataCollector - The data collector value held by the step.
+		 *
+		 * @returns {Object|null} The data collector when it names a collector type; otherwise null.
+		 *
+		 * @remarks This helper is compute-only. A step holds an empty text until a collector is chosen, and an
+		 * object without a type after its collector was cleared. Neither names a collector plugin, and the Hub
+		 * cannot read an empty text as a data collector at all, so both are saved as null.
+		 */
+		const getDataCollector = (dataCollector) => {
+			// Only an object can describe a collector; an empty text, undefined and null describe none.
+			const isObject = Utilities.assertObject(dataCollector) && !Array.isArray(dataCollector);
+
+			if (!isObject) {
+				return null;
+			}
+
+			// A collector is chosen by its type; without one there is nothing to collect with.
+			const isTyped = typeof dataCollector.type === 'string' && dataCollector.type.trim() !== '';
+
+			return isTyped
+				? dataCollector
+				: null;
+		};
+
+		/**
 		 * Returns a stable list of valid Base64 field names for rule serialization.
 		 *
 		 * @param {*} fieldNames - Candidate field names from the step capabilities.
@@ -532,6 +559,14 @@ class G4Client {
 
 			// Assign the property's value to the rule object using the camelCase key.
 			rule[propertyKey] = step.properties[key].value;
+		}
+
+		// Save an unused data collector as null, so the Hub reads the rule as having no collector instead of
+		// rejecting the automation over a value it cannot read.
+		const isCollectorStep = Object.hasOwn(rule, 'dataCollector');
+
+		if (isCollectorStep) {
+			rule.dataCollector = getDataCollector(rule.dataCollector);
 		}
 
 		// Format all parameters into a single argument string.
@@ -1204,6 +1239,7 @@ class G4Client {
 		// Include a reference object with metadata about the automation.
 		// ID is aligned with the definition ID for traceability.
 		const reference = {
+			description: definition?.properties?.description,
 			name: definition?.properties?.title,
 			id: definition.id
 		}
@@ -1495,6 +1531,7 @@ class G4Client {
 		const includeKeys = [
 			"argument",
 			"dataCollector",
+			"dataType",
 			"key",
 			"locator",
 			"locatorType",

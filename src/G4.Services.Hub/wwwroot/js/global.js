@@ -656,6 +656,7 @@ const setDefinition = (definition) => {
 			properties: {
 				authentication: definition.authentication,
 				dataSource: definition.dataSource,
+				description: definition?.reference?.description,
 				driverParameters: driverParameters,
 				settings: definition.settings,
 				speed: 300,
