@@ -316,6 +316,28 @@ class G4Client {
 		}
 
 		/**
+		 * Tests whether the value of a switch parameter means the switch is on.
+		 *
+		 * @param {*} value - The switch value held by the step: the text 'true' or 'false' that the switch field
+		 * stores, the same text read back from a saved flag, a boolean set by other code, or nothing for a switch
+		 * that was never set.
+		 *
+		 * @returns {boolean} True for true or the text 'true' in any letter case; every other value is off.
+		 *
+		 * @remarks This helper is compute-only. A switch cannot be tested for a non-empty value, because the text
+		 * 'false' that the switch field stores when the user turns it off is not empty.
+		 */
+		const testSwitchOn = (value) => {
+			// A boolean set by code is already the switch state.
+			if (value === true) {
+				return true;
+			}
+
+			// The switch field stores text, so only the text 'true' turns the switch on.
+			return typeof value === 'string' && value.trim().toLowerCase() === 'true';
+		};
+
+		/**
 		 * Processes the parameters from the given step object and returns a single aggregated
 		 * string of command-line arguments in the format "{{$ --key:value --key2:value2 ...}}".
 		 */
@@ -340,15 +362,25 @@ class G4Client {
 					|| parameterType === 'KEY/VALUE'
 					|| parameterType === 'KEYVALUE'
 					|| parameterType === 'OBJECT');
-				const isBoolean = parameterType === 'SWITCH';
+				const isSwitch = parameterType === 'SWITCH';
 				const isValue = !isDictionary && !isArray && value && value.length > 0;
 
-				// Construct the parameter token based on its type.
-				if (isBoolean && isValue) {
-					// Boolean type usually doesn't need a value, just the presence of the flag.
-					parameterToken = `--${key}`;
+				// Write a switch as its bare flag only while it is on, because the engine reads the flag's presence
+				// as on; an off switch writes nothing, so turning a switch off removes the flag from the rule.
+				if (isSwitch) {
+					const isSwitchOn = testSwitchOn(value);
+
+					if (!isSwitchOn) {
+						continue;
+					}
+
+					parameters.push(`--${key}`);
+
+					continue;
 				}
-				else if (isValue) {
+
+				// Construct the parameter token based on its type.
+				if (isValue) {
 					// Simple string or numeric value type: "--key:value".
 					parameterToken = `--${key}:${value}`;
 				}

@@ -36,6 +36,7 @@ All notable user-visible changes to the G4 Hub are listed here. The format follo
 
 ### Fixed
 
+- The designer removes a `Switch` parameter's flag, such as `--Base64`, from the rule argument when the switch is turned off; before, the flag stayed and the engine still read the switch as on.
 - SignalR automation error payloads are handled correctly (98b7551).
 - Designer start-up keeps working when a plugin type is missing (f3e721a).
 - Toolbox steps are found by plugin key and the Display Name label is correct (bbb09a8).
