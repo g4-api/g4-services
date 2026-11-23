@@ -83,6 +83,12 @@ namespace G4.Services.UnitTests.Mcp
         }
 
         /// <inheritdoc />
+        public event EventHandler<ParallelEventArgs> ParallelInvoked { add { } remove { } }
+
+        /// <inheritdoc />
+        public event EventHandler<ParallelEventArgs> ParallelInvoking { add { } remove { } }
+
+        /// <inheritdoc />
         public event EventHandler<(PluginBase Plugin, G4RuleModelBase Rule)> PluginCreated { add { } remove { } }
 
         /// <inheritdoc />

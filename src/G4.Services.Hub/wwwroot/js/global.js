@@ -22,7 +22,7 @@ let _svgsCache = {};
 let _timer;
 
 const _auditableTypes = ["ACTION", "CONTENT", "TRANSFORMER"];
-const _flowableTypes = ["ACTION", "CONTENT", "EXPORT", "JOB", "STAGE", "TRANSFORMER"];
+const _flowableTypes = ["ACTION", "CONTENT", "EXPORT", "JOB", "PARALLEL", "STAGE", "TRANSFORMER"];
 
 // Maps each run state to the CSS class that colors the step's frame on the canvas.
 const _runStateClasses = {
@@ -656,6 +656,7 @@ const setDefinition = (definition) => {
 			properties: {
 				authentication: definition.authentication,
 				dataSource: definition.dataSource,
+				description: definition?.reference?.description,
 				driverParameters: driverParameters,
 				settings: definition.settings,
 				speed: 300,
@@ -665,14 +666,86 @@ const setDefinition = (definition) => {
 		};
 	};
 
-	// Initialize an empty sequence that will hold all stage steps.
-	const sequence = [];
+	/**
+	 * Tests whether an entry of a stages or jobs list is a Parallel container.
+	 *
+	 * The engine matches the type exactly ("Parallel") and reads an entry with any other type as a plain
+	 * stage or job, so the designer does the same.
+	 */
+	const testParallelEntry = (entry) => entry?.["$type"] === "Parallel";
 
-	// Ensure that the definition has a stages property.
-	definition.stages = definition.stages || [];
+	/**
+	 * Creates a Parallel container step from a Parallel entry of a stages or jobs list.
+	 *
+	 * The container holds its lanes under the same key as the list it sits in (`stages` or `jobs`), and each
+	 * lane is created by the given factory, which marks it as a lane so its background flag is read.
+	 */
+	const newParallelStep = (entry, lanesKey, newLaneStep) => {
+		// Create a new Parallel container step using the state machine factory.
+		const parallelStep = StateMachineSteps.newG4Parallel('Parallel', {}, {}, []);
 
-	// Process each stage in the definition.
-	for (const stage of definition.stages) {
+		// Assign name and description from the container reference if available.
+		parallelStep.name = entry?.reference?.name || parallelStep.name;
+		parallelStep.description = entry?.reference?.description?.trim() || parallelStep.description?.trim();
+		parallelStep.id = Utilities.newUid();
+
+		// Keep the lanes limit as a whole number; anything else means "run every lane at once".
+		parallelStep.parallel.maxParallel = StateMachineSteps.convertToMaxParallel(entry.maxParallel);
+
+		// Create one step for each lane, in the order the lanes are written.
+		for (const lane of entry[lanesKey] || []) {
+			parallelStep.sequence.push(newLaneStep(lane, true));
+		}
+
+		return parallelStep;
+	};
+
+	/**
+	 * Creates a Job step from an entry of a jobs list, or a Parallel container step when the entry is a
+	 * Parallel container.
+	 */
+	const newJobStep = (job, isLane) => {
+		// A Parallel container in a jobs list holds jobs, each of them one lane.
+		if (testParallelEntry(job)) {
+			return newParallelStep(job, 'jobs', newJobStep);
+		}
+
+		// Create a new job step using the state machine factory.
+		const jobStep = StateMachineSteps.newG4Job('Job', {}, {}, []);
+
+		// Assign name and description from the job reference if available.
+		jobStep.name = job?.reference?.name || jobStep.name;
+		jobStep.description = job?.reference?.description || jobStep.description;
+		jobStep.id = Utilities.newUid();
+		jobStep.properties.driverParameters = getDriverParameters(job.driverParameters);
+
+		// The engine reads the background flag only on a lane, so it is kept only there.
+		if (isLane) {
+			jobStep.lane = { isBackground: job.background === true };
+		}
+
+		// Ensure that the job has a rules array.
+		job.rules = job.rules || [];
+
+		// Process each rule in the job by creating and appending a new step.
+		for (const rule of job.rules) {
+			const step = newStep(rule);
+			jobStep.sequence.push(step);
+		}
+
+		return jobStep;
+	};
+
+	/**
+	 * Creates a Stage step from an entry of a stages list, or a Parallel container step when the entry is a
+	 * Parallel container.
+	 */
+	const newStageStep = (stage, isLane) => {
+		// A Parallel container in a stages list holds stages, each of them one lane.
+		if (testParallelEntry(stage)) {
+			return newParallelStep(stage, 'stages', newStageStep);
+		}
+
 		// Create a new stage step using the state machine factory.
 		const stageStep = StateMachineSteps.newG4Stage('Stage', {}, {}, []);
 
@@ -682,39 +755,35 @@ const setDefinition = (definition) => {
 		stageStep.id = Utilities.newUid();
 		stageStep.properties.driverParameters = getDriverParameters(stage.driverParameters);
 
+		// The engine reads the background flag only on a lane, so it is kept only there.
+		if (isLane) {
+			stageStep.lane = { isBackground: stage.background === true };
+		}
+
 		// Ensure that the stage has a jobs array.
 		stage.jobs = stage.jobs || [];
 
-		// Process each job within the stage.
+		// Process each job within the stage; a Parallel container among them becomes one step holding its lanes.
 		for (const job of stage.jobs) {
-			// Create a new job step using the state machine factory.
-			const jobStep = StateMachineSteps.newG4Job('Job', {}, {}, []);
-
-			// Assign name and description from the job reference if available.
-			jobStep.name = job?.reference?.name || jobStep.name;
-			jobStep.description = job?.reference?.description || jobStep.description;
-			jobStep.id = Utilities.newUid();
-			jobStep.properties.driverParameters = getDriverParameters(job.driverParameters);
-
-			// Ensure that the job has a rules array.
-			job.rules = job.rules || [];
-
-			// Process each rule in the job by creating and appending a new step.
-			for (const rule of job.rules) {
-				const step = newStep(rule);
-				jobStep.sequence.push(step);
-			}
-
-			// Append the job step to the stage's sequence.
-			stageStep.sequence.push(jobStep);
+			stageStep.sequence.push(newJobStep(job, false));
 		}
 
-		// Append the stage step to the overall sequence.
-		sequence.push(stageStep);
-	}
+		return stageStep;
+	};
+
+	// Ensure that the definition has a stages property.
+	definition.stages = definition.stages || [];
+
+	// Create the sequence of stage steps; an entry outside a Parallel container is never a lane.
+	const sequence = definition.stages.map((stage) => newStageStep(stage, false));
 
 	// Create the new definition state object using the constructed sequence.
 	const newDefinitionState = newDefinition(definition, sequence);
+
+	// Clear the selected step before the definition is replaced. Every step of the new definition gets a new
+	// id, so the step editor would otherwise look up the selected step of the old definition and fail with
+	// "Cannot find step by id".
+	_designer.clearSelectedStep();
 
 	// Initialize the workflow designer with the new definition state.
 	_designer.state.setDefinition(newDefinitionState);

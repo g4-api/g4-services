@@ -1,0 +1,15 @@
+/*
+ * G4 pointer drop parameters, mapped to the canvas theme (every theme file,
+ * designer-blueprint-parameters*.css, defines them). The chip is the dragged step, so it takes the colors
+ * of a toolbox item, which is what the user picked up; its frame takes the toolbox hover color, so the chip
+ * reads as the item being held.
+ */
+:root {
+    --g4-pointer-drop-background: var(--toolbox-item-background);
+    --g4-pointer-drop-border-color: var(--toolbox-item-hover-border-color);
+    --g4-pointer-drop-border-radius: var(--border-radius);
+    --g4-pointer-drop-foreground: var(--toolbox-item-color);
+    --g4-pointer-drop-icon-color: var(--toolbox-item-icon-image-color);
+    --g4-pointer-drop-icon-filter: var(--toolbox-item-icon-image-filter);
+    --g4-pointer-drop-shadow: var(--toolbox-item-box-shadow);
+}

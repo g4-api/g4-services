@@ -38,6 +38,10 @@ namespace G4.Services.Hub.Api.V4.Controllers
             description: "Invalid data source. The automation's `dataSource` cannot be read: its source is not a file path, a JSON array, or the Base64 encoding of a JSON array; its rows or filter are not valid; or its type is not supported. The error explains why.",
             type: typeof(GenericErrorModel),
             contentTypes: MediaTypeNames.Application.Json)]
+        [SwaggerResponse(StatusCodes.Status502BadGateway,
+            description: "The driver session was not created, so the automation did not run. The driver server cannot be reached, the browser or the application cannot be started, or the capabilities were refused. The `SessionNotCreated` error names the driver and the reason the driver gave.",
+            type: typeof(GenericErrorModel),
+            contentTypes: MediaTypeNames.Application.Json)]
         public IActionResult Invoke(
             [FromBody]
             [SwaggerRequestBody(
@@ -80,6 +84,10 @@ namespace G4.Services.Hub.Api.V4.Controllers
             description: "Invalid data source. The automation's `dataSource` cannot be read: its source is not a file path, a JSON array, or the Base64 encoding of a JSON array; its rows or filter are not valid; or its type is not supported. The error explains why.",
             type: typeof(GenericErrorModel),
             contentTypes: MediaTypeNames.Application.Json)]
+        [SwaggerResponse(StatusCodes.Status502BadGateway,
+            description: "The driver session was not created, so the automation did not run. The driver server cannot be reached, the browser or the application cannot be started, or the capabilities were refused. The `SessionNotCreated` error names the driver and the reason the driver gave.",
+            type: typeof(GenericErrorModel),
+            contentTypes: MediaTypeNames.Application.Json)]
         public IActionResult Invoke([FromBody] G4AutomationModel automation)
         {
             try
@@ -111,6 +119,10 @@ namespace G4.Services.Hub.Api.V4.Controllers
             contentTypes: MediaTypeNames.Application.Json)]
         [SwaggerResponse(StatusCodes.Status400BadRequest,
             description: "Invalid data source. The automation's `dataSource` cannot be read: its source is not a file path, a JSON array, or the Base64 encoding of a JSON array; its rows or filter are not valid; or its type is not supported. The error explains why.",
+            type: typeof(GenericErrorModel),
+            contentTypes: MediaTypeNames.Application.Json)]
+        [SwaggerResponse(StatusCodes.Status502BadGateway,
+            description: "The driver session was not created, so the automation did not run. The driver server cannot be reached, the browser or the application cannot be started, or the capabilities were refused. The `SessionNotCreated` error names the driver and the reason the driver gave.",
             type: typeof(GenericErrorModel),
             contentTypes: MediaTypeNames.Application.Json)]
         public IActionResult InvokeBase64([FromBody] string base64Automation)

@@ -311,6 +311,26 @@ namespace G4.Services.Domain.V4
                 });
             };
 
+            // Event handler for when every lane of a Parallel container has finished or was stopped.
+            client.Automation.ParallelInvoked += (sender, e) =>
+            {
+                // Retrieve the SignalR connection ID tied to this automation.
+                var connectionId = e.Automation.GetConnection();
+
+                // Notify the client about the container completion, with the outcome of its lanes.
+                context.SendMessage(connectionId, method: "ReceiveAutomationEndEvent", message: NewParallelEventData(e));
+            };
+
+            // Event handler for when the lanes of a Parallel container are about to start.
+            client.Automation.ParallelInvoking += (sender, e) =>
+            {
+                // Retrieve the SignalR connection ID tied to this automation.
+                var connectionId = e.Automation.GetConnection();
+
+                // Notify the client about the container start, before any of its lanes reports a start.
+                context.SendMessage(connectionId, method: "ReceiveAutomationStartEvent", message: NewParallelEventData(e));
+            };
+
             // Event handler for when a rule has finished executing.
             client.Automation.RuleInvoked += (sender, e) =>
             {
@@ -395,6 +415,34 @@ namespace G4.Services.Domain.V4
                     Value = e.LogMessage
                 });
             };
+
+            // Creates the event data of a Parallel container event. The container has no entry of its own in the
+            // status or in the response, so the event carries only what identifies it and tells its state: its
+            // reference, whose id is the id clients know the container by, its level, the stage that holds a
+            // job-level container, and its status. The automation and the automation status the engine attaches
+            // to the event are left out, because every stage, job, and rule event already carries what a client
+            // follows, and they would repeat the whole request on each container event.
+            static EventDataModel NewParallelEventData(ParallelEventArgs e)
+            {
+                // Name the model the container was read as, the way stage and job events name theirs.
+                var objectType = e.Level == ParallelEventArgs.StageLevel
+                    ? nameof(G4ParallelStageModel)
+                    : nameof(G4ParallelJobModel);
+
+                return new EventDataModel
+                {
+                    Id = e.ParallelReference.Id,
+                    ObjectType = objectType,
+                    Type = "Parallel",
+                    Value = new
+                    {
+                        e.Level,
+                        e.ParallelReference,
+                        StageReference = e.Stage?.Reference,
+                        e.Status
+                    }
+                };
+            }
         }
         #endregion
 

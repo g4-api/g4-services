@@ -1,0 +1,19 @@
+/*
+ * G4 pointer drop visual language: the chip looks like a toolbox item that is being held. An inline icon
+ * takes the theme's icon color; an icon that stayed an image is tinted by the theme's image filter.
+ */
+.g4-pointer-drop {
+    color: var(--g4-pointer-drop-foreground);
+    background: var(--g4-pointer-drop-background);
+    border-color: var(--g4-pointer-drop-border-color);
+    border-radius: var(--g4-pointer-drop-border-radius);
+    box-shadow: var(--g4-pointer-drop-shadow);
+}
+
+.g4-pointer-drop__icon > svg path {
+    fill: var(--g4-pointer-drop-icon-color);
+}
+
+.g4-pointer-drop__icon > img {
+    filter: var(--g4-pointer-drop-icon-filter);
+}

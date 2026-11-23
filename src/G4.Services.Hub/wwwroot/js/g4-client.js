@@ -398,6 +398,33 @@ class G4Client {
 		}
 
 		/**
+		 * Gets the data collector to save for a step, or null when the step uses none.
+		 *
+		 * @param {*} dataCollector - The data collector value held by the step.
+		 *
+		 * @returns {Object|null} The data collector when it names a collector type; otherwise null.
+		 *
+		 * @remarks This helper is compute-only. A step holds an empty text until a collector is chosen, and an
+		 * object without a type after its collector was cleared. Neither names a collector plugin, and the Hub
+		 * cannot read an empty text as a data collector at all, so both are saved as null.
+		 */
+		const getDataCollector = (dataCollector) => {
+			// Only an object can describe a collector; an empty text, undefined and null describe none.
+			const isObject = Utilities.assertObject(dataCollector) && !Array.isArray(dataCollector);
+
+			if (!isObject) {
+				return null;
+			}
+
+			// A collector is chosen by its type; without one there is nothing to collect with.
+			const isTyped = typeof dataCollector.type === 'string' && dataCollector.type.trim() !== '';
+
+			return isTyped
+				? dataCollector
+				: null;
+		};
+
+		/**
 		 * Returns a stable list of valid Base64 field names for rule serialization.
 		 *
 		 * @param {*} fieldNames - Candidate field names from the step capabilities.
@@ -532,6 +559,14 @@ class G4Client {
 
 			// Assign the property's value to the rule object using the camelCase key.
 			rule[propertyKey] = step.properties[key].value;
+		}
+
+		// Save an unused data collector as null, so the Hub reads the rule as having no collector instead of
+		// rejecting the automation over a value it cannot read.
+		const isCollectorStep = Object.hasOwn(rule, 'dataCollector');
+
+		if (isCollectorStep) {
+			rule.dataCollector = getDataCollector(rule.dataCollector);
 		}
 
 		// Format all parameters into a single argument string.
@@ -1074,13 +1109,102 @@ class G4Client {
 		settings = formatExternalRepositories(settings);
 		settings = formatMcpServers(settings);
 
-		// Prepare an array to collect stages from the definition sequence.
-		const stages = [];
+		/**
+		 * Returns the background flag of a stage or job entry.
+		 *
+		 * The engine reads the flag only on a lane, an entry placed directly inside a Parallel container, so
+		 * the flag is written only there. Undefined leaves the property out of the automation, which keeps
+		 * every entry outside a container exactly as it was written before.
+		 */
+		const getBackground = (step, isLane) => {
+			const isBackground = isLane && step.lane?.isBackground === true;
 
-		// Iterate over each stage in the definition's sequence.
-		for (const stage of definition.sequence) {
+			return isBackground ? true : undefined;
+		};
+
+		/**
+		 * Constructs a Parallel container entry from a Parallel step.
+		 *
+		 * The entry is written with "$type" first, because the engine reads the type of an entry only from its
+		 * first property. The container holds its lanes under the same key as the list it sits in: `stages` in
+		 * a stages list and `jobs` in the jobs list of a stage.
+		 */
+		const newParallelEntry = (step, lanesKey, newLaneEntry) => {
+			// Convert every step of the container to a lane, in the order the lanes are drawn.
+			const lanes = (step.sequence || []).map((lane) => newLaneEntry(lane, true));
+
+			return {
+				// Marks the entry as a Parallel container; it must stay the first property.
+				"$type": "Parallel",
+
+				// A reference object that captures key metadata about the container.
+				reference: {
+					description: step.description,
+					id: step.id,
+					name: step.name,
+				},
+
+				// The most lanes that run at once; zero runs all of them.
+				maxParallel: StateMachineSteps.convertToMaxParallel(step.parallel?.maxParallel),
+
+				// The stages or jobs that run as the lanes of the container.
+				[lanesKey]: lanes,
+			};
+		};
+
+		/**
+		 * Constructs a job entry from a Job step, or a Parallel container entry when the step is a Parallel
+		 * container placed in the jobs of a stage.
+		 */
+		const newJobEntry = (job, isLane) => {
+			// A Parallel container in a jobs list holds jobs, each of them one lane.
+			if (StateMachineSteps.testG4Parallel(job)) {
+				return newParallelEntry(job, 'jobs', newJobEntry);
+			}
+
+			// Extract the driver parameters for the current job.
+			const driverParameters = getDriverParameters(job.properties?.driverParameters);
+
+			// Construct a new job object.
+			const newJob = {
+				// Job-level driver parameters (if provided).
+				driverParameters: driverParameters ? formatDriverParameters(driverParameters) : undefined,
+
+				// A reference object that captures key metadata about the job.
+				reference: {
+					description: job.description,
+					id: job.id,
+					name: job.name,
+				},
+
+				// Whether the job is a background lane of its Parallel container.
+				background: getBackground(job, isLane),
+
+				// Each job contains multiple rules derived from its steps.
+				rules: [],
+			};
+
+			// Convert each step in the job's sequence into a rule, then add it to the job.
+			for (const step of job.sequence) {
+				const rule = this.convertToRule(step);
+				newJob.rules.push(rule);
+			}
+
+			return newJob;
+		};
+
+		/**
+		 * Constructs a stage entry from a Stage step, or a Parallel container entry when the step is a Parallel
+		 * container placed at the top level.
+		 */
+		const newStageEntry = (stage, isLane) => {
+			// A Parallel container in a stages list holds stages, each of them one lane.
+			if (StateMachineSteps.testG4Parallel(stage)) {
+				return newParallelEntry(stage, 'stages', newStageEntry);
+			}
+
 			// Extract the driver parameters for the current stage.
-			let driverParameters = getDriverParameters(stage.properties?.driverParameters);
+			const driverParameters = getDriverParameters(stage.properties?.driverParameters);
 
 			// Construct a new stage object with minimal required properties.
 			const newStage = {
@@ -1094,48 +1218,28 @@ class G4Client {
 					name: stage.name,
 				},
 
+				// Whether the stage is a background lane of its Parallel container.
+				background: getBackground(stage, isLane),
+
 				// Each stage contains multiple jobs.
 				jobs: [],
 			};
 
-			// Iterate over each job in the current stage.
+			// Convert each job of the stage; a Parallel container among them becomes one entry holding its lanes.
 			for (const job of stage.sequence) {
-				// Extract the driver parameters for the current job.
-				let driverParameters = getDriverParameters(job.properties?.driverParameters);
-
-				// Construct a new job object.
-				const newJob = {
-					// Job-level driver parameters (if provided).
-					driverParameters: driverParameters ? formatDriverParameters(driverParameters) : undefined,
-
-					// A reference object that captures key metadata about the job.
-					reference: {
-						description: job.description,
-						id: job.id,
-						name: job.name,
-					},
-
-					// Each job contains multiple rules derived from its steps.
-					rules: [],
-				};
-
-				// Convert each step in the job's sequence into a rule, then add it to the job.
-				for (const step of job.sequence) {
-					const rule = this.convertToRule(step);
-					newJob.rules.push(rule);
-				}
-
-				// Add the populated job to the current stage.
-				newStage.jobs.push(newJob);
+				newStage.jobs.push(newJobEntry(job, false));
 			}
 
-			// After processing all jobs, add the completed stage to the main stages array.
-			stages.push(newStage);
-		}
+			return newStage;
+		};
+
+		// Collect the stages from the definition sequence; an entry outside a Parallel container is never a lane.
+		const stages = definition.sequence.map((stage) => newStageEntry(stage, false));
 
 		// Include a reference object with metadata about the automation.
 		// ID is aligned with the definition ID for traceability.
 		const reference = {
+			description: definition?.properties?.description,
 			name: definition?.properties?.title,
 			id: definition.id
 		}
@@ -1427,6 +1531,7 @@ class G4Client {
 		const includeKeys = [
 			"argument",
 			"dataCollector",
+			"dataType",
 			"key",
 			"locator",
 			"locatorType",
