@@ -448,7 +448,11 @@ class StateMachineSteps {
 		step.aliases = manifest.aliases || [];
 		step.pluginType = manifest.pluginType;
 		step.properties = properties;
-		step.context = context;
+
+		// Give every step its own copy of the manifest's workflow context. The context holds the step's validation
+		// messages and editor state, so a shared object let one step's messages and switches show on every other
+		// step of the same plugin, and wrote them into the cached manifest.
+		step.context = structuredClone(context);
 		step.context.errors = step.context.errors || {};
 
 		// Return the new G4 step object

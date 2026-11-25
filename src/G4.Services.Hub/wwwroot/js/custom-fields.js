@@ -2971,19 +2971,34 @@ class CustomFields {
      * @param {Object} options.step           - The step object containing context and errors
      * @param {string} options.step.id        - Unique identifier of the step
      * @param {Object} options.step.context   - Context object holding error details
-     * @param {Object.<string, {title: string, description: string}>} options.step.context.errors
+     * @param {Object.<string, {title: string, description: string, level: string}>} options.step.context.errors
+     *        The messages to show; a message with level "WRN" is a warning and gets the warning style.
      * @param {HTMLElement} options.container - The DOM element to render errors into
      * @param {Function} [setCallback]        - Optional callback function invoked with the error container
-     * 
+     *
      * @returns {HTMLElement|undefined} The updated container or the newly created error container
      */
     static newError(options, setCallback) {
-        // Helper: build HTML string for a single error block
-        const newErrorMessage = (id, title, content) => {
+        // Helper: build HTML string for a single message block. A warning keeps the error block's layout and
+        // only adds the warning class, so the themes color it apart from an error.
+        const newErrorMessage = (id, errorDetail) => {
+            // Pick the block style and fallback title from the level, so a warning never reads as an error.
+            const isWarning = errorDetail.level === 'WRN';
+            const blockClass = isWarning
+                ? 'sqd-error sqd-error--warning'
+                : 'sqd-error';
+            const defaultTitle = isWarning
+                ? 'Warning'
+                : 'Error';
+
+            // Fall back to generic text when a validator left the title or description empty.
+            const title = errorDetail.title || defaultTitle;
+            const description = errorDetail.description || 'Something went wrong. Please try again later.';
+
             return `
-        <div class="sqd-error" data-g4-error-id="${id}">
-            <div class="sqd-error-title">${title || 'Error'}</div>
-            <div class="sqd-error-description">${content || 'Something went wrong. Please try again later.'}</div>
+        <div class="${blockClass}" data-g4-error-id="${id}">
+            <div class="sqd-error-title">${title}</div>
+            <div class="sqd-error-description">${description}</div>
         </div>`;
         };
 
@@ -3001,7 +3016,7 @@ class CustomFields {
         for (const key of errorKeys) {
             const errorDetail = context.errors[key];
             const messageId = `${options.step.id}_${key}`;
-            html += newErrorMessage(messageId, errorDetail.title, errorDetail.description);
+            html += newErrorMessage(messageId, errorDetail);
         }
 
         // Prepare the error container element
