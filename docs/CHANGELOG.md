@@ -11,7 +11,18 @@ All notable user-visible changes to the G4 Hub are listed here. The format follo
 - Recorded Chromium element rules carry the recorder's ranked locator candidates in `capabilities.locators`, `capabilities.locatorStrength`, `capabilities.shadowPath` and `capabilities.originalLocator`.
 - Recorded Chromium element rules whose target is inside a shadow root use the recorder's `ShadowPath` candidate as `onElement`, with `locator` set to `CssSelector`; a `Broken` shadow path falls back to the host XPath.
 - The Hub applies the recorder's `ReceiveLocatorAmendment` corrections to events it has already buffered.
-- Recorded drag and drop: a Chromium `InvokeDragAndDrop` event becomes an `InvokeDragAndDrop` rule that drops on the target's locator or by the recorded distance, with the target's candidates in `capabilities.target`. A UIA `Left Up` that carries `value.drag` becomes `InvokeUser32DragAndDrop` in every mode, with element points where a locator exists and screen points (`--X --Y`, `--TargetX --TargetY`) otherwise; coordinate mode uses screen points only. Locator amendments also correct the drop element.
+- Recorded drag and drop: a Chromium `InvokeDragAndDrop` event becomes an `InvokeDragAndDrop` rule that drops on the
+  target's locator or by the recorded distance, with the target's candidates in `capabilities.target`. A UIA `Left Up`
+  that carries `value.drag` becomes `InvokeUser32DragAndDrop` in every mode, with element points where a locator exists
+  and screen points (`--X --Y`, `--TargetX --TargetY`) otherwise; coordinate mode uses screen points only. Locator
+  amendments also correct the drop element (000b935, 67ee706).
+- Input Actions Groups in the designer: input actions (plugin type `InputAction`) are listed in the toolbox, an input
+  action must sit directly inside an Input Actions Group (`InvokeInputActions`) and a group may hold only input actions,
+  both as errors, and an empty group is a warning (197f291).
+- Parallel containers: a `Parallel` container runs stages at the top level and jobs inside a Stage, and the designer
+  validates its placement (c5c15a4).
+- A recorded UIA `Middle Up` release becomes `InvokeMiddleClick` in `standard` mode and `InvokeUser32MiddleClick` in the
+  other modes.
 - Recordings domain and an MCP server built on the official SDK (bc38142).
 - MCP tool resolution (11a8d55).
 - Namespace-aware tools and toolbox filtering (c65ecea).
@@ -24,6 +35,8 @@ All notable user-visible changes to the G4 Hub are listed here. The format follo
 
 ### Changed
 
+- The Hub uses `G4.Api` 2026.11.25.78, the engine packages 2026.11.25.111 and the `G4.Plugins.*` packages
+  2026.11.25.177, which add the middle-click plugins and `InvokeScroll --Relative` that recorded rules now use.
 - `FindTool` returns the full tool model with its namespace (17a1356).
 - Tool discovery handles `take` differently (c34cd5b).
 - The G4 CLI argument generation and array parameter handling were improved (fd8d04a).
@@ -37,6 +50,12 @@ All notable user-visible changes to the G4 Hub are listed here. The format follo
 
 ### Fixed
 
+- A recorded scroll becomes `InvokeScroll` with `{{$ --Left:<x> --Top:<y> --Relative}}`, which scrolls by the Chromium
+  wheel deltas, or by 120 pixels per notch along the recorded direction when there are none. Before, the argument used
+  `--direction` and `--times`, which `InvokeScroll` does not read. The plugin runs JavaScript, so the rule replays on
+  web pages only.
+- Recorded `SendUser32KeyboardKey` rules, discrete keys and shortcut chords, no longer carry `onElement`, because the
+  plugin sends the key to the focused window.
 - The designer removes a `Switch` parameter's flag, such as `--Base64`, from the rule argument when the switch is turned off; before, the flag stayed and the engine still read the switch as on.
 - SignalR automation error payloads are handled correctly (98b7551).
 - Designer start-up keeps working when a plugin type is missing (f3e721a).

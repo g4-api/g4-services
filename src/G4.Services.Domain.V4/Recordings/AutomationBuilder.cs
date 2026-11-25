@@ -14,6 +14,10 @@ namespace G4.Services.Domain.V4.Recordings
     {
         #region *** Constants    ***
 
+        // Pixels one wheel notch scrolls when a recorder reports notches without pixel deltas. It matches the
+        // Windows WHEEL_DELTA unit, which the Chromium recorder also uses to count notches.
+        private const int ScrollNotchPixels = 120;
+
         // Standalone modifiers have no playback meaning on their own; they only shape shortcut chords.
         private static readonly HashSet<int> ModifierVirtualKeys =
             [0x10, 0x11, 0x12, 0x5B, 0x5C, 0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5];
@@ -319,13 +323,9 @@ namespace G4.Services.Domain.V4.Recordings
                     rule["argument"] = value?["index"]?.ToString() ?? "0";
                     break;
                 case "InvokeScroll":
-                    // Scroll defaults mirror the extension: one notch downward when direction or count is absent.
+                    // The scroll replays by the recorded pixel offsets from the current position.
                     SetLocator(rule, locator);
-                    var direction = GetText(value: value?["direction"]);
-                    direction = direction.Length == 0 ? "Down" : direction;
-                    var times = value?["notches"]?.ToString() ?? "1";
-                    var scrollArgument = "{{$ --direction:" + direction + " --times:" + times + "}}";
-                    rule["argument"] = scrollArgument;
+                    rule["argument"] = NewScrollArgument(value);
                     break;
                 case "InvokeDragAndDrop":
                     // The dragged element is the chain target; where the drag ends travels in the argument.
@@ -439,8 +439,10 @@ namespace G4.Services.Domain.V4.Recordings
             var rule = NewRule(plugin, model: item.Model);
             rule["argument"] = keysArgument;
 
-            // Coordinate keyboard actions intentionally target the active desktop focus rather than an element.
-            if (item.Options.Mode != CaptureModes.Coordinate)
+            // Coordinate keyboard actions intentionally target the active desktop focus rather than an element, and
+            // SendUser32KeyboardKey sends its key to the focused window in every mode, so neither gets onElement.
+            var isFocusTargeted = item.Options.Mode == CaptureModes.Coordinate || plugin == "SendUser32KeyboardKey";
+            if (!isFocusTargeted)
             {
                 SetLocator(rule, locator: GetText(value: item.Model["chain"]?["locator"]));
             }
@@ -578,6 +580,43 @@ namespace G4.Services.Domain.V4.Recordings
             return new JsonObject { ["$type"] = "Action", ["pluginName"] = plugin, ["context"] = context };
         }
 
+        // Shapes the InvokeScroll argument from a scroll event's value. With --Relative the plugin scrolls by --Left
+        // and --Top pixels from the current position, through JavaScript, so the rule replays on web pages only.
+        // The Chromium recorder sends the pixel deltas of each single wheel event, which are used as they are. A
+        // recorder that sends only a direction and a notch count, such as the Android recorder, scrolls
+        // ScrollNotchPixels per notch along that direction; a missing direction scrolls down, and a missing or
+        // unusable notch count scrolls one notch.
+        private static string NewScrollArgument(JsonNode value)
+        {
+            // Prefer the recorded deltas, because they carry the exact wheel distance on both axes; an axis whose
+            // delta is not a JSON number does not move.
+            var deltaX = value?["deltaX"];
+            var deltaY = value?["deltaY"];
+            var isDeltaXRecorded = TestNumber(value: deltaX);
+            var isDeltaYRecorded = TestNumber(value: deltaY);
+            if (isDeltaXRecorded || isDeltaYRecorded)
+            {
+                var deltaLeft = isDeltaXRecorded ? ConvertToPixelText(value: deltaX) : "0";
+                var deltaTop = isDeltaYRecorded ? ConvertToPixelText(value: deltaY) : "0";
+                return "{{$ --Left:" + deltaLeft + " --Top:" + deltaTop + " --Relative}}";
+            }
+
+            // Without deltas, turn the notch count into pixels on the axis of the recorded direction; the sign
+            // follows the page axes, so up and left are negative.
+            var notches = Math.Max(val1: 1, val2: GetNumber(value: value?["notches"]));
+            var distance = notches * ScrollNotchPixels;
+            var (left, top) = GetText(value: value?["direction"]).ToUpperInvariant() switch
+            {
+                "UP" => (0d, -distance),
+                "LEFT" => (-distance, 0d),
+                "RIGHT" => (distance, 0d),
+                _ => (0d, distance)
+            };
+
+            return "{{$ --Left:" + ConvertToPixelText(pixels: left) + " --Top:" + ConvertToPixelText(pixels: top) +
+                " --Relative}}";
+        }
+
         // Plays a shortcut as one sticky chord: every modifier is held, the key is pressed, then all are released
         // in reverse order. User32 input is used in every UIA mode, since element patterns cannot hold a modifier
         // and cannot press a lone Windows key, which is played through this rule with no modifiers.
@@ -592,14 +631,8 @@ namespace G4.Services.Domain.V4.Recordings
             var rule = NewRule(plugin: "SendUser32KeyboardKey", model: item.Model);
             rule["argument"] = chordArgument;
 
-            // Coordinate mode targets the active desktop focus, matching discrete keyboard actions.
-            if (item.Options.Mode != CaptureModes.Coordinate)
-            {
-                SetLocator(rule, locator: GetText(value: item.Model["chain"]?["locator"]));
-            }
-
-            // UIA paths run root-first, so the element name search starts from the far end.
-            SetElementName(rule, model: item.Model, targetFirst: false);
+            // The plugin presses the chord in the focused window in every mode, so the rule carries no onElement
+            // and, without one, no element name.
             return rule;
         }
 
@@ -734,12 +767,6 @@ namespace G4.Services.Domain.V4.Recordings
                 parameters.Add(item: "--" + prefix + "Alignment:TopLeft");
                 parameters.Add(item: "--" + prefix + "OffsetX:" + ConvertToPixelText(value: offsetX));
                 parameters.Add(item: "--" + prefix + "OffsetY:" + ConvertToPixelText(value: offsetY));
-            }
-
-            // Tests whether a recorded offset is a JSON number, which is how the recorder sends a measured offset.
-            static bool TestNumber(JsonNode value)
-            {
-                return value is JsonValue number && number.GetValueKind() == JsonValueKind.Number;
             }
         }
 
@@ -1254,6 +1281,13 @@ namespace G4.Services.Domain.V4.Recordings
             // Compare the numeric code so localized key names never affect modifier detection.
             var virtualKey = (int)GetNumber(value: model["value"]?["virtualKey"]);
             return ModifierVirtualKeys.Contains(item: virtualKey);
+        }
+
+        // Tests whether a recorded value is a JSON number, which is how the recorders send a measured offset or a
+        // scroll delta. Pure predicate: an absent node, a string, or any other JSON type never matches.
+        private static bool TestNumber(JsonNode value)
+        {
+            return value is JsonValue number && number.GetValueKind() == JsonValueKind.Number;
         }
 
         // Tests whether a path node carries the recorder's trigger flag as a JSON true.
