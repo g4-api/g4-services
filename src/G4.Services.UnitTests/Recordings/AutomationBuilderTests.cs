@@ -636,26 +636,62 @@ namespace G4.Services.UnitTests.Recordings
             Assert.AreEqual(expected: "{{$ --Target://List[@Name='Done']}}", actual: argument);
         }
 
-        [TestMethod(DisplayName = "Verify a UIA drag and drop without a target replays the distance from the grab " +
-            "point, and coordinate mode keeps the click.")]
-        public void UiaDragOffsetAndCoordinateTest()
+        [TestMethod(DisplayName = "Verify a UIA drag and drop from an element without a target replays the distance " +
+            "from the grab point.")]
+        public void UiaDragOffsetTest()
         {
             // Arrange: a drag with no drop element, pressed at (300, 200) and released at (450, 180).
-            var offsetDrag = NewUiaDrag(target: null);
-            var coordinateDrag = NewUiaDrag(target: null);
+            var drag = NewUiaDrag(target: null);
 
-            // Act: convert the drag once in user32 mode and once in coordinate mode.
-            var offsetRule = NewUiaRules(events: [offsetDrag], mode: "user32")[0];
-            var coordinateRule = NewUiaRules(events: [coordinateDrag], mode: "coordinate")[0];
+            // Act: convert the drag in user32 mode.
+            var rule = NewUiaRules(events: [drag], mode: "user32")[0];
 
-            // Assert: user32 mode replays the distance at the center of the source.
-            Assert.AreEqual(expected: "InvokeUser32DragAndDrop", actual: offsetRule["pluginName"].GetValue<string>());
-            var offsetArgument = offsetRule["argument"].GetValue<string>();
-            Assert.AreEqual(expected: "{{$ --DeltaX:150 --DeltaY:-20}}", actual: offsetArgument);
+            // Assert: the rule starts on the element and replays the distance, so the drop follows the element.
+            Assert.AreEqual(expected: "InvokeUser32DragAndDrop", actual: rule["pluginName"].GetValue<string>());
+            Assert.AreEqual(expected: "//target", actual: rule["onElement"].GetValue<string>());
+            Assert.AreEqual(expected: "{{$ --DeltaX:150 --DeltaY:-20}}", actual: rule["argument"].GetValue<string>());
+        }
 
-            // Assert: coordinate mode has no locator to drag from, so the release stays a click at its position.
-            Assert.AreEqual(expected: "InvokeUser32Click", actual: coordinateRule["pluginName"].GetValue<string>());
-            Assert.AreEqual(expected: "{{$ --X:450 --Y:180}}", actual: coordinateRule["argument"].GetValue<string>());
+        [TestMethod(DisplayName = "Verify a UIA drag and drop in coordinate mode replays between the press and the " +
+            "release points, without a locator.")]
+        public void UiaDragCoordinateTest()
+        {
+            // Arrange: a drag onto a target, recorded in coordinate mode, which replays screen positions only.
+            var target = new JsonObject { ["locator"] = "//List[@Name='Done']", ["path"] = new JsonArray() };
+            var drag = NewUiaDrag(target);
+
+            // Act: convert the drag in coordinate mode.
+            var rule = NewUiaRules(events: [drag], mode: "coordinate")[0];
+
+            // Assert: both ends are screen points, and the rule names no element.
+            var expected = "{{$ --X:300 --Y:200 --TargetX:450 --TargetY:180}}";
+            Assert.AreEqual(expected: "InvokeUser32DragAndDrop", actual: rule["pluginName"].GetValue<string>());
+            Assert.AreEqual(expected: expected, actual: rule["argument"].GetValue<string>());
+            Assert.IsNull(value: rule["onElement"]);
+        }
+
+        [TestMethod(DisplayName = "Verify a UIA drag and drop pressed over no resolved element starts at the press " +
+            "point, and ends on the target element or at the release point.")]
+        #region *** Data Set ***
+        [DataRow(true, "{{$ --X:300 --Y:200 --Target://List[@Name='Done']}}")]
+        [DataRow(false, "{{$ --X:300 --Y:200 --TargetX:450 --TargetY:180}}")]
+        #endregion
+        public void UiaDragWithoutSourceTest(bool isTarget, string expected)
+        {
+            // Arrange: a drag whose release carries no chain, because UI Automation resolved nothing at the press.
+            var target = isTarget
+                ? new JsonObject { ["locator"] = "//List[@Name='Done']", ["path"] = new JsonArray() }
+                : null;
+            var drag = NewUiaDrag(target);
+            drag.Remove(propertyName: "chain");
+
+            // Act: convert the drag in user32 mode.
+            var rules = NewUiaRules(events: [drag], mode: "user32");
+
+            // Assert: the drag is kept and starts at the screen point, with no element to name.
+            Assert.HasCount(expected: 1, collection: rules);
+            Assert.AreEqual(expected: expected, actual: rules[0]["argument"].GetValue<string>());
+            Assert.IsNull(value: rules[0]["onElement"]);
         }
 
         [TestMethod(DisplayName = "Verify UIA coordinate mode emits physical input without element targets.")]

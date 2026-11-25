@@ -11,7 +11,7 @@ All notable user-visible changes to the G4 Hub are listed here. The format follo
 - Recorded Chromium element rules carry the recorder's ranked locator candidates in `capabilities.locators`, `capabilities.locatorStrength`, `capabilities.shadowPath` and `capabilities.originalLocator`.
 - Recorded Chromium element rules whose target is inside a shadow root use the recorder's `ShadowPath` candidate as `onElement`, with `locator` set to `CssSelector`; a `Broken` shadow path falls back to the host XPath.
 - The Hub applies the recorder's `ReceiveLocatorAmendment` corrections to events it has already buffered.
-- Recorded drag and drop: a Chromium `InvokeDragAndDrop` event becomes an `InvokeDragAndDrop` rule that drops on the target's locator or by the recorded distance, with the target's candidates in `capabilities.target`. A UIA `Left Up` that carries `value.drag` becomes `InvokeUser32DragAndDrop` in `standard` and `user32` modes. Locator amendments also correct the drop element.
+- Recorded drag and drop: a Chromium `InvokeDragAndDrop` event becomes an `InvokeDragAndDrop` rule that drops on the target's locator or by the recorded distance, with the target's candidates in `capabilities.target`. A UIA `Left Up` that carries `value.drag` becomes `InvokeUser32DragAndDrop` in every mode, with element points where a locator exists and screen points (`--X --Y`, `--TargetX --TargetY`) otherwise; coordinate mode uses screen points only. Locator amendments also correct the drop element.
 - Recordings domain and an MCP server built on the official SDK (bc38142).
 - MCP tool resolution (11a8d55).
 - Namespace-aware tools and toolbox filtering (c65ecea).

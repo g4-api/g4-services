@@ -649,12 +649,16 @@ namespace G4.Services.Domain.V4.Recordings
         }
 
         // Maps a UIA left-button release that carries drag facts to InvokeUser32DragAndDrop, the only drag plugin of
-        // the UIA driver, in both standard and user32 modes, because UI Automation has no drag pattern. The source
-        // is the press-time chain. The drop end is the target chain's locator when the argument can carry it, with
-        // its offset; otherwise it is the distance from the grab point to the release point. Offsets are measured from
-        // the top-left corner of each element and are written with the TopLeft alignment, because the UIA driver
-        // applies offsets to every alignment except its MiddleCenter default. An element the recorder had no bounds
-        // for carries no offset and keeps the plugin's center alignment.
+        // the UIA driver, in every capture mode, because UI Automation has no drag pattern. Each end is an element
+        // point when its element has a usable locator, and a screen point otherwise:
+        // - Start: the press-time chain in onElement with its grab offset, or --X and --Y, the press point.
+        // - End: --Target with its drop offset; without a usable target, --DeltaX and --DeltaY from the press point
+        //   when the start is an element, so the drop follows the element when the window moves, or --TargetX and
+        //   --TargetY, the release point, when the start is a screen point too.
+        // Coordinate mode records screen positions, so both of its ends are screen points and the rule names no
+        // locator. Offsets are measured from the top-left corner of each element and are written with the TopLeft
+        // alignment, which every UIA driver version applies. An element the recorder had no bounds for carries no
+        // offset and keeps the plugin's center alignment.
         private static JsonObject NewUiaDragRule(RecordedEvent item)
         {
             // Read the release once; TestUiaDrag already proved that the drag facts are an object.
@@ -662,23 +666,35 @@ namespace G4.Services.Domain.V4.Recordings
             var value = model["value"];
             var drag = value["drag"].AsObject();
             var rule = NewRule(plugin: "InvokeUser32DragAndDrop", model);
+            var isLocatorMode = item.Options.Mode != CaptureModes.Coordinate;
 
-            // Address the dragged element as a click does: the primary locator, or the alternate one when it is empty.
-            var chain = model["chain"];
-            var locator = ResolveText(value: chain?["locator"]);
-            var sourceLocator = locator.Length > 0 ? locator : ResolveText(value: chain?["fallbackLocator"]);
-            SetLocator(rule, locator: sourceLocator);
+            // Resolve both elements as a click does: the primary locator, or the alternate one when it is empty.
+            // Coordinate mode uses neither, and the target must also fit in the argument.
+            var sourceLocator = isLocatorMode ? ResolveChainLocator(chain: model["chain"]) : "";
+            var targetLocator = isLocatorMode ? ResolveChainLocator(chain: drag["target"]) : "";
+            var isSourceElement = sourceLocator.Length > 0;
+            var isTargetElement = targetLocator.Length > 0 && TestArgumentValue(value: targetLocator);
 
-            // Grab the source where the user pressed it.
+            // Start on the dragged element at its grab point, or at the press point on the screen.
             var parameters = new List<string>();
-            AddOffsetParameters(parameters, prefix: "", offsetX: drag["sourceOffsetX"], offsetY: drag["sourceOffsetY"]);
+            if (isSourceElement)
+            {
+                SetLocator(rule, locator: sourceLocator);
+                AddOffsetParameters(
+                    parameters,
+                    prefix: "",
+                    offsetX: drag["sourceOffsetX"],
+                    offsetY: drag["sourceOffsetY"]);
+            }
+            else
+            {
+                parameters.Add(item: "--X:" + ConvertToPixelText(value: drag["startX"]));
+                parameters.Add(item: "--Y:" + ConvertToPixelText(value: drag["startY"]));
+            }
 
-            // Drop on the target element when its locator fits in the argument, where the user released it.
-            var target = drag["target"];
-            var targetLocator = ResolveText(value: target?["locator"]);
-            targetLocator = targetLocator.Length > 0 ? targetLocator : ResolveText(value: target?["fallbackLocator"]);
-            var isTargetUsable = targetLocator.Length > 0 && TestArgumentValue(value: targetLocator);
-            if (isTargetUsable)
+            // End on the drop element at its drop point, by the distance from an element start, or at the release
+            // point on the screen.
+            if (isTargetElement)
             {
                 parameters.Add(item: "--Target:" + targetLocator);
                 AddOffsetParameters(
@@ -687,16 +703,20 @@ namespace G4.Services.Domain.V4.Recordings
                     offsetX: drag["targetOffsetX"],
                     offsetY: drag["targetOffsetY"]);
             }
-            else
+            else if (isSourceElement)
             {
-                // Without a drop element, replay the distance from the grab point to the release point.
                 var deltaX = GetNumber(value: value["x"]) - GetNumber(value: drag["startX"]);
                 var deltaY = GetNumber(value: value["y"]) - GetNumber(value: drag["startY"]);
                 parameters.Add(item: "--DeltaX:" + ConvertToPixelText(pixels: deltaX));
                 parameters.Add(item: "--DeltaY:" + ConvertToPixelText(pixels: deltaY));
             }
+            else
+            {
+                parameters.Add(item: "--TargetX:" + ConvertToPixelText(value: value["x"]));
+                parameters.Add(item: "--TargetY:" + ConvertToPixelText(value: value["y"]));
+            }
 
-            // Wrap the parameters in the plugin macro and name the rule after the dragged element.
+            // Wrap the parameters in the plugin macro and name the rule after the dragged element, when it has one.
             rule["argument"] = "{{$ " + string.Join(separator: ' ', values: parameters) + "}}";
             SetElementName(rule, model, targetFirst: false);
             return rule;
@@ -762,7 +782,7 @@ namespace G4.Services.Domain.V4.Recordings
                     comparisonType: StringComparison.OrdinalIgnoreCase);
                 if (isMouse)
                 {
-                    var mouseRule = TestUiaDrag(item) ? NewUiaDragRule(item) : NewMouseRule(item);
+                    var mouseRule = TestUiaDrag(model: item.Model) ? NewUiaDragRule(item) : NewMouseRule(item);
                     rules.Add(item: mouseRule);
                     continue;
                 }
@@ -839,6 +859,14 @@ namespace G4.Services.Domain.V4.Recordings
             }
 
             return rules;
+        }
+
+        // Resolves the locator of a UIA chain as a click does: the primary locator, or the alternate one when the
+        // primary is empty. A missing chain or non-text values resolve to an empty string. Never throws.
+        private static string ResolveChainLocator(JsonNode chain)
+        {
+            var locator = ResolveText(value: chain?["locator"]);
+            return locator.Length > 0 ? locator : ResolveText(value: chain?["fallbackLocator"]);
         }
 
         // Word aliases are classification aids only; discrete driver key normalization remains downstream.
@@ -1236,20 +1264,20 @@ namespace G4.Services.Domain.V4.Recordings
         }
 
         // Tests whether a UIA release is a drag and drop to replay: a left-button release whose value carries the
-        // drag facts object the UIA recorder adds past the Windows drag threshold. Coordinate mode keeps the click,
-        // because its rules have no locator and InvokeUser32DragAndDrop needs the element to drag. Pure predicate.
-        private static bool TestUiaDrag(RecordedEvent item)
+        // drag facts object the UIA recorder adds past the Windows drag threshold, in any capture mode. Pure
+        // predicate.
+        private static bool TestUiaDrag(JsonObject model)
         {
-            var isLeftRelease = GetText(value: item.Model["event"]).Equals(
+            var isLeftRelease = GetText(value: model["event"]).Equals(
                 value: "Left Up",
                 comparisonType: StringComparison.OrdinalIgnoreCase);
-            var isDrag = item.Model["value"]?["drag"] is JsonObject;
-            var isLocatorMode = item.Options.Mode != CaptureModes.Coordinate;
-            return isLeftRelease && isDrag && isLocatorMode;
+            var isDrag = model["value"]?["drag"] is JsonObject;
+            return isLeftRelease && isDrag;
         }
 
-        // Matches the extension's release-only classifier. Mouse releases need an element chain to target, while
-        // keyboard releases are kept without one: the plugins type into the focused element when no locator is set.
+        // Matches the extension's release-only classifier. Mouse clicks need an element chain to target, while
+        // keyboard releases and drags are kept without one: the plugins type into the focused element when no
+        // locator is set, and a drag replays between screen points.
         // Pure predicate: reads the model without mutation and treats missing fields as non-matching.
         private static bool TestUiaEvent(JsonObject model)
         {
@@ -1271,8 +1299,9 @@ namespace G4.Services.Domain.V4.Recordings
                 return !TestModifierKey(model);
             }
 
-            // Keep a click only when it names the element it targets.
-            return TestChain(model);
+            // Keep a click only when it names the element it targets; a drag is kept without one, because it can
+            // replay between screen points.
+            return TestChain(model) || TestUiaDrag(model);
         }
 
         #endregion
