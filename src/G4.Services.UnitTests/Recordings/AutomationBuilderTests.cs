@@ -581,31 +581,59 @@ namespace G4.Services.UnitTests.Recordings
         }
 
         [TestMethod(DisplayName = "Verify a UIA drag and drop onto a target maps to InvokeUser32DragAndDrop in " +
-            "standard and user32 modes, with the grab and drop offsets.")]
+            "standard and user32 modes, with the grab and drop offsets from the element corners.")]
         #region *** Data Set ***
         [DataRow("standard")]
         [DataRow("user32")]
         #endregion
         public void UiaDragTargetTest(string mode)
         {
-            // Arrange: a release past the drag threshold, grabbed off center and dropped near the target center.
+            // Arrange: a release past the drag threshold, grabbed and dropped at measured points of both elements.
             var targetLocator = "//List[@AutomationId='DoneList']";
             var target = new JsonObject { ["locator"] = targetLocator, ["path"] = new JsonArray() };
             var drag = NewUiaDrag(target);
-            drag["value"]["drag"]["sourceOffsetX"] = -12;
+            drag["value"]["drag"]["sourceOffsetX"] = 12;
             drag["value"]["drag"]["sourceOffsetY"] = 3;
+            drag["value"]["drag"]["targetOffsetX"] = 0;
             drag["value"]["drag"]["targetOffsetY"] = 8;
 
             // Act: convert the capture in the given mode.
             var rule = NewUiaRules(events: [drag], mode)[0];
 
-            // Assert: the source is the press-time chain and both points are kept, each as an offset pair.
-            var expected = "{{$ --OffsetX:-12 --OffsetY:3 --Target://List[@AutomationId='DoneList'] " +
-                "--TargetOffsetX:0 --TargetOffsetY:8}}";
+            // Assert: both points are kept from the element corners with the alignment the driver applies offsets
+            // to, and a zero offset is still written, because it means the corner itself.
+            var expected = "{{$ --Alignment:TopLeft --OffsetX:12 --OffsetY:3 " +
+                "--Target://List[@AutomationId='DoneList'] " +
+                "--TargetAlignment:TopLeft --TargetOffsetX:0 --TargetOffsetY:8}}";
             Assert.AreEqual(expected: "InvokeUser32DragAndDrop", actual: rule["pluginName"].GetValue<string>());
             Assert.AreEqual(expected: "//target", actual: rule["onElement"].GetValue<string>());
             Assert.AreEqual(expected: expected, actual: rule["argument"].GetValue<string>());
             Assert.AreEqual(expected: "target", actual: rule["capabilities"]["elementName"].GetValue<string>());
+        }
+
+        [TestMethod(DisplayName = "Verify a UIA drag offset that is absent, null, or not a number keeps the " +
+            "plugin's center alignment.")]
+        #region *** Data Set ***
+        [DataRow(null)]
+        [DataRow("\"12\"")]
+        [DataRow("null")]
+        #endregion
+        public void UiaDragUnmeasuredOffsetTest(string offsetJson)
+        {
+            // Arrange: a drag onto a target whose grab offset was not measured, as for an element without bounds.
+            var target = new JsonObject { ["locator"] = "//List[@Name='Done']", ["path"] = new JsonArray() };
+            var drag = NewUiaDrag(target);
+            if (offsetJson is not null)
+            {
+                drag["value"]["drag"]["sourceOffsetX"] = JsonNode.Parse(json: offsetJson);
+                drag["value"]["drag"]["sourceOffsetY"] = 3;
+            }
+
+            // Act: convert the capture in user32 mode.
+            var argument = NewUiaRules(events: [drag], mode: "user32")[0]["argument"].GetValue<string>();
+
+            // Assert: no alignment or offset is written for either end, so both use the element centers.
+            Assert.AreEqual(expected: "{{$ --Target://List[@Name='Done']}}", actual: argument);
         }
 
         [TestMethod(DisplayName = "Verify a UIA drag and drop without a target replays the distance from the grab " +

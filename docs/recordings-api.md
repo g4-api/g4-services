@@ -147,7 +147,9 @@ A recorded drag and drop becomes one rule. The dragged element is the rule's `on
 - Without a usable drop element, the rule replays the distance: `{{$ --DeltaX:<x> --DeltaY:<y>}}`, rounded to whole pixels.
 - `capabilities.target` carries the drop element's name and the same locator capabilities as the dragged element, so a client can swap or heal the drop locator.
 - A locator amendment whose `locatorId` names the drop element corrects `value.target.chain`, and the event counts once.
-- For UIA, `value.drag` carries the press point (`startX`, `startY`), the grab offset from the source center (`sourceOffsetX`, `sourceOffsetY`), and the drop element's chain (`target`) with its offset from that element's center (`targetOffsetX`, `targetOffsetY`). Non-zero offsets become `--OffsetX`/`--OffsetY` and `--TargetOffsetX`/`--TargetOffsetY`. Without a usable target, the rule replays the distance from the press point to the release point.
+- For UIA, `value.drag` carries the press point (`startX`, `startY`), the grab offset from the source's top-left corner (`sourceOffsetX`, `sourceOffsetY`), and the drop element's chain (`target`) with its offset from that element's top-left corner (`targetOffsetX`, `targetOffsetY`).
+- A measured offset pair becomes `--Alignment:TopLeft --OffsetX --OffsetY`, and for the target `--TargetAlignment:TopLeft --TargetOffsetX --TargetOffsetY`. The UIA driver applies offsets to every alignment except its `MiddleCenter` default, so the corner is the reference. An offset the recorder could not measure is absent, and that end keeps the element center.
+- Without a usable UIA target, the rule replays the distance from the press point to the release point.
 - In UIA `coordinate` mode, a drag stays an `InvokeUser32Click` at the release point, because `InvokeUser32DragAndDrop` needs the element to drag. The recorders' [feature request #37](https://github.com/g4-api/g4-recorders/issues/37) tracks it.
 
 ## Status codes
