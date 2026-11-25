@@ -1,4 +1,5 @@
-﻿using G4.Services.Domain.V4.Recordings;
+﻿using G4.Abstraction.Cli;
+using G4.Services.Domain.V4.Recordings;
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -14,6 +15,9 @@ namespace G4.Services.UnitTests.Recordings
     [TestCategory("UnitTest")]
     public sealed class AutomationBuilderTests
     {
+        // Provides the chain locator the recorder sends for the drop element of a drag and drop.
+        private const string DropLocator = "//ul[@aria-label='Done']";
+
         // Provides the chain locator the recorder sends for a target inside a shadow root: the XPath of the
         // outermost shadow host, which is all an XPath can reach.
         private const string ShadowHostLocator = "//*[@id='lab-shadow-host']";
@@ -472,6 +476,160 @@ namespace G4.Services.UnitTests.Recordings
             Assert.AreEqual(expected: ShadowHostLocator, actual: click["chain"]["locator"].GetValue<string>());
         }
 
+        [TestMethod(DisplayName = "Verify a Chromium drag and drop drops on its target XPath and carries the " +
+            "target candidates in its capabilities.")]
+        public void ChromiumDragTargetTest()
+        {
+            // Arrange: a drag whose drop element has an XPath chain locator and one ranked candidate.
+            var candidate = NewLocator(@using: "Xpath", value: DropLocator);
+            var drag = NewDragEvent(targetLocator: DropLocator, targetLocators: [candidate]);
+
+            // Act: convert the capture and read the drag rule.
+            var rule = NewChromiumRules(events: [drag])[0];
+            var target = rule["capabilities"]["target"];
+
+            // Assert: the source is the chain target, and the argument names the drop XPath without a locator type.
+            Assert.AreEqual(expected: "InvokeDragAndDrop", actual: rule["pluginName"].GetValue<string>());
+            Assert.AreEqual(expected: "//target", actual: rule["onElement"].GetValue<string>());
+            var expectedArgument = "{{$ --Target:" + DropLocator + "}}";
+            Assert.AreEqual(expected: expectedArgument, actual: rule["argument"].GetValue<string>());
+
+            // Assert: the drop element is named, and its candidates and strength are copied beside the source ones.
+            Assert.AreEqual(expected: "Done", actual: target["elementName"].GetValue<string>());
+            Assert.AreEqual(expected: "Strong", actual: target["locatorStrength"].GetValue<string>());
+            Assert.HasCount(expected: 1, collection: target["locators"].AsArray());
+        }
+
+        [TestMethod(DisplayName = "Verify a Chromium drag and drop onto an element inside a shadow root drops on its " +
+            "shadow path as a CssSelector target.")]
+        public void ChromiumDragShadowTargetTest()
+        {
+            // Arrange: the drop element's chain locator reaches only its shadow host, and a shadow path reaches it.
+            var drag = NewDragEvent(
+                targetLocator: ShadowHostLocator,
+                targetLocators: [NewShadowLocator(value: ShadowPathLocator, verdict: "Unique")]);
+
+            // Act: convert the capture and read the drag rule.
+            var rule = NewChromiumRules(events: [drag])[0];
+
+            // Assert: the shadow path wins over the host XPath and names its locator type.
+            var expected = "{{$ --Target:" + ShadowPathLocator + " --TargetLocator:CssSelector}}";
+            Assert.AreEqual(expected: expected, actual: rule["argument"].GetValue<string>());
+        }
+
+        [TestMethod(DisplayName = "Verify a Chromium drag and drop skips target locators the argument cannot carry " +
+            "and falls back to the next candidate, then to the recorded distance.")]
+        #region *** Data Set ***
+        [DataRow("//li[.='a --b']", "#done", "{{$ --Target:#done --TargetLocator:CssSelector}}")]
+        [DataRow("//li[.='a --b']", "//li[.='{{$x}}']", "{{$ --DeltaX:341 --DeltaY:-40}}")]
+        [DataRow("", "", "{{$ --DeltaX:341 --DeltaY:-40}}")]
+        #endregion
+        public void ChromiumDragFallbackTest(string targetLocator, string candidateValue, string expected)
+        {
+            // Arrange: a drag whose chain locator, and maybe its only candidate, would break the argument.
+            var candidateType = candidateValue.StartsWith(value: '#') ? "CssSelector" : "Xpath";
+            JsonNode[] candidates = candidateValue.Length > 0
+                ? [NewLocator(@using: candidateType, value: candidateValue)]
+                : [];
+            var drag = NewDragEvent(targetLocator, targetLocators: candidates);
+
+            // Act: convert the capture and read the drag argument.
+            var argument = NewChromiumRules(events: [drag])[0]["argument"].GetValue<string>();
+
+            // Assert: the first safe candidate wins; with none, the distance is rounded to whole pixels.
+            Assert.AreEqual(expected: expected, actual: argument);
+        }
+
+        [TestMethod(DisplayName = "Verify the engine's CLI parser reads a drag and drop argument back as the " +
+            "recorded target, including quotes, spaces, colons, and a shadow path.")]
+        #region *** Data Set ***
+        [DataRow("//button[normalize-space()='Move: card 1 - draft']", "Xpath")]
+        [DataRow("lab-board >>> ul[aria-label=\"Done\"]", "CssSelector")]
+        #endregion
+        public void ChromiumDragArgumentParseTest(string targetLocator, string locatorType)
+        {
+            // Arrange: a drag whose drop element is reached by the given locator alone.
+            var candidate = locatorType == "Xpath"
+                ? NewLocator(@using: "Xpath", value: targetLocator)
+                : NewShadowLocator(value: targetLocator, verdict: "Unique");
+            var chainLocator = locatorType == "Xpath" ? targetLocator : "";
+            var drag = NewDragEvent(targetLocator: chainLocator, targetLocators: [candidate]);
+
+            // Act: convert the capture and parse its argument the way the plugin receives it.
+            var argument = NewChromiumRules(events: [drag])[0]["argument"].GetValue<string>();
+            var parameters = new CliFactory().ConvertToDictionary(cli: argument);
+
+            // Assert: the target arrives whole, and only a non-default locator type is named.
+            Assert.AreEqual(expected: targetLocator, actual: parameters["Target"]);
+            Assert.AreEqual(expected: locatorType != "Xpath", actual: parameters.ContainsKey(key: "TargetLocator"));
+        }
+
+        [TestMethod(DisplayName = "Verify a Chromium drag and drop without a drop element replays the recorded " +
+            "distance and carries no target capabilities.")]
+        public void ChromiumDragOffsetTest()
+        {
+            // Arrange: a slider drag, where the recorder sends only the distance from the source center.
+            var value = new JsonObject { ["kind"] = "Pointer", ["deltaX"] = 120, ["deltaY"] = 0 };
+            var drag = NewEvent(eventName: "InvokeDragAndDrop", timestamp: 1, value);
+
+            // Act: convert the capture and read the drag rule.
+            var rule = NewChromiumRules(events: [drag])[0];
+
+            // Assert: the distance becomes the offset, and no target capabilities are invented.
+            Assert.AreEqual(expected: "{{$ --DeltaX:120 --DeltaY:0}}", actual: rule["argument"].GetValue<string>());
+            Assert.IsNull(value: rule["capabilities"]["target"]);
+        }
+
+        [TestMethod(DisplayName = "Verify a UIA drag and drop onto a target maps to InvokeUser32DragAndDrop in " +
+            "standard and user32 modes, with the grab and drop offsets.")]
+        #region *** Data Set ***
+        [DataRow("standard")]
+        [DataRow("user32")]
+        #endregion
+        public void UiaDragTargetTest(string mode)
+        {
+            // Arrange: a release past the drag threshold, grabbed off center and dropped near the target center.
+            var targetLocator = "//List[@AutomationId='DoneList']";
+            var target = new JsonObject { ["locator"] = targetLocator, ["path"] = new JsonArray() };
+            var drag = NewUiaDrag(target);
+            drag["value"]["drag"]["sourceOffsetX"] = -12;
+            drag["value"]["drag"]["sourceOffsetY"] = 3;
+            drag["value"]["drag"]["targetOffsetY"] = 8;
+
+            // Act: convert the capture in the given mode.
+            var rule = NewUiaRules(events: [drag], mode)[0];
+
+            // Assert: the source is the press-time chain and both points are kept, each as an offset pair.
+            var expected = "{{$ --OffsetX:-12 --OffsetY:3 --Target://List[@AutomationId='DoneList'] " +
+                "--TargetOffsetX:0 --TargetOffsetY:8}}";
+            Assert.AreEqual(expected: "InvokeUser32DragAndDrop", actual: rule["pluginName"].GetValue<string>());
+            Assert.AreEqual(expected: "//target", actual: rule["onElement"].GetValue<string>());
+            Assert.AreEqual(expected: expected, actual: rule["argument"].GetValue<string>());
+            Assert.AreEqual(expected: "target", actual: rule["capabilities"]["elementName"].GetValue<string>());
+        }
+
+        [TestMethod(DisplayName = "Verify a UIA drag and drop without a target replays the distance from the grab " +
+            "point, and coordinate mode keeps the click.")]
+        public void UiaDragOffsetAndCoordinateTest()
+        {
+            // Arrange: a drag with no drop element, pressed at (300, 200) and released at (450, 180).
+            var offsetDrag = NewUiaDrag(target: null);
+            var coordinateDrag = NewUiaDrag(target: null);
+
+            // Act: convert the drag once in user32 mode and once in coordinate mode.
+            var offsetRule = NewUiaRules(events: [offsetDrag], mode: "user32")[0];
+            var coordinateRule = NewUiaRules(events: [coordinateDrag], mode: "coordinate")[0];
+
+            // Assert: user32 mode replays the distance at the center of the source.
+            Assert.AreEqual(expected: "InvokeUser32DragAndDrop", actual: offsetRule["pluginName"].GetValue<string>());
+            var offsetArgument = offsetRule["argument"].GetValue<string>();
+            Assert.AreEqual(expected: "{{$ --DeltaX:150 --DeltaY:-20}}", actual: offsetArgument);
+
+            // Assert: coordinate mode has no locator to drag from, so the release stays a click at its position.
+            Assert.AreEqual(expected: "InvokeUser32Click", actual: coordinateRule["pluginName"].GetValue<string>());
+            Assert.AreEqual(expected: "{{$ --X:450 --Y:180}}", actual: coordinateRule["argument"].GetValue<string>());
+        }
+
         [TestMethod(DisplayName = "Verify UIA coordinate mode emits physical input without element targets.")]
         public void CoordinateMouseTest()
         {
@@ -754,6 +912,40 @@ namespace G4.Services.UnitTests.Recordings
             return [.. rules.Where(predicate: rule => rule["pluginName"].GetValue<string>() != "CloseBrowser")];
         }
 
+        // Creates one Chromium drag and drop as the recorder sends it: the dragged element in the shared chain, the
+        // measured distance from its center to the release point, and the drop element's chain in value.target,
+        // whose trigger node ranks the given candidates.
+        private static JsonObject NewDragEvent(string targetLocator, JsonNode[] targetLocators)
+        {
+            // Arrange: describe the drop element with its own identifier, strength, and ranked candidates.
+            var properties = new JsonObject
+            {
+                ["locatorId"] = "5b0c6f0e-0000-4000-8000-000000000002",
+                ["locatorStrength"] = "Strong",
+                ["locators"] = new JsonArray(targetLocators)
+            };
+            var trigger = new JsonObject
+            {
+                ["name"] = "Done",
+                ["isTriggerElement"] = true,
+                ["properties"] = properties
+            };
+            var target = new JsonObject
+            {
+                ["chain"] = new JsonObject { ["locator"] = targetLocator, ["path"] = new JsonArray(trigger) }
+            };
+
+            // Arrange: carry a fractional distance, which the rule rounds to whole pixels.
+            var value = new JsonObject
+            {
+                ["kind"] = "Native",
+                ["deltaX"] = 340.6,
+                ["deltaY"] = -40,
+                ["target"] = target
+            };
+            return NewEvent(eventName: "InvokeDragAndDrop", timestamp: 1, value);
+        }
+
         // Creates one trusted G4 model; the surrounding transport envelope is tested separately through HTTP.
         private static JsonObject NewEvent(string eventName, long timestamp, JsonObject value)
         {
@@ -795,6 +987,19 @@ namespace G4.Services.UnitTests.Recordings
             var names = modifiers.Select(selector: name => (JsonNode)name).ToArray();
             model["value"]["modifiers"] = new JsonArray(names);
             return model;
+        }
+
+        // Creates one ranked locator candidate the recorder verified as unique on the page.
+        private static JsonObject NewLocator(string @using, string value)
+        {
+            return new JsonObject
+            {
+                ["using"] = @using,
+                ["value"] = value,
+                ["strategy"] = "Label",
+                ["score"] = 100,
+                ["verdict"] = "Unique"
+            };
         }
 
         // Creates the trigger-node properties the Chromium recorder sends with an element event: two ranked locator
@@ -863,14 +1068,32 @@ namespace G4.Services.UnitTests.Recordings
             };
         }
 
-        // Converts one User32 capture and returns its rules without the trailing CloseBrowser action.
-        private static List<JsonNode> NewUiaRules(JsonObject[] events)
+        // Creates one UIA left-button release past the drag threshold: pressed at (300, 200), released at (450, 180),
+        // with the drop element's chain when one was hit, as the UIA recorder adds the drag facts to Left Up.
+        private static JsonObject NewUiaDrag(JsonObject target)
         {
-            // Arrange: use a User32 endpoint, the mode the shortcut and untargeted-key rules apply to.
+            // Arrange: attach the drag facts to the release, leaving the target out when nothing was hit.
+            var drag = new JsonObject { ["startX"] = 300, ["startY"] = 200 };
+            if (target is not null)
+            {
+                drag["target"] = target;
+            }
+
+            var value = new JsonObject { ["x"] = 450, ["y"] = 180, ["drag"] = drag };
+            return NewEvent(eventName: "Left Up", timestamp: 1, value);
+        }
+
+        // Converts one User32 capture and returns its rules without the trailing CloseBrowser action.
+        private static List<JsonNode> NewUiaRules(JsonObject[] events) => NewUiaRules(events, mode: "user32");
+
+        // Converts one UIA capture in the given mode and returns its rules without the trailing CloseBrowser action.
+        private static List<JsonNode> NewUiaRules(JsonObject[] events, string mode)
+        {
+            // Arrange: use a UIA endpoint in the given capture mode.
             var options = new RecorderModel
             {
                 BaseUrl = "http://localhost:9955",
-                Mode = "user32",
+                Mode = mode,
                 DriverParameters = new Dictionary<string, object> { ["driver"] = "UiaDriver" }
             };
 

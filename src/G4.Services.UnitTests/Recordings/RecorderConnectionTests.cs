@@ -137,6 +137,30 @@ namespace G4.Services.UnitTests.Recordings
             Assert.AreEqual(expected: secondText, actual: second.ToJsonString());
         }
 
+        [TestMethod(DisplayName = "Verify a locator amendment for the drop element of a drag and drop patches the " +
+            "target chain and leaves the dragged element unchanged.")]
+        public void UpdateLocatorsDragTargetTest()
+        {
+            // Arrange: a drag and drop whose own chain and drop-element chain carry different identifiers.
+            var drag = NewEvent(locatorId: FirstLocatorId, timestamp: 1);
+            var target = NewEvent(locatorId: SecondLocatorId, timestamp: 1);
+            drag["event"] = "InvokeDragAndDrop";
+            drag["value"]["target"] = new JsonObject { ["chain"] = target["chain"].DeepClone() };
+            var sourceText = drag["chain"].ToJsonString();
+
+            // Act: apply an amendment that names the drop element.
+            var amendment = NewAmendment(locatorId: SecondLocatorId);
+            var updated = RecorderConnection.UpdateLocators(events: [drag], amendment);
+
+            // Assert: the event counts once, its drop-element chain is corrected, and its own chain is kept.
+            var targetChain = drag["value"]["target"]["chain"];
+            var targetStrength = targetChain["path"][0]["properties"]["locatorStrength"].GetValue<string>();
+            Assert.AreEqual(expected: 1, actual: updated);
+            Assert.AreEqual(expected: AmendedLocator, actual: targetChain["locator"].GetValue<string>());
+            Assert.AreEqual(expected: "Strong", actual: targetStrength);
+            Assert.AreEqual(expected: sourceText, actual: drag["chain"].ToJsonString());
+        }
+
         [TestMethod(DisplayName = "Verify every event that shares the identifier is amended through its flagged " +
             "trigger node, or its first node when none is flagged.")]
         public void UpdateLocatorsTriggerNodeTest()

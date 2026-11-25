@@ -114,6 +114,44 @@ For a target inside a shadow root, open or closed, an XPath reaches only the out
 - The host XPath of `chain.locator` is no longer the rule's `onElement`, but it stays in `capabilities.locators`, and the other capabilities are copied as before.
 - A `Broken` shadow path is ignored: the rule falls back to the host XPath and has no `locator` type.
 
+## Drag and drop
+
+A recorded drag and drop becomes one rule. The dragged element is the rule's `onElement`, and the argument says where the drag ends.
+
+| Recorder | Event | Rule |
+| --- | --- | --- |
+| Chromium | `InvokeDragAndDrop`, with the drop element's chain in `value.target.chain` and the distance from the source center to the release point in `value.deltaX` and `value.deltaY` | `InvokeDragAndDrop` |
+| UIA | `Left Up` that carries `value.drag`, in `standard` and `user32` modes | `InvokeUser32DragAndDrop` |
+
+```json
+{
+    "$type": "Action",
+    "pluginName": "InvokeDragAndDrop",
+    "onElement": "//li[normalize-space()='Card 1']",
+    "argument": "{{$ --Target://ul[@aria-label='Done']}}",
+    "capabilities": {
+        "elementName": "Card 1",
+        "target": {
+            "elementName": "Done",
+            "locators": [
+                { "using": "Xpath", "value": "//ul[@aria-label='Done']", "strategy": "AriaLabel", "score": 95, "verdict": "Unique" }
+            ],
+            "locatorStrength": "Strong"
+        }
+    }
+}
+```
+
+- For Chromium, the drop element is the first candidate the argument can carry: its usable `ShadowPath` candidate, then its chain XPath, then its other candidates that are not `Broken`. Any type other than XPath is written as `--TargetLocator`.
+- A locator the argument cannot carry is skipped. That is a locator with whitespace followed by `--` and a name character, which the CLI parser reads as a new argument, or with `{{$`, which it reads as a nested expression.
+- Without a usable drop element, the rule replays the distance: `{{$ --DeltaX:<x> --DeltaY:<y>}}`, rounded to whole pixels.
+- `capabilities.target` carries the drop element's name and the same locator capabilities as the dragged element, so a client can swap or heal the drop locator.
+- A locator amendment whose `locatorId` names the drop element corrects `value.target.chain`, and the event counts once.
+- For UIA, `value.drag` carries the press point (`startX`, `startY`), the grab offset from the source center (`sourceOffsetX`, `sourceOffsetY`), and the drop element's chain (`target`) with its offset from that element's center (`targetOffsetX`, `targetOffsetY`). Non-zero offsets become `--OffsetX`/`--OffsetY` and `--TargetOffsetX`/`--TargetOffsetY`. Without a usable target, the rule replays the distance from the press point to the release point.
+- In UIA `coordinate` mode, a drag stays an `InvokeUser32Click` at the release point, because `InvokeUser32DragAndDrop` needs the element to drag. The recorders' [feature request #37](https://github.com/g4-api/g4-recorders/issues/37) tracks it.
+
+## Status codes
+
 An empty recording returns `204 No Content` from stop and flow retrieval.
 Retrieval before stop returns `409 Conflict`, and an unknown ID returns `404 Not Found`.
 Invalid settings, and suspending a recorder that is not part of the session, return `400 Bad Request`.

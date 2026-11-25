@@ -321,11 +321,12 @@ namespace G4.Services.Domain.V4.Recordings
         }
 
         // Applies one recorder locator amendment to the events it refers to and returns how many were updated.
-        // An event matches when its trigger node's properties carry the amendment's locatorId. The match is patched
-        // in place: the chain locator, the ranked candidates, and the locator strength, each only when the amendment
-        // carries a usable value. Pure JSON patching with no connection state, so it runs under the caller's lock and
-        // in tests without a transport. Never throws: an amendment that is not an object, has no text identifier,
-        // or names an unknown identifier updates nothing.
+        // An event matches when the trigger node of its chain, or of the drop element a drag and drop names in
+        // value.target, carries the amendment's locatorId. The matching chain is patched in place: its locator,
+        // the ranked candidates, and the locator strength, each only when the amendment carries a usable value.
+        // Pure JSON patching with no connection state, so it runs under the caller's lock and in tests without a
+        // transport. Never throws: an amendment that is not an object, has no text identifier, or names an unknown
+        // identifier updates nothing.
         internal static int UpdateLocators(IEnumerable<JsonObject> events, JsonNode amendment)
         {
             // An amendment without a text identifier refers to no event, whatever else it carries.
@@ -344,33 +345,45 @@ namespace G4.Services.Domain.V4.Recordings
             var updated = 0;
             foreach (var model in events)
             {
-                // Skip events that target no element or whose trigger node carries another identifier.
-                var properties = AutomationBuilder.GetTriggerNode(model)?["properties"] as JsonObject;
-                var eventLocatorId = AutomationBuilder.ResolveText(value: properties?["locatorId"]);
-                if (eventLocatorId != locatorId)
+                // An event holds its own chain, and a drag and drop also holds the chain of its drop element.
+                JsonObject[] holders = [model, model["value"]?["target"] as JsonObject];
+                var isUpdated = false;
+                foreach (var holder in holders.Where(predicate: holder => holder is not null))
                 {
-                    continue;
+                    // Skip chains that target no element or whose trigger node carries another identifier.
+                    var properties = AutomationBuilder.GetTriggerNode(model: holder)?["properties"] as JsonObject;
+                    var eventLocatorId = AutomationBuilder.ResolveText(value: properties?["locatorId"]);
+                    if (eventLocatorId != locatorId)
+                    {
+                        continue;
+                    }
+
+                    // The chain locator becomes a rule locator, so replace it only with a non-empty locator.
+                    if (locator.Length > 0)
+                    {
+                        holder["chain"]["locator"] = locator;
+                    }
+
+                    // Each chain owns a detached copy of the candidates, because a JSON node has a single parent.
+                    if (locators is not null)
+                    {
+                        properties["locators"] = locators.DeepClone();
+                    }
+
+                    // Keep the recorded strength when the amendment reports none.
+                    if (locatorStrength.Length > 0)
+                    {
+                        properties["locatorStrength"] = locatorStrength;
+                    }
+
+                    isUpdated = true;
                 }
 
-                // The chain locator becomes the rule's onElement, so replace it only with a non-empty locator.
-                if (locator.Length > 0)
+                // Count the event once, whichever of its chains matched.
+                if (isUpdated)
                 {
-                    model["chain"]["locator"] = locator;
+                    updated++;
                 }
-
-                // Each event owns a detached copy of the candidates, because a JSON node has a single parent.
-                if (locators is not null)
-                {
-                    properties["locators"] = locators.DeepClone();
-                }
-
-                // Keep the recorded strength when the amendment reports none.
-                if (locatorStrength.Length > 0)
-                {
-                    properties["locatorStrength"] = locatorStrength;
-                }
-
-                updated++;
             }
 
             return updated;
