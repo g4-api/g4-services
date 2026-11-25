@@ -651,9 +651,10 @@ namespace G4.Services.Domain.V4.Recordings
         // Maps a UIA left-button release that carries drag facts to InvokeUser32DragAndDrop, the only drag plugin of
         // the UIA driver, in both standard and user32 modes, because UI Automation has no drag pattern. The source
         // is the press-time chain. The drop end is the target chain's locator when the argument can carry it, with
-        // its offset from the target center; otherwise it is the distance from the grab point to the release point.
-        // Offsets are measured from the element centers, which is the plugin's default MiddleCenter alignment, so
-        // only non-zero offsets are written.
+        // its offset; otherwise it is the distance from the grab point to the release point. Offsets are measured from
+        // the top-left corner of each element and are written with the TopLeft alignment, because the UIA driver
+        // applies offsets to every alignment except its MiddleCenter default. An element the recorder had no bounds
+        // for carries no offset and keeps the plugin's center alignment.
         private static JsonObject NewUiaDragRule(RecordedEvent item)
         {
             // Read the release once; TestUiaDrag already proved that the drag facts are an object.
@@ -700,19 +701,25 @@ namespace G4.Services.Domain.V4.Recordings
             SetElementName(rule, model, targetFirst: false);
             return rule;
 
-            // Adds an offset pair only when it moves the point off the element center, the plugin's default.
+            // Adds the corner alignment and an offset pair when the recorder measured both offsets; an absent or
+            // non-numeric pair leaves the plugin's center alignment, so a zero offset still means the corner itself.
             static void AddOffsetParameters(List<string> parameters, string prefix, JsonNode offsetX, JsonNode offsetY)
             {
-                var offsetXText = ConvertToPixelText(value: offsetX);
-                var offsetYText = ConvertToPixelText(value: offsetY);
-                var isCentered = offsetXText == "0" && offsetYText == "0";
-                if (isCentered)
+                var isMeasured = TestNumber(value: offsetX) && TestNumber(value: offsetY);
+                if (!isMeasured)
                 {
                     return;
                 }
 
-                parameters.Add(item: "--" + prefix + "OffsetX:" + offsetXText);
-                parameters.Add(item: "--" + prefix + "OffsetY:" + offsetYText);
+                parameters.Add(item: "--" + prefix + "Alignment:TopLeft");
+                parameters.Add(item: "--" + prefix + "OffsetX:" + ConvertToPixelText(value: offsetX));
+                parameters.Add(item: "--" + prefix + "OffsetY:" + ConvertToPixelText(value: offsetY));
+            }
+
+            // Tests whether a recorded offset is a JSON number, which is how the recorder sends a measured offset.
+            static bool TestNumber(JsonNode value)
+            {
+                return value is JsonValue number && number.GetValueKind() == JsonValueKind.Number;
             }
         }
 
