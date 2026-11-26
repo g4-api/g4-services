@@ -2219,19 +2219,16 @@
 					"response": []
 				},
 				{
-					"name": "Invoke Automation - 400",
+					"name": "Invoke Automation Job Without Rules - 200",
 					"event": [
 						{
 							"listen": "test",
 							"script": {
 								"exec": [
-									"TestUtilities.assertErrorResponse(pm, 400);\r",
-									"\r",
-									"pm.test(\"Verify 'errors.stages[0].Jobs[0].Rules' is not empty\", function () {\r",
-									"    const jsonData = pm.response.json();\r",
-									"    pm.expect(jsonData.errors[\"Stages[0].Jobs[0].Rules\"]).to.not.be.empty;\r",
-									"});\r",
-									""
+									"// A job without rules is valid since the engine added Parallel containers: it runs nothing and is still reported.\r",
+									"pm.test(\"Status code is 200\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});"
 								],
 								"type": "text/javascript",
 								"packages": {}

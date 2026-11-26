@@ -58,6 +58,8 @@ All notable user-visible changes to the G4 Hub are listed here. The format follo
 
 ### Fixed
 
+- The API test collection expects 200 for a job without rules. The engine accepts such a job since it added Parallel
+  containers, and it runs nothing, so the case that expected 400 failed the release.
 - A recorded scroll becomes `InvokeScroll` with `{{$ --Left:<x> --Top:<y> --Relative}}`, which scrolls by the Chromium
   wheel deltas, or by 120 pixels per notch along the recorded direction when there are none. Before, the argument used
   `--direction` and `--times`, which `InvokeScroll` does not read. The plugin runs JavaScript, so the rule replays on
