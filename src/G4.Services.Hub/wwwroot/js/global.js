@@ -21,8 +21,13 @@ let _stateMachine = {};
 let _svgsCache = {};
 let _timer;
 
-const _auditableTypes = ["ACTION", "CONTENT", "TRANSFORMER"];
-const _flowableTypes = ["ACTION", "CONTENT", "EXPORT", "JOB", "PARALLEL", "STAGE", "TRANSFORMER"];
+// Plugin types whose run events are counted as actions. An input action runs as its own rule inside an Input
+// Actions Group, so it is counted like any other action.
+const _auditableTypes = ["ACTION", "CONTENT", "INPUTACTION", "TRANSFORMER"];
+
+// Plugin types whose run events select and color their step on the canvas. The Hub sends the manifest plugin type,
+// so the steps inside an Input Actions Group arrive as "InputAction".
+const _flowableTypes = ["ACTION", "CONTENT", "EXPORT", "INPUTACTION", "JOB", "PARALLEL", "STAGE", "TRANSFORMER"];
 
 // Maps each run state to the CSS class that colors the step's frame on the canvas.
 const _runStateClasses = {

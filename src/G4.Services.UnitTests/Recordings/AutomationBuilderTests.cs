@@ -54,7 +54,7 @@ namespace G4.Services.UnitTests.Recordings
             Assert.AreEqual(expected: "{{$ --keys:hello}}", actual: rules[0]["argument"].GetValue<string>());
             Assert.AreEqual(expected: "target", actual: rules[0]["capabilities"]["elementName"].GetValue<string>());
             Assert.AreEqual(expected: "{{$ --Timeout:500}}", actual: rules[1]["argument"].GetValue<string>());
-            Assert.AreEqual(expected: "{{$ --direction:Down --times:3}}", actual: rules[2]["argument"].GetValue<string>());
+            Assert.AreEqual(expected: "{{$ --Left:0 --Top:360 --Relative}}", actual: rules[2]["argument"].GetValue<string>());
         }
 
         [TestMethod(DisplayName = "Verify Android events convert through the pre-mapped path with locators, arguments and context.")]
@@ -93,10 +93,176 @@ namespace G4.Services.UnitTests.Recordings
             Assert.AreEqual(expected: "//target", actual: rules[0]["onElement"].GetValue<string>());
             Assert.AreEqual(expected: "PGEvPg==", actual: rules[0]["capabilities"]["domContext"].GetValue<string>());
             Assert.AreEqual(expected: "{{$ --keys:abc}}", actual: rules[1]["argument"].GetValue<string>());
-            Assert.AreEqual(expected: "{{$ --direction:Down --times:3}}", actual: rules[2]["argument"].GetValue<string>());
+            Assert.AreEqual(expected: "{{$ --Left:0 --Top:360 --Relative}}", actual: rules[2]["argument"].GetValue<string>());
+            Assert.AreEqual(expected: "//target", actual: rules[2]["onElement"].GetValue<string>());
             Assert.AreEqual(expected: "//target", actual: rules[3]["onElement"].GetValue<string>());
             Assert.IsNull(value: rules[4]["onElement"]);
             Assert.IsNull(value: rules[5]["onElement"]);
+
+            // Assert: the long press keeps its hold time and the activity change names the screen to start.
+            Assert.AreEqual(expected: "{{$ --Duration:500}}", actual: rules[3]["argument"].GetValue<string>());
+            Assert.AreEqual(
+                expected: "{{$ --Package:com.app --Activity:com.app.Home}}",
+                actual: rules[4]["argument"].GetValue<string>());
+        }
+
+        [TestMethod(DisplayName = "Verify an Android long press without a usable hold time leaves the duration to " +
+            "the plugin default.")]
+        #region *** Data Set ***
+        [DataRow(0d)]
+        [DataRow(-20d)]
+        #endregion
+        public void AndroidLongClickDefaultDurationTest(double durationMilliseconds)
+        {
+            // Arrange: a long press whose recorded hold time is zero or negative, plus one without a value at all.
+            var value = new JsonObject { ["durationMilliseconds"] = durationMilliseconds };
+            var withDuration = NewEvent(eventName: "InvokeLongClick", timestamp: 1, value);
+            var withoutDuration = NewEvent(eventName: "InvokeLongClick", timestamp: 2, value: new JsonObject());
+
+            // Act: convert both events.
+            var rules = NewChromiumRules(events: [withDuration, withoutDuration]);
+
+            // Assert: neither rule sets --Duration, so the plugin holds for its 1000 millisecond default.
+            Assert.AreEqual(expected: string.Empty, actual: rules[0]["argument"].GetValue<string>());
+            Assert.AreEqual(expected: string.Empty, actual: rules[1]["argument"].GetValue<string>());
+            Assert.AreEqual(expected: "//target", actual: rules[0]["onElement"].GetValue<string>());
+        }
+
+        [TestMethod(DisplayName = "Verify an Android activity change without a package passes the activity alone.")]
+        public void AndroidActivityWithoutPackageTest()
+        {
+            // Arrange: an activity change whose value names a full intent and no package.
+            var value = new JsonObject { ["activity"] = "com.app/.Home" };
+            var activity = NewEvent(eventName: "SwitchActivity", timestamp: 1, value);
+
+            // Act: convert the event.
+            var rule = NewChromiumRules(events: [activity])[0];
+
+            // Assert: only --Activity is written, so the plugin uses the full intent as it is, and no element is set.
+            Assert.AreEqual(expected: "{{$ --Activity:com.app/.Home}}", actual: rule["argument"].GetValue<string>());
+            Assert.IsNull(value: rule["onElement"]);
+        }
+
+        [TestMethod(DisplayName = "Verify a Chromium middle click becomes an InvokeMiddleClick rule on the " +
+            "recorded element.")]
+        public void ChromiumMiddleClickTest()
+        {
+            // Arrange: a middle click as the Chromium recorder sends it for an auxclick with button 1.
+            var middleClick = NewEvent(eventName: "InvokeMiddleClick", timestamp: 1, value: new JsonObject());
+
+            // Act: convert the event.
+            var rule = NewChromiumRules(events: [middleClick])[0];
+
+            // Assert: the plugin name passes through and the rule targets the recorded element without an argument.
+            Assert.AreEqual(expected: "InvokeMiddleClick", actual: rule["pluginName"].GetValue<string>());
+            Assert.AreEqual(expected: "//target", actual: rule["onElement"].GetValue<string>());
+            Assert.IsNull(value: rule["argument"]);
+        }
+
+        [TestMethod(DisplayName = "Verify a Chromium wheel event scrolls by its recorded pixel deltas, rounded and " +
+            "never multiplied by its notch count.")]
+        #region *** Data Set ***
+        [DataRow(0, 250.4, "{{$ --Left:0 --Top:250 --Relative}}")]
+        [DataRow(-96, 0, "{{$ --Left:-96 --Top:0 --Relative}}")]
+        [DataRow(40, -360, "{{$ --Left:40 --Top:-360 --Relative}}")]
+        #endregion
+        public void ChromiumScrollDeltaTest(double deltaX, double deltaY, string expected)
+        {
+            // Arrange: a wheel event as the Chromium recorder sends it, with a direction and notches that disagree
+            // with the deltas, so only the deltas can produce the expected offsets.
+            var value = new JsonObject
+            {
+                ["direction"] = "Down",
+                ["notches"] = 3,
+                ["deltaX"] = deltaX,
+                ["deltaY"] = deltaY
+            };
+            var scroll = NewEvent(eventName: "InvokeScroll", timestamp: 1, value);
+
+            // Act: convert the scroll event.
+            var rule = NewChromiumRules(events: [scroll])[0];
+
+            // Assert: the rule scrolls relative by the deltas and keeps the recorded element.
+            Assert.AreEqual(expected: "InvokeScroll", actual: rule["pluginName"].GetValue<string>());
+            Assert.AreEqual(expected, actual: rule["argument"].GetValue<string>());
+            Assert.AreEqual(expected: "//target", actual: rule["onElement"].GetValue<string>());
+        }
+
+        [TestMethod(DisplayName = "Verify a scroll with a single numeric delta scrolls by that delta and ignores " +
+            "a delta that is not a number.")]
+        public void ChromiumScrollPartialDeltaTest()
+        {
+            // Arrange: only the vertical delta is a number; the horizontal one is text.
+            var value = new JsonObject { ["direction"] = "Left", ["notches"] = 2, ["deltaX"] = "12", ["deltaY"] = 80 };
+            var scroll = NewEvent(eventName: "InvokeScroll", timestamp: 1, value);
+
+            // Act: convert the scroll event.
+            var rule = NewChromiumRules(events: [scroll])[0];
+
+            // Assert: the numeric delta wins over the notches, and the text delta counts as zero.
+            Assert.AreEqual(expected: "{{$ --Left:0 --Top:80 --Relative}}", actual: rule["argument"].GetValue<string>());
+        }
+
+        [TestMethod(DisplayName = "Verify a scroll without deltas, as the Android recorder sends it, scrolls 120 " +
+            "pixels per notch along its direction.")]
+        #region *** Data Set ***
+        [DataRow("Down", "{{$ --Left:0 --Top:240 --Relative}}")]
+        [DataRow("Up", "{{$ --Left:0 --Top:-240 --Relative}}")]
+        [DataRow("Right", "{{$ --Left:240 --Top:0 --Relative}}")]
+        [DataRow("Left", "{{$ --Left:-240 --Top:0 --Relative}}")]
+        #endregion
+        public void ScrollDirectionTest(string direction, string expected)
+        {
+            // Arrange: an Android scroll gesture of two notches, which carries no pixel deltas.
+            var options = new RecorderModel
+            {
+                BaseUrl = "http://localhost:9958",
+                DriverParameters = new Dictionary<string, object> { ["driver"] = "AndroidDriver" }
+            };
+            var value = new JsonObject { ["direction"] = direction, ["notches"] = 2 };
+            var scroll = NewEvent(eventName: "InvokeScroll", timestamp: 1, value);
+
+            // Act: convert the capture into a flow.
+            var automation = AutomationBuilder.NewAutomation(
+                authentication: new RecordingAuthenticationModel { Token = "" },
+                captures: [new RecorderCapture(Options: options, Events: [scroll])]);
+            var rule = automation["stages"][0]["jobs"][0]["rules"][0];
+
+            // Assert: the notches become a signed pixel offset on the direction's axis only.
+            Assert.AreEqual(expected, actual: rule["argument"].GetValue<string>());
+            Assert.AreEqual(expected: "//target", actual: rule["onElement"].GetValue<string>());
+        }
+
+        [TestMethod(DisplayName = "Verify a scroll without a direction scrolls down and one without a usable notch " +
+            "count scrolls one notch.")]
+        #region *** Data Set ***
+        [DataRow(null, null, "{{$ --Left:0 --Top:120 --Relative}}")]
+        [DataRow(null, "3", "{{$ --Left:0 --Top:360 --Relative}}")]
+        [DataRow("\"Up\"", null, "{{$ --Left:0 --Top:-120 --Relative}}")]
+        [DataRow("\"\"", "0", "{{$ --Left:0 --Top:120 --Relative}}")]
+        [DataRow("\"Right\"", "\"many\"", "{{$ --Left:120 --Top:0 --Relative}}")]
+        #endregion
+        public void ScrollDefaultsTest(string directionJson, string notchesJson, string expected)
+        {
+            // Arrange: write only the fields the row names, so an absent field stays absent.
+            var value = new JsonObject();
+            if (directionJson is not null)
+            {
+                value["direction"] = JsonNode.Parse(json: directionJson);
+            }
+
+            if (notchesJson is not null)
+            {
+                value["notches"] = JsonNode.Parse(json: notchesJson);
+            }
+
+            var scroll = NewEvent(eventName: "InvokeScroll", timestamp: 1, value);
+
+            // Act: convert the scroll event.
+            var rule = NewChromiumRules(events: [scroll])[0];
+
+            // Assert: the defaults fill in what the recorder left out.
+            Assert.AreEqual(expected, actual: rule["argument"].GetValue<string>());
         }
 
         [TestMethod(DisplayName = "Verify Chromium element rules carry the trigger node DOM context into their capabilities.")]
@@ -344,7 +510,7 @@ namespace G4.Services.UnitTests.Recordings
             Assert.AreEqual(expected: "CssSelector", actual: rules[1]["locator"].GetValue<string>());
             Assert.AreEqual(expected: ShadowPathLocator, actual: rules[2]["onElement"].GetValue<string>());
             Assert.AreEqual(expected: "CssSelector", actual: rules[2]["locator"].GetValue<string>());
-            Assert.AreEqual(expected: "{{$ --direction:Up --times:2}}", actual: scrollArgument);
+            Assert.AreEqual(expected: "{{$ --Left:0 --Top:-240 --Relative}}", actual: scrollArgument);
 
             // Assert: the navigation rule gains neither a target nor a locator type.
             Assert.IsNull(value: rules[3]["onElement"]);
@@ -636,26 +802,62 @@ namespace G4.Services.UnitTests.Recordings
             Assert.AreEqual(expected: "{{$ --Target://List[@Name='Done']}}", actual: argument);
         }
 
-        [TestMethod(DisplayName = "Verify a UIA drag and drop without a target replays the distance from the grab " +
-            "point, and coordinate mode keeps the click.")]
-        public void UiaDragOffsetAndCoordinateTest()
+        [TestMethod(DisplayName = "Verify a UIA drag and drop from an element without a target replays the distance " +
+            "from the grab point.")]
+        public void UiaDragOffsetTest()
         {
             // Arrange: a drag with no drop element, pressed at (300, 200) and released at (450, 180).
-            var offsetDrag = NewUiaDrag(target: null);
-            var coordinateDrag = NewUiaDrag(target: null);
+            var drag = NewUiaDrag(target: null);
 
-            // Act: convert the drag once in user32 mode and once in coordinate mode.
-            var offsetRule = NewUiaRules(events: [offsetDrag], mode: "user32")[0];
-            var coordinateRule = NewUiaRules(events: [coordinateDrag], mode: "coordinate")[0];
+            // Act: convert the drag in user32 mode.
+            var rule = NewUiaRules(events: [drag], mode: "user32")[0];
 
-            // Assert: user32 mode replays the distance at the center of the source.
-            Assert.AreEqual(expected: "InvokeUser32DragAndDrop", actual: offsetRule["pluginName"].GetValue<string>());
-            var offsetArgument = offsetRule["argument"].GetValue<string>();
-            Assert.AreEqual(expected: "{{$ --DeltaX:150 --DeltaY:-20}}", actual: offsetArgument);
+            // Assert: the rule starts on the element and replays the distance, so the drop follows the element.
+            Assert.AreEqual(expected: "InvokeUser32DragAndDrop", actual: rule["pluginName"].GetValue<string>());
+            Assert.AreEqual(expected: "//target", actual: rule["onElement"].GetValue<string>());
+            Assert.AreEqual(expected: "{{$ --DeltaX:150 --DeltaY:-20}}", actual: rule["argument"].GetValue<string>());
+        }
 
-            // Assert: coordinate mode has no locator to drag from, so the release stays a click at its position.
-            Assert.AreEqual(expected: "InvokeUser32Click", actual: coordinateRule["pluginName"].GetValue<string>());
-            Assert.AreEqual(expected: "{{$ --X:450 --Y:180}}", actual: coordinateRule["argument"].GetValue<string>());
+        [TestMethod(DisplayName = "Verify a UIA drag and drop in coordinate mode replays between the press and the " +
+            "release points, without a locator.")]
+        public void UiaDragCoordinateTest()
+        {
+            // Arrange: a drag onto a target, recorded in coordinate mode, which replays screen positions only.
+            var target = new JsonObject { ["locator"] = "//List[@Name='Done']", ["path"] = new JsonArray() };
+            var drag = NewUiaDrag(target);
+
+            // Act: convert the drag in coordinate mode.
+            var rule = NewUiaRules(events: [drag], mode: "coordinate")[0];
+
+            // Assert: both ends are screen points, and the rule names no element.
+            var expected = "{{$ --X:300 --Y:200 --TargetX:450 --TargetY:180}}";
+            Assert.AreEqual(expected: "InvokeUser32DragAndDrop", actual: rule["pluginName"].GetValue<string>());
+            Assert.AreEqual(expected: expected, actual: rule["argument"].GetValue<string>());
+            Assert.IsNull(value: rule["onElement"]);
+        }
+
+        [TestMethod(DisplayName = "Verify a UIA drag and drop pressed over no resolved element starts at the press " +
+            "point, and ends on the target element or at the release point.")]
+        #region *** Data Set ***
+        [DataRow(true, "{{$ --X:300 --Y:200 --Target://List[@Name='Done']}}")]
+        [DataRow(false, "{{$ --X:300 --Y:200 --TargetX:450 --TargetY:180}}")]
+        #endregion
+        public void UiaDragWithoutSourceTest(bool isTarget, string expected)
+        {
+            // Arrange: a drag whose release carries no chain, because UI Automation resolved nothing at the press.
+            var target = isTarget
+                ? new JsonObject { ["locator"] = "//List[@Name='Done']", ["path"] = new JsonArray() }
+                : null;
+            var drag = NewUiaDrag(target);
+            drag.Remove(propertyName: "chain");
+
+            // Act: convert the drag in user32 mode.
+            var rules = NewUiaRules(events: [drag], mode: "user32");
+
+            // Assert: the drag is kept and starts at the screen point, with no element to name.
+            Assert.HasCount(expected: 1, collection: rules);
+            Assert.AreEqual(expected: expected, actual: rules[0]["argument"].GetValue<string>());
+            Assert.IsNull(value: rules[0]["onElement"]);
         }
 
         [TestMethod(DisplayName = "Verify UIA coordinate mode emits physical input without element targets.")]
@@ -680,6 +882,81 @@ namespace G4.Services.UnitTests.Recordings
             Assert.AreEqual(expected: "InvokeUser32ContextClick", actual: rule["pluginName"].GetValue<string>());
             Assert.AreEqual(expected: "{{$ --X:123 --Y:456}}", actual: rule["argument"].GetValue<string>());
             Assert.IsNull(value: rule["onElement"]);
+        }
+
+        [TestMethod(DisplayName = "Verify a UIA middle-button release maps to InvokeMiddleClick in standard mode " +
+            "and to InvokeUser32MiddleClick otherwise.")]
+        #region *** Data Set ***
+        [DataRow("standard", "InvokeMiddleClick", "//target", null)]
+        [DataRow("user32", "InvokeUser32MiddleClick", "//target", null)]
+        [DataRow("coordinate", "InvokeUser32MiddleClick", null, "{{$ --X:123 --Y:456}}")]
+        #endregion
+        public void UiaMiddleClickTest(string mode, string expectedPlugin, string expectedLocator, string expectedArgument)
+        {
+            // Arrange: the middle-button press and release the UIA recorder sends; only the release plays.
+            var events = new[]
+            {
+                NewEvent(eventName: "Middle Down", timestamp: 1, value: new JsonObject { ["x"] = 123, ["y"] = 456 }),
+                NewEvent(eventName: "Middle Up", timestamp: 2, value: new JsonObject { ["x"] = 123, ["y"] = 456 })
+            };
+
+            // Act: convert the stream in the given capture mode.
+            var rules = NewUiaRules(events, mode);
+
+            // Assert: one middle click, on the element or at the screen point the mode records.
+            Assert.HasCount(expected: 1, collection: rules);
+            Assert.AreEqual(expected: expectedPlugin, actual: rules[0]["pluginName"].GetValue<string>());
+            Assert.AreEqual(expected: expectedLocator, actual: rules[0]["onElement"]?.GetValue<string>());
+            Assert.AreEqual(expected: expectedArgument, actual: rules[0]["argument"]?.GetValue<string>());
+        }
+
+        [TestMethod(DisplayName = "Verify a discrete key keeps its element only for SendKeyboardKey, while " +
+            "SendUser32KeyboardKey sends to the focused window without onElement.")]
+        #region *** Data Set ***
+        [DataRow("standard", "SendKeyboardKey", "//target")]
+        [DataRow("user32", "SendUser32KeyboardKey", null)]
+        [DataRow("coordinate", "SendUser32KeyboardKey", null)]
+        #endregion
+        public void UiaKeyboardKeyTargetTest(string mode, string expectedPlugin, string expectedLocator)
+        {
+            // Arrange: one discrete key release on a recorded element.
+            var events = new[] { NewKeyEvent(eventName: "Key Up", timestamp: 1, key: "Enter", virtualKey: 0x0D) };
+
+            // Act: convert the stream in the given capture mode.
+            var rules = NewUiaRules(events, mode);
+
+            // Assert: only the element-pattern plugin names the element, and only it carries the element name.
+            var isTargeted = expectedLocator is not null;
+            Assert.HasCount(expected: 1, collection: rules);
+            Assert.AreEqual(expected: expectedPlugin, actual: rules[0]["pluginName"].GetValue<string>());
+            Assert.AreEqual(expected: "{{$ --Key:Enter}}", actual: rules[0]["argument"].GetValue<string>());
+            Assert.AreEqual(expected: expectedLocator, actual: rules[0]["onElement"]?.GetValue<string>());
+            Assert.AreEqual(expected: isTargeted, actual: rules[0]["capabilities"] is not null);
+        }
+
+        [TestMethod(DisplayName = "Verify a shortcut chord plays through SendUser32KeyboardKey without onElement " +
+            "in every UIA mode.")]
+        #region *** Data Set ***
+        [DataRow("standard")]
+        [DataRow("user32")]
+        [DataRow("coordinate")]
+        #endregion
+        public void UiaShortcutTargetTest(string mode)
+        {
+            // Arrange: Ctrl+A reported as a chord on a recorded element.
+            var events = new[]
+            {
+                NewKeyEvent(eventName: "Key Up", timestamp: 1, key: "A", virtualKey: 0x41, modifiers: ["Ctrl"])
+            };
+
+            // Act: convert the stream in the given capture mode.
+            var rules = NewUiaRules(events, mode);
+
+            // Assert: the chord targets the focused window, so it names no element.
+            Assert.HasCount(expected: 1, collection: rules);
+            Assert.AreEqual(expected: "SendUser32KeyboardKey", actual: rules[0]["pluginName"].GetValue<string>());
+            Assert.IsNull(value: rules[0]["onElement"]);
+            Assert.IsNull(value: rules[0]["capabilities"]);
         }
 
         [TestMethod(DisplayName = "Verify UIA text, Space, modifiers, discrete keys, and following clicks remain ordered.")]
@@ -717,6 +994,7 @@ namespace G4.Services.UnitTests.Recordings
             Assert.AreEqual(expected: "{{$ --Keys:h }}", actual: rules[0]["argument"].GetValue<string>());
             Assert.AreEqual(expected: "SendUser32KeyboardKey", actual: rules[1]["pluginName"].GetValue<string>());
             Assert.AreEqual(expected: "{{$ --Key:Enter}}", actual: rules[1]["argument"].GetValue<string>());
+            Assert.IsNull(value: rules[1]["onElement"]);
             Assert.AreEqual(expected: "InvokeUser32Click", actual: rules[2]["pluginName"].GetValue<string>());
             Assert.AreEqual(
                 expected: "{{$ --OffsetX:3 --OffsetY:4 --Alignment:TopLeft}}",
@@ -868,6 +1146,8 @@ namespace G4.Services.UnitTests.Recordings
             Assert.HasCount(expected: 3, collection: rules);
             Assert.AreEqual(expected: "SendUser32KeyboardKey", actual: rules[0]["pluginName"].GetValue<string>());
             Assert.AreEqual(expected: "{{$ --Key:Ctrl --Key:A --Sticky}}", actual: selectAll);
+            Assert.IsNull(value: rules[0]["onElement"]);
+            Assert.IsNull(value: rules[0]["capabilities"]);
             Assert.AreEqual(expected: "{{$ --Keys:E:}}", actual: rules[1]["argument"].GetValue<string>());
             Assert.AreEqual(expected: "{{$ --Key:LShift --Key:Tab --Sticky}}", actual: reverseTab);
         }

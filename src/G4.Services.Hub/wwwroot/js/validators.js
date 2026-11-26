@@ -36,6 +36,93 @@
         return false;
     }
 
+    /**
+     * Confirms that input actions and their Input Actions Group sit where the engine accepts them.
+     *
+     * An input action, a step of plugin type `InputAction` such as Add Key Down, only adds its action to the sequence
+     * of the Input Actions Group (`InvokeInputActions`) it sits in directly, and the group sends that sequence once.
+     * The engine fails an input action placed anywhere else, and fails a group that holds any other step, so both
+     * are recorded as errors. The engine also rejects a group without steps, because it sends nothing; the designer
+     * records that as a warning, which the step editor shows without marking the step invalid, so a group can be
+     * dropped first and filled afterwards. Each result is kept on the step under its own key and is cleared once
+     * the placement is valid.
+     *
+     * @param {Object} step       - The step to check; a step that is no input action, no group, and not directly
+     *                              inside a group passes.
+     * @param {Object} definition - The designer definition that holds the step.
+     * @returns {boolean} True when the step has no placement error; a warning alone still returns true.
+     */
+    static confirmInputActionPlacement(step, definition) {
+        // Records a placement message under its key while the finding holds, and clears the key otherwise, so a
+        // fixed placement removes its old message from the step editor.
+        const setPlacementMessage = (key, isFound, message) => {
+            if (isFound) {
+                step.context.errors[key] = message;
+                return;
+            }
+
+            delete step.context.errors[key];
+        };
+
+        // The group's plugin key and the plugin type of its steps, as the plugin manifests name them.
+        const groupPluginName = 'InvokeInputActions';
+        const inputActionType = 'INPUTACTION';
+
+        // Ensure the step has a context object and an errors bucket for validation.
+        step.context = step.context || {};
+        step.context.errors = step.context.errors || {};
+
+        // Read the step's role and its direct parent once, so every check below judges the same placement.
+        const parent = Utilities.findParentContainer(step, definition.sequence);
+        const isGroup = step.pluginName === groupPluginName;
+        const isInputAction = step.pluginType?.toUpperCase() === inputActionType;
+        const isUnderGroup = parent?.pluginName === groupPluginName;
+        const isSequenceEmpty = !Array.isArray(step.sequence) || step.sequence.length === 0;
+
+        // An input action works only directly inside a group, and a group sends only input actions.
+        const isInputActionMisplaced = isInputAction && !isUnderGroup;
+        const isForeignStep = !isInputAction && isUnderGroup;
+        const isGroupEmpty = isGroup && isSequenceEmpty;
+
+        // Name the step by its display name only when it holds text, so the message never shows "undefined".
+        const isStepNamed = typeof step.name === 'string' && step.name.length > 0;
+        const stepName = isStepNamed
+            ? step.name
+            : 'input action';
+
+        // Describe each finding up front, so the recording stage below stays one call per check.
+        const misplacedMessage = {
+            title: "Invalid Input Action Placement",
+            description:
+                `The "${stepName}" step must be placed directly inside an Input Actions Group (InvokeInputActions), ` +
+                "which sends the actions of its steps as one gesture. To fix this, move the step into an " +
+                "Input Actions Group.",
+            level: "ERR"
+        };
+        const foreignMessage = {
+            title: "Invalid Step in Input Actions Group",
+            description:
+                "An Input Actions Group (InvokeInputActions) accepts only input action steps, such as Add Key Down, " +
+                "Add Pointer Move or Add Pause. To fix this, move this step out of the group.",
+            level: "ERR"
+        };
+        const emptyMessage = {
+            title: "Empty Input Actions Group",
+            description:
+                "This Input Actions Group has no steps, so it sends nothing and the engine rejects it when the " +
+                "flow runs. To fix this, add input action steps, such as Add Pointer Move or Add Key Down, to the group.",
+            level: "WRN"
+        };
+
+        // Record or clear each finding, so the step editor shows exactly the messages that apply now.
+        setPlacementMessage('inputActionPlacement', isInputActionMisplaced, misplacedMessage);
+        setPlacementMessage('inputActionsGroupStep', isForeignStep, foreignMessage);
+        setPlacementMessage('inputActionsGroupEmpty', isGroupEmpty, emptyMessage);
+
+        // Only the errors fail the step; the empty-group warning keeps it valid.
+        return !isInputActionMisplaced && !isForeignStep;
+    }
+
     static confirmJobPlacement(step, definition) {
         // If the step is not a Job, skip validation.
         if (step.pluginName !== 'G4™ Job') {

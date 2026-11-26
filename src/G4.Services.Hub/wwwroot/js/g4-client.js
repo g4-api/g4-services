@@ -814,7 +814,7 @@ class G4Client {
 	}
 
 	/**
-	 * Fetches and returns G4 manifests of type 'Action'.
+	 * Fetches and returns the G4 manifests the designer offers: actions, content rules, input actions and transformers.
 	 * Caches the manifests after the first fetch to avoid redundant network requests.
 	 * 
 	 * @returns {Promise<Object>} A promise that resolves to the manifests object.
@@ -827,8 +827,9 @@ class G4Client {
 			return this.manifests;
 		}
 
-		// Define the plugin types to include in the fetch request.
-		const includeTypes = new Set(["ACTION", "CONTENT", "TRANSFORMER"]);
+		// Define the plugin types the toolbox offers. Input actions are listed too, so the steps that go inside an
+		// Input Actions Group can be dragged from the toolbox like any other step.
+		const includeTypes = new Set(["ACTION", "CONTENT", "INPUTACTION", "TRANSFORMER"]);
 
 		try {
 			// Fetch the plugin manifests from the API.

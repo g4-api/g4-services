@@ -14,6 +14,10 @@ namespace G4.Services.Domain.V4.Recordings
     {
         #region *** Constants    ***
 
+        // Pixels one wheel notch scrolls when a recorder reports notches without pixel deltas. It matches the
+        // Windows WHEEL_DELTA unit, which the Chromium recorder also uses to count notches.
+        private const int ScrollNotchPixels = 120;
+
         // Standalone modifiers have no playback meaning on their own; they only shape shortcut chords.
         private static readonly HashSet<int> ModifierVirtualKeys =
             [0x10, 0x11, 0x12, 0x5B, 0x5C, 0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5];
@@ -319,18 +323,23 @@ namespace G4.Services.Domain.V4.Recordings
                     rule["argument"] = value?["index"]?.ToString() ?? "0";
                     break;
                 case "InvokeScroll":
-                    // Scroll defaults mirror the extension: one notch downward when direction or count is absent.
+                    // The scroll replays by the recorded pixel offsets from the current position.
                     SetLocator(rule, locator);
-                    var direction = GetText(value: value?["direction"]);
-                    direction = direction.Length == 0 ? "Down" : direction;
-                    var times = value?["notches"]?.ToString() ?? "1";
-                    var scrollArgument = "{{$ --direction:" + direction + " --times:" + times + "}}";
-                    rule["argument"] = scrollArgument;
+                    rule["argument"] = NewScrollArgument(value);
                     break;
                 case "InvokeDragAndDrop":
                     // The dragged element is the chain target; where the drag ends travels in the argument.
                     SetLocator(rule, locator);
                     rule["argument"] = NewDragArgument(value);
+                    break;
+                case "InvokeLongClick":
+                    // The pressed element is the chain target; the recorded hold time travels as --Duration.
+                    SetLocator(rule, locator);
+                    rule["argument"] = NewLongClickArgument(value);
+                    break;
+                case "SwitchActivity":
+                    // An activity change names the package and activity to start and never an element locator.
+                    rule["argument"] = NewActivityArgument(value);
                     break;
                 default:
                     // Remaining element actions carry only their target locator.
@@ -439,8 +448,10 @@ namespace G4.Services.Domain.V4.Recordings
             var rule = NewRule(plugin, model: item.Model);
             rule["argument"] = keysArgument;
 
-            // Coordinate keyboard actions intentionally target the active desktop focus rather than an element.
-            if (item.Options.Mode != CaptureModes.Coordinate)
+            // Coordinate keyboard actions intentionally target the active desktop focus rather than an element, and
+            // SendUser32KeyboardKey sends its key to the focused window in every mode, so neither gets onElement.
+            var isFocusTargeted = item.Options.Mode == CaptureModes.Coordinate || plugin == "SendUser32KeyboardKey";
+            if (!isFocusTargeted)
             {
                 SetLocator(rule, locator: GetText(value: item.Model["chain"]?["locator"]));
             }
@@ -578,6 +589,70 @@ namespace G4.Services.Domain.V4.Recordings
             return new JsonObject { ["$type"] = "Action", ["pluginName"] = plugin, ["context"] = context };
         }
 
+        // Shapes the SwitchActivity argument from an activity event's value. The plugin joins --Package and
+        // --Activity as the package/activity intent it starts, so a missing package is left out and the activity
+        // is passed alone; an event without an activity yields an empty argument, which the plugin reports.
+        private static string NewActivityArgument(JsonNode value)
+        {
+            // Read both names; Android reports them as plain strings.
+            var package = GetText(value: value?["package"]);
+            var activity = GetText(value: value?["activity"]);
+
+            // Leave out a missing package, so a full package/activity intent in the activity is used as it is.
+            var packageParameter = string.IsNullOrEmpty(package) ? string.Empty : "--Package:" + package + " ";
+            return "{{$ " + packageParameter + "--Activity:" + activity + "}}";
+        }
+
+        // Shapes the InvokeLongClick argument from a long click event's value. The recorded hold time becomes
+        // --Duration in whole milliseconds; without a usable positive time the argument is empty and the plugin
+        // holds for its own default.
+        private static string NewLongClickArgument(JsonNode value)
+        {
+            // Read the hold time as whole milliseconds; a missing or non-numeric value reads as zero.
+            var duration = (long)Math.Round(GetNumber(value: value?["durationMilliseconds"]), MidpointRounding.AwayFromZero);
+
+            // Pass only a positive duration in invariant text, so the plugin default applies otherwise.
+            var durationText = duration.ToString(provider: CultureInfo.InvariantCulture);
+            return duration > 0 ? "{{$ --Duration:" + durationText + "}}" : string.Empty;
+        }
+
+        // Shapes the InvokeScroll argument from a scroll event's value. With --Relative the plugin scrolls by --Left
+        // and --Top pixels from the current position, through JavaScript, so the rule replays on web pages only.
+        // The Chromium recorder sends the pixel deltas of each single wheel event, which are used as they are. A
+        // recorder that sends only a direction and a notch count, such as the Android recorder, scrolls
+        // ScrollNotchPixels per notch along that direction; a missing direction scrolls down, and a missing or
+        // unusable notch count scrolls one notch.
+        private static string NewScrollArgument(JsonNode value)
+        {
+            // Prefer the recorded deltas, because they carry the exact wheel distance on both axes; an axis whose
+            // delta is not a JSON number does not move.
+            var deltaX = value?["deltaX"];
+            var deltaY = value?["deltaY"];
+            var isDeltaXRecorded = TestNumber(value: deltaX);
+            var isDeltaYRecorded = TestNumber(value: deltaY);
+            if (isDeltaXRecorded || isDeltaYRecorded)
+            {
+                var deltaLeft = isDeltaXRecorded ? ConvertToPixelText(value: deltaX) : "0";
+                var deltaTop = isDeltaYRecorded ? ConvertToPixelText(value: deltaY) : "0";
+                return "{{$ --Left:" + deltaLeft + " --Top:" + deltaTop + " --Relative}}";
+            }
+
+            // Without deltas, turn the notch count into pixels on the axis of the recorded direction; the sign
+            // follows the page axes, so up and left are negative.
+            var notches = Math.Max(val1: 1, val2: GetNumber(value: value?["notches"]));
+            var distance = notches * ScrollNotchPixels;
+            var (left, top) = GetText(value: value?["direction"]).ToUpperInvariant() switch
+            {
+                "UP" => (0d, -distance),
+                "LEFT" => (-distance, 0d),
+                "RIGHT" => (distance, 0d),
+                _ => (0d, distance)
+            };
+
+            return "{{$ --Left:" + ConvertToPixelText(pixels: left) + " --Top:" + ConvertToPixelText(pixels: top) +
+                " --Relative}}";
+        }
+
         // Plays a shortcut as one sticky chord: every modifier is held, the key is pressed, then all are released
         // in reverse order. User32 input is used in every UIA mode, since element patterns cannot hold a modifier
         // and cannot press a lone Windows key, which is played through this rule with no modifiers.
@@ -592,14 +667,8 @@ namespace G4.Services.Domain.V4.Recordings
             var rule = NewRule(plugin: "SendUser32KeyboardKey", model: item.Model);
             rule["argument"] = chordArgument;
 
-            // Coordinate mode targets the active desktop focus, matching discrete keyboard actions.
-            if (item.Options.Mode != CaptureModes.Coordinate)
-            {
-                SetLocator(rule, locator: GetText(value: item.Model["chain"]?["locator"]));
-            }
-
-            // UIA paths run root-first, so the element name search starts from the far end.
-            SetElementName(rule, model: item.Model, targetFirst: false);
+            // The plugin presses the chord in the focused window in every mode, so the rule carries no onElement
+            // and, without one, no element name.
             return rule;
         }
 
@@ -649,12 +718,16 @@ namespace G4.Services.Domain.V4.Recordings
         }
 
         // Maps a UIA left-button release that carries drag facts to InvokeUser32DragAndDrop, the only drag plugin of
-        // the UIA driver, in both standard and user32 modes, because UI Automation has no drag pattern. The source
-        // is the press-time chain. The drop end is the target chain's locator when the argument can carry it, with
-        // its offset; otherwise it is the distance from the grab point to the release point. Offsets are measured from
-        // the top-left corner of each element and are written with the TopLeft alignment, because the UIA driver
-        // applies offsets to every alignment except its MiddleCenter default. An element the recorder had no bounds
-        // for carries no offset and keeps the plugin's center alignment.
+        // the UIA driver, in every capture mode, because UI Automation has no drag pattern. Each end is an element
+        // point when its element has a usable locator, and a screen point otherwise:
+        // - Start: the press-time chain in onElement with its grab offset, or --X and --Y, the press point.
+        // - End: --Target with its drop offset; without a usable target, --DeltaX and --DeltaY from the press point
+        //   when the start is an element, so the drop follows the element when the window moves, or --TargetX and
+        //   --TargetY, the release point, when the start is a screen point too.
+        // Coordinate mode records screen positions, so both of its ends are screen points and the rule names no
+        // locator. Offsets are measured from the top-left corner of each element and are written with the TopLeft
+        // alignment, which every UIA driver version applies. An element the recorder had no bounds for carries no
+        // offset and keeps the plugin's center alignment.
         private static JsonObject NewUiaDragRule(RecordedEvent item)
         {
             // Read the release once; TestUiaDrag already proved that the drag facts are an object.
@@ -662,23 +735,35 @@ namespace G4.Services.Domain.V4.Recordings
             var value = model["value"];
             var drag = value["drag"].AsObject();
             var rule = NewRule(plugin: "InvokeUser32DragAndDrop", model);
+            var isLocatorMode = item.Options.Mode != CaptureModes.Coordinate;
 
-            // Address the dragged element as a click does: the primary locator, or the alternate one when it is empty.
-            var chain = model["chain"];
-            var locator = ResolveText(value: chain?["locator"]);
-            var sourceLocator = locator.Length > 0 ? locator : ResolveText(value: chain?["fallbackLocator"]);
-            SetLocator(rule, locator: sourceLocator);
+            // Resolve both elements as a click does: the primary locator, or the alternate one when it is empty.
+            // Coordinate mode uses neither, and the target must also fit in the argument.
+            var sourceLocator = isLocatorMode ? ResolveChainLocator(chain: model["chain"]) : "";
+            var targetLocator = isLocatorMode ? ResolveChainLocator(chain: drag["target"]) : "";
+            var isSourceElement = sourceLocator.Length > 0;
+            var isTargetElement = targetLocator.Length > 0 && TestArgumentValue(value: targetLocator);
 
-            // Grab the source where the user pressed it.
+            // Start on the dragged element at its grab point, or at the press point on the screen.
             var parameters = new List<string>();
-            AddOffsetParameters(parameters, prefix: "", offsetX: drag["sourceOffsetX"], offsetY: drag["sourceOffsetY"]);
+            if (isSourceElement)
+            {
+                SetLocator(rule, locator: sourceLocator);
+                AddOffsetParameters(
+                    parameters,
+                    prefix: "",
+                    offsetX: drag["sourceOffsetX"],
+                    offsetY: drag["sourceOffsetY"]);
+            }
+            else
+            {
+                parameters.Add(item: "--X:" + ConvertToPixelText(value: drag["startX"]));
+                parameters.Add(item: "--Y:" + ConvertToPixelText(value: drag["startY"]));
+            }
 
-            // Drop on the target element when its locator fits in the argument, where the user released it.
-            var target = drag["target"];
-            var targetLocator = ResolveText(value: target?["locator"]);
-            targetLocator = targetLocator.Length > 0 ? targetLocator : ResolveText(value: target?["fallbackLocator"]);
-            var isTargetUsable = targetLocator.Length > 0 && TestArgumentValue(value: targetLocator);
-            if (isTargetUsable)
+            // End on the drop element at its drop point, by the distance from an element start, or at the release
+            // point on the screen.
+            if (isTargetElement)
             {
                 parameters.Add(item: "--Target:" + targetLocator);
                 AddOffsetParameters(
@@ -687,16 +772,20 @@ namespace G4.Services.Domain.V4.Recordings
                     offsetX: drag["targetOffsetX"],
                     offsetY: drag["targetOffsetY"]);
             }
-            else
+            else if (isSourceElement)
             {
-                // Without a drop element, replay the distance from the grab point to the release point.
                 var deltaX = GetNumber(value: value["x"]) - GetNumber(value: drag["startX"]);
                 var deltaY = GetNumber(value: value["y"]) - GetNumber(value: drag["startY"]);
                 parameters.Add(item: "--DeltaX:" + ConvertToPixelText(pixels: deltaX));
                 parameters.Add(item: "--DeltaY:" + ConvertToPixelText(pixels: deltaY));
             }
+            else
+            {
+                parameters.Add(item: "--TargetX:" + ConvertToPixelText(value: value["x"]));
+                parameters.Add(item: "--TargetY:" + ConvertToPixelText(value: value["y"]));
+            }
 
-            // Wrap the parameters in the plugin macro and name the rule after the dragged element.
+            // Wrap the parameters in the plugin macro and name the rule after the dragged element, when it has one.
             rule["argument"] = "{{$ " + string.Join(separator: ' ', values: parameters) + "}}";
             SetElementName(rule, model, targetFirst: false);
             return rule;
@@ -714,12 +803,6 @@ namespace G4.Services.Domain.V4.Recordings
                 parameters.Add(item: "--" + prefix + "Alignment:TopLeft");
                 parameters.Add(item: "--" + prefix + "OffsetX:" + ConvertToPixelText(value: offsetX));
                 parameters.Add(item: "--" + prefix + "OffsetY:" + ConvertToPixelText(value: offsetY));
-            }
-
-            // Tests whether a recorded offset is a JSON number, which is how the recorder sends a measured offset.
-            static bool TestNumber(JsonNode value)
-            {
-                return value is JsonValue number && number.GetValueKind() == JsonValueKind.Number;
             }
         }
 
@@ -762,7 +845,7 @@ namespace G4.Services.Domain.V4.Recordings
                     comparisonType: StringComparison.OrdinalIgnoreCase);
                 if (isMouse)
                 {
-                    var mouseRule = TestUiaDrag(item) ? NewUiaDragRule(item) : NewMouseRule(item);
+                    var mouseRule = TestUiaDrag(model: item.Model) ? NewUiaDragRule(item) : NewMouseRule(item);
                     rules.Add(item: mouseRule);
                     continue;
                 }
@@ -839,6 +922,14 @@ namespace G4.Services.Domain.V4.Recordings
             }
 
             return rules;
+        }
+
+        // Resolves the locator of a UIA chain as a click does: the primary locator, or the alternate one when the
+        // primary is empty. A missing chain or non-text values resolve to an empty string. Never throws.
+        private static string ResolveChainLocator(JsonNode chain)
+        {
+            var locator = ResolveText(value: chain?["locator"]);
+            return locator.Length > 0 ? locator : ResolveText(value: chain?["fallbackLocator"]);
         }
 
         // Word aliases are classification aids only; discrete driver key normalization remains downstream.
@@ -1228,6 +1319,13 @@ namespace G4.Services.Domain.V4.Recordings
             return ModifierVirtualKeys.Contains(item: virtualKey);
         }
 
+        // Tests whether a recorded value is a JSON number, which is how the recorders send a measured offset or a
+        // scroll delta. Pure predicate: an absent node, a string, or any other JSON type never matches.
+        private static bool TestNumber(JsonNode value)
+        {
+            return value is JsonValue number && number.GetValueKind() == JsonValueKind.Number;
+        }
+
         // Tests whether a path node carries the recorder's trigger flag as a JSON true.
         // Pure predicate: a missing flag or a non-boolean value never matches.
         private static bool TestTriggerNode(JsonObject node)
@@ -1236,20 +1334,20 @@ namespace G4.Services.Domain.V4.Recordings
         }
 
         // Tests whether a UIA release is a drag and drop to replay: a left-button release whose value carries the
-        // drag facts object the UIA recorder adds past the Windows drag threshold. Coordinate mode keeps the click,
-        // because its rules have no locator and InvokeUser32DragAndDrop needs the element to drag. Pure predicate.
-        private static bool TestUiaDrag(RecordedEvent item)
+        // drag facts object the UIA recorder adds past the Windows drag threshold, in any capture mode. Pure
+        // predicate.
+        private static bool TestUiaDrag(JsonObject model)
         {
-            var isLeftRelease = GetText(value: item.Model["event"]).Equals(
+            var isLeftRelease = GetText(value: model["event"]).Equals(
                 value: "Left Up",
                 comparisonType: StringComparison.OrdinalIgnoreCase);
-            var isDrag = item.Model["value"]?["drag"] is JsonObject;
-            var isLocatorMode = item.Options.Mode != CaptureModes.Coordinate;
-            return isLeftRelease && isDrag && isLocatorMode;
+            var isDrag = model["value"]?["drag"] is JsonObject;
+            return isLeftRelease && isDrag;
         }
 
-        // Matches the extension's release-only classifier. Mouse releases need an element chain to target, while
-        // keyboard releases are kept without one: the plugins type into the focused element when no locator is set.
+        // Matches the extension's release-only classifier. Mouse clicks need an element chain to target, while
+        // keyboard releases and drags are kept without one: the plugins type into the focused element when no
+        // locator is set, and a drag replays between screen points.
         // Pure predicate: reads the model without mutation and treats missing fields as non-matching.
         private static bool TestUiaEvent(JsonObject model)
         {
@@ -1271,8 +1369,9 @@ namespace G4.Services.Domain.V4.Recordings
                 return !TestModifierKey(model);
             }
 
-            // Keep a click only when it names the element it targets.
-            return TestChain(model);
+            // Keep a click only when it names the element it targets; a drag is kept without one, because it can
+            // replay between screen points.
+            return TestChain(model) || TestUiaDrag(model);
         }
 
         #endregion

@@ -34,9 +34,13 @@ For an Android recorder, the `driverParameters` are also what the flow replays w
 Chromium and Android always record in `standard` mode. Another driver is refused with
 `Recorder driver must be AndroidDriver, ChromeDriver or UiaDriver.`
 
-The Android recorder also sends `InvokeLongClick` and `SwitchActivity`, which have no replay plugin yet. The Hub keeps
-them in the flow, as it keeps every recorder event. A client leaves them out with its own filter; the VS Code
-extension does so through `excludeEvents`.
+The Android recorder also sends `InvokeLongClick` and `SwitchActivity`, and the Hub gives each the argument its plugin
+reads:
+
+| Event | Rule | Argument |
+| --- | --- | --- |
+| `InvokeLongClick` | `InvokeLongClick` on the recorded element | `{{$ --Duration:<ms>}}` from `value.durationMilliseconds`, rounded to whole milliseconds. Without a positive value the argument is empty and the plugin holds for its 1000 ms default. |
+| `SwitchActivity` | `SwitchActivity`, with no `onElement` | `{{$ --Package:<package> --Activity:<activity>}}` from `value.package` and `value.activity`. Without a package only `--Activity` is written. |
 
 ## DOM context on Chromium element rules
 
@@ -121,7 +125,7 @@ A recorded drag and drop becomes one rule. The dragged element is the rule's `on
 | Recorder | Event | Rule |
 | --- | --- | --- |
 | Chromium | `InvokeDragAndDrop`, with the drop element's chain in `value.target.chain` and the distance from the source center to the release point in `value.deltaX` and `value.deltaY` | `InvokeDragAndDrop` |
-| UIA | `Left Up` that carries `value.drag`, in `standard` and `user32` modes | `InvokeUser32DragAndDrop` |
+| UIA | `Left Up` that carries `value.drag`, in every mode | `InvokeUser32DragAndDrop` |
 
 ```json
 {
@@ -148,9 +152,66 @@ A recorded drag and drop becomes one rule. The dragged element is the rule's `on
 - `capabilities.target` carries the drop element's name and the same locator capabilities as the dragged element, so a client can swap or heal the drop locator.
 - A locator amendment whose `locatorId` names the drop element corrects `value.target.chain`, and the event counts once.
 - For UIA, `value.drag` carries the press point (`startX`, `startY`), the grab offset from the source's top-left corner (`sourceOffsetX`, `sourceOffsetY`), and the drop element's chain (`target`) with its offset from that element's top-left corner (`targetOffsetX`, `targetOffsetY`).
-- A measured offset pair becomes `--Alignment:TopLeft --OffsetX --OffsetY`, and for the target `--TargetAlignment:TopLeft --TargetOffsetX --TargetOffsetY`. The UIA driver applies offsets to every alignment except its `MiddleCenter` default, so the corner is the reference. An offset the recorder could not measure is absent, and that end keeps the element center.
-- Without a usable UIA target, the rule replays the distance from the press point to the release point.
-- In UIA `coordinate` mode, a drag stays an `InvokeUser32Click` at the release point, because `InvokeUser32DragAndDrop` needs the element to drag. The recorders' [feature request #37](https://github.com/g4-api/g4-recorders/issues/37) tracks it.
+- Each UIA end is an element point when its element has a locator, and a screen point otherwise. The UIA target locator must also fit in the argument.
+
+    | End | Element | No usable element |
+    | --- | --- | --- |
+    | Start | `onElement`, plus the grab offset | `--X --Y`, the press point |
+    | End, element start | `--Target`, plus the drop offset | `--DeltaX --DeltaY` from the press point |
+    | End, screen-point start | `--Target`, plus the drop offset | `--TargetX --TargetY`, the release point |
+
+- An element start with no usable target ends by its distance, so the drop follows the element when the window moves.
+- A UIA drag without a chain, pressed over nothing UI Automation resolved, is kept and starts at the press point.
+- In UIA `coordinate` mode both ends are screen points and the rule has no `onElement`: `{{$ --X --Y --TargetX --TargetY}}`. A screen point replays correctly only on the same screen layout.
+- A measured offset pair becomes `--Alignment:TopLeft --OffsetX --OffsetY`, and for the target `--TargetAlignment:TopLeft --TargetOffsetX --TargetOffsetY`. The corner is the reference that every UIA driver version applies. An offset the recorder could not measure is absent, and that end keeps the element center.
+
+## Scroll
+
+A recorded `InvokeScroll` event becomes an `InvokeScroll` rule that scrolls by a pixel offset from the current position.
+The rule keeps the recorded element as its `onElement`, and its argument is `{{$ --Left:<x> --Top:<y> --Relative}}`:
+
+```json
+{
+    "$type": "Action",
+    "pluginName": "InvokeScroll",
+    "onElement": "//main",
+    "argument": "{{$ --Left:0 --Top:240 --Relative}}"
+}
+```
+
+- `--Relative` makes the plugin scroll by `--Left` and `--Top` pixels, not to them. A positive `--Top` scrolls down and
+  a positive `--Left` scrolls right.
+- The Chromium recorder sends one event for each wheel event, with that event's pixel deltas in `value.deltaX` and
+  `value.deltaY`. The Hub uses them as `--Left` and `--Top`, rounded to whole pixels. They are not multiplied by
+  `value.notches`, because the notch count is derived from the same delta. A delta that is not a JSON number counts as
+  zero.
+- Without numeric deltas, the Hub scrolls 120 pixels per notch along `value.direction`. For example, `Down` with 2
+  notches becomes `--Left:0 --Top:240`, and `Left` with 2 notches becomes `--Left:-240 --Top:0`.
+- A missing direction scrolls down, and a missing or unusable notch count scrolls one notch.
+- The Android recorder sends only `direction` and `notches`, so its scroll rules use the notch mapping.
+- `InvokeScroll` runs JavaScript in the page, so the rule replays on web pages only. An Android scroll rule therefore
+  does not scroll a native app screen.
+
+## Clicks and keys from the UIA recorder
+
+The UIA recorder sends raw button and key releases, and the Hub picks the plugin from the release and the recorder's
+`mode`:
+
+| Release | `standard` mode | `user32` and `coordinate` modes |
+| --- | --- | --- |
+| `Left Up` | `InvokeClick` | `InvokeUser32Click` |
+| `Middle Up` | `InvokeMiddleClick` | `InvokeUser32MiddleClick` |
+| `Right Up` | `InvokeContextClick` | `InvokeUser32ContextClick` |
+| A discrete key, such as `Enter` | `SendKeyboardKey` | `SendUser32KeyboardKey` |
+| A shortcut chord, such as Ctrl+A | `SendUser32KeyboardKey` | `SendUser32KeyboardKey` |
+
+- A click targets the recorded element, except in `coordinate` mode, where it replays at the screen point as
+  `{{$ --X --Y}}`.
+- A `Left Up` that carries `value.drag` is a drag and drop, described above, not a click.
+- `SendUser32KeyboardKey` sends its key to the focused window, so its rule has no `onElement` and no
+  `capabilities.elementName`, in every mode. Only `SendKeyboardKey` keeps the recorded element.
+- The Chromium recorder sends a middle click (`auxclick` with button 1) as `InvokeMiddleClick`, which becomes an
+  `InvokeMiddleClick` rule on the recorded element.
 
 ## Status codes
 

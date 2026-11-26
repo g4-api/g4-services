@@ -329,6 +329,16 @@ html, body {
 			font: var(--smart-editor-error-description-font);
 		}
 
+	/* A warning, such as an empty Input Actions Group, keeps the error block's layout and only changes its colors. */
+	.sqd-theme-light .sqd-smart-editor .sqd-error.sqd-error--warning {
+		background: var(--smart-editor-warning-background);
+		border-color: var(--smart-editor-warning-border-color);
+	}
+
+		.sqd-theme-light .sqd-smart-editor .sqd-error.sqd-error--warning .sqd-error-title {
+			color: var(--smart-editor-warning-title-color);
+		}
+
 	.sqd-theme-light .sqd-smart-editor button {
 		background: var(--smart-editor-button-background);
 		border: var(--smart-editor-button-border);

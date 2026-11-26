@@ -25,6 +25,7 @@ The **G4 Hub API** provides a comprehensive interface for managing templates, en
 - [Contributing](#contributing)
 - [License](#license)
 - [Support](#support)
+- [Build, Test and Release](#build-test-and-release)
 
 ---
 
@@ -316,6 +317,19 @@ This project is licensed under the [Apache v2.0](LICENSE).
 
 If you encounter any issues or have questions, please open an issue in the repository or contact the maintainers.
 
-## Contributing and builds
+## Build, Test and Release
 
-Build tools, test commands, version numbers, Docker images and development ports are in the [build, test and release guide](../g4-github-actions/docs/build-test-release.md).
+Build the solution with the .NET 10 SDK, then run the unit tests and the designer tests from the repository root.
+The designer tests need only Node.js 18 or later, with no package install:
+
+```bash
+dotnet build src/G4.Services.sln
+dotnet test src/G4.Services.UnitTests/G4.Services.UnitTests.csproj
+node --test src/G4.Services.Hub/test/validators.test.js
+```
+
+A push to `main` runs the release workflow in `.github/workflows/release-pipline.yml`.
+It builds the Hub Docker image and runs the Postman collection in `postman/G4.Services.json` with Newman against it.
+It does not run the unit tests or the designer tests, so run them before you merge.
+When the collection passes, it publishes the Docker images and the standalone Hub, and creates the GitHub release.
+User-visible changes are listed in the [changelog](docs/CHANGELOG.md).
