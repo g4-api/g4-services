@@ -1,4 +1,5 @@
-﻿using G4.Extensions;
+﻿using G4.Exceptions;
+using G4.Extensions;
 using G4.Models;
 
 using Microsoft.AspNetCore.Http;
@@ -168,11 +169,17 @@ namespace G4.Services.Domain.V4.Middlewares
             var rootCause = exception.GetBaseException();
             var rootCauseName = rootCause.GetType().Name;
 
+            // A driver session that could not start is found anywhere in the chain, not at its root: the session
+            // error wraps the failure of the driver, and its own message is the one that names the driver.
+            var sessionError = FindSessionError(exception);
+
             // Map the root cause to a caller-visible status so domain failures are distinguishable from server faults.
             // Credential and quota failures match by name because their types live in assemblies this project
             // does not reference; the remaining families are ordinary domain exceptions, such as recording failures.
             (int statusCode, string title) = rootCause switch
             {
+                _ when sessionError != null =>
+                    (StatusCodes.Status502BadGateway, "The driver session was not created."),
                 _ when rootCauseName == "InvalidCredentialException" =>
                     (StatusCodes.Status401Unauthorized, "Invalid credentials provided."),
                 _ when rootCauseName == "NoAvailableRunningTimeException" =>
@@ -187,8 +194,9 @@ namespace G4.Services.Domain.V4.Middlewares
             // Set the HTTP status code in the response
             context.Response.StatusCode = statusCode;
 
-            // Retrieve the base exception to get the root cause of the exception
-            var baseException = exception.GetBaseException();
+            // Retrieve the exception whose message explains the failure: the session error when there is one,
+            // otherwise the root cause of the exception
+            var baseException = sessionError ?? exception.GetBaseException();
 
             // Extract route data from the current HTTP context and convert it to a dictionary
             var routeData = context.GetRouteData().Values.ToDictionary(k => k.Key, v => v.Value);
@@ -204,17 +212,35 @@ namespace G4.Services.Domain.V4.Middlewares
             // Add the extracted route data to the error response model
             response.AddRouteData(routeData);
 
-            // Add the exception details to the error response model
-            response.AddErrors(new Dictionary<string, string[]>
-            {
-                [baseException.GetType().Name] = [baseException.ToString()]
-            });
+            // Add the exception details to the error response model. A session error is named like the other
+            // automation errors (InvalidDataSource) and carries its message only, which is what a client shows.
+            var errors = sessionError != null
+                ? new Dictionary<string, string[]> { ["SessionNotCreated"] = [sessionError.Message] }
+                : new Dictionary<string, string[]> { [baseException.GetType().Name] = [baseException.ToString()] };
+
+            response.AddErrors(errors);
 
             // Serialize the error response model to a JSON string using the provided JSON serializer options
             var jsonResponse = JsonSerializer.Serialize(response, jsonOptions);
 
             // Write the JSON error response to the HTTP response body asynchronously
             return context.Response.WriteAsync(jsonResponse);
+        }
+
+        // Finds the error of a driver session that could not start among an exception and the exceptions it
+        // wraps. Returns null when the request failed for another reason.
+        private static G4SessionNotCreatedException FindSessionError(Exception exception)
+        {
+            // Walk the chain from the outermost exception inwards; task and invocation wrappers sit above it
+            for (var current = exception; current != null; current = current.InnerException)
+            {
+                if (current is G4SessionNotCreatedException sessionError)
+                {
+                    return sessionError;
+                }
+            }
+
+            return default;
         }
         #endregion
     }

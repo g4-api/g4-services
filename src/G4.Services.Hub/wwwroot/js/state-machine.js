@@ -182,6 +182,24 @@ class StateMachine {
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 class StateMachineSteps {
 	/**
+	 * Converts a value to the most lanes a Parallel container runs at once.
+	 *
+	 * @remarks
+	 * Compute-only. The engine reads zero or less as "run every lane at once", so anything that is not a whole
+	 * number above zero becomes zero. The conversion to and from an automation and the step editor all convert
+	 * through this method, so the limit is read the same way everywhere.
+	 *
+	 * @param {unknown} value - The value of an automation entry or a step, or the text of a number field.
+	 * @returns {number} The limit as a whole number; zero for no limit.
+	 */
+	static convertToMaxParallel(value) {
+		const maxParallel = Math.floor(Number(value));
+		const isLimit = Number.isFinite(maxParallel) && maxParallel > 0;
+
+		return isLimit ? maxParallel : 0;
+	}
+
+	/**
 	 * Creates a new Stage container for the G4 Automation Sequence.
 	 * 
 	 * A Stage is a container that holds Jobs, each comprising specific Actions, to structure and manage the sequential automation flow.
@@ -240,6 +258,45 @@ class StateMachineSteps {
 		container.properties.driverParameters = {};
 
 		// Return the Job container.
+		return container;
+	}
+
+	/**
+	 * Creates a new Parallel container for the G4 Automation Sequence.
+	 *
+	 * A Parallel container holds stages (when it sits at the top level) or jobs (when it sits inside a Stage).
+	 * Each one is a lane, the lanes run at the same time, and the flow continues when they have finished.
+	 * The automation writes it as an entry with "$type": "Parallel" in a stages or jobs list.
+	 *
+	 * @remarks
+	 * Compute-only factory. The container uses the designer's launchPad component, which draws the steps of
+	 * its sequence side by side. It keeps its own settings in `parallel`, not in `properties`, because the
+	 * step editor reads every entry of `properties` as a plugin property.
+	 *
+	 * @param {string} name       - The name of the Parallel container.
+	 * @param {Object} properties - The properties defining the Parallel container.
+	 * @param {Object} parameters - The parameters associated with the Parallel container.
+	 * @param {Array}  steps      - The stages or jobs that run as the lanes of the container.
+	 * @returns {Object} A new Parallel container object created by the newG4Container function.
+	 */
+	static newG4Parallel(name, properties, parameters, steps) {
+		// Description of the Parallel container, shown in the step editor and as the step's tooltip.
+		const parallelDescription = `
+        A container that runs its stages or jobs at the same time, each as one lane, and continues the flow when the lanes have finished.
+        Place it at the top level to run stages in parallel, or inside a stage to run jobs in parallel.`;
+
+		// Start from the common container, so the Parallel container carries the same members as a Stage or a Job.
+		const container = StateMachineSteps.newG4Container(name, 'parallel', parallelDescription, properties, parameters, steps);
+
+		// Draw the sequence side by side, and name the container the way the placement rules look it up.
+		container["componentType"] = 'launchPad'
+		container["pluginType"] = 'Container'
+		container["pluginName"] = 'G4™ Parallel'
+
+		// Zero runs every lane at once, which is the engine's own default.
+		container["parallel"] = { maxParallel: 0 };
+
+		// Return the Parallel container.
 		return container;
 	}
 
@@ -391,10 +448,28 @@ class StateMachineSteps {
 		step.aliases = manifest.aliases || [];
 		step.pluginType = manifest.pluginType;
 		step.properties = properties;
-		step.context = context;
+
+		// Give every step its own copy of the manifest's workflow context. The context holds the step's validation
+		// messages and editor state, so a shared object let one step's messages and switches show on every other
+		// step of the same plugin, and wrote them into the cached manifest.
+		step.context = structuredClone(context);
 		step.context.errors = step.context.errors || {};
 
 		// Return the new G4 step object
 		return step;
+	}
+
+	/**
+	 * Tests whether a designer step is a Parallel container.
+	 *
+	 * @remarks
+	 * Compute-only. The conversion to an automation, the placement rules, and the Parallel container plugin
+	 * all ask through this method, so the step is recognized the same way everywhere.
+	 *
+	 * @param {Object} step - The designer step to test.
+	 * @returns {boolean} True when the step is a Parallel container.
+	 */
+	static testG4Parallel(step) {
+		return step?.pluginName === 'G4™ Parallel';
 	}
 }

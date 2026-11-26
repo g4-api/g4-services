@@ -619,8 +619,14 @@ function newConfiguration() {
 				// If the step is not selected, return true (no validation needed)
 				if ((!id || id !== step.id) && step.sequence && step.sequence.length > 0) {
                     step.context.errors = step.context.errors || {};
-					return Object.keys(step.context.errors).length === 0
-						&& !step?.categories?.toUpperCase().includes("G-ERROR");
+
+					// Only errors mark the step invalid; a warning (level "WRN") is shown in the step editor only.
+					const isErrorRecorded = Object
+						.values(step.context.errors)
+						.some(message => message?.level !== "WRN");
+					const isErrorCategory = step?.categories?.toUpperCase().includes("G-ERROR") === true;
+
+					return !isErrorRecorded && !isErrorCategory;
 				}
 
 				// Array to collect each validation result (true = pass, false = fail)
@@ -639,6 +645,11 @@ function newConfiguration() {
 				// Verify that Content rules are correctly nested under an ExportData plugin
 				assertions.push(
 					Validators.confirmContentRule(step, definition)
+				);
+
+				// Verify that input actions sit directly inside an Input Actions Group, and that a group holds only them
+				assertions.push(
+					Validators.confirmInputActionPlacement(step, definition)
 				);
 
 				// Confirm that the step appears in a valid Stage context if needed

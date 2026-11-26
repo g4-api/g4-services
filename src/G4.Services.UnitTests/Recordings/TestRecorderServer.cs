@@ -72,6 +72,16 @@ namespace G4.Services.UnitTests.Recordings
             return new TestRecorderServer(application);
         }
 
+        // Sends a locator amendment in the recorder's envelope, as the Chromium recorder does after it re-tests the
+        // locators of an event it has already delivered.
+        internal async Task SendAmendmentAsync(JsonObject amendment)
+        {
+            // Act: publish to every recorder consumer on the amendment broadcast, separate from the event broadcast.
+            var hub = _application.Services.GetRequiredService<IHubContext<TestRecorderHub>>();
+            var envelope = new { value = amendment };
+            await hub.Clients.All.SendAsync(method: "ReceiveLocatorAmendment", arg1: envelope).ConfigureAwait(false);
+        }
+
         // Sends the exact G4 envelope contract over the real SignalR transport.
         internal async Task SendAsync(JsonObject model)
         {

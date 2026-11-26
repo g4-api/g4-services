@@ -191,6 +191,9 @@
 	--smart-editor-toggle-icon-path: var(--electric-blue-dim);
 	--smart-editor-toggle-icon-hover-path: var(--electric-blue);
 	--smart-editor-toggle-box-shadow: 0 0 8px rgba(var(--electric-blue-rgb), 0.1);
+	--smart-editor-warning-background: #1A1400;
+	--smart-editor-warning-border-color: var(--yellow);
+	--smart-editor-warning-title-color: var(--yellow);
 	/* Toolbox */
 	--toolbox-background: var(--secondary-color);
 	--toolbox-box-shadow: 0 0 8px rgba(var(--electric-blue-rgb), 0.1), 0 0px 0px rgba(var(--black-rgb), 0.15);

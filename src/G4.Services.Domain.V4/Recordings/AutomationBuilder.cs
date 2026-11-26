@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 
 namespace G4.Services.Domain.V4.Recordings
 {
@@ -12,6 +13,10 @@ namespace G4.Services.Domain.V4.Recordings
     internal static class AutomationBuilder
     {
         #region *** Constants    ***
+
+        // Pixels one wheel notch scrolls when a recorder reports notches without pixel deltas. It matches the
+        // Windows WHEEL_DELTA unit, which the Chromium recorder also uses to count notches.
+        private const int ScrollNotchPixels = 120;
 
         // Standalone modifiers have no playback meaning on their own; they only shape shortcut chords.
         private static readonly HashSet<int> ModifierVirtualKeys =
@@ -35,6 +40,10 @@ namespace G4.Services.Domain.V4.Recordings
             [0x5C] = "RWin"
         };
 
+        // Matches where the engine's CLI parser starts a new argument inside a value: whitespace followed by "--" and
+        // a name character, the same look-ahead its argument pattern uses.
+        private static readonly Regex ArgumentBreakPattern = new(pattern: @"\s+--[\w,/,\.,\$,\*]");
+
         // Exports with the camel-case flow contract and omits absent authentication fields instead of writing nulls.
         private static readonly JsonSerializerOptions ExportOptions = new(defaults: JsonSerializerDefaults.Web)
         {
@@ -44,6 +53,23 @@ namespace G4.Services.Domain.V4.Recordings
         #endregion
 
         #region *** Methods      ***
+
+        // Resolves the node an element event was triggered on: the path node the recorder flagged with
+        // isTriggerElement, or the first node when none is flagged, which is the target of a target-first chain.
+        // Rule conversion and late locator amendments share this lookup, so both read and patch the same node.
+        // Pure lookup: returns null for an event without a recorded path or with a non-object node, and never throws.
+        internal static JsonObject GetTriggerNode(JsonObject model)
+        {
+            // An event without a non-empty recorded path names no element, so there is no node to resolve.
+            if (model["chain"] is not JsonObject chain || chain["path"] is not JsonArray { Count: > 0 } path)
+            {
+                return null;
+            }
+
+            // Prefer the recorder's explicit flag so the lookup never depends on the chain orientation alone.
+            var flagged = path.OfType<JsonObject>().FirstOrDefault(predicate: TestTriggerNode);
+            return flagged ?? path[0] as JsonObject;
+        }
 
         // Converts captures with no window exclusions and returns only the flow; null for an empty recording.
         internal static JsonObject NewAutomation(RecordingAuthenticationModel authentication, RecorderCapture[] captures)
@@ -152,6 +178,27 @@ namespace G4.Services.Domain.V4.Recordings
             };
 
             return new RecordedAutomation(Automation: automation, Jobs: [.. jobRecorders]);
+        }
+
+        // Reads optional recorder text that conversion cannot trust: locator metadata and locator amendments come
+        // from the browser extension and can be absent or carry another JSON type. Unlike GetText, which fails on a
+        // present non-string node, an absent or non-text value resolves to an empty string, so callers only test
+        // the length.
+        internal static string ResolveText(JsonNode value)
+        {
+            return value is JsonValue textValue && textValue.TryGetValue(out string text) ? text : "";
+        }
+
+        // Converts a recorded pixel value into the invariant text the plugin arguments use. A missing or unusable
+        // value counts as zero.
+        private static string ConvertToPixelText(JsonNode value) => ConvertToPixelText(pixels: GetNumber(value));
+
+        // Converts a pixel distance into the invariant whole-number text the plugin arguments use; a fraction is
+        // rounded away from zero, because pointer moves take whole pixels.
+        private static string ConvertToPixelText(double pixels)
+        {
+            var wholePixels = (long)Math.Round(pixels, MidpointRounding.AwayFromZero);
+            return wholePixels.ToString(provider: CultureInfo.InvariantCulture);
         }
 
         // Copies playback settings and satisfies the designer's driver-plus-binaries import contract.
@@ -276,13 +323,23 @@ namespace G4.Services.Domain.V4.Recordings
                     rule["argument"] = value?["index"]?.ToString() ?? "0";
                     break;
                 case "InvokeScroll":
-                    // Scroll defaults mirror the extension: one notch downward when direction or count is absent.
+                    // The scroll replays by the recorded pixel offsets from the current position.
                     SetLocator(rule, locator);
-                    var direction = GetText(value: value?["direction"]);
-                    direction = direction.Length == 0 ? "Down" : direction;
-                    var times = value?["notches"]?.ToString() ?? "1";
-                    var scrollArgument = "{{$ --direction:" + direction + " --times:" + times + "}}";
-                    rule["argument"] = scrollArgument;
+                    rule["argument"] = NewScrollArgument(value);
+                    break;
+                case "InvokeDragAndDrop":
+                    // The dragged element is the chain target; where the drag ends travels in the argument.
+                    SetLocator(rule, locator);
+                    rule["argument"] = NewDragArgument(value);
+                    break;
+                case "InvokeLongClick":
+                    // The pressed element is the chain target; the recorded hold time travels as --Duration.
+                    SetLocator(rule, locator);
+                    rule["argument"] = NewLongClickArgument(value);
+                    break;
+                case "SwitchActivity":
+                    // An activity change names the package and activity to start and never an element locator.
+                    rule["argument"] = NewActivityArgument(value);
                     break;
                 default:
                     // Remaining element actions carry only their target locator.
@@ -290,12 +347,42 @@ namespace G4.Services.Domain.V4.Recordings
                     break;
             }
 
+            // A target inside a shadow root is addressed by its shadow path, because the chain locator of such an
+            // event only reaches the outermost shadow host.
+            SetShadowLocator(rule, model);
+
             // Chromium paths visit the target first; UIA paths use the opposite orientation.
             SetElementName(rule, model, targetFirst: true);
 
             // Chromium element rules also carry the markup around their target when the recorder captured it.
             SetDomContext(rule, model);
+
+            // The ranked locator candidates travel with the rule, so a client can swap or heal the chosen locator.
+            SetLocatorCandidates(rule, model);
+
+            // A drag and drop also carries the candidates of its drop element, for the same reason.
+            SetTargetCandidates(rule, model);
             return rule;
+        }
+
+        // Shapes the InvokeDragAndDrop argument from a Chromium drag event's value: the drop element when one has a
+        // locator the argument can carry, otherwise the distance the recorder measured from the source center to
+        // the release point, which is the offset the plugin moves by. XPath is the plugin's default locator type,
+        // so only another type is written.
+        private static string NewDragArgument(JsonNode value)
+        {
+            // Prefer the drop element, because it still holds when the layout moves between recording and replay.
+            var (targetLocator, targetLocatorType) = ResolveDragTarget(target: value?["target"] as JsonObject);
+            if (targetLocator.Length > 0)
+            {
+                var locatorTypeParameter = targetLocatorType == "Xpath" ? "" : " --TargetLocator:" + targetLocatorType;
+                return "{{$ --Target:" + targetLocator + locatorTypeParameter + "}}";
+            }
+
+            // Replay a drag without a usable drop element by the recorded distance.
+            var deltaX = ConvertToPixelText(value: value?["deltaX"]);
+            var deltaY = ConvertToPixelText(value: value?["deltaY"]);
+            return "{{$ --DeltaX:" + deltaX + " --DeltaY:" + deltaY + "}}";
         }
 
         // Resolves one continuous endpoint run and closes its driver only on the endpoint's last job.
@@ -361,8 +448,10 @@ namespace G4.Services.Domain.V4.Recordings
             var rule = NewRule(plugin, model: item.Model);
             rule["argument"] = keysArgument;
 
-            // Coordinate keyboard actions intentionally target the active desktop focus rather than an element.
-            if (item.Options.Mode != CaptureModes.Coordinate)
+            // Coordinate keyboard actions intentionally target the active desktop focus rather than an element, and
+            // SendUser32KeyboardKey sends its key to the focused window in every mode, so neither gets onElement.
+            var isFocusTargeted = item.Options.Mode == CaptureModes.Coordinate || plugin == "SendUser32KeyboardKey";
+            if (!isFocusTargeted)
             {
                 SetLocator(rule, locator: GetText(value: item.Model["chain"]?["locator"]));
             }
@@ -370,6 +459,46 @@ namespace G4.Services.Domain.V4.Recordings
             // UIA paths run root-first, so the element name search starts from the far end.
             SetElementName(rule, model: item.Model, targetFirst: false);
             return rule;
+        }
+
+        // Collects detached copies of the locator metadata a Chromium trigger node carries: the ranked candidates,
+        // the shadow-root path, the strength of the chosen locator, and the locator the recorder started from.
+        // Empty arrays and empty or non-text values are left out, and a missing node yields an empty dictionary,
+        // so callers create no capabilities for an element without metadata.
+        private static Dictionary<string, JsonNode> NewLocatorCandidates(JsonObject properties)
+        {
+            // A node without properties carries no metadata to copy.
+            var candidates = new Dictionary<string, JsonNode>();
+            if (properties is null)
+            {
+                return candidates;
+            }
+
+            // Arrays are deep-cloned, because a JSON node has a single parent and the event keeps its own copy.
+            if (properties["locators"] is JsonArray { Count: > 0 } locators)
+            {
+                candidates["locators"] = locators.DeepClone();
+            }
+
+            if (properties["shadowPath"] is JsonArray { Count: > 0 } shadowPath)
+            {
+                candidates["shadowPath"] = shadowPath.DeepClone();
+            }
+
+            // Text values are copied only when the recorder reported a non-empty string.
+            var locatorStrength = ResolveText(value: properties["locatorStrength"]);
+            if (locatorStrength.Length > 0)
+            {
+                candidates["locatorStrength"] = locatorStrength;
+            }
+
+            var originalLocator = ResolveText(value: properties["originalLocator"]);
+            if (originalLocator.Length > 0)
+            {
+                candidates["originalLocator"] = originalLocator;
+            }
+
+            return candidates;
         }
 
         // Maps button releases into element-pattern or physical input actions according to UIA mode.
@@ -460,6 +589,70 @@ namespace G4.Services.Domain.V4.Recordings
             return new JsonObject { ["$type"] = "Action", ["pluginName"] = plugin, ["context"] = context };
         }
 
+        // Shapes the SwitchActivity argument from an activity event's value. The plugin joins --Package and
+        // --Activity as the package/activity intent it starts, so a missing package is left out and the activity
+        // is passed alone; an event without an activity yields an empty argument, which the plugin reports.
+        private static string NewActivityArgument(JsonNode value)
+        {
+            // Read both names; Android reports them as plain strings.
+            var package = GetText(value: value?["package"]);
+            var activity = GetText(value: value?["activity"]);
+
+            // Leave out a missing package, so a full package/activity intent in the activity is used as it is.
+            var packageParameter = string.IsNullOrEmpty(package) ? string.Empty : "--Package:" + package + " ";
+            return "{{$ " + packageParameter + "--Activity:" + activity + "}}";
+        }
+
+        // Shapes the InvokeLongClick argument from a long click event's value. The recorded hold time becomes
+        // --Duration in whole milliseconds; without a usable positive time the argument is empty and the plugin
+        // holds for its own default.
+        private static string NewLongClickArgument(JsonNode value)
+        {
+            // Read the hold time as whole milliseconds; a missing or non-numeric value reads as zero.
+            var duration = (long)Math.Round(GetNumber(value: value?["durationMilliseconds"]), MidpointRounding.AwayFromZero);
+
+            // Pass only a positive duration in invariant text, so the plugin default applies otherwise.
+            var durationText = duration.ToString(provider: CultureInfo.InvariantCulture);
+            return duration > 0 ? "{{$ --Duration:" + durationText + "}}" : string.Empty;
+        }
+
+        // Shapes the InvokeScroll argument from a scroll event's value. With --Relative the plugin scrolls by --Left
+        // and --Top pixels from the current position, through JavaScript, so the rule replays on web pages only.
+        // The Chromium recorder sends the pixel deltas of each single wheel event, which are used as they are. A
+        // recorder that sends only a direction and a notch count, such as the Android recorder, scrolls
+        // ScrollNotchPixels per notch along that direction; a missing direction scrolls down, and a missing or
+        // unusable notch count scrolls one notch.
+        private static string NewScrollArgument(JsonNode value)
+        {
+            // Prefer the recorded deltas, because they carry the exact wheel distance on both axes; an axis whose
+            // delta is not a JSON number does not move.
+            var deltaX = value?["deltaX"];
+            var deltaY = value?["deltaY"];
+            var isDeltaXRecorded = TestNumber(value: deltaX);
+            var isDeltaYRecorded = TestNumber(value: deltaY);
+            if (isDeltaXRecorded || isDeltaYRecorded)
+            {
+                var deltaLeft = isDeltaXRecorded ? ConvertToPixelText(value: deltaX) : "0";
+                var deltaTop = isDeltaYRecorded ? ConvertToPixelText(value: deltaY) : "0";
+                return "{{$ --Left:" + deltaLeft + " --Top:" + deltaTop + " --Relative}}";
+            }
+
+            // Without deltas, turn the notch count into pixels on the axis of the recorded direction; the sign
+            // follows the page axes, so up and left are negative.
+            var notches = Math.Max(val1: 1, val2: GetNumber(value: value?["notches"]));
+            var distance = notches * ScrollNotchPixels;
+            var (left, top) = GetText(value: value?["direction"]).ToUpperInvariant() switch
+            {
+                "UP" => (0d, -distance),
+                "LEFT" => (-distance, 0d),
+                "RIGHT" => (distance, 0d),
+                _ => (0d, distance)
+            };
+
+            return "{{$ --Left:" + ConvertToPixelText(pixels: left) + " --Top:" + ConvertToPixelText(pixels: top) +
+                " --Relative}}";
+        }
+
         // Plays a shortcut as one sticky chord: every modifier is held, the key is pressed, then all are released
         // in reverse order. User32 input is used in every UIA mode, since element patterns cannot hold a modifier
         // and cannot press a lone Windows key, which is played through this rule with no modifiers.
@@ -474,14 +667,8 @@ namespace G4.Services.Domain.V4.Recordings
             var rule = NewRule(plugin: "SendUser32KeyboardKey", model: item.Model);
             rule["argument"] = chordArgument;
 
-            // Coordinate mode targets the active desktop focus, matching discrete keyboard actions.
-            if (item.Options.Mode != CaptureModes.Coordinate)
-            {
-                SetLocator(rule, locator: GetText(value: item.Model["chain"]?["locator"]));
-            }
-
-            // UIA paths run root-first, so the element name search starts from the far end.
-            SetElementName(rule, model: item.Model, targetFirst: false);
+            // The plugin presses the chord in the focused window in every mode, so the rule carries no onElement
+            // and, without one, no element name.
             return rule;
         }
 
@@ -530,6 +717,95 @@ namespace G4.Services.Domain.V4.Recordings
             return output;
         }
 
+        // Maps a UIA left-button release that carries drag facts to InvokeUser32DragAndDrop, the only drag plugin of
+        // the UIA driver, in every capture mode, because UI Automation has no drag pattern. Each end is an element
+        // point when its element has a usable locator, and a screen point otherwise:
+        // - Start: the press-time chain in onElement with its grab offset, or --X and --Y, the press point.
+        // - End: --Target with its drop offset; without a usable target, --DeltaX and --DeltaY from the press point
+        //   when the start is an element, so the drop follows the element when the window moves, or --TargetX and
+        //   --TargetY, the release point, when the start is a screen point too.
+        // Coordinate mode records screen positions, so both of its ends are screen points and the rule names no
+        // locator. Offsets are measured from the top-left corner of each element and are written with the TopLeft
+        // alignment, which every UIA driver version applies. An element the recorder had no bounds for carries no
+        // offset and keeps the plugin's center alignment.
+        private static JsonObject NewUiaDragRule(RecordedEvent item)
+        {
+            // Read the release once; TestUiaDrag already proved that the drag facts are an object.
+            var model = item.Model;
+            var value = model["value"];
+            var drag = value["drag"].AsObject();
+            var rule = NewRule(plugin: "InvokeUser32DragAndDrop", model);
+            var isLocatorMode = item.Options.Mode != CaptureModes.Coordinate;
+
+            // Resolve both elements as a click does: the primary locator, or the alternate one when it is empty.
+            // Coordinate mode uses neither, and the target must also fit in the argument.
+            var sourceLocator = isLocatorMode ? ResolveChainLocator(chain: model["chain"]) : "";
+            var targetLocator = isLocatorMode ? ResolveChainLocator(chain: drag["target"]) : "";
+            var isSourceElement = sourceLocator.Length > 0;
+            var isTargetElement = targetLocator.Length > 0 && TestArgumentValue(value: targetLocator);
+
+            // Start on the dragged element at its grab point, or at the press point on the screen.
+            var parameters = new List<string>();
+            if (isSourceElement)
+            {
+                SetLocator(rule, locator: sourceLocator);
+                AddOffsetParameters(
+                    parameters,
+                    prefix: "",
+                    offsetX: drag["sourceOffsetX"],
+                    offsetY: drag["sourceOffsetY"]);
+            }
+            else
+            {
+                parameters.Add(item: "--X:" + ConvertToPixelText(value: drag["startX"]));
+                parameters.Add(item: "--Y:" + ConvertToPixelText(value: drag["startY"]));
+            }
+
+            // End on the drop element at its drop point, by the distance from an element start, or at the release
+            // point on the screen.
+            if (isTargetElement)
+            {
+                parameters.Add(item: "--Target:" + targetLocator);
+                AddOffsetParameters(
+                    parameters,
+                    prefix: "Target",
+                    offsetX: drag["targetOffsetX"],
+                    offsetY: drag["targetOffsetY"]);
+            }
+            else if (isSourceElement)
+            {
+                var deltaX = GetNumber(value: value["x"]) - GetNumber(value: drag["startX"]);
+                var deltaY = GetNumber(value: value["y"]) - GetNumber(value: drag["startY"]);
+                parameters.Add(item: "--DeltaX:" + ConvertToPixelText(pixels: deltaX));
+                parameters.Add(item: "--DeltaY:" + ConvertToPixelText(pixels: deltaY));
+            }
+            else
+            {
+                parameters.Add(item: "--TargetX:" + ConvertToPixelText(value: value["x"]));
+                parameters.Add(item: "--TargetY:" + ConvertToPixelText(value: value["y"]));
+            }
+
+            // Wrap the parameters in the plugin macro and name the rule after the dragged element, when it has one.
+            rule["argument"] = "{{$ " + string.Join(separator: ' ', values: parameters) + "}}";
+            SetElementName(rule, model, targetFirst: false);
+            return rule;
+
+            // Adds the corner alignment and an offset pair when the recorder measured both offsets; an absent or
+            // non-numeric pair leaves the plugin's center alignment, so a zero offset still means the corner itself.
+            static void AddOffsetParameters(List<string> parameters, string prefix, JsonNode offsetX, JsonNode offsetY)
+            {
+                var isMeasured = TestNumber(value: offsetX) && TestNumber(value: offsetY);
+                if (!isMeasured)
+                {
+                    return;
+                }
+
+                parameters.Add(item: "--" + prefix + "Alignment:TopLeft");
+                parameters.Add(item: "--" + prefix + "OffsetX:" + ConvertToPixelText(value: offsetX));
+                parameters.Add(item: "--" + prefix + "OffsetY:" + ConvertToPixelText(value: offsetY));
+            }
+        }
+
         // Consumes low-level UIA events while leaving mouse releases available after each typed-character run.
         // The loop index advances inside text runs, so each consumed keyboard event produces at most one rule.
         // Modifier presses and releases are tracked across the stream so legacy recorders still yield chords.
@@ -562,13 +838,15 @@ namespace G4.Services.Domain.V4.Recordings
                     continue;
                 }
 
-                // Mouse releases map one-to-one to click actions.
+                // Mouse releases map one-to-one to actions: a drag and drop when the release carries drag facts,
+                // otherwise a click.
                 var isMouse = GetText(value: item.Model["type"]).Contains(
                     value: "mouse",
                     comparisonType: StringComparison.OrdinalIgnoreCase);
                 if (isMouse)
                 {
-                    rules.Add(item: NewMouseRule(item));
+                    var mouseRule = TestUiaDrag(model: item.Model) ? NewUiaDragRule(item) : NewMouseRule(item);
+                    rules.Add(item: mouseRule);
                     continue;
                 }
 
@@ -646,9 +924,57 @@ namespace G4.Services.Domain.V4.Recordings
             return rules;
         }
 
+        // Resolves the locator of a UIA chain as a click does: the primary locator, or the alternate one when the
+        // primary is empty. A missing chain or non-text values resolve to an empty string. Never throws.
+        private static string ResolveChainLocator(JsonNode chain)
+        {
+            var locator = ResolveText(value: chain?["locator"]);
+            return locator.Length > 0 ? locator : ResolveText(value: chain?["fallbackLocator"]);
+        }
+
         // Word aliases are classification aids only; discrete driver key normalization remains downstream.
         private static string ResolveCharacter(string key) =>
             key.Equals(value: "space", comparisonType: StringComparison.OrdinalIgnoreCase) ? " " : key;
+
+        // Resolves where a Chromium drag and drop ends, as the locator of the drop element and its locator type, from
+        // the target chain the recorder sends in value.target. Candidates are tried in order: the trigger node's
+        // usable shadow path, the chain's best XPath, then the other ranked candidates that are not Broken. The
+        // first one the rule argument can carry wins. Returns an empty locator when there is no target or no
+        // candidate fits, so the caller replays the drag by its distance instead. Never throws.
+        private static (string Locator, string LocatorType) ResolveDragTarget(JsonObject target)
+        {
+            // A drag without a target chain ends where the pointer was released, so it has no drop element.
+            if (target?["chain"] is not JsonObject chain)
+            {
+                return ("", "");
+            }
+
+            // Collect the candidates in preference order; the shadow path is the only one that reaches a drop
+            // element inside a shadow root, so it comes first.
+            var properties = GetTriggerNode(model: target)?["properties"] as JsonObject;
+            var candidates = new List<(string Locator, string LocatorType)>
+            {
+                (ResolveShadowLocator(properties), "CssSelector"),
+                (ResolveText(value: chain["locator"]), "Xpath")
+            };
+
+            // Append the other ranked candidates the recorder did not find broken, in the recorder's order.
+            var rankedLocators = properties?["locators"] as JsonArray ?? [];
+            foreach (var candidate in rankedLocators.OfType<JsonObject>())
+            {
+                var isBroken = ResolveText(value: candidate["verdict"]) == "Broken";
+                var locatorType = ResolveText(value: candidate["using"]);
+                if (!isBroken && locatorType.Length > 0)
+                {
+                    candidates.Add(item: (ResolveText(value: candidate["value"]), locatorType));
+                }
+            }
+
+            // Take the first candidate with a value the argument parser keeps whole.
+            var resolved = candidates.FirstOrDefault(predicate: candidate =>
+                candidate.Locator.Length > 0 && TestArgumentValue(value: candidate.Locator));
+            return resolved.Locator is null ? ("", "") : resolved;
+        }
 
         // Tracks a Windows key pressed with no other input. Its press arms the candidate, and auto-repeat keeps it
         // armed; any other key or mouse press turns it into part of a chord; its own release disarms it.
@@ -674,6 +1000,38 @@ namespace G4.Services.Domain.V4.Recordings
             // A Windows press arms the candidate; any other press, keyboard or mouse, clears it.
             var isWindowsPress = isKeyboard && WindowsKeyNames.ContainsKey(key: virtualKey);
             return isWindowsPress ? virtualKey : 0;
+        }
+
+        // Resolves the first usable shadow-path candidate of a Chromium trigger node: the first candidate in list
+        // order whose strategy is ShadowPath, whose locator type is CssSelector, whose value is a non-empty string,
+        // and whose verdict is not Broken, because a broken shadow path falls back to the host XPath. Returns an
+        // empty string when the node has none. Never throws: non-object entries and mistyped members are skipped.
+        private static string ResolveShadowLocator(JsonObject properties)
+        {
+            // An absent or mistyped candidate list names no shadow path.
+            if (properties?["locators"] is not JsonArray locators)
+            {
+                return "";
+            }
+
+            // Visit the candidates in the recorder's order; entries that are not objects cannot describe a locator.
+            foreach (var candidate in locators.OfType<JsonObject>())
+            {
+                // Read every member as optional text, so an absent or mistyped member fails its comparison.
+                var isShadowPath = ResolveText(value: candidate["strategy"]) == "ShadowPath";
+                var isCssSelector = ResolveText(value: candidate["using"]) == "CssSelector";
+                var isBroken = ResolveText(value: candidate["verdict"]) == "Broken";
+                var shadowLocator = ResolveText(value: candidate["value"]);
+
+                // The first usable candidate wins, so later ones are never read.
+                var isUsable = isShadowPath && isCssSelector && !isBroken && shadowLocator.Length > 0;
+                if (isUsable)
+                {
+                    return shadowLocator;
+                }
+            }
+
+            return "";
         }
 
         // Carries the Chromium trigger node's Base64 DOM context into the rule capabilities, next to the element name,
@@ -774,6 +1132,126 @@ namespace G4.Services.Domain.V4.Recordings
             }
         }
 
+        // Carries the Chromium trigger node's locator metadata into the rule capabilities, next to the element name
+        // and the DOM context: the ranked candidates, the strength of the chosen locator, the shadow-root path, and
+        // the locator the recorder started from. This helper never changes the rule's onElement or its locator type:
+        // the chain's best XPath stays, read by the engine as XPath, unless SetShadowLocator retargeted the rule at
+        // a shadow path. Rules without an element, a trigger node, or any of these properties are left untouched,
+        // so they serialize exactly as before; empty values are never emitted.
+        private static void SetLocatorCandidates(JsonObject rule, JsonObject model)
+        {
+            // Only element-targeted rules describe an element whose alternative locators matter.
+            var isElementRule = rule["onElement"] is not null;
+            if (!isElementRule)
+            {
+                return;
+            }
+
+            // Collect detached copies first, so an event with no usable metadata never creates an empty capabilities
+            // object and the rule never shares nodes with the buffered event.
+            var candidates = NewLocatorCandidates(properties: GetTriggerNode(model)?["properties"] as JsonObject);
+
+            // Leave the rule as it is when the trigger node carried none of the locator properties.
+            if (candidates.Count == 0)
+            {
+                return;
+            }
+
+            // Reuse the capabilities created for the element name or DOM context, otherwise attach a new object.
+            if (rule["capabilities"] is not JsonObject capabilities)
+            {
+                capabilities = [];
+                rule["capabilities"] = capabilities;
+            }
+
+            // Write the collected values beside the existing capabilities without replacing any of them.
+            foreach (var (key, value) in candidates)
+            {
+                capabilities[key] = value;
+            }
+        }
+
+        // Retargets a Chromium element rule at a target inside a shadow root, open or closed. For such a target the
+        // chain locator is only the XPath of the outermost shadow host, kept so an older Hub still replays against
+        // the host, while the trigger node's ranked candidates carry one entry that reaches the real target: a
+        // CssSelector whose segments are chained with ">>>", which the engine resolves one shadow root per segment.
+        // Selection rule: the first candidate in list order whose strategy is ShadowPath, whose locator type is
+        // CssSelector, whose value is a non-empty string, and whose verdict is not Broken. That value replaces the
+        // rule's onElement and the rule names the CssSelector locator type. Rules without an element, a trigger
+        // node, or such a candidate are left untouched, so they keep the chain XPath and no locator type. Never
+        // throws: non-object entries and absent or mistyped members are skipped, and the event is never mutated.
+        private static void SetShadowLocator(JsonObject rule, JsonObject model)
+        {
+            // Only element-targeted rules carry a locator to replace, so page-level rules never gain a target here.
+            var isElementRule = rule["onElement"] is not null;
+            if (!isElementRule || GetTriggerNode(model)?["properties"] is not JsonObject properties)
+            {
+                return;
+            }
+
+            // A trigger node without a usable shadow-path candidate keeps the chain locator.
+            var shadowLocator = ResolveShadowLocator(properties);
+            if (shadowLocator.Length == 0)
+            {
+                return;
+            }
+
+            // Address the real target and name the locator type, because the engine defaults to XPath.
+            rule["onElement"] = shadowLocator;
+            rule["locator"] = "CssSelector";
+        }
+
+        // Carries the locator metadata of a Chromium drag and drop's drop element into capabilities.target: the
+        // element name and the same candidates SetLocatorCandidates copies for the dragged element. A client can
+        // then swap or heal the drop locator as it does the onElement one. Rules without an element, events
+        // without a target chain, and targets without a name or locator metadata are left untouched.
+        private static void SetTargetCandidates(JsonObject rule, JsonObject model)
+        {
+            // Only an element rule whose event names a drop element has a target to describe.
+            var isElementRule = rule["onElement"] is not null;
+            if (!isElementRule || model["value"]?["target"] is not JsonObject target)
+            {
+                return;
+            }
+
+            // Collect the drop element's candidates as detached copies, so the rule never shares event nodes.
+            var targetProperties = GetTriggerNode(model: target)?["properties"] as JsonObject;
+            var candidates = NewLocatorCandidates(properties: targetProperties);
+
+            // Name the drop element after the first named node of its target-first path, as the source is named.
+            var targetPath = target["chain"]?["path"] as JsonArray ?? [];
+            var names = targetPath.Select(selector: node => ResolveText(value: node?["name"]));
+            var name = names.FirstOrDefault(predicate: value => !string.IsNullOrWhiteSpace(value));
+            if (name is not null)
+            {
+                candidates["elementName"] = name;
+            }
+
+            // Leave the rule as it is when the drop element carried nothing worth keeping.
+            if (candidates.Count == 0)
+            {
+                return;
+            }
+
+            // Reuse the capabilities written for the dragged element, otherwise attach a new object.
+            if (rule["capabilities"] is not JsonObject capabilities)
+            {
+                capabilities = [];
+                rule["capabilities"] = capabilities;
+            }
+
+            capabilities["target"] = new JsonObject(candidates);
+        }
+
+        // Tests whether a locator can travel as one value of a plugin argument. The engine's CLI parser starts a new
+        // argument at whitespace followed by "--" and a name character, and reads "{{$" as a nested expression, so
+        // a locator containing either would be cut or expanded on replay. Pure predicate.
+        private static bool TestArgumentValue(string value)
+        {
+            var isNestedExpression = value.Contains(value: "{{$", comparisonType: StringComparison.Ordinal);
+            return !isNestedExpression && !ArgumentBreakPattern.IsMatch(input: value);
+        }
+
         // Tests whether an event carries a non-empty element chain.
         private static bool TestChain(JsonObject model) => model["chain"]?["path"] is JsonArray { Count: > 0 };
 
@@ -841,8 +1319,35 @@ namespace G4.Services.Domain.V4.Recordings
             return ModifierVirtualKeys.Contains(item: virtualKey);
         }
 
-        // Matches the extension's release-only classifier. Mouse releases need an element chain to target, while
-        // keyboard releases are kept without one: the plugins type into the focused element when no locator is set.
+        // Tests whether a recorded value is a JSON number, which is how the recorders send a measured offset or a
+        // scroll delta. Pure predicate: an absent node, a string, or any other JSON type never matches.
+        private static bool TestNumber(JsonNode value)
+        {
+            return value is JsonValue number && number.GetValueKind() == JsonValueKind.Number;
+        }
+
+        // Tests whether a path node carries the recorder's trigger flag as a JSON true.
+        // Pure predicate: a missing flag or a non-boolean value never matches.
+        private static bool TestTriggerNode(JsonObject node)
+        {
+            return node["isTriggerElement"] is JsonValue flag && flag.TryGetValue(out bool isTrigger) && isTrigger;
+        }
+
+        // Tests whether a UIA release is a drag and drop to replay: a left-button release whose value carries the
+        // drag facts object the UIA recorder adds past the Windows drag threshold, in any capture mode. Pure
+        // predicate.
+        private static bool TestUiaDrag(JsonObject model)
+        {
+            var isLeftRelease = GetText(value: model["event"]).Equals(
+                value: "Left Up",
+                comparisonType: StringComparison.OrdinalIgnoreCase);
+            var isDrag = model["value"]?["drag"] is JsonObject;
+            return isLeftRelease && isDrag;
+        }
+
+        // Matches the extension's release-only classifier. Mouse clicks need an element chain to target, while
+        // keyboard releases and drags are kept without one: the plugins type into the focused element when no
+        // locator is set, and a drag replays between screen points.
         // Pure predicate: reads the model without mutation and treats missing fields as non-matching.
         private static bool TestUiaEvent(JsonObject model)
         {
@@ -864,8 +1369,9 @@ namespace G4.Services.Domain.V4.Recordings
                 return !TestModifierKey(model);
             }
 
-            // Keep a click only when it names the element it targets.
-            return TestChain(model);
+            // Keep a click only when it names the element it targets; a drag is kept without one, because it can
+            // replay between screen points.
+            return TestChain(model) || TestUiaDrag(model);
         }
 
         #endregion

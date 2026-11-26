@@ -66,7 +66,7 @@ namespace G4.Services.Domain.V4.Recordings
 
         #region *** Constructors ***
 
-        // Registers the receive handler before connecting so early recorder events are retained.
+        // Registers the receive handlers before connecting so early recorder events and corrections are retained.
         internal RecorderConnection(RecorderModel options)
         {
             // Keep the detached configuration and build an auto-reconnecting hub on this endpoint's recorder route.
@@ -88,6 +88,25 @@ namespace G4.Services.Domain.V4.Recordings
                     {
                         _events.Add(item: (JsonObject)model.DeepClone());
                         _lastEventTimestamp = Stopwatch.GetTimestamp();
+                    }
+                }
+            });
+
+            // The Chromium recorder re-tests its locators against the live page and corrects events it has already
+            // delivered. The envelope is read as a plain node so a non-object payload is ignored instead of failing
+            // the transport's argument binding.
+            _connection.On<JsonNode>(methodName: "ReceiveLocatorAmendment", handler: message =>
+            {
+                // Patch under the buffer lock so the stop snapshot never observes a half-applied correction.
+                // Suspension does not gate an amendment: it refers to an event buffered before the pause, and the
+                // events dropped during the pause have no buffered identifier to match. Only the stop boundary
+                // closes the buffer, and an amendment is not an event, so the last-event timestamp stays unchanged.
+                lock (_syncRoot)
+                {
+                    if (_isAcceptingEvents)
+                    {
+                        var amendment = (message as JsonObject)?["value"];
+                        UpdateLocators(events: _events, amendment);
                     }
                 }
             });
@@ -299,6 +318,75 @@ namespace G4.Services.Domain.V4.Recordings
             {
                 _isSuspended = true;
             }
+        }
+
+        // Applies one recorder locator amendment to the events it refers to and returns how many were updated.
+        // An event matches when the trigger node of its chain, or of the drop element a drag and drop names in
+        // value.target, carries the amendment's locatorId. The matching chain is patched in place: its locator,
+        // the ranked candidates, and the locator strength, each only when the amendment carries a usable value.
+        // Pure JSON patching with no connection state, so it runs under the caller's lock and in tests without a
+        // transport. Never throws: an amendment that is not an object, has no text identifier, or names an unknown
+        // identifier updates nothing.
+        internal static int UpdateLocators(IEnumerable<JsonObject> events, JsonNode amendment)
+        {
+            // An amendment without a text identifier refers to no event, whatever else it carries.
+            var locatorId = AutomationBuilder.ResolveText(value: (amendment as JsonObject)?["locatorId"]);
+            if (locatorId.Length == 0)
+            {
+                return 0;
+            }
+
+            // Read the corrections once; an absent or mistyped member leaves that part of each event unchanged.
+            var locator = AutomationBuilder.ResolveText(value: amendment["locator"]);
+            var locatorStrength = AutomationBuilder.ResolveText(value: amendment["locatorStrength"]);
+            var locators = amendment["locators"] as JsonArray;
+
+            // Visit every event, because one element can be the trigger of several buffered events.
+            var updated = 0;
+            foreach (var model in events)
+            {
+                // An event holds its own chain, and a drag and drop also holds the chain of its drop element.
+                JsonObject[] holders = [model, model["value"]?["target"] as JsonObject];
+                var isUpdated = false;
+                foreach (var holder in holders.Where(predicate: holder => holder is not null))
+                {
+                    // Skip chains that target no element or whose trigger node carries another identifier.
+                    var properties = AutomationBuilder.GetTriggerNode(model: holder)?["properties"] as JsonObject;
+                    var eventLocatorId = AutomationBuilder.ResolveText(value: properties?["locatorId"]);
+                    if (eventLocatorId != locatorId)
+                    {
+                        continue;
+                    }
+
+                    // The chain locator becomes a rule locator, so replace it only with a non-empty locator.
+                    if (locator.Length > 0)
+                    {
+                        holder["chain"]["locator"] = locator;
+                    }
+
+                    // Each chain owns a detached copy of the candidates, because a JSON node has a single parent.
+                    if (locators is not null)
+                    {
+                        properties["locators"] = locators.DeepClone();
+                    }
+
+                    // Keep the recorded strength when the amendment reports none.
+                    if (locatorStrength.Length > 0)
+                    {
+                        properties["locatorStrength"] = locatorStrength;
+                    }
+
+                    isUpdated = true;
+                }
+
+                // Count the event once, whichever of its chains matched.
+                if (isUpdated)
+                {
+                    updated++;
+                }
+            }
+
+            return updated;
         }
 
         // Shares one lock with diagnostics so receive and cleanup never publish torn recorder state.

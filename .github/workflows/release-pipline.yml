@@ -15,6 +15,8 @@ on:
       - main
     paths-ignore:
       - 'README.md'
+      - '**/CHANGELOG.md'
+      - '.github/workflows/**'
   workflow_dispatch:
 
 # Set environment variables
@@ -241,12 +243,51 @@ jobs:
           files: |
             test-results.xml
 
+  invoke-unit-tests:
+    name: G4™ API - Unit Tests
+    # Windows matches the plugin and engine test runners; the Hub tests need no Linux-only service.
+    runs-on: windows-latest
+    if: ${{ needs.new-version.result == 'success' && needs.new-version.outputs.validVersion == 'True' }}
+    needs:
+      - new-version
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v7
+
+      - name: Setup .NET Core SDK
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10
+
+      - name: Set Up Node.js Environment
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      # Tests that need a resource a hosted runner does not have carry the LocalOnly category and are excluded.
+      - name: Invoke Unit Tests
+        shell: pwsh
+        run: dotnet test ./src/G4.Services.UnitTests/G4.Services.UnitTests.csproj --configuration Release --filter "TestCategory!=LocalOnly" --logger "trx;LogFileName=unit-tests.trx"
+
+      - name: Invoke Designer Tests
+        shell: pwsh
+        run: node --test ./src/G4.Services.Hub/test/validators.test.js
+
+      - name: Upload Unit Test Results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: unit-test-results
+          path: '**/TestResults/*.trx'
+
   publish-hub-docker:
     name: Publish Hub Docker Images
     runs-on: ubuntu-latest
-    if: ${{ needs.new-version.result == 'success' && needs.new-version.outputs.validVersion == 'True' && needs.invoke-api-tests.result == 'success' }}
+    if: ${{ needs.new-version.result == 'success' && needs.new-version.outputs.validVersion == 'True' && needs.invoke-api-tests.result == 'success' && needs.invoke-unit-tests.result == 'success' }}
     needs:
       - invoke-api-tests
+      - invoke-unit-tests
       - new-version
 
     env:
@@ -271,9 +312,10 @@ jobs:
   publish-hub-standalone:
     name: Publish Standalone Hub Service
     runs-on: ubuntu-latest
-    if: ${{ needs.new-version.result == 'success' && needs.new-version.outputs.validVersion == 'True' && needs.invoke-api-tests.result == 'success' }}
+    if: ${{ needs.new-version.result == 'success' && needs.new-version.outputs.validVersion == 'True' && needs.invoke-api-tests.result == 'success' && needs.invoke-unit-tests.result == 'success' }}
     needs:
       - invoke-api-tests
+      - invoke-unit-tests
       - new-version
 
     env:
@@ -322,9 +364,10 @@ jobs:
   new-release:
     name: New GitHub Release Version ${{ needs.new-version.outputs.buildVersion }}
     runs-on: ubuntu-latest
-    if: ${{ needs.new-version.result == 'success' && needs.new-version.outputs.validVersion == 'True' && needs.invoke-api-tests.result == 'success' }}
+    if: ${{ needs.new-version.result == 'success' && needs.new-version.outputs.validVersion == 'True' && needs.invoke-api-tests.result == 'success' && needs.invoke-unit-tests.result == 'success' }}
     needs:
       - invoke-api-tests
+      - invoke-unit-tests
       - new-version
       - publish-hub-standalone
 

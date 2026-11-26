@@ -1,0 +1,14 @@
+/*
+ * G4 Parallel container parameters, mapped to the canvas theme (every theme file,
+ * designer-blueprint-parameters*.css, defines them). The block itself is framed and named as a container,
+ * so it takes the container's colors from the canvas styles and needs none here. The tag on a background
+ * lane takes the secondary label colors, which switches already use for their branch names, so it reads as
+ * a note on the lane and not as the lane's name.
+ */
+:root {
+    --g4-parallel-container-lane-tag-background: var(--step-label-secondary-rect-fill);
+    --g4-parallel-container-lane-tag-border-color: var(--step-label-secondary-rect-stroke);
+    --g4-parallel-container-lane-tag-border-width: var(--step-label-secondary-rect-stroke-width);
+    --g4-parallel-container-lane-tag-font: var(--step-label-secondary-text-font);
+    --g4-parallel-container-lane-tag-foreground: var(--step-label-secondary-text-fill);
+}

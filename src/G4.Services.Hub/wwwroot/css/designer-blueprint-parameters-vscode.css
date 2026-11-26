@@ -180,6 +180,9 @@
     --smart-editor-toggle-icon-path: var(--vscode-input-foreground);
     --smart-editor-toggle-icon-hover-path: var(--vscode-input-foreground);
     --smart-editor-toggle-box-shadow: 0 0 0px rgba(var(--black-rgb), 0.15);
+    --smart-editor-warning-background: #FEF5E7;
+    --smart-editor-warning-border-color: #E5A020;
+    --smart-editor-warning-title-color: #9A6200;
     /* Toolbox */
     --toolbox-background: var(--vscode-sideBar-background);
     --toolbox-box-shadow: 0 0 0px rgba(var(--black-rgb), 0.15), 0 0px 0px rgba(var(--black-rgb), 0.15);
