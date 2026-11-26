@@ -98,6 +98,65 @@ namespace G4.Services.UnitTests.Recordings
             Assert.AreEqual(expected: "//target", actual: rules[3]["onElement"].GetValue<string>());
             Assert.IsNull(value: rules[4]["onElement"]);
             Assert.IsNull(value: rules[5]["onElement"]);
+
+            // Assert: the long press keeps its hold time and the activity change names the screen to start.
+            Assert.AreEqual(expected: "{{$ --Duration:500}}", actual: rules[3]["argument"].GetValue<string>());
+            Assert.AreEqual(
+                expected: "{{$ --Package:com.app --Activity:com.app.Home}}",
+                actual: rules[4]["argument"].GetValue<string>());
+        }
+
+        [TestMethod(DisplayName = "Verify an Android long press without a usable hold time leaves the duration to " +
+            "the plugin default.")]
+        #region *** Data Set ***
+        [DataRow(0d)]
+        [DataRow(-20d)]
+        #endregion
+        public void AndroidLongClickDefaultDurationTest(double durationMilliseconds)
+        {
+            // Arrange: a long press whose recorded hold time is zero or negative, plus one without a value at all.
+            var value = new JsonObject { ["durationMilliseconds"] = durationMilliseconds };
+            var withDuration = NewEvent(eventName: "InvokeLongClick", timestamp: 1, value);
+            var withoutDuration = NewEvent(eventName: "InvokeLongClick", timestamp: 2, value: new JsonObject());
+
+            // Act: convert both events.
+            var rules = NewChromiumRules(events: [withDuration, withoutDuration]);
+
+            // Assert: neither rule sets --Duration, so the plugin holds for its 1000 millisecond default.
+            Assert.AreEqual(expected: string.Empty, actual: rules[0]["argument"].GetValue<string>());
+            Assert.AreEqual(expected: string.Empty, actual: rules[1]["argument"].GetValue<string>());
+            Assert.AreEqual(expected: "//target", actual: rules[0]["onElement"].GetValue<string>());
+        }
+
+        [TestMethod(DisplayName = "Verify an Android activity change without a package passes the activity alone.")]
+        public void AndroidActivityWithoutPackageTest()
+        {
+            // Arrange: an activity change whose value names a full intent and no package.
+            var value = new JsonObject { ["activity"] = "com.app/.Home" };
+            var activity = NewEvent(eventName: "SwitchActivity", timestamp: 1, value);
+
+            // Act: convert the event.
+            var rule = NewChromiumRules(events: [activity])[0];
+
+            // Assert: only --Activity is written, so the plugin uses the full intent as it is, and no element is set.
+            Assert.AreEqual(expected: "{{$ --Activity:com.app/.Home}}", actual: rule["argument"].GetValue<string>());
+            Assert.IsNull(value: rule["onElement"]);
+        }
+
+        [TestMethod(DisplayName = "Verify a Chromium middle click becomes an InvokeMiddleClick rule on the " +
+            "recorded element.")]
+        public void ChromiumMiddleClickTest()
+        {
+            // Arrange: a middle click as the Chromium recorder sends it for an auxclick with button 1.
+            var middleClick = NewEvent(eventName: "InvokeMiddleClick", timestamp: 1, value: new JsonObject());
+
+            // Act: convert the event.
+            var rule = NewChromiumRules(events: [middleClick])[0];
+
+            // Assert: the plugin name passes through and the rule targets the recorded element without an argument.
+            Assert.AreEqual(expected: "InvokeMiddleClick", actual: rule["pluginName"].GetValue<string>());
+            Assert.AreEqual(expected: "//target", actual: rule["onElement"].GetValue<string>());
+            Assert.IsNull(value: rule["argument"]);
         }
 
         [TestMethod(DisplayName = "Verify a Chromium wheel event scrolls by its recorded pixel deltas, rounded and " +

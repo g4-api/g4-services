@@ -32,11 +32,19 @@ All notable user-visible changes to the G4 Hub are listed here. The format follo
 - Per-field Base64 encoding in the G4 editor (5f90a3a).
 - A calculator icon (a4ac73b).
 - Unlimited license token information in the README (26bca9d).
+- A recorded Android `InvokeLongClick` becomes an `InvokeLongClick` rule with `{{$ --Duration:<ms>}}`, and a recorded
+  `SwitchActivity` becomes a `SwitchActivity` rule with `{{$ --Package:<package> --Activity:<activity>}}`, the
+  arguments the new plugins read.
+- A Chromium middle click recorded as `InvokeMiddleClick` becomes an `InvokeMiddleClick` rule on the recorded element.
+- The release pipeline runs the Hub unit tests and the designer tests on Windows, without the `LocalOnly` category,
+  and publishes the Docker images, the standalone Hub and the release only after they pass.
 
 ### Changed
 
-- The Hub uses `G4.Api` 2026.11.25.78, the engine packages 2026.11.25.111 and the `G4.Plugins.*` packages
-  2026.11.25.177, which add the middle-click plugins and `InvokeScroll --Relative` that recorded rules now use.
+- The Hub uses `G4.Api` 2026.11.25.80, the engine packages 2026.11.25.113 and the `G4.Plugins.*` packages
+  2026.11.25.178, which add the middle-click plugins, `InvokeScroll --Relative`, and the `InvokeLongClick` and
+  `SwitchActivity` plugins that recorded rules now use.
+- A push that changes only changelogs or workflow files no longer starts a release.
 - `FindTool` returns the full tool model with its namespace (17a1356).
 - Tool discovery handles `take` differently (c34cd5b).
 - The G4 CLI argument generation and array parameter handling were improved (fd8d04a).

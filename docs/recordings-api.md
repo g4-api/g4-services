@@ -34,9 +34,13 @@ For an Android recorder, the `driverParameters` are also what the flow replays w
 Chromium and Android always record in `standard` mode. Another driver is refused with
 `Recorder driver must be AndroidDriver, ChromeDriver or UiaDriver.`
 
-The Android recorder also sends `InvokeLongClick` and `SwitchActivity`, which have no replay plugin yet. The Hub keeps
-them in the flow, as it keeps every recorder event. A client leaves them out with its own filter; the VS Code
-extension does so through `excludeEvents`.
+The Android recorder also sends `InvokeLongClick` and `SwitchActivity`, and the Hub gives each the argument its plugin
+reads:
+
+| Event | Rule | Argument |
+| --- | --- | --- |
+| `InvokeLongClick` | `InvokeLongClick` on the recorded element | `{{$ --Duration:<ms>}}` from `value.durationMilliseconds`, rounded to whole milliseconds. Without a positive value the argument is empty and the plugin holds for its 1000 ms default. |
+| `SwitchActivity` | `SwitchActivity`, with no `onElement` | `{{$ --Package:<package> --Activity:<activity>}}` from `value.package` and `value.activity`. Without a package only `--Activity` is written. |
 
 ## DOM context on Chromium element rules
 
@@ -206,7 +210,8 @@ The UIA recorder sends raw button and key releases, and the Hub picks the plugin
 - A `Left Up` that carries `value.drag` is a drag and drop, described above, not a click.
 - `SendUser32KeyboardKey` sends its key to the focused window, so its rule has no `onElement` and no
   `capabilities.elementName`, in every mode. Only `SendKeyboardKey` keeps the recorded element.
-- The Chromium recorder does not record middle clicks.
+- The Chromium recorder sends a middle click (`auxclick` with button 1) as `InvokeMiddleClick`, which becomes an
+  `InvokeMiddleClick` rule on the recorded element.
 
 ## Status codes
 

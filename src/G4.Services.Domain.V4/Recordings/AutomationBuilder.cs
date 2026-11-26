@@ -332,6 +332,15 @@ namespace G4.Services.Domain.V4.Recordings
                     SetLocator(rule, locator);
                     rule["argument"] = NewDragArgument(value);
                     break;
+                case "InvokeLongClick":
+                    // The pressed element is the chain target; the recorded hold time travels as --Duration.
+                    SetLocator(rule, locator);
+                    rule["argument"] = NewLongClickArgument(value);
+                    break;
+                case "SwitchActivity":
+                    // An activity change names the package and activity to start and never an element locator.
+                    rule["argument"] = NewActivityArgument(value);
+                    break;
                 default:
                     // Remaining element actions carry only their target locator.
                     SetLocator(rule, locator);
@@ -578,6 +587,33 @@ namespace G4.Services.Domain.V4.Recordings
             }
 
             return new JsonObject { ["$type"] = "Action", ["pluginName"] = plugin, ["context"] = context };
+        }
+
+        // Shapes the SwitchActivity argument from an activity event's value. The plugin joins --Package and
+        // --Activity as the package/activity intent it starts, so a missing package is left out and the activity
+        // is passed alone; an event without an activity yields an empty argument, which the plugin reports.
+        private static string NewActivityArgument(JsonNode value)
+        {
+            // Read both names; Android reports them as plain strings.
+            var package = GetText(value: value?["package"]);
+            var activity = GetText(value: value?["activity"]);
+
+            // Leave out a missing package, so a full package/activity intent in the activity is used as it is.
+            var packageParameter = string.IsNullOrEmpty(package) ? string.Empty : "--Package:" + package + " ";
+            return "{{$ " + packageParameter + "--Activity:" + activity + "}}";
+        }
+
+        // Shapes the InvokeLongClick argument from a long click event's value. The recorded hold time becomes
+        // --Duration in whole milliseconds; without a usable positive time the argument is empty and the plugin
+        // holds for its own default.
+        private static string NewLongClickArgument(JsonNode value)
+        {
+            // Read the hold time as whole milliseconds; a missing or non-numeric value reads as zero.
+            var duration = (long)Math.Round(GetNumber(value: value?["durationMilliseconds"]), MidpointRounding.AwayFromZero);
+
+            // Pass only a positive duration in invariant text, so the plugin default applies otherwise.
+            var durationText = duration.ToString(provider: CultureInfo.InvariantCulture);
+            return duration > 0 ? "{{$ --Duration:" + durationText + "}}" : string.Empty;
         }
 
         // Shapes the InvokeScroll argument from a scroll event's value. With --Relative the plugin scrolls by --Left
