@@ -2,6 +2,13 @@
 
 All notable user-visible changes to the G4 Hub are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## Unreleased
+
+### Changed
+
+- The repository no longer pins the .NET SDK: `global.json` is removed, so builds use the SDK that the machine or the
+  release runner provides.
+
 ## 2026.11.26.92
 
 ### Added
